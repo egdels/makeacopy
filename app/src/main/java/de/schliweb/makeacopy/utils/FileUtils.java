@@ -117,7 +117,7 @@ public class FileUtils {
             ContentResolver cr = context.getContentResolver();
             try (android.os.ParcelFileDescriptor pfd = cr.openFileDescriptor(uri, "r")) {
                 if (pfd != null) return true;
-            } catch (Throwable ignored) {
+            } catch (Throwable ignore) {
                 // fallback to stream
                 try (java.io.InputStream is = cr.openInputStream(uri)) {
                     return is != null;

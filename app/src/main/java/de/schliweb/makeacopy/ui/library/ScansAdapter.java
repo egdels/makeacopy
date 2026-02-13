@@ -12,6 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.data.library.ScanEntity;
+import de.schliweb.makeacopy.utils.FileUtils;
+import de.schliweb.makeacopy.utils.ImageDecodeUtils;
 
 import java.io.File;
 import java.io.InputStream;
@@ -141,7 +143,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
         h.thumb.setImageResource(android.R.drawable.ic_menu_report_image);
         h.thumb.setAlpha(1f);
         // Prefer explicit coverPath; fall back to first export URI when coverPath is missing
-        String key = (e.coverPath != null && !e.coverPath.isEmpty()) ? e.coverPath : de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
+        String key = (e.coverPath != null && !e.coverPath.isEmpty()) ? e.coverPath : FileUtils.firstUriFromJson(e.exportPathsJson);
         if (key != null && !key.isEmpty()) {
             Bitmap cached = thumbCache.get(key);
             if (cached != null && !cached.isRecycled()) {
@@ -160,7 +162,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
                             int pos = h.getBindingAdapterPosition();
                             if (pos != RecyclerView.NO_POSITION) {
                                 ScanEntity cur = items.get(pos);
-                                String curKey = (cur.coverPath != null && !cur.coverPath.isEmpty()) ? cur.coverPath : de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(cur.exportPathsJson);
+                                String curKey = (cur.coverPath != null && !cur.coverPath.isEmpty()) ? cur.coverPath : FileUtils.firstUriFromJson(cur.exportPathsJson);
                                 if (curKey != null && curKey.equals(key)) {
                                     h.thumb.setImageBitmap(bmp);
                                 }
@@ -172,10 +174,10 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
         }
 
         // Async readability check of the primary export URI to annotate subtitle and guard clicks
-        final String primary = de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
+        final String primary = FileUtils.firstUriFromJson(e.exportPathsJson);
         if (primary != null && !primary.isEmpty()) {
             loader.submit(() -> {
-                boolean readable = de.schliweb.makeacopy.utils.FileUtils.isUriReadable(h.itemView.getContext(), primary);
+                boolean readable = FileUtils.isUriReadable(h.itemView.getContext(), primary);
                 unreadableMap.put(e.id, !readable);
                 android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
                 main.post(() -> {
@@ -248,7 +250,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
             // Try as file path first
             File f = new File(pathOrUri);
             if (f.exists() && f.isFile()) {
-                return de.schliweb.makeacopy.utils.ImageDecodeUtils.decodeSampled(pathOrUri, 112, 112);
+                return ImageDecodeUtils.decodeSampled(pathOrUri, 112, 112);
             }
             // Else try as content Uri
             Uri uri = Uri.parse(pathOrUri);
