@@ -141,7 +141,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
         h.thumb.setImageResource(android.R.drawable.ic_menu_report_image);
         h.thumb.setAlpha(1f);
         // Prefer explicit coverPath; fall back to first export URI when coverPath is missing
-        String key = (e.coverPath != null && !e.coverPath.isEmpty()) ? e.coverPath : firstUriFromJson(e.exportPathsJson);
+        String key = (e.coverPath != null && !e.coverPath.isEmpty()) ? e.coverPath : de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
         if (key != null && !key.isEmpty()) {
             Bitmap cached = thumbCache.get(key);
             if (cached != null && !cached.isRecycled()) {
@@ -160,7 +160,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
                             int pos = h.getBindingAdapterPosition();
                             if (pos != RecyclerView.NO_POSITION) {
                                 ScanEntity cur = items.get(pos);
-                                String curKey = (cur.coverPath != null && !cur.coverPath.isEmpty()) ? cur.coverPath : firstUriFromJson(cur.exportPathsJson);
+                                String curKey = (cur.coverPath != null && !cur.coverPath.isEmpty()) ? cur.coverPath : de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(cur.exportPathsJson);
                                 if (curKey != null && curKey.equals(key)) {
                                     h.thumb.setImageBitmap(bmp);
                                 }
@@ -172,7 +172,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
         }
 
         // Async readability check of the primary export URI to annotate subtitle and guard clicks
-        final String primary = firstUriFromJson(e.exportPathsJson);
+        final String primary = de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
         if (primary != null && !primary.isEmpty()) {
             loader.submit(() -> {
                 boolean readable = isUriReadable(h.itemView, primary);
@@ -266,32 +266,6 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
     }
 
 
-
-    private static String firstUriFromJson(String json) {
-        if (json == null) return null;
-        try {
-            // Very small, dependency-free parser: find first quoted string in a JSON array
-            int i = json.indexOf('"');
-            while (i >= 0 && i + 1 < json.length()) {
-                if (i > 0 && json.charAt(i - 1) == '\\') { // skip escaped quotes
-                    i = json.indexOf('"', i + 1);
-                    continue;
-                }
-                int j = json.indexOf('"', i + 1);
-                while (j > i && json.charAt(j - 1) == '\\') {
-                    j = json.indexOf('"', j + 1);
-                }
-                if (j > i) {
-                    String s = json.substring(i + 1, j);
-                    return s;
-                } else {
-                    break;
-                }
-            }
-        } catch (Throwable ignore) {
-        }
-        return null;
-    }
 
     static class VH extends RecyclerView.ViewHolder {
         ImageView thumb;

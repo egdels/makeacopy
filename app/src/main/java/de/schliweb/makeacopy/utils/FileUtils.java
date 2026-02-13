@@ -103,5 +103,36 @@ public class FileUtils {
 
         Log.d(TAG, "getDisplayNameFromUri: Final result: " + result);
         return result;
+    /**
+     * Extracts the first URI string from a simple JSON array representation.
+     * This is a lightweight parser for arrays like ["content://..."] or ["file://..."]
+     * without requiring a full JSON library dependency.
+     *
+     * @param json The JSON string to parse, expected to be a JSON array containing URI strings.
+     * @return The first URI string found in the array, or null if none is found or if the input is invalid.
+     */
+    public static String firstUriFromJson(String json) {
+        if (json == null) return null;
+        try {
+            // Very small, dependency-free parser: find first quoted string in a JSON array
+            int i = json.indexOf('"');
+            while (i >= 0 && i + 1 < json.length()) {
+                if (i > 0 && json.charAt(i - 1) == '\\') { // skip escaped quotes
+                    i = json.indexOf('"', i + 1);
+                    continue;
+                }
+                int j = json.indexOf('"', i + 1);
+                while (j > i && json.charAt(j - 1) == '\\') {
+                    j = json.indexOf('"', j + 1);
+                }
+                if (j > i) {
+                    return json.substring(i + 1, j);
+                } else {
+                    break;
+                }
+            }
+        } catch (Throwable ignore) {
+        }
+        return null;
     }
 }

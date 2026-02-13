@@ -421,12 +421,12 @@ public class ScanDetailsFragment extends Fragment {
             isCompletedScanEntry = false;
         }
         if (isCompletedScanEntry) {
-            source = firstUriFromJson(e.exportPathsJson);
+            source = de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
             if (source == null || source.isEmpty()) {
                 source = e.coverPath; // fallback if no export/original available
             }
         } else {
-            source = (e.coverPath != null && !e.coverPath.isEmpty()) ? e.coverPath : firstUriFromJson(e.exportPathsJson);
+            source = (e.coverPath != null && !e.coverPath.isEmpty()) ? e.coverPath : de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
         }
         android.net.Uri primaryUri = getPrimaryExportUri();
         boolean showPdfPager = false;
@@ -473,31 +473,7 @@ public class ScanDetailsFragment extends Fragment {
         return false;
     }
 
-    // Extract first URI string from a simple JSON array like ["content://..."]
-    private static String firstUriFromJson(String json) {
-        if (json == null) return null;
-        try {
-            int i = json.indexOf('"');
-            while (i >= 0 && i + 1 < json.length()) {
-                if (i > 0 && json.charAt(i - 1) == '\\') { // skip escaped
-                    i = json.indexOf('"', i + 1);
-                    continue;
-                }
-                int j = json.indexOf('"', i + 1);
-                while (j > i && json.charAt(j - 1) == '\\') {
-                    j = json.indexOf('"', j + 1);
-                }
-                if (j > i) {
-                    return json.substring(i + 1, j);
-                } else {
-                    break;
-                }
-            }
-        } catch (Throwable ignore) {
-        }
-        return null;
-    }
-
+    
     private String makeSingleUriArrayJson(@NonNull android.net.Uri uri) {
         try {
             String s = uri.toString();
@@ -936,7 +912,7 @@ public class ScanDetailsFragment extends Fragment {
                 if (!isAdded()) return;
                 requireActivity().runOnUiThread(() -> {
                     if (previewNavRow != null) previewNavRow.setVisibility(View.GONE);
-                    String fallback = (entity != null && entity.coverPath != null && !entity.coverPath.isEmpty()) ? entity.coverPath : firstUriFromJson(entity != null ? entity.exportPathsJson : null);
+                    String fallback = (entity != null && entity.coverPath != null && !entity.coverPath.isEmpty()) ? entity.coverPath : de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(entity != null ? entity.exportPathsJson : null);
                     loadPreviewAsync(fallback);
                 });
             }
