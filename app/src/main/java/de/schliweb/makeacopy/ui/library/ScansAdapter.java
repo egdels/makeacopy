@@ -175,7 +175,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
         final String primary = de.schliweb.makeacopy.utils.FileUtils.firstUriFromJson(e.exportPathsJson);
         if (primary != null && !primary.isEmpty()) {
             loader.submit(() -> {
-                boolean readable = isUriReadable(h.itemView, primary);
+                boolean readable = de.schliweb.makeacopy.utils.FileUtils.isUriReadable(h.itemView.getContext(), primary);
                 unreadableMap.put(e.id, !readable);
                 android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
                 main.post(() -> {
@@ -280,21 +280,5 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
             subtitle = itemView.findViewById(R.id.textSubtitle);
             membership = itemView.findViewById(R.id.textMembership);
         }
-    }
-
-    private boolean isUriReadable(@NonNull View anyView, @NonNull String uriString) {
-        try {
-            android.content.ContentResolver cr = anyView.getContext().getContentResolver();
-            Uri uri = Uri.parse(uriString);
-            try (android.os.ParcelFileDescriptor pfd = cr.openFileDescriptor(uri, "r")) {
-                if (pfd != null) return true;
-            } catch (Throwable ignored) {
-                try (InputStream is = cr.openInputStream(uri)) {
-                    return is != null;
-                }
-            }
-        } catch (Throwable ignore) {
-        }
-        return false;
     }
 }

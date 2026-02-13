@@ -104,6 +104,49 @@ public class FileUtils {
         Log.d(TAG, "getDisplayNameFromUri: Final result: " + result);
         return result;
     /**
+     * Checks if a URI is readable without actually reading its content.
+     * This is a lightweight check that attempts to open the URI for reading and immediately closes it.
+     *
+     * @param context The application context used to access the content resolver.
+     * @param uri The URI to check for readability.
+     * @return true if the URI can be opened for reading, false otherwise.
+     */
+    public static boolean isUriReadable(Context context, Uri uri) {
+        if (context == null || uri == null) return false;
+        try {
+            ContentResolver cr = context.getContentResolver();
+            try (android.os.ParcelFileDescriptor pfd = cr.openFileDescriptor(uri, "r")) {
+                if (pfd != null) return true;
+            } catch (Throwable ignored) {
+                // fallback to stream
+                try (java.io.InputStream is = cr.openInputStream(uri)) {
+                    return is != null;
+                }
+            }
+        } catch (Throwable ignore) {
+        }
+        return false;
+    }
+
+    /**
+     * Checks if a URI string is readable without actually reading its content.
+     * This is a lightweight check that attempts to open the URI for reading and immediately closes it.
+     *
+     * @param context The application context used to access the content resolver.
+     * @param uriString The URI string to check for readability.
+     * @return true if the URI can be opened for reading, false otherwise.
+     */
+    public static boolean isUriReadable(Context context, String uriString) {
+        if (context == null || uriString == null || uriString.isEmpty()) return false;
+        try {
+            Uri uri = Uri.parse(uriString);
+            return isUriReadable(context, uri);
+        } catch (Throwable ignore) {
+        }
+        return false;
+    }
+
+    /**
      * Extracts the first URI string from a simple JSON array representation.
      * This is a lightweight parser for arrays like ["content://..."] or ["file://..."]
      * without requiring a full JSON library dependency.

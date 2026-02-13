@@ -351,7 +351,7 @@ public class ScanDetailsFragment extends Fragment {
 
         // Check export URI readability to decide action enablement and hint
         android.net.Uri exportUri = getPrimaryExportUri();
-        boolean canOpen = exportUri != null && isUriReadable(exportUri);
+        boolean canOpen = exportUri != null && de.schliweb.makeacopy.utils.FileUtils.isUriReadable(requireContext(), exportUri);
         // Derive a human-friendly folder/location of the primary export for metadata display
         String folder = deriveParentFolderDisplay(exportUri);
         StringBuilder subtitle = new StringBuilder();
@@ -453,26 +453,7 @@ public class ScanDetailsFragment extends Fragment {
         showLoading(false);
     }
 
-    /**
-     * Performs a lightweight check to see if a content/file Uri can be opened for reading.
-     * This avoids heavy IO: we just try to obtain a read FD or stream and immediately close it.
-     */
-    private boolean isUriReadable(@NonNull android.net.Uri uri) {
-        try {
-            android.content.ContentResolver cr = requireContext().getContentResolver();
-            try (android.os.ParcelFileDescriptor pfd = cr.openFileDescriptor(uri, "r")) {
-                if (pfd != null) return true;
-            } catch (Throwable ignored) {
-                // fallback to stream
-                try (java.io.InputStream is = cr.openInputStream(uri)) {
-                    return is != null;
-                }
-            }
-        } catch (Throwable ignore) {
-        }
-        return false;
-    }
-
+    
     
     private String makeSingleUriArrayJson(@NonNull android.net.Uri uri) {
         try {
