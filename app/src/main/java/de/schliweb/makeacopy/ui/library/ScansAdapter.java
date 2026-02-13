@@ -248,7 +248,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
             // Try as file path first
             File f = new File(pathOrUri);
             if (f.exists() && f.isFile()) {
-                return decodeSampledBitmapFromFile(pathOrUri, 112, 112);
+                return de.schliweb.makeacopy.utils.ImageDecodeUtils.decodeSampled(pathOrUri, 112, 112);
             }
             // Else try as content Uri
             Uri uri = Uri.parse(pathOrUri);
@@ -265,28 +265,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
         return null;
     }
 
-    private static Bitmap decodeSampledBitmapFromFile(String path, int reqWidth, int reqHeight) {
-        // Use centralized EXIF-neutral decoder for baked disk files
-        try {
-            return de.schliweb.makeacopy.utils.ImageDecodeUtils.decodeSampled(path, reqWidth, reqHeight);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
 
-    private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
-        int height = options.outHeight;
-        int width = options.outWidth;
-        int inSampleSize = 1;
-        if (height > reqHeight || width > reqWidth) {
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-        return inSampleSize;
-    }
 
     private static String firstUriFromJson(String json) {
         if (json == null) return null;

@@ -521,7 +521,7 @@ public class ScanDetailsFragment extends Fragment {
                 // Try as file path first
                 java.io.File f = new java.io.File(pathOrUri);
                 if (f.exists() && f.isFile()) {
-                    bmp = decodeSampledBitmapFromFile(pathOrUri, 1080, 1080);
+                    bmp = de.schliweb.makeacopy.utils.ImageDecodeUtils.decodeSampled(pathOrUri, 1080, 1080);
                 } else {
                     // Try as content URI
                     android.net.Uri uri = android.net.Uri.parse(pathOrUri);
@@ -563,28 +563,7 @@ public class ScanDetailsFragment extends Fragment {
         }).start();
     }
 
-    private static android.graphics.Bitmap decodeSampledBitmapFromFile(String path, int reqWidth, int reqHeight) {
-        // Use centralized EXIF-neutral decoder for baked disk files
-        try {
-            return de.schliweb.makeacopy.utils.ImageDecodeUtils.decodeSampled(path, Math.max(1, reqWidth), Math.max(1, reqHeight));
-        } catch (Throwable t) {
-            return null;
-        }
-    }
 
-    private static int calculateInSampleSize(android.graphics.BitmapFactory.Options options, int reqWidth, int reqHeight) {
-        int height = options.outHeight;
-        int width = options.outWidth;
-        int inSampleSize = 1;
-        if (height > reqHeight || width > reqWidth) {
-            final int halfHeight = Math.max(1, height / 2);
-            final int halfWidth = Math.max(1, width / 2);
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-        return inSampleSize;
-    }
 
     private boolean isLikelyPdfUri(@NonNull android.net.Uri uri) {
         try {
