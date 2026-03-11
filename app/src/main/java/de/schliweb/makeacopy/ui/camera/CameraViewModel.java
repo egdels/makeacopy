@@ -14,6 +14,9 @@ public class CameraViewModel extends BaseViewModel {
   private final MutableLiveData<Boolean> mCameraPermissionGranted;
   private final MutableLiveData<String> mImagePath = new MutableLiveData<>();
 
+  /** Whether the flashlight was on when the user last captured a photo. Restored when camera binds. */
+  private boolean lastCaptureHadFlashOn = false;
+
   public CameraViewModel() {
     super("Camera Fragment");
 
@@ -59,5 +62,23 @@ public class CameraViewModel extends BaseViewModel {
    */
   public void setImagePath(String path) {
     mImagePath.setValue(path);
+  }
+
+  /**
+   * Returns whether the flashlight was on when the user last captured a photo. Used to restore
+   * flash state when the camera is (re)bound.
+   */
+  public boolean getLastCaptureHadFlashOn() {
+    return lastCaptureHadFlashOn;
+  }
+
+  /**
+   * Stores whether the flashlight is currently on at capture time, so it can be restored for the
+   * next capture.
+   *
+   * @param on true if the flash was on when the user triggered capture.
+   */
+  public void setLastCaptureHadFlashOn(boolean on) {
+    this.lastCaptureHadFlashOn = on;
   }
 }

@@ -732,8 +732,29 @@ public class CameraFragment extends Fragment implements SensorEventListener {
             }
             hasFlash = camera.getCameraInfo().hasFlashUnit();
             binding.buttonFlash.setVisibility(hasFlash ? View.VISIBLE : View.GONE);
-            isFlashlightOn = false;
-            binding.buttonFlash.setImageResource(R.drawable.ic_flash_off);
+            boolean restoreFlash =
+                cameraViewModel != null
+                    && cameraViewModel.getLastCaptureHadFlashOn()
+                    && hasFlash;
+            if (restoreFlash) {
+              try {
+                isFlashlightOn = true;
+                camera.getCameraControl().enableTorch(true);
+                binding.buttonFlash.setImageResource(R.drawable.ic_flash_on);
+              } catch (Exception e) {
+                Log.e(TAG, "Restore flashlight failed: " + e.getMessage(), e);
+                isFlashlightOn = false;
+                binding.buttonFlash.setImageResource(R.drawable.ic_flash_off);
+              }
+            } else {
+              isFlashlightOn = false;
+              try {
+                if (camera != null) camera.getCameraControl().enableTorch(false);
+              } catch (Exception ignored) {
+                // ignore
+              }
+              binding.buttonFlash.setImageResource(R.drawable.ic_flash_off);
+            }
             binding.textCamera.setText(R.string.camera_ready_tap_the_button_to_scan_a_document);
             logCameraCapabilities();
             setupExposureCompensation();
@@ -1158,6 +1179,10 @@ public class CameraFragment extends Fragment implements SensorEventListener {
           requireContext(), R.string.error_camera_not_initialized, Toast.LENGTH_SHORT);
       initializeCamera();
       return;
+    }
+
+    if (cameraViewModel != null) {
+      cameraViewModel.setLastCaptureHadFlashOn(isFlashlightOn);
     }
 
     try {
