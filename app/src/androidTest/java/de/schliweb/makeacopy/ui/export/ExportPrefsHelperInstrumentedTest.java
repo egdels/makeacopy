@@ -63,4 +63,18 @@ public class ExportPrefsHelperInstrumentedTest {
     assertEquals("content://new/import", ExportPrefsHelper.getLastImportUri(context));
     assertEquals(exportUri, ExportPrefsHelper.getLastExportUri(context));
   }
+
+  @Test
+  public void testShareAttachOnlyPersistence() {
+    // Default is false
+    assertFalse(ExportPrefsHelper.isShareAttachOnly(context));
+
+    // Set and retrieve true
+    ExportPrefsHelper.setShareAttachOnly(context, true);
+    assertTrue(ExportPrefsHelper.isShareAttachOnly(context));
+
+    // Set and retrieve false
+    ExportPrefsHelper.setShareAttachOnly(context, false);
+    assertFalse(ExportPrefsHelper.isShareAttachOnly(context));
+  }
 }

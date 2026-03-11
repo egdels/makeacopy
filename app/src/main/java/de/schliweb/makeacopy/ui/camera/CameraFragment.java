@@ -244,6 +244,8 @@ public class CameraFragment extends Fragment implements SensorEventListener {
               }
               if (uris.isEmpty()) return;
 
+              // When user selected multiple URIs, collect image types only and cap at 20 for the
+              // batch.
               java.util.List<Uri> imageUris = null;
               if (uris.size() > 1) {
                 imageUris = new java.util.ArrayList<>();
@@ -336,8 +338,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                                               .ExportSessionViewModel.class);
                           exportSessionViewModel.setInitial(decoded.get(0));
                           if (decoded.size() > 1) {
-                            exportSessionViewModel.addAll(
-                                decoded.subList(1, decoded.size()));
+                            exportSessionViewModel.addAll(decoded.subList(1, decoded.size()));
                           }
                           Uri firstUri = toDecode.get(0);
                           int takeFlags =
@@ -351,10 +352,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                                   .takePersistableUriPermission(
                                       firstUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
                             } catch (SecurityException se) {
-                              Log.w(
-                                  TAG,
-                                  "Persistable read permission not granted by provider",
-                                  se);
+                              Log.w(TAG, "Persistable read permission not granted by provider", se);
                             }
                           }
                           Uri folderHint =
@@ -733,9 +731,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
             hasFlash = camera.getCameraInfo().hasFlashUnit();
             binding.buttonFlash.setVisibility(hasFlash ? View.VISIBLE : View.GONE);
             boolean restoreFlash =
-                cameraViewModel != null
-                    && cameraViewModel.getLastCaptureHadFlashOn()
-                    && hasFlash;
+                cameraViewModel != null && cameraViewModel.getLastCaptureHadFlashOn() && hasFlash;
             if (restoreFlash) {
               try {
                 isFlashlightOn = true;

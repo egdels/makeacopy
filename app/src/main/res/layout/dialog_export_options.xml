@@ -19,6 +19,7 @@
             android:id="@+id/dialog_checkbox_share_attach_only"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:contentDescription="@string/share_attach_only"
             android:text="@string/share_attach_only" />
 
         <RadioGroup

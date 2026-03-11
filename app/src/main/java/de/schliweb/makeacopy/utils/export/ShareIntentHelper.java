@@ -66,6 +66,8 @@ public final class ShareIntentHelper {
     String label = hasTxt ? (fileName + " + OCR TXT") : fileName;
     if (label == null) label = "Document";
 
+    // When "attach only" is enabled, omit subject/body/title so the user composes the email
+    // themselves.
     if (!ExportPrefsHelper.isShareAttachOnly(ctx)) {
       intent.putExtra(Intent.EXTRA_TITLE, label);
       intent.putExtra(Intent.EXTRA_SUBJECT, label);

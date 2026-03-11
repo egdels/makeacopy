@@ -14,7 +14,9 @@ public class CameraViewModel extends BaseViewModel {
   private final MutableLiveData<Boolean> mCameraPermissionGranted;
   private final MutableLiveData<String> mImagePath = new MutableLiveData<>();
 
-  /** Whether the flashlight was on when the user last captured a photo. Restored when camera binds. */
+  /**
+   * Whether the flashlight was on when the user last captured a photo. Restored when camera binds.
+   */
   private boolean lastCaptureHadFlashOn = false;
 
   public CameraViewModel() {
