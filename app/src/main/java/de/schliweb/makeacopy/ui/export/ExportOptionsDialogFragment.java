@@ -107,6 +107,7 @@ public class ExportOptionsDialogFragment extends DialogFragment {
     View view = getLayoutInflater().inflate(R.layout.dialog_export_options, null);
 
     CheckBox cbIncludeOcr = view.findViewById(R.id.dialog_checkbox_include_ocr);
+    CheckBox cbShareAttachOnly = view.findViewById(R.id.dialog_checkbox_share_attach_only);
     RadioButton rbExportPdf = view.findViewById(R.id.dialog_checkbox_export_pdf);
     RadioButton rbExportJpeg = view.findViewById(R.id.dialog_checkbox_export_jpeg);
     View pdfGroup = view.findViewById(R.id.dialog_pdf_group);
@@ -152,6 +153,9 @@ public class ExportOptionsDialogFragment extends DialogFragment {
     PageFormat pageFormat = PageFormat.fromName(pageFormatSaved, PageFormat.FIT_TO_IMAGE);
 
     cbIncludeOcr.setChecked(includeOcr);
+    if (cbShareAttachOnly != null) {
+      cbShareAttachOnly.setChecked(ExportPrefsHelper.isShareAttachOnly(ctx));
+    }
     // Initialize format selection from preference (PDF default)
     if (exportAsJpeg) {
       rbExportJpeg.setChecked(true);
@@ -357,6 +361,10 @@ public class ExportOptionsDialogFragment extends DialogFragment {
                   if (pdfBwMode != null) editor.putString("pdf_bw_mode", pdfBwMode);
                   else editor.remove("pdf_bw_mode");
                   editor.apply();
+
+                  if (cbShareAttachOnly != null) {
+                    ExportPrefsHelper.setShareAttachOnly(ctx, cbShareAttachOnly.isChecked());
+                  }
 
                   Bundle result = new Bundle();
                   result.putBoolean(BUNDLE_INCLUDE_OCR, incOcr);

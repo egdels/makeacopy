@@ -139,6 +139,22 @@ public final class ExportPrefsHelper {
     getPrefs(context).edit().putString("last_export_uri", uri).apply();
   }
 
+  // ── Share: attach only (no subject/body pre-fill) ──
+
+  private static final String KEY_SHARE_ATTACH_ONLY = "share_attach_only";
+
+  /**
+   * Returns {@code true} when the user wants to share documents as attachment only, without
+   * pre-filling email subject or body (EXTRA_SUBJECT, EXTRA_TEXT, EXTRA_TITLE).
+   */
+  public static boolean isShareAttachOnly(Context context) {
+    return getPrefs(context).getBoolean(KEY_SHARE_ATTACH_ONLY, false);
+  }
+
+  public static void setShareAttachOnly(Context context, boolean value) {
+    getPrefs(context).edit().putBoolean(KEY_SHARE_ATTACH_ONLY, value).apply();
+  }
+
   // ── Inbox Mode preferences ──
 
   private static final String KEY_INBOX_ENABLED = "inbox_enabled";

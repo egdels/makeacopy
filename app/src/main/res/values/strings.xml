@@ -31,6 +31,7 @@
     <string name="cropped_image">Cropped image</string>
     <string name="document_preview">Document preview</string>
     <string name="include_ocr_text">Export OCR as separate TXT</string>
+    <string name="share_attach_only">Attach file only when sharing (no email subject or body)</string>
     <string name="ocr_results_will_appear_here">OCR results will appear here</string>
     <string name="ocr_no_text_detected">No text detected</string>
     <string name="adjust_the_trapezoid_corners_to_select_the_area_to_crop_then_tap_the_crop_button">Adjust the trapezoid

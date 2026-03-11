@@ -8,6 +8,7 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
+import de.schliweb.makeacopy.ui.export.ExportPrefsHelper;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,9 +66,11 @@ public final class ShareIntentHelper {
     String label = hasTxt ? (fileName + " + OCR TXT") : fileName;
     if (label == null) label = "Document";
 
-    intent.putExtra(Intent.EXTRA_TITLE, label);
-    intent.putExtra(Intent.EXTRA_SUBJECT, label);
-    intent.putExtra(Intent.EXTRA_TEXT, label);
+    if (!ExportPrefsHelper.isShareAttachOnly(ctx)) {
+      intent.putExtra(Intent.EXTRA_TITLE, label);
+      intent.putExtra(Intent.EXTRA_SUBJECT, label);
+      intent.putExtra(Intent.EXTRA_TEXT, label);
+    }
     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
     if (hasTxt) {

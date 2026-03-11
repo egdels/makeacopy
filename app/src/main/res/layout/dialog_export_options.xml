@@ -15,6 +15,12 @@
             android:layout_height="wrap_content"
             android:text="@string/include_ocr_text" />
 
+        <CheckBox
+            android:id="@+id/dialog_checkbox_share_attach_only"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/share_attach_only" />
+
         <RadioGroup
             android:id="@+id/dialog_format_group"
             android:layout_width="wrap_content"
