@@ -61,6 +61,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -231,51 +232,145 @@ public class CameraFragment extends Fragment implements SensorEventListener {
               if (result == null || result.getData() == null) return;
               if (result.getResultCode() != android.app.Activity.RESULT_OK) return;
               Intent data = result.getData();
-              Uri uri = data.getData();
-              if (uri == null) return;
+              java.util.ArrayList<Uri> uris = new java.util.ArrayList<>();
+              if (data.getClipData() != null) {
+                for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                  Uri u = data.getClipData().getItemAt(i).getUri();
+                  if (u != null) uris.add(u);
+                }
+              } else {
+                Uri u = data.getData();
+                if (u != null) uris.add(u);
+              }
+              if (uris.isEmpty()) return;
 
-              // Determine MIME type
-              String mime = requireContext().getContentResolver().getType(uri);
-              if (mime == null) {
-                UIUtils.showToast(
-                    requireContext(), R.string.error_unknown_file_type, Toast.LENGTH_SHORT);
+              java.util.List<Uri> imageUris = null;
+              if (uris.size() > 1) {
+                imageUris = new java.util.ArrayList<>();
+                for (Uri u : uris) {
+                  String m = requireContext().getContentResolver().getType(u);
+                  if (m != null && m.startsWith("image/")) imageUris.add(u);
+                }
+                if (imageUris.size() > 20) {
+                  imageUris = new java.util.ArrayList<>(imageUris.subList(0, 20));
+                }
+                if (imageUris.size() <= 1) imageUris = null;
+              }
+
+              if (imageUris == null) {
+                Uri uri = uris.get(0);
+                // Determine MIME type
+                String mime = requireContext().getContentResolver().getType(uri);
+                if (mime == null) {
+                  UIUtils.showToast(
+                      requireContext(), R.string.error_unknown_file_type, Toast.LENGTH_SHORT);
+                  return;
+                }
+                // Persist read permission if granted by the chooser (ignore if not allowed)
+                int takeFlags =
+                    data.getFlags()
+                        & (Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                if ((takeFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+                  try {
+                    requireContext()
+                        .getContentResolver()
+                        .takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                  } catch (SecurityException se) {
+                    Log.w(TAG, "Persistable read permission not granted by provider", se);
+                  }
+                }
+                Uri folderHint =
+                    de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(uri);
+                ExportPrefsHelper.setLastImportUri(
+                    requireContext(), folderHint != null ? folderHint.toString() : uri.toString());
+                if (mime.startsWith("image/")) {
+                  handleImageImport(uri);
+                } else if (mime.equals("application/pdf")) {
+                  handlePdfImport(uri);
+                } else {
+                  UIUtils.showToast(
+                      requireContext(), R.string.error_unsupported_file_type, Toast.LENGTH_SHORT);
+                }
                 return;
               }
 
-              // Persist read permission if granted by the chooser (ignore if not allowed)
-              int takeFlags =
-                  data.getFlags()
-                      & (Intent.FLAG_GRANT_READ_URI_PERMISSION
-                          | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-              if ((takeFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
-                try {
-                  requireContext()
-                      .getContentResolver()
-                      .takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                } catch (SecurityException se) {
-                  Log.w(TAG, "Persistable read permission not granted by provider", se);
-                }
-              }
-
-              // Derive a parent/folder URI for the picker's initial location hint.
-              // Using the raw file URI often fails on OEM pickers (Xiaomi, Samsung, etc.).
-              Uri folderHint =
-                  de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(uri);
-              // Save folder URI if derivable, otherwise fall back to the original URI.
-              // Even a file URI is better than nothing — some pickers still respect it.
-              ExportPrefsHelper.setLastImportUri(
-                  requireContext(), folderHint != null ? folderHint.toString() : uri.toString());
-
-              if (mime.startsWith("image/")) {
-                // Handle image import (existing logic)
-                handleImageImport(uri);
-              } else if (mime.equals("application/pdf")) {
-                // Handle PDF import
-                handlePdfImport(uri);
-              } else {
-                UIUtils.showToast(
-                    requireContext(), R.string.error_unsupported_file_type, Toast.LENGTH_SHORT);
-              }
+              // Multi-image path: decode on background thread, then navigate to Export
+              final Context ctx = requireContext();
+              final java.util.List<Uri> toDecode = new java.util.ArrayList<>(imageUris);
+              ExecutorService loadExec = Executors.newFixedThreadPool(2);
+              Handler mainHandler = new Handler(Looper.getMainLooper());
+              loadExec.execute(
+                  () -> {
+                    java.util.ArrayList<de.schliweb.makeacopy.ui.export.session.CompletedScan>
+                        decoded = new java.util.ArrayList<>();
+                    for (Uri u : toDecode) {
+                      Bitmap bmp =
+                          de.schliweb.makeacopy.utils.image.ImageLoader.decode(ctx, null, u);
+                      if (bmp != null) {
+                        decoded.add(
+                            new de.schliweb.makeacopy.ui.export.session.CompletedScan(
+                                java.util.UUID.randomUUID().toString(),
+                                null,
+                                0,
+                                null,
+                                null,
+                                null,
+                                System.currentTimeMillis(),
+                                bmp.getWidth(),
+                                bmp.getHeight(),
+                                bmp,
+                                1,
+                                "metadata"));
+                      }
+                    }
+                    mainHandler.post(
+                        () -> {
+                          if (!isAdded()) return;
+                          if (decoded.isEmpty()) return;
+                          de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel
+                              exportSessionViewModel =
+                                  new ViewModelProvider(requireActivity())
+                                      .get(
+                                          de.schliweb.makeacopy.ui.export.session
+                                              .ExportSessionViewModel.class);
+                          exportSessionViewModel.setInitial(decoded.get(0));
+                          if (decoded.size() > 1) {
+                            exportSessionViewModel.addAll(
+                                decoded.subList(1, decoded.size()));
+                          }
+                          Uri firstUri = toDecode.get(0);
+                          int takeFlags =
+                              data.getFlags()
+                                  & (Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                      | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                          if ((takeFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+                            try {
+                              requireContext()
+                                  .getContentResolver()
+                                  .takePersistableUriPermission(
+                                      firstUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            } catch (SecurityException se) {
+                              Log.w(
+                                  TAG,
+                                  "Persistable read permission not granted by provider",
+                                  se);
+                            }
+                          }
+                          Uri folderHint =
+                              de.schliweb.makeacopy.utils.infra.DocumentUriUtils
+                                  .deriveParentDocumentUri(firstUri);
+                          ExportPrefsHelper.setLastImportUri(
+                              ctx,
+                              folderHint != null ? folderHint.toString() : firstUri.toString());
+                          try {
+                            Navigation.findNavController(requireView())
+                                .navigate(R.id.navigation_export);
+                          } catch (IllegalArgumentException | IllegalStateException ignored) {
+                            // Best-effort; failure is non-critical
+                          }
+                        });
+                  });
             });
 
     binding = FragmentCameraBinding.inflate(inflater, container, false);
@@ -328,7 +423,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
           // Accept both images and PDFs
           intent.setType("*/*");
           intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {"image/*", "application/pdf"});
-          intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+          intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
           intent.addFlags(
               Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
 
