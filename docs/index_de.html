@@ -125,49 +125,75 @@
         <li><strong>Kantenerkennung</strong>: Automatische Dokumentkantenerkennung mit OpenCV, optional erweitert durch ein selbst trainiertes ONNX-Inferenzmodell</li>
         <li><strong>Perspektivkorrektur</strong>: Anpassen und Zuschneiden von Dokumenten mit manueller oder automatischer Perspektivkorrektur</li>
         <li><strong>Bildverbesserung</strong>: Filter anwenden (Graustufen, Kontrast, Schärfen)</li>
-        <li><strong>OCR</strong>: Offline-Texterkennung mit Tesseract</li>
+        <li><strong>OCR</strong>: Offline-Texterkennung mit PaddleOCR im veröffentlichten paddle-Flavor; das standard-Flavor mit Tesseract bleibt über GitHub Releases verfügbar</li>
         <li><strong>OCR Review</strong>: Interaktive Überprüfung und Korrektur von OCR-Ergebnissen mit Wort-Level-Bearbeitung, wörterbuchbasierten Vorschlägen, Konfidenz-Hervorhebung und Re-OCR für einzelne Wörter</li>
         <li><strong>PDF-Export</strong>: Speichern als durchsuchbares PDF mit erkanntem Text</li>
         <li><strong>JPEG-Export</strong>: Export als hochwertige JPEG-Bilder (Qualität, Farbe/Schwarzweiß konfigurierbar)</li>
         <li><strong>Mehrseitige Scans</strong>: Mehrere Seiten zu einem Dokument zusammenführen; Seiten vor dem Export verwalten und anordnen</li>
         <li><strong>Letzte Scans</strong>: Schnell auf die zuletzt erstellten Scans zugreifen und sie wiederverwenden</li>
+        <li><strong>Inbox-Modus</strong>: Standard-Exportordner (über SAF) konfigurieren für reibungsloses Scannen — Dokumente werden automatisch ohne Dateiauswahl gespeichert, ideal für paperless-ngx, Nextcloud oder Syncthing-Workflows</li>
         <li><strong>Teilen & Speichern</strong>: Lokal exportieren oder mit anderen Apps teilen</li>
         <li><strong>Dunkelmodus</strong>: Material 3-Design mit Tag/Nacht-Unterstützung</li>
         <li><strong>Datenschutzorientiert</strong>: 100% Offline-Funktionalität, keine Internetverbindung erforderlich</li>
     </ul>
     
     <h2>OCR-Sprachen</h2>
-    <p>MakeACopy unterstützt Offline-OCR mit Tesseract. Die Sprache kann im OCR-Schritt ausgewählt werden.</p>
+    <p>MakeACopy unterstützt Offline-OCR mit PaddleOCR im veröffentlichten paddle-Flavor. Die Sprache oder Schriftgruppe kann im OCR-Schritt ausgewählt werden.</p>
     <ul>
-        <li>Englisch (<code>eng</code>)</li>
-        <li>Deutsch (<code>deu</code>)</li>
-        <li>Französisch (<code>fra</code>)</li>
-        <li>Italienisch (<code>ita</code>)</li>
-        <li>Spanisch (<code>spa</code>)</li>
-        <li>Portugiesisch (<code>por</code>)</li>
-        <li>Niederländisch (<code>nld</code>)</li>
-        <li>Polnisch (<code>pol</code>)</li>
-        <li>Tschechisch (<code>ces</code>)</li>
-        <li>Slowakisch (<code>slk</code>)</li>
-        <li>Ungarisch (<code>hun</code>)</li>
-        <li>Rumänisch (<code>ron</code>)</li>
-        <li>Dänisch (<code>dan</code>)</li>
-        <li>Norwegisch (<code>nor</code>)</li>
-        <li>Schwedisch (<code>swe</code>)</li>
-        <li>Chinesisch (Vereinfacht) (<code>chi_sim</code>)</li>
-        <li>Chinesisch (Traditionell) (<code>chi_tra</code>)</li>
-        <li>Russisch (<code>rus</code>)</li>
-        <li>Thai (<code>tha</code>)</li>
-        <li>Arabisch (<code>ara</code>)</li>
-        <li>Persisch/Farsi (<code>fas</code>)</li>
+        <li>Englisch (Englisch)</li>
+        <li>Deutsch (Latin)</li>
+        <li>Französisch (Latin)</li>
+        <li>Italienisch (Latin)</li>
+        <li>Spanisch (Latin)</li>
+        <li>Portugiesisch (Latin)</li>
+        <li>Niederländisch (Latin)</li>
+        <li>Polnisch (Latin)</li>
+        <li>Tschechisch (Latin)</li>
+        <li>Slowakisch (Latin)</li>
+        <li>Ungarisch (Latin)</li>
+        <li>Rumänisch (Latin)</li>
+        <li>Dänisch (Latin)</li>
+        <li>Norwegisch (Latin)</li>
+        <li>Schwedisch (Latin)</li>
+        <li>Türkisch (Latin)</li>
+        <li>Chinesisch (Vereinfacht) (Chinesisch)</li>
+        <li>Chinesisch (Traditionell) (Chinesisch)</li>
+        <li>Russisch (Ostslawisch)</li>
+        <li>Thai (Thai)</li>
+        <li>Arabisch (Arabisch)</li>
+        <li>Persisch/Farsi (Arabisch)</li>
+        <li>Hindi (Devanagari)</li>
     </ul>
     <p>Neben den optionalen Language-Pack-APKs können auch die originalen Tesseract-<em>best</em>-Modelle aus dem offiziellen Repository hinzugefügt werden: <a href="https://github.com/tesseract-ocr/tessdata_best">tessdata_best</a>. Siehe das Tesseract-Projekt unter <a href="https://github.com/tesseract-ocr/tesseract">github.com/tesseract-ocr/tesseract</a>.</p>
-    <p><strong>Language-Pack-APK:</strong> MakeACopy OCR Latin (Best) – enthält hochgenaue Modelle für Englisch (eng), Deutsch (deu), Französisch (fra), Italienisch (ita), Spanisch (spa), Portugiesisch (por), Niederländisch (nld), Polnisch (pol), Tschechisch (ces), Slowakisch (slk), Ungarisch (hun), Rumänisch (ron), Dänisch (dan), Norwegisch (nor) und Schwedisch (swe). Download über die <a href="https://github.com/egdels/makeacopy/releases/tag/langpack-latin-best-v1.1.0">Language-Pack‑Release‑Seite</a>.</p>
+    <p><strong>Language-Pack-APK:</strong> MakeACopy OCR Latin (Best) – enthält hochgenaue Modelle für Englisch, Deutsch, Französisch, Italienisch, Spanisch, Portugiesisch, Niederländisch, Polnisch, Tschechisch, Slowakisch, Ungarisch, Rumänisch, Dänisch, Norwegisch und Schwedisch. Download über die <a href="https://github.com/egdels/makeacopy/releases/tag/langpack-latin-best-v1.1.0">Language-Pack‑Release‑Seite</a>.</p>
     <div class="store-badges" style="margin: 6px 0 16px 0;">
         <a href="https://f-droid.org/packages/de.schliweb.makeacopy.lang.latin.best/"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Language Pack Latin Best bei F-Droid" height="60"></a>
         <a href="https://play.google.com/store/apps/details?id=de.schliweb.makeacopy.lang.latin.best"><img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png" alt="Language Pack Latin Best bei Google Play" height="60"></a>
     </div>
-        <p><em>Hinweis:</em> Für Chinesisch sind geeignete CJK-Schriften enthalten, um die PDF-Textdarstellung zu verbessern. Für Arabisch und Persisch ist die Noto Naskh Arabic-Schrift für korrekte RTL-Darstellung (rechts-nach-links) in PDF-Exporten enthalten.</p>
+        <p><em>Hinweis:</em> Für Chinesisch sind geeignete CJK-Schriften enthalten, um die PDF-Textdarstellung zu verbessern. Für Arabisch und Persisch ist die Noto Naskh Arabic-Schrift für korrekte RTL-Darstellung (rechts-nach-links) in PDF-Exporten enthalten. Für Hindi ist die Noto-Sans-Devanagari-Schrift für korrekte Devanagari-Darstellung in PDF-Exporten enthalten.</p>
+
+    <h2>App-Varianten und OCR-Backends</h2>
+    <p>MakeACopy veröffentlicht das paddle-Flavor mit PaddleOCR auf F-Droid und Google Play. Das standard-Flavor mit Tesseract bleibt für Nutzer verfügbar, die weiterhin Tesseract-Sprachdaten oder -Workflows benötigen:</p>
+    <ul>
+        <li><strong>paddle-Flavor</strong>: die veröffentlichte App-Variante nur mit PaddleOCR, ohne Tesseract-Laufzeit und ohne Tesseract-Sprachdaten.</li>
+        <li><strong>standard-Flavor (Tesseract)</strong>: die Tesseract-basierte Variante mit optionalen Language-Pack-APKs, angeboten über GitHub Releases.</li>
+    </ul>
+    <p>Im paddle-Flavor wählen Sie im OCR-Fragment die passende Schrift- oder Sprachgruppe. Für deutsche Dokumente wählen Sie zum Beispiel <strong>Latin</strong>.</p>
+    <table>
+        <thead>
+        <tr><th>Dokumentsprache</th><th>Auswahl im OCR-Fragment</th></tr>
+        </thead>
+        <tbody>
+        <tr><td>Englisch</td><td>Englisch</td></tr>
+        <tr><td>Deutsch, Französisch, Italienisch, Spanisch, Portugiesisch, Niederländisch, Polnisch, Tschechisch, Slowakisch, Ungarisch, Rumänisch, Dänisch, Norwegisch, Schwedisch, Türkisch</td><td>Latin</td></tr>
+        <tr><td>Chinesisch vereinfacht oder traditionell</td><td>Chinesisch</td></tr>
+        <tr><td>Russisch</td><td>Ostslawisch</td></tr>
+        <tr><td>Thai</td><td>Thai</td></tr>
+        <tr><td>Arabisch und Persisch/Farsi</td><td>Arabisch</td></tr>
+        <tr><td>Hindi</td><td>Devanagari</td></tr>
+        </tbody>
+    </table>
+    <p>Die F-Droid- und Google-Play-Links führen zum paddle-Flavor. Nutzen Sie GitHub Releases, wenn Sie das standard-Flavor mit Tesseract benötigen.</p>
 
     <h2>Screenshots</h2>
     
@@ -211,6 +237,7 @@
         Submodul <code>external/opencv</code>) und ONNX Runtime (XNNPACK und NNAPI, Java-Bindings) aus <code>external/onnxruntime</code>.
         Die resultierenden Bibliotheken werden während des Builds in die App integriert; es werden keine vorcompilierten
         Binärdateien im Repository gespeichert.</p>
+    <p>Die F-Droid- und Google-Play-Einträge stellen das paddle-Flavor bereit. Das standard-Flavor mit Tesseract wird über GitHub Releases angeboten.</p>
     
     <h3>GitHub Releases</h3>
     

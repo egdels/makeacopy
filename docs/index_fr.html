@@ -146,7 +146,7 @@
             automatiquement
         </li>
         <li><strong>Amélioration d’image</strong> : appliquez des filtres (niveaux de gris, contraste, netteté)</li>
-        <li><strong>OCR</strong> : reconnaissance de texte hors ligne avec Tesseract</li>
+        <li><strong>OCR</strong> : reconnaissance de texte hors ligne avec PaddleOCR dans le flavor paddle publié ; le flavor standard avec Tesseract reste disponible via GitHub Releases</li>
         <li><strong>OCR Review</strong> : révision et correction interactives des résultats OCR avec édition au niveau
             des mots, suggestions basées sur le dictionnaire, mise en évidence de la confiance et re-OCR pour les mots
             individuels
@@ -158,45 +158,48 @@
             gérez les pages avant l’export
         </li>
         <li><strong>Derniers scans</strong> : accédez rapidement à vos numérisations récentes</li>
+        <li><strong>Mode Inbox</strong> : configurez un dossier d'export par défaut (via SAF) pour une numérisation sans friction — les documents sont enregistrés automatiquement sans sélecteur de fichiers, idéal pour les workflows paperless-ngx, Nextcloud ou Syncthing</li>
         <li><strong>Partager & Enregistrer</strong> : enregistrement local ou partage avec d’autres applications</li>
         <li><strong>Mode sombre</strong> : thème Material 3 avec support jour/nuit</li>
         <li><strong>Respect de la vie privée</strong> : 100% hors ligne, aucune connexion Internet requise</li>
     </ul>
 
     <h2>Langues OCR</h2>
-    <p>MakeACopy prend en charge l’OCR hors ligne via Tesseract. Vous pouvez sélectionner la langue lors de l’étape
+    <p>MakeACopy prend en charge l’OCR hors ligne via PaddleOCR dans le flavor paddle publié. Vous pouvez sélectionner la langue ou le groupe d’écriture lors de l’étape
         OCR.</p>
     <ul>
-        <li>Anglais (<code>eng</code>)</li>
-        <li>Allemand (<code>deu</code>)</li>
-        <li>Français (<code>fra</code>)</li>
-        <li>Italien (<code>ita</code>)</li>
-        <li>Espagnol (<code>spa</code>)</li>
-        <li>Portugais (<code>por</code>)</li>
-        <li>Néerlandais (<code>nld</code>)</li>
-        <li>Polonais (<code>pol</code>)</li>
-        <li>Tchèque (<code>ces</code>)</li>
-        <li>Slovaque (<code>slk</code>)</li>
-        <li>Hongrois (<code>hun</code>)</li>
-        <li>Roumain (<code>ron</code>)</li>
-        <li>Danois (<code>dan</code>)</li>
-        <li>Norvégien (<code>nor</code>)</li>
-        <li>Suédois (<code>swe</code>)</li>
-        <li>Chinois (simplifié) (<code>chi_sim</code>)</li>
-        <li>Chinois (traditionnel) (<code>chi_tra</code>)</li>
-        <li>Russe (<code>rus</code>)</li>
-        <li>Thaï (<code>tha</code>)</li>
-        <li>Arabe (<code>ara</code>)</li>
-        <li>Persan/Farsi (<code>fas</code>)</li>
+        <li>Anglais (Anglais)</li>
+        <li>Allemand (Latin)</li>
+        <li>Français (Latin)</li>
+        <li>Italien (Latin)</li>
+        <li>Espagnol (Latin)</li>
+        <li>Portugais (Latin)</li>
+        <li>Néerlandais (Latin)</li>
+        <li>Polonais (Latin)</li>
+        <li>Tchèque (Latin)</li>
+        <li>Slovaque (Latin)</li>
+        <li>Hongrois (Latin)</li>
+        <li>Roumain (Latin)</li>
+        <li>Danois (Latin)</li>
+        <li>Norvégien (Latin)</li>
+        <li>Suédois (Latin)</li>
+        <li>Turc (Latin)</li>
+        <li>Chinois (simplifié) (Chinois)</li>
+        <li>Chinois (traditionnel) (Chinois)</li>
+        <li>Russe (Slave oriental)</li>
+        <li>Thaï (Thaï)</li>
+        <li>Arabe (Arabe)</li>
+        <li>Persan/Farsi (Arabe)</li>
+        <li>Hindi (Devanagari)</li>
     </ul>
     <p>En plus des APKs de <em>Language-Pack</em> optionnels, vous pouvez aussi ajouter les modèles <em>best</em>
         officiels de Tesseract depuis le dépôt : <a
                 href="https://github.com/tesseract-ocr/tessdata_best">tessdata_best</a>. Voir le projet Tesseract : <a
                 href="https://github.com/tesseract-ocr/tesseract">github.com/tesseract-ocr/tesseract</a>.</p>
     <p><strong>Language-Pack APK :</strong> MakeACopy OCR Latin (Best) – inclut des modèles haute précision pour
-        l’anglais (eng), l’allemand (deu), le français (fra), l’italien (ita), l’espagnol (spa), le portugais (por), le
-        néerlandais (nld), le polonais (pol), le tchèque (ces), le slovaque (slk), le hongrois (hun), le roumain (ron),
-        le danois (dan), le norvégien (nor) et le suédois (swe). Téléchargez-le depuis la <a
+        l’anglais, l’allemand, le français, l’italien, l’espagnol, le portugais, le
+        néerlandais, le polonais, le tchèque, le slovaque, le hongrois, le roumain,
+        le danois, le norvégien et le suédois. Téléchargez-le depuis la <a
                 href="https://github.com/egdels/makeacopy/releases/tag/langpack-latin-best-v1.1.0">page de publication
             du Language‑Pack</a>.</p>
     <div class="store-badges" style="margin: 6px 0 16px 0;">
@@ -209,7 +212,30 @@
     </div>
     <p><em>Remarque&nbsp;:</em> Pour le chinois, l’application inclut des polices CJK adaptées afin d’améliorer le rendu
         du texte dans les PDF. Pour l’arabe et le persan, la police Noto Naskh Arabic est incluse afin d’assurer un
-        rendu correct en écriture RTL (de droite à gauche) lors de l’exportation des PDF.</p>
+        rendu correct en écriture RTL (de droite à gauche) lors de l’exportation des PDF. Pour l’hindi, la police Noto Sans Devanagari est incluse pour un rendu correct du devanagari dans les PDF.</p>
+
+    <h2>Variantes de l’application et moteurs OCR</h2>
+    <p>MakeACopy publie le flavor paddle avec PaddleOCR sur F-Droid et Google Play. Le flavor standard avec Tesseract reste disponible pour les utilisateurs qui ont encore besoin des données de langue ou des workflows Tesseract :</p>
+    <ul>
+        <li><strong>Flavor paddle</strong> : la variante publiée avec PaddleOCR uniquement, sans moteur Tesseract ni données de langue Tesseract.</li>
+        <li><strong>Flavor standard (Tesseract)</strong> : la variante basée sur Tesseract avec les APKs optionnels de packs de langues, proposée via GitHub Releases.</li>
+    </ul>
+    <p>Dans le flavor paddle, choisissez dans le fragment OCR l’écriture ou le groupe de langues le plus adapté. Pour les documents en allemand, choisissez par exemple <strong>Latin</strong>.</p>
+    <table>
+        <thead>
+        <tr><th>Langue du document</th><th>Choix dans le fragment OCR</th></tr>
+        </thead>
+        <tbody>
+        <tr><td>Anglais</td><td>Anglais</td></tr>
+        <tr><td>Allemand, français, italien, espagnol, portugais, néerlandais, polonais, tchèque, slovaque, hongrois, roumain, danois, norvégien, suédois, turc</td><td>Latin</td></tr>
+        <tr><td>Chinois simplifié ou traditionnel</td><td>Chinois</td></tr>
+        <tr><td>Russe</td><td>Slave oriental</td></tr>
+        <tr><td>Thaï</td><td>Thaï</td></tr>
+        <tr><td>Arabe et persan/farsi</td><td>Arabe</td></tr>
+        <tr><td>Hindi</td><td>Devanagari</td></tr>
+        </tbody>
+    </table>
+    <p>Les liens F-Droid et Google Play pointent vers le flavor paddle. Utilisez GitHub Releases si vous avez besoin du flavor standard avec Tesseract.</p>
 
     <h2>Captures d’écran</h2>
     <p align="center">
@@ -252,6 +278,7 @@
         sous-module <code>external/opencv</code>) et ONNX Runtime (XNNPACK et NNAPI, liaisons Java) depuis <code>external/onnxruntime</code>.
         Les bibliothèques résultantes sont intégrées à l’application pendant la construction ; aucun binaire précompilé
         n’est stocké dans le dépôt.</p>
+    <p>Les fiches F-Droid et Google Play fournissent le flavor paddle. Le flavor standard avec Tesseract est proposé via GitHub Releases.</p>
 
     <h3>GitHub Releases</h3>
     <p>Vous pouvez télécharger la dernière APK sur la page <a href="https://github.com/egdels/makeacopy/releases">Releases</a>.
