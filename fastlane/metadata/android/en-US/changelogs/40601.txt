@@ -1,0 +1,4 @@
+MakeACopy 4.6.1
+* More accurate corner detection in the crop view: corners now stay on the document edges after layout changes.
+* New edge-snap corner refinement for sharper document boundaries.
+* Improved black & white conversion: cleaner pages, fewer speckles, better readability of faint text and low-res scans.

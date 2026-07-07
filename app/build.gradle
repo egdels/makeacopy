@@ -41,8 +41,8 @@ android {
         applicationId "de.schliweb.makeacopy"
         minSdk = 29
         targetSdk = 36
-        versionCode 40600
-        versionName "4.6.0"
+        versionCode 40601
+        versionName "4.6.1"
 
         // Use default AndroidX test runner
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -60,6 +60,7 @@ android {
         buildConfigField "boolean", "FEATURE_CROP_PAN_ZOOM", "true"
         buildConfigField "boolean", "FEATURE_DOCQUAD_CORNERS", "true"
         buildConfigField "boolean", "FEATURE_BEST_OF_CROP_CORNERS", "true"
+        buildConfigField "boolean", "FEATURE_CORNER_REFINEMENT", "true"
         buildConfigField "boolean", "FEATURE_PADDLE_OCR", "false"
         buildConfigField "boolean", "FEATURE_FOCUS_QUALITY_INDICATOR", "true"
         buildConfigField "boolean", "IS_LIGHT", isLight ? "true" : "false"
