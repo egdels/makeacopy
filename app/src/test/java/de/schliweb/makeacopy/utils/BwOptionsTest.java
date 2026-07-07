@@ -16,7 +16,7 @@ public class BwOptionsTest {
     assertTrue(opt.useClahe);
     assertTrue(opt.removeShadows);
     assertEquals(0, opt.blockSize);
-    assertEquals(5, opt.C);
+    assertEquals(0, opt.C);
     assertFalse(opt.gentleMode);
     assertEquals(0, opt.targetDpi);
   }

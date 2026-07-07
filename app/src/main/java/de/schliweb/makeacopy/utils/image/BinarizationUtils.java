@@ -43,8 +43,8 @@ public final class BinarizationUtils {
     /** Adaptive window (odd). 0 = auto */
     public int blockSize = 0;
 
-    /** Offset for adaptiveThreshold (typ. 5–10) */
-    public int C = 5;
+    /** Offset for adaptiveThreshold (typ. 5–10). 0 = auto (noise-adaptive). */
+    public int C = 0;
 
     /**
      * Gentle mode for scripts with fine strokes and diacritics (Arabic, Persian, Hebrew). When
@@ -86,10 +86,12 @@ public final class BinarizationUtils {
         work = gray; // work points to gray, no separate Mat needed
       }
 
-      // --- 2) CLAHE for local contrast enhancement ---
-      if (opt.useClahe) {
+      // --- 2) CLAHE for local contrast enhancement (only when contrast is actually low) ---
+      // Unconditional CLAHE amplifies paper grain in uniform (blank) regions, which the adaptive
+      // threshold then turns into black speckles. Apply it only when the image really needs it.
+      if (opt.useClahe && isLowContrast(work)) {
         clahe = Imgproc.createCLAHE();
-        clahe.setClipLimit(2.0);
+        clahe.setClipLimit(1.5);
         clahe.setTilesGridSize(new Size(8, 8));
         clahe.apply(work, work);
       }
@@ -105,94 +107,143 @@ public final class BinarizationUtils {
       int longSide = Math.max(work.width(), work.height());
       boolean lowRes = longSide < 1500;
 
-      if (opt.mode == BwOptions.Mode.AUTO_ADAPTIVE && !OpenCVUtils.isSafeMode()) {
-        int bs;
-        if (opt.blockSize > 0) {
-          bs = (opt.blockSize % 2 == 1) ? opt.blockSize : opt.blockSize + 1;
-        } else if (lowRes) {
-          // For low-res images use a larger relative block size to avoid
-          // over-aggressive binarization that destroys text readability
-          bs = Math.max(31, (Math.min(work.width(), work.height()) / 10) | 1);
-          if (bs % 2 == 0) bs++;
-        } else {
-          // Larger block size captures broader context for threshold calculation
-          bs = Math.max(51, (Math.min(work.width(), work.height()) / 30) | 1);
-          if (bs % 2 == 0) bs++;
+      // --- 4a) Low-res upscale: binarize at higher resolution to preserve thin strokes ---
+      Mat threshInput = work;
+      boolean upscaled = false;
+      if (lowRes && longSide > 0 && !OpenCVUtils.isSafeMode()) {
+        double scale = Math.min(2.0, 1800.0 / longSide);
+        if (scale > 1.05) {
+          threshInput = new Mat();
+          Imgproc.resize(work, threshInput, new Size(), scale, scale, Imgproc.INTER_CUBIC);
+          upscaled = true;
         }
-        // Keep C low enough to preserve faint gray text. High values whiten weak strokes and make
-        // text disappear on photographed documents.
-        int cVal;
-        if (lowRes) {
-          cVal = Math.max(2, Math.min(5, opt.C > 0 ? opt.C : 3));
-        } else {
-          cVal = Math.max(3, Math.min(7, opt.C > 0 ? opt.C : 4));
-        }
+      }
 
-        Mat adaptiveMean = new Mat();
-        Mat adaptiveGaussian = new Mat();
-        Mat otsu = new Mat();
-        try {
-          Imgproc.adaptiveThreshold(
-              work,
-              adaptiveMean,
-              255,
-              Imgproc.ADAPTIVE_THRESH_MEAN_C,
-              Imgproc.THRESH_BINARY,
-              bs,
-              cVal);
-          Imgproc.adaptiveThreshold(
-              work,
-              adaptiveGaussian,
-              255,
-              Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
-              Imgproc.THRESH_BINARY,
-              bs,
-              cVal);
-          Imgproc.threshold(work, otsu, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-          double meanScore = scoreBwQuality(adaptiveMean);
-          double gaussianScore = scoreBwQuality(adaptiveGaussian);
-          double otsuScore = scoreBwQuality(otsu);
-          if (gaussianScore <= meanScore && gaussianScore <= otsuScore) {
-            adaptiveGaussian.copyTo(bw);
-          } else if (otsuScore <= meanScore) {
-            otsu.copyTo(bw);
+      try {
+        int tLongSide = Math.max(threshInput.width(), threshInput.height());
+        boolean tLowRes = tLongSide < 1500;
+
+        if (opt.mode == BwOptions.Mode.AUTO_ADAPTIVE && !OpenCVUtils.isSafeMode()) {
+          int bs;
+          if (opt.blockSize > 0) {
+            bs = (opt.blockSize % 2 == 1) ? opt.blockSize : opt.blockSize + 1;
+          } else if (tLowRes) {
+            // For low-res images use a larger relative block size to avoid
+            // over-aggressive binarization that destroys text readability
+            bs = Math.max(31, (Math.min(threshInput.width(), threshInput.height()) / 10) | 1);
+            if (bs % 2 == 0) bs++;
           } else {
-            adaptiveMean.copyTo(bw);
+            // Larger block size captures broader context for threshold calculation
+            bs = Math.max(51, (Math.min(threshInput.width(), threshInput.height()) / 30) | 1);
+            if (bs % 2 == 0) bs++;
           }
-          ok = true;
-        } catch (Throwable ignore) {
-          ok = false;
-        } finally {
-          adaptiveMean.release();
-          adaptiveGaussian.release();
-          otsu.release();
+          // C controls the distance to the local mean. After shadow removal the background is
+          // normalized, so a noise-adaptive C keeps faint text while suppressing paper grain.
+          int cVal = resolveAdaptiveC(threshInput, opt.C, tLowRes);
+
+          Mat adaptiveMean = new Mat();
+          Mat adaptiveGaussian = new Mat();
+          Mat sauvola = new Mat();
+          Mat otsu = new Mat();
+          try {
+            Imgproc.adaptiveThreshold(
+                threshInput,
+                adaptiveMean,
+                255,
+                Imgproc.ADAPTIVE_THRESH_MEAN_C,
+                Imgproc.THRESH_BINARY,
+                bs,
+                cVal);
+            Imgproc.adaptiveThreshold(
+                threshInput,
+                adaptiveGaussian,
+                255,
+                Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
+                Imgproc.THRESH_BINARY,
+                bs,
+                cVal);
+            // Sauvola is considerably more robust against background texture on photographed
+            // documents than plain mean/gaussian adaptive thresholding.
+            sauvolaThreshold(threshInput, sauvola, bs, 0.30, 128.0);
+            Imgproc.threshold(
+                threshInput, otsu, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+            // Use the Otsu black fraction as a dynamic target for the text coverage instead of a
+            // fixed constant; a fixed target rewards noisy candidates on mostly blank pages.
+            double otsuBlackFrac = estimateBlackFraction(otsu);
+            double target = Math.min(0.30, Math.max(0.01, otsuBlackFrac));
+
+            Mat[] candidates = {adaptiveGaussian, adaptiveMean, sauvola, otsu};
+            Mat best = null;
+            double bestScore = Double.POSITIVE_INFINITY;
+            for (Mat candidate : candidates) {
+              double score = scoreBwQuality(candidate, target);
+              if (score < bestScore) {
+                bestScore = score;
+                best = candidate;
+              }
+            }
+            if (best != null) {
+              best.copyTo(bw);
+              ok = true;
+            }
+          } catch (Throwable ignore) {
+            ok = false;
+          } finally {
+            adaptiveMean.release();
+            adaptiveGaussian.release();
+            sauvola.release();
+            otsu.release();
+          }
         }
+
+        // --- 5) Fallback / OTSU_ONLY mode ---
+        // For low-res OTSU_ONLY (s/w klassisch): use adaptive threshold instead of
+        // global Otsu, because Otsu is too aggressive on low-res autoscan images
+        // and destroys text readability.
+        if (!ok && tLowRes && !OpenCVUtils.isSafeMode()) {
+          int bs = Math.max(31, (Math.min(threshInput.width(), threshInput.height()) / 10) | 1);
+          if (bs % 2 == 0) bs++;
+          int cVal = resolveAdaptiveC(threshInput, opt.C, true);
+          try {
+            Imgproc.adaptiveThreshold(
+                threshInput,
+                bw,
+                255,
+                Imgproc.ADAPTIVE_THRESH_MEAN_C,
+                Imgproc.THRESH_BINARY,
+                bs,
+                cVal);
+            ok = true;
+          } catch (Throwable ignore) {
+            ok = false;
+          }
+        }
+        if (!ok) {
+          Imgproc.threshold(threshInput, bw, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        }
+      } finally {
+        if (upscaled) threshInput.release();
       }
 
-      // --- 5) Fallback / OTSU_ONLY mode ---
-      // For low-res OTSU_ONLY (s/w klassisch): use adaptive threshold instead of
-      // global Otsu, because Otsu is too aggressive on low-res autoscan images
-      // and destroys text readability.
-      if (!ok && lowRes && !OpenCVUtils.isSafeMode()) {
-        int bs = Math.max(31, (Math.min(work.width(), work.height()) / 10) | 1);
-        if (bs % 2 == 0) bs++;
-        int cVal = Math.max(2, Math.min(5, opt.C > 0 ? opt.C : 3));
-        try {
-          Imgproc.adaptiveThreshold(
-              work, bw, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, bs, cVal);
-          ok = true;
-        } catch (Throwable ignore) {
-          ok = false;
-        }
-      }
-      if (!ok) {
-        Imgproc.threshold(work, bw, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+      // --- 5a) Downscale back to the original size (binary-safe) ---
+      if (upscaled) {
+        Imgproc.resize(bw, bw, work.size(), 0, 0, Imgproc.INTER_AREA);
+        Imgproc.threshold(bw, bw, 127, 255, Imgproc.THRESH_BINARY);
       }
 
       // --- 6) conservative cleanup ---
       // Remove only tiny isolated speckles. Avoid morphology/opening/closing here: it is fast, but
       // it also removes punctuation, diacritics and faint text on real camera captures.
       removeTinySpeckles(bw, opt.targetDpi, lowRes || opt.gentleMode);
+
+      // --- 6a) light stroke reconstruction ---
+      // Thresholding plus smoothing can leave small gaps inside thin strokes. A minimal closing
+      // on the text (black) pixels reconnects them. Skipped in gentle mode to keep diacritics
+      // strictly separated.
+      if (!opt.gentleMode) {
+        reconnectThinStrokes(bw);
+      }
 
       Bitmap out = Bitmap.createBitmap(src.getWidth(), src.getHeight(), Bitmap.Config.ARGB_8888);
       Utils.matToBitmap(bw, out);
@@ -239,12 +290,111 @@ public final class BinarizationUtils {
     return toBw(src, new BwOptions());
   }
 
+  /**
+   * Returns true if the grayscale image has low global contrast and would benefit from CLAHE.
+   * High-contrast documents (dark text on bright paper) are left untouched, because CLAHE would
+   * only amplify paper grain in uniform regions.
+   */
+  static boolean isLowContrast(Mat gray8u) {
+    MatOfDouble mean = new MatOfDouble();
+    MatOfDouble stddev = new MatOfDouble();
+    try {
+      Core.meanStdDev(gray8u, mean, stddev);
+      double[] sd = stddev.toArray();
+      return sd.length > 0 && sd[0] < 40.0;
+    } catch (Throwable t) {
+      return true; // keep legacy behavior (apply CLAHE) if the estimate fails
+    } finally {
+      mean.release();
+      stddev.release();
+    }
+  }
+
+  /**
+   * Resolves the C constant for adaptiveThreshold. If the caller provided an explicit value it is
+   * clamped to a safe range; otherwise C is derived from the estimated image noise so that paper
+   * grain stays below the threshold while faint strokes are preserved.
+   */
+  static int resolveAdaptiveC(Mat gray8u, int requestedC, boolean lowRes) {
+    if (requestedC > 0) {
+      return Math.max(3, Math.min(14, requestedC));
+    }
+    double noise = estimateNoiseSigma(gray8u);
+    int base = lowRes ? 6 : 8;
+    int cVal = (int) Math.round(base + noise);
+    return Math.max(base, Math.min(12, cVal));
+  }
+
+  /**
+   * Estimates the noise level of a grayscale image as the mean absolute residual against a median
+   * filtered version. Text edges contribute little because they are sparse compared to paper grain,
+   * which is spread over the whole page.
+   */
+  static double estimateNoiseSigma(Mat gray8u) {
+    Mat median = new Mat();
+    Mat residual = new Mat();
+    try {
+      Imgproc.medianBlur(gray8u, median, 3);
+      Core.absdiff(gray8u, median, residual);
+      Scalar meanResidual = Core.mean(residual);
+      return meanResidual.val.length > 0 ? meanResidual.val[0] : 0.0;
+    } catch (Throwable t) {
+      return 0.0;
+    } finally {
+      median.release();
+      residual.release();
+    }
+  }
+
+  /** Returns the fraction of black (text) pixels in a binary 0/255 image. */
+  static double estimateBlackFraction(Mat bw) {
+    int rows = bw.rows(), cols = bw.cols();
+    if (rows <= 0 || cols <= 0) return 0.0;
+    int area = rows * cols;
+    int white = Core.countNonZero(bw);
+    return Math.min(1.0, Math.max(0.0, (area - white) / (double) area));
+  }
+
+  /**
+   * Reconnects thin, broken strokes by applying a minimal morphological closing to the text (black)
+   * pixels. Uses a 2x2 kernel so that letter shapes are preserved and neighboring glyphs are not
+   * merged.
+   */
+  static void reconnectThinStrokes(Mat bw /* CV_8UC1, 0/255 */) {
+    if (bw == null || bw.empty()) return;
+    Mat inv = new Mat();
+    Mat kernel = null;
+    try {
+      // Invert so text becomes white; closing then fills small gaps inside strokes.
+      Core.bitwise_not(bw, inv);
+      kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
+      Imgproc.morphologyEx(inv, inv, Imgproc.MORPH_CLOSE, kernel);
+      Core.bitwise_not(inv, bw);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    } finally {
+      inv.release();
+      if (kernel != null) kernel.release();
+    }
+  }
+
   static void removeTinySpeckles(Mat bw /* CV_8UC1, 0/255 */, int targetDpi, boolean gentle) {
     if (bw == null || bw.empty()) return;
-    int effectiveDpi = targetDpi > 0 ? targetDpi : 300;
-    float dpiScale = Math.max(0.5f, Math.min(2.0f, effectiveDpi / 300f));
-    int minArea = gentle ? 2 : Math.max(3, Math.round(5 * dpiScale * dpiScale));
-    int minHeight = gentle ? 1 : Math.max(1, Math.round(2 * dpiScale));
+    int minArea;
+    int minHeight;
+    // Prefer thresholds derived from the estimated text size: this protects dots and diacritics
+    // (they scale with the font) while removing paper-grain speckles reliably.
+    int medianH = estimateMedianComponentHeight(bw);
+    if (medianH > 0) {
+      int base = Math.max(3, (medianH * medianH) / 36);
+      minArea = gentle ? Math.max(2, base / 2) : base;
+      minHeight = gentle ? 1 : Math.max(1, medianH / 8);
+    } else {
+      int effectiveDpi = targetDpi > 0 ? targetDpi : 300;
+      float dpiScale = Math.max(0.5f, Math.min(2.0f, effectiveDpi / 300f));
+      minArea = gentle ? 2 : Math.max(3, Math.round(5 * dpiScale * dpiScale));
+      minHeight = gentle ? 1 : Math.max(1, Math.round(2 * dpiScale));
+    }
     removeSmallComponents(bw, minArea, minHeight);
   }
 
@@ -319,49 +469,7 @@ public final class BinarizationUtils {
    */
   static void removeSmallComponents(Mat bw /* CV_8UC1, 0/255 */, int minArea) {
     if (bw == null || bw.empty() || minArea <= 0) return;
-
-    Mat inv = new Mat();
-    Mat labels = new Mat();
-    Mat stats = new Mat();
-    Mat centroids = new Mat();
-
-    try {
-      // Invert so text becomes white (foreground) for connectedComponents
-      Core.bitwise_not(bw, inv);
-
-      int numLabels =
-          Imgproc.connectedComponentsWithStats(inv, labels, stats, centroids, 8, CvType.CV_32S);
-
-      // Label 0 is background, start from 1
-      for (int label = 1; label < numLabels; label++) {
-        int area = (int) stats.get(label, Imgproc.CC_STAT_AREA)[0];
-        if (area < minArea) {
-          // Remove this component by setting its pixels to background (0 in inv, 255 in bw)
-          int left = (int) stats.get(label, Imgproc.CC_STAT_LEFT)[0];
-          int top = (int) stats.get(label, Imgproc.CC_STAT_TOP)[0];
-          int width = (int) stats.get(label, Imgproc.CC_STAT_WIDTH)[0];
-          int height = (int) stats.get(label, Imgproc.CC_STAT_HEIGHT)[0];
-
-          // Clear pixels belonging to this label in the bounding box
-          for (int y = top; y < top + height && y < bw.rows(); y++) {
-            for (int x = left; x < left + width && x < bw.cols(); x++) {
-              int[] labelVal = new int[1];
-              labels.get(y, x, labelVal);
-              if (labelVal[0] == label) {
-                bw.put(y, x, 255); // Set to white (background)
-              }
-            }
-          }
-        }
-      }
-    } catch (Throwable ignore) {
-      // If connectedComponents fails, skip this optimization
-    } finally {
-      inv.release();
-      labels.release();
-      stats.release();
-      centroids.release();
-    }
+    removeSmallComponents(bw, minArea, 1);
   }
 
   /**
@@ -450,6 +558,16 @@ public final class BinarizationUtils {
    * connectedComponentsWithStats treats non-zero pixels as foreground, so we must invert first.
    */
   static double scoreBwQuality(Mat bw /* CV_8UC1 0/255, text=0, bg=255 */) {
+    return scoreBwQuality(bw, 0.12);
+  }
+
+  /**
+   * Scores a binarized image against a dynamically estimated target black fraction (e.g. derived
+   * from the Otsu result): lower is better. Heavily penalizes salt-and-pepper noise by measuring
+   * the fraction and density of tiny connected components, which prevents noisy adaptive
+   * thresholding results from winning against clean global thresholding on mostly blank pages.
+   */
+  static double scoreBwQuality(Mat bw /* CV_8UC1 0/255, text=0, bg=255 */, double targetBlackFrac) {
     Mat inv = new Mat();
     Mat labels = new Mat();
     Mat stats = new Mat();
@@ -466,8 +584,27 @@ public final class BinarizationUtils {
       double blackFrac = Math.min(1.0, Math.max(0.0, black / (double) area));
       double tooEmptyPenalty = blackFrac < 0.01 ? 1.0 : 0.0;
       double tooDarkPenalty = blackFrac > 0.45 ? 1.0 : 0.0;
-      double targetTextCoveragePenalty = Math.abs(blackFrac - 0.12);
-      return targetTextCoveragePenalty + tooEmptyPenalty + tooDarkPenalty + whiteFrac * 0.05;
+      double target = Math.min(0.30, Math.max(0.01, targetBlackFrac));
+      double targetTextCoveragePenalty = Math.abs(blackFrac - target);
+
+      // Noise penalty: tiny isolated components indicate salt-and-pepper artifacts.
+      double noisePenalty = 0.0;
+      int n = Imgproc.connectedComponentsWithStats(inv, labels, stats, centroids, 8, CvType.CV_32S);
+      if (n > 1) {
+        int tiny = 0;
+        for (int i = 1; i < n; i++) {
+          int ai = (int) stats.get(i, Imgproc.CC_STAT_AREA)[0];
+          if (ai < 4) tiny++;
+        }
+        double tinyFrac = tiny / (double) (n - 1);
+        double speckDensityPer10k = tiny * 10000.0 / area;
+        noisePenalty = tinyFrac * 1.5 + Math.min(1.0, speckDensityPer10k * 0.05);
+      }
+      return targetTextCoveragePenalty
+          + tooEmptyPenalty
+          + tooDarkPenalty
+          + noisePenalty
+          + whiteFrac * 0.05;
     } catch (Throwable t) {
       return Double.POSITIVE_INFINITY;
     } finally {
@@ -489,22 +626,38 @@ public final class BinarizationUtils {
     Mat labels = new Mat();
     Mat stats = new Mat();
     Mat centroids = new Mat();
-    Mat mask = new Mat();
     try {
       // Invert so text becomes white (foreground) for connectedComponents
       Core.bitwise_not(bw, inv);
       int n = Imgproc.connectedComponentsWithStats(inv, labels, stats, centroids, 8, CvType.CV_32S);
-      if (n > 512) {
-        return;
-      }
+      if (n <= 1) return;
+
+      // Build a keep/drop lookup table, then clear all dropped labels in a single pass over the
+      // pixel data. This is O(pixels) regardless of the component count, so even extremely noisy
+      // pages (thousands of speckles) are cleaned reliably.
+      boolean[] drop = new boolean[n];
+      boolean any = false;
       for (int i = 1; i < n; i++) {
         int ai = (int) stats.get(i, Imgproc.CC_STAT_AREA)[0];
         int hi = (int) stats.get(i, Imgproc.CC_STAT_HEIGHT)[0];
         if (ai < minArea || hi < minHeight) {
-          Core.compare(labels, new Scalar(i), mask, Core.CMP_EQ);
-          bw.setTo(new Scalar(255), mask); // set to background (white)
+          drop[i] = true;
+          any = true;
         }
       }
+      if (!any) return;
+
+      int rows = bw.rows(), cols = bw.cols();
+      int[] lab = new int[rows * cols];
+      labels.get(0, 0, lab);
+      byte[] px = new byte[rows * cols];
+      bw.get(0, 0, px);
+      for (int idx = 0; idx < lab.length; idx++) {
+        if (drop[lab[idx]]) {
+          px[idx] = (byte) 255; // set to background (white)
+        }
+      }
+      bw.put(0, 0, px);
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     } finally {
@@ -512,7 +665,6 @@ public final class BinarizationUtils {
       labels.release();
       stats.release();
       centroids.release();
-      mask.release();
     }
   }
 
