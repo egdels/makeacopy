@@ -168,4 +168,84 @@ public class CoordinateTransformUtils {
 
     return viewCoordinates;
   }
+
+  /**
+   * Remaps a point given in view coordinates of an old view size to the corresponding view
+   * coordinates of a new view size, assuming the bitmap is displayed with FIT_CENTER in both cases.
+   *
+   * <p>This is required when a view is resized (e.g. IME/inset-driven size jumps during initial
+   * layout): the displayed image rect changes non-linearly with the view size (scale + centering
+   * offset), so a plain proportional scaling relative to the view would shift points off the
+   * underlying image features.
+   *
+   * @param x X coordinate in the old view's coordinate space
+   * @param y Y coordinate in the old view's coordinate space
+   * @param bitmapWidth Width of the displayed bitmap
+   * @param bitmapHeight Height of the displayed bitmap
+   * @param oldViewWidth Width of the old view
+   * @param oldViewHeight Height of the old view
+   * @param newViewWidth Width of the new view
+   * @param newViewHeight Height of the new view
+   * @return A {@code double[2]} with the remapped {x, y} in the new view's coordinate space, or
+   *     {@code null} if any dimension is non-positive.
+   */
+  public static double[] remapPointBetweenFitCenterViews(
+      double x,
+      double y,
+      int bitmapWidth,
+      int bitmapHeight,
+      int oldViewWidth,
+      int oldViewHeight,
+      int newViewWidth,
+      int newViewHeight) {
+
+    if (bitmapWidth <= 0
+        || bitmapHeight <= 0
+        || oldViewWidth <= 0
+        || oldViewHeight <= 0
+        || newViewWidth <= 0
+        || newViewHeight <= 0) {
+      return null;
+    }
+
+    float[] oldFit = computeFitCenter(bitmapWidth, bitmapHeight, oldViewWidth, oldViewHeight);
+    float[] newFit = computeFitCenter(bitmapWidth, bitmapHeight, newViewWidth, newViewHeight);
+
+    // old view -> image space
+    double imageX = (x - oldFit[1]) / oldFit[0];
+    double imageY = (y - oldFit[2]) / oldFit[0];
+
+    // image space -> new view
+    double newX = imageX * newFit[0] + newFit[1];
+    double newY = imageY * newFit[0] + newFit[2];
+
+    return new double[] {newX, newY};
+  }
+
+  /**
+   * Computes the FIT_CENTER transform of a bitmap inside a view.
+   *
+   * @return {@code float[3]} = {scale, offsetX, offsetY}
+   */
+  private static float[] computeFitCenter(
+      int bitmapWidth, int bitmapHeight, int viewWidth, int viewHeight) {
+    float scale;
+    float offsetX = 0;
+    float offsetY = 0;
+
+    float bitmapAspect = (float) bitmapWidth / bitmapHeight;
+    float viewAspect = (float) viewWidth / viewHeight;
+
+    if (bitmapAspect > viewAspect) {
+      // Image is wider than view (letterboxed)
+      scale = (float) viewWidth / bitmapWidth;
+      offsetY = (viewHeight - (bitmapHeight * scale)) / 2;
+    } else {
+      // Image is taller than view (pillarboxed)
+      scale = (float) viewHeight / bitmapHeight;
+      offsetX = (viewWidth - (bitmapWidth * scale)) / 2;
+    }
+
+    return new float[] {scale, offsetX, offsetY};
+  }
 }

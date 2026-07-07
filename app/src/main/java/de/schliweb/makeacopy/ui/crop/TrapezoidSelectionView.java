@@ -1393,6 +1393,16 @@ public class TrapezoidSelectionView extends View {
         imgCorners = fullImageQuad(refBmp.getWidth(), refBmp.getHeight());
       }
 
+      // Snap the detected quad onto the strongest image gradients of the full-resolution
+      // bitmap. The detectors run on heavily downscaled inputs (DocQuad: 256px letterbox,
+      // OpenCV: DETECTION_MAX_EDGE), so back-projected corners carry a quantization error of
+      // several pixels; the refiner removes most of it and falls back to the unrefined quad
+      // whenever the edge evidence is weak or the result would be implausible.
+      if (BuildConfig.FEATURE_CORNER_REFINEMENT && refBmp != null) {
+        imgCorners =
+            de.schliweb.makeacopy.ml.corners.EdgeSnapCornerRefiner.refine(refBmp, imgCorners);
+      }
+
       // Transform to view-space using existing helper
       Point[] viewPts =
           transformImageToViewCoordinates(imgCorners, imageBitmap != null ? imageBitmap : work);
@@ -2239,17 +2249,53 @@ public class TrapezoidSelectionView extends View {
       postDelayed(initCornersRunnable, INIT_DEBOUNCE_MS);
     } else if ((w != oldw || h != oldh) && w > 0 && h > 0) {
       // cancel any pending detection and reschedule/guard
+      boolean detectionWasRunning = false;
       if (cornerTask != null) {
+        detectionWasRunning = !cornerTask.isDone();
         cornerTask.cancel(true);
         cornerTask = null;
       }
       requestedInitSeq++; // invalidate older tasks
 
-      // Proportional scaling of existing corners
-      Log.d(TAG, "Size changed, scaling corners proportionally");
-      for (int i = 0; i < 4; i++) {
-        PointF newPos = relativeToAbsolute(relativeCorners[i][0], relativeCorners[i][1], w, h);
-        corners[i].set(newPos.x, newPos.y);
+      // Remap existing corners letterbox-aware: the displayed image rect (FIT_CENTER)
+      // changes non-linearly with the view size (scale + centering offset), so a plain
+      // proportional scaling relative to the view would shift the corners off the
+      // document edges (e.g. after IME/inset-driven size jumps during initial layout).
+      final Bitmap bmp = imageBitmap;
+      boolean remapped = false;
+      if (bmp != null && !bmp.isRecycled() && oldw > 0 && oldh > 0) {
+        final int bw = bmp.getWidth();
+        final int bh = bmp.getHeight();
+        boolean allOk = bw > 0 && bh > 0;
+        if (allOk) {
+          Log.d(TAG, "Size changed, remapping corners via displayed image rect");
+          for (int i = 0; i < 4; i++) {
+            double[] p =
+                CoordinateTransformUtils.remapPointBetweenFitCenterViews(
+                    corners[i].x, corners[i].y, bw, bh, oldw, oldh, w, h);
+            if (p == null) {
+              allOk = false;
+              break;
+            }
+            updateCorner(i, (float) p[0], (float) p[1]);
+          }
+          remapped = allOk;
+        }
+      }
+      if (!remapped) {
+        // Fallback: proportional scaling of existing corners (no image rect available)
+        Log.d(TAG, "Size changed, scaling corners proportionally (fallback)");
+        for (int i = 0; i < 4; i++) {
+          PointF newPos = relativeToAbsolute(relativeCorners[i][0], relativeCorners[i][1], w, h);
+          updateCorner(i, newPos.x, newPos.y);
+        }
+      }
+
+      // If an in-flight detection was cancelled by this size change, reschedule it so the
+      // view does not remain stuck with default/stale corners.
+      if (detectionWasRunning) {
+        removeCallbacks(initCornersRunnable);
+        postDelayed(initCornersRunnable, INIT_DEBOUNCE_MS);
       }
 
       // Update last known dimensions
