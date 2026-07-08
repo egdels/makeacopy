@@ -64,8 +64,27 @@ public final class EdgeSnapCornerRefiner {
   /** Mindestanteil valider Gradientenpunkte, sonst wird die Original-Kante beibehalten. */
   private static final double MIN_VALID_FRACTION = 0.5;
 
-  /** Minimale Gradientenstärke (Sobel, 8-Bit-Graustufen), damit ein Punkt als Kante zählt. */
-  private static final double MIN_GRADIENT_MAGNITUDE = 10.0;
+  /**
+   * Minimale Gradientenstärke (Sobel 3×3, CV_32F auf 8-Bit-Graustufen), damit ein Punkt als Kante
+   * zählt. Echte Papierkanten erzeugen typischerweise Werte von mehreren Hundert; 10 war praktisch
+   * wirkungslos und ließ Rauschen/Texturen als "Kante" durchgehen.
+   */
+  private static final double MIN_GRADIENT_MAGNITUDE = 40.0;
+
+  /**
+   * Anteil des stärksten Gradienten im Suchfenster, den ein näher an der Startkante liegendes
+   * lokales Maximum mindestens erreichen muss, um bevorzugt zu werden. Dadurch snappt der Refiner
+   * auf die *nächstgelegene* deutliche Kante (Papierkante) statt auf den global stärksten
+   * Gradienten (oft Textzeilen oder harte Schattenkanten weiter innen/außen).
+   */
+  private static final double NEAREST_PEAK_ACCEPT_FRACTION = 0.5;
+
+  /**
+   * Maximal zulässiges Median-Residuum (px, Arbeitsmaßstab) des Geradenfits. Höhere Werte deuten
+   * darauf hin, dass die Stützpunkte auf unterschiedliche Strukturen (Text, Schatten) gesnappt
+   * sind; die Kante wird dann verworfen und die Original-Kante beibehalten.
+   */
+  private static final double MAX_MEDIAN_RESIDUAL = 3.0;
 
   /** Suchradius entlang der Normalen als Anteil der Bilddiagonale (im Arbeitsmaßstab). */
   private static final double SEARCH_RADIUS_FRACTION = 0.02;
@@ -103,7 +122,17 @@ public final class EdgeSnapCornerRefiner {
    */
   @NonNull
   public static double[][] refine(@Nullable Bitmap src, @NonNull double[][] quadTLTRBRBL) {
-    if (src == null || !isPlausibleQuad(quadTLTRBRBL)) return quadTLTRBRBL;
+    if (src == null || !isPlausibleQuad(quadTLTRBRBL)) {
+      Log.d(
+          TAG,
+          "refine: skipped (src="
+              + (src != null)
+              + ", plausibleQuad="
+              + isPlausibleQuad(quadTLTRBRBL)
+              + ")");
+      return quadTLTRBRBL;
+    }
+    long t0 = android.os.SystemClock.uptimeMillis();
     Mat rgba = null;
     Mat gray = null;
     Mat gx = null;
@@ -157,16 +186,34 @@ public final class EdgeSnapCornerRefiner {
       double diag = Math.hypot(w, h);
       double searchRadius = clamp(diag * SEARCH_RADIUS_FRACTION, 4.0, 48.0);
       double maxShift = diag * MAX_CORNER_SHIFT_FRACTION;
+      Log.d(
+          TAG,
+          "refine: src="
+              + srcW
+              + "x"
+              + srcH
+              + ", work="
+              + w
+              + "x"
+              + h
+              + " (scale="
+              + String.format(java.util.Locale.US, "%.4f", scale)
+              + "), searchRadius="
+              + String.format(java.util.Locale.US, "%.1f", searchRadius)
+              + "px, maxShift="
+              + String.format(java.util.Locale.US, "%.1f", maxShift)
+              + "px (work scale)");
 
       // Pro Kante eine Gerade fitten; Fallback ist die Original-Kante.
       double[][] lines = new double[4][]; // {px, py, dx, dy}
       for (int i = 0; i < 4; i++) {
         double[] a = q[i];
         double[] b = q[(i + 1) % 4];
-        double[] fitted = snapEdgeLine(gxArr, gyArr, w, h, a, b, searchRadius);
+        double[] fitted = snapEdgeLine(gxArr, gyArr, w, h, a, b, searchRadius, i);
         if (fitted != null) {
           lines[i] = fitted;
         } else {
+          Log.d(TAG, "refine: edge " + edgeName(i) + " not snapped — keeping original edge");
           double ex = b[0] - a[0];
           double ey = b[1] - a[1];
           double len = Math.hypot(ex, ey);
@@ -179,24 +226,59 @@ public final class EdgeSnapCornerRefiner {
       double[][] refined = new double[4][2];
       for (int i = 0; i < 4; i++) {
         double[] p = intersectLines(lines[(i + 3) % 4], lines[i]);
-        if (p == null || Math.hypot(p[0] - q[i][0], p[1] - q[i][1]) > maxShift) {
+        double shift = p != null ? Math.hypot(p[0] - q[i][0], p[1] - q[i][1]) : Double.NaN;
+        if (p == null || shift > maxShift) {
+          Log.d(
+              TAG,
+              "refine: corner "
+                  + cornerName(i)
+                  + (p == null
+                      ? " — no intersection (parallel lines), keeping original"
+                      : " — shift "
+                          + String.format(java.util.Locale.US, "%.1f", shift)
+                          + "px > maxShift "
+                          + String.format(java.util.Locale.US, "%.1f", maxShift)
+                          + "px, keeping original"));
           refined[i][0] = q[i][0];
           refined[i][1] = q[i][1];
         } else {
+          Log.d(
+              TAG,
+              "refine: corner "
+                  + cornerName(i)
+                  + " snapped, shift="
+                  + String.format(java.util.Locale.US, "%.2f", shift)
+                  + "px (work scale, ~"
+                  + String.format(java.util.Locale.US, "%.1f", shift / scale)
+                  + "px original)");
           refined[i][0] = p[0];
           refined[i][1] = p[1];
         }
       }
 
-      if (!DocQuadDetector.isConvexTLTRBRBL(refined)) return quadTLTRBRBL;
+      if (!DocQuadDetector.isConvexTLTRBRBL(refined)) {
+        Log.w(
+            TAG, "refine: refined quad not convex — discarding refinement, keeping original quad");
+        return quadTLTRBRBL;
+      }
 
       // Zurück in Original-Koordinaten
       double inv = 1.0 / scale;
       double[][] out = new double[4][2];
+      double totalShiftOrig = 0.0;
       for (int i = 0; i < 4; i++) {
         out[i][0] = refined[i][0] * inv;
         out[i][1] = refined[i][1] * inv;
+        totalShiftOrig +=
+            Math.hypot(out[i][0] - quadTLTRBRBL[i][0], out[i][1] - quadTLTRBRBL[i][1]);
       }
+      Log.i(
+          TAG,
+          "refine: done in "
+              + (android.os.SystemClock.uptimeMillis() - t0)
+              + "ms, mean corner shift="
+              + String.format(java.util.Locale.US, "%.1f", totalShiftOrig / 4.0)
+              + "px (original scale)");
       return out;
     } catch (Throwable t) {
       Log.w(TAG, "refine failed, keeping original quad: " + t);
@@ -217,11 +299,27 @@ public final class EdgeSnapCornerRefiner {
    */
   @Nullable
   private static double[] snapEdgeLine(
-      float[] gxArr, float[] gyArr, int w, int h, double[] a, double[] b, double searchRadius) {
+      float[] gxArr,
+      float[] gyArr,
+      int w,
+      int h,
+      double[] a,
+      double[] b,
+      double searchRadius,
+      int edgeIndex) {
     double ex = b[0] - a[0];
     double ey = b[1] - a[1];
     double len = Math.hypot(ex, ey);
-    if (len < 8.0) return null;
+    if (len < 8.0) {
+      Log.d(
+          TAG,
+          "snapEdgeLine["
+              + edgeName(edgeIndex)
+              + "]: edge too short ("
+              + String.format(java.util.Locale.US, "%.1f", len)
+              + "px)");
+      return null;
+    }
     double dx = ex / len;
     double dy = ey / len;
     // Normale (Richtung egal, es wird in beide Richtungen gesucht)
@@ -239,12 +337,10 @@ public final class EdgeSnapCornerRefiner {
       double px = a[0] + t * ex;
       double py = a[1] + t * ey;
 
-      double bestResp = -1.0;
-      int bestU = Integer.MIN_VALUE;
-      double prevResp = -1.0;
-      double respAtBestMinus1 = -1.0;
-      double respAtBestPlus1 = -1.0;
-
+      // Gradienten-Profil entlang der Normalen aufnehmen
+      int n = 2 * r + 1;
+      double[] prof = new double[n];
+      double maxResp = -1.0;
       for (int u = -r; u <= r; u++) {
         int ix = (int) Math.round(px + u * nx);
         int iy = (int) Math.round(py + u * ny);
@@ -257,21 +353,37 @@ public final class EdgeSnapCornerRefiner {
           // zur erwarteten Dokumentkante verlaufen.
           resp = Math.abs(gxArr[idx] * nx + gyArr[idx] * ny);
         }
-        if (resp > bestResp) {
-          bestResp = resp;
-          bestU = u;
-          respAtBestMinus1 = prevResp;
-          respAtBestPlus1 = -1.0;
-        } else if (u == bestU + 1) {
-          respAtBestPlus1 = resp;
-        }
-        prevResp = resp;
+        prof[u + r] = resp;
+        if (resp > maxResp) maxResp = resp;
       }
 
-      if (bestU == Integer.MIN_VALUE || bestResp < MIN_GRADIENT_MAGNITUDE) continue;
+      if (maxResp < MIN_GRADIENT_MAGNITUDE) continue;
+
+      // Nächstgelegenes ausreichend starkes lokales Maximum wählen (statt globalem Maximum):
+      // die Startkante liegt bereits nahe der Papierkante, stärkere Gradienten weiter weg
+      // stammen meist von Text oder Schatten.
+      double acceptThr = Math.max(MIN_GRADIENT_MAGNITUDE, NEAREST_PEAK_ACCEPT_FRACTION * maxResp);
+      int bestU = Integer.MIN_VALUE;
+      int bestDist = Integer.MAX_VALUE;
+      for (int k = 1; k < n - 1; k++) {
+        double c = prof[k];
+        if (c < acceptThr) continue;
+        if (c < prof[k - 1] || c < prof[k + 1]) continue; // kein lokales Maximum
+        int u = k - r;
+        int dist = Math.abs(u);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestU = u;
+        }
+      }
+      if (bestU == Integer.MIN_VALUE) continue;
 
       // Parabolische Subpixel-Verfeinerung um das Maximum
       double uRefined = bestU;
+      int k = bestU + r;
+      double respAtBestMinus1 = prof[k - 1];
+      double bestResp = prof[k];
+      double respAtBestPlus1 = prof[k + 1];
       if (respAtBestMinus1 >= 0 && respAtBestPlus1 >= 0) {
         double denom = respAtBestMinus1 - 2.0 * bestResp + respAtBestPlus1;
         if (Math.abs(denom) > 1e-9) {
@@ -285,15 +397,41 @@ public final class EdgeSnapCornerRefiner {
       count++;
     }
 
-    if (count < (int) Math.ceil(MIN_VALID_FRACTION * SAMPLES_PER_EDGE)) return null;
+    if (count < (int) Math.ceil(MIN_VALID_FRACTION * SAMPLES_PER_EDGE)) {
+      Log.d(
+          TAG,
+          "snapEdgeLine["
+              + edgeName(edgeIndex)
+              + "]: too few valid gradient points ("
+              + count
+              + "/"
+              + SAMPLES_PER_EDGE
+              + ")");
+      return null;
+    }
 
     double[] line = fitLineTLS(xs, ys, count);
-    if (line == null) return null;
+    if (line == null) {
+      Log.d(TAG, "snapEdgeLine[" + edgeName(edgeIndex) + "]: TLS fit degenerate");
+      return null;
+    }
 
     // Ein Reweighting-Pass: Ausreißer (z. B. Textzeilen, Schattenkanten) verwerfen und neu fitten.
     double[] res = new double[count];
     for (int i = 0; i < count; i++) res[i] = Math.abs(pointLineDistance(line, xs[i], ys[i]));
     double medAbs = median(res, count);
+    if (medAbs > MAX_MEDIAN_RESIDUAL) {
+      Log.d(
+          TAG,
+          "snapEdgeLine["
+              + edgeName(edgeIndex)
+              + "]: median residual too high ("
+              + String.format(java.util.Locale.US, "%.2f", medAbs)
+              + "px > "
+              + String.format(java.util.Locale.US, "%.2f", MAX_MEDIAN_RESIDUAL)
+              + "px) — rejecting edge fit");
+      return null;
+    }
     double thr = Math.max(1.5, 3.0 * medAbs);
     double[] xs2 = new double[count];
     double[] ys2 = new double[count];
@@ -305,9 +443,67 @@ public final class EdgeSnapCornerRefiner {
         kept++;
       }
     }
-    if (kept < (int) Math.ceil(MIN_VALID_FRACTION * SAMPLES_PER_EDGE)) return null;
+    if (kept < (int) Math.ceil(MIN_VALID_FRACTION * SAMPLES_PER_EDGE)) {
+      Log.d(
+          TAG,
+          "snapEdgeLine["
+              + edgeName(edgeIndex)
+              + "]: too few inliers after reweighting ("
+              + kept
+              + "/"
+              + count
+              + ", medAbsResidual="
+              + String.format(java.util.Locale.US, "%.2f", medAbs)
+              + ")");
+      return null;
+    }
+    Log.d(
+        TAG,
+        "snapEdgeLine["
+            + edgeName(edgeIndex)
+            + "]: fitted (valid="
+            + count
+            + "/"
+            + SAMPLES_PER_EDGE
+            + ", inliers="
+            + kept
+            + ", medAbsResidual="
+            + String.format(java.util.Locale.US, "%.2f", medAbs)
+            + ")");
     double[] line2 = fitLineTLS(xs2, ys2, kept);
     return line2 != null ? line2 : line;
+  }
+
+  /** Kantenname für Diagnose-Logging (Index i = Kante von Ecke i zu Ecke i+1). */
+  private static String edgeName(int i) {
+    switch (i) {
+      case 0:
+        return "top";
+      case 1:
+        return "right";
+      case 2:
+        return "bottom";
+      case 3:
+        return "left";
+      default:
+        return String.valueOf(i);
+    }
+  }
+
+  /** Eckenname für Diagnose-Logging (TL,TR,BR,BL). */
+  private static String cornerName(int i) {
+    switch (i) {
+      case 0:
+        return "TL";
+      case 1:
+        return "TR";
+      case 2:
+        return "BR";
+      case 3:
+        return "BL";
+      default:
+        return String.valueOf(i);
+    }
   }
 
   /**
