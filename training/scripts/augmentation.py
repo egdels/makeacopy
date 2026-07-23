@@ -102,9 +102,9 @@ def get_train_transforms(
             ),
         ], p=geometric_prob),
 
-        # Horizontal Flip (corners are automatically swapped)
-        # NOTE: After flip, reorder_corners() must be called!
-        A.HorizontalFlip(p=0.5),
+        # NO HorizontalFlip/VerticalFlip for documents (text would be mirrored).
+        # A flip would also swap the corner semantics (TL<->TR, BL<->BR) without
+        # reordering the [TL, TR, BR, BL] rows used for the heatmap channels.
 
         # === PHOTOMETRIC AUGMENTATION ===
         # Brightness and contrast
@@ -834,38 +834,6 @@ def keypoints_to_corners(keypoints: List[Tuple[float, float]]) -> np.ndarray:
     return np.array(keypoints, dtype=np.float32)
 
 
-def reorder_corners_after_flip(
-    corners: np.ndarray,
-    was_horizontal_flip: bool,
-    was_vertical_flip: bool = False
-) -> np.ndarray:
-    """
-    Reorders corners after flip operations.
-
-    For HorizontalFlip: TL↔TR, BL↔BR
-    For VerticalFlip: TL↔BL, TR↔BR
-
-    Args:
-        corners: Array with shape (4, 2) - [TL, TR, BR, BL]
-        was_horizontal_flip: Whether horizontal flip was applied
-        was_vertical_flip: Whether vertical flip was applied
-
-    Returns:
-        Reordered corners
-    """
-    tl, tr, br, bl = corners
-
-    if was_horizontal_flip:
-        tl, tr = tr, tl
-        bl, br = br, bl
-
-    if was_vertical_flip:
-        tl, bl = bl, tl
-        tr, br = br, tr
-
-    return np.array([tl, tr, br, bl])
-
-
 def canonicalize_corners_xy(corners: np.ndarray) -> np.ndarray:
     """
     Bringt 4 Ecken in kanonische Reihenfolge: [TL, TR, BR, BL] (clockwise ab TL).
@@ -1168,6 +1136,11 @@ class AugmentedDataset:
 
         # Back to array
         augmented_corners = keypoints_to_corners(augmented_keypoints)
+
+        # Safety net: geometric transforms only move keypoints, they do not
+        # preserve the [TL, TR, BR, BL] semantics. Re-canonicalize so the
+        # heatmap channels always match the corner order.
+        augmented_corners = canonicalize_corners_xy(augmented_corners)
 
         # Generate heatmaps
         heatmaps = generate_heatmap_fast(
