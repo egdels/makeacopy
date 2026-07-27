@@ -663,11 +663,11 @@ public class PdfCreator {
   /**
    * Renders vertical CJK columns (issue #88) as invisible, selectable text runs.
    *
-   * <p>Each column is written as one text object whose text matrix rotates the writing direction
-   * by -90° (down the page). The characters therefore stay in logical top-to-bottom Unicode order
-   * in the content stream, so extraction/search/copy yield the correct text, while the glyph
-   * positions overlay the visible vertical column. The caller passes the columns already sorted
-   * right-to-left (Japanese vertical reading order).
+   * <p>Each column is written as one text object whose text matrix rotates the writing direction by
+   * -90° (down the page). The characters therefore stay in logical top-to-bottom Unicode order in
+   * the content stream, so extraction/search/copy yield the correct text, while the glyph positions
+   * overlay the visible vertical column. The caller passes the columns already sorted right-to-left
+   * (Japanese vertical reading order).
    *
    * @param cs the content stream (image-space CTM already applied)
    * @param columns the vertical column words, sorted right-to-left

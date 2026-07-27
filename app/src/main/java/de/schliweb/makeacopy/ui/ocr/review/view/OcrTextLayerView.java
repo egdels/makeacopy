@@ -122,9 +122,9 @@ public class OcrTextLayerView extends View {
   }
 
   /**
-   * Draws a vertical (top-to-bottom) CJK word: characters are stacked inside the box, sized to
-   * fit both the column width and the per-character cell height. Without this, the horizontal
-   * rendering path would scale the text to the full column height and clip it away entirely.
+   * Draws a vertical (top-to-bottom) CJK word: characters are stacked inside the box, sized to fit
+   * both the column width and the per-character cell height. Without this, the horizontal rendering
+   * path would scale the text to the full column height and clip it away entirely.
    */
   private void drawVerticalWord(Canvas canvas, String text, RectF box) {
     int charCount = text.codePointCount(0, text.length());

@@ -821,9 +821,9 @@ public class OCRPostProcessor {
   /**
    * Reconstructs the text of a vertical (CJK top-to-bottom) page: columns are ordered
    * right-to-left, segments within a column top-to-bottom. Segments of the same column are
-   * concatenated without artificial spaces; complete columns are separated by a newline. The
-   * column grouping is delegated to {@link VerticalTextLayoutPolicy#groupIntoVerticalColumns} so
-   * the ordering is deterministic and covered by JVM unit tests.
+   * concatenated without artificial spaces; complete columns are separated by a newline. The column
+   * grouping is delegated to {@link VerticalTextLayoutPolicy#groupIntoVerticalColumns} so the
+   * ordering is deterministic and covered by JVM unit tests.
    *
    * @param words the recognized words (non-null, non-empty)
    * @return the reconstructed text in vertical reading order

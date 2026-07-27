@@ -70,10 +70,10 @@ public class PdfVerticalTextUtils {
   /**
    * Detects whether a recognized word should be rendered as a vertical CJK column.
    *
-   * <p>The decision is purely geometric plus script-based: the box must be clearly taller than
-   * wide (typical for a rotated recognition crop of a vertical column), contain at least two code
-   * points, and consist mostly of CJK code points. Horizontal CJK, Latin, RTL and single
-   * characters never match, so the existing horizontal paths are unaffected.
+   * <p>The decision is purely geometric plus script-based: the box must be clearly taller than wide
+   * (typical for a rotated recognition crop of a vertical column), contain at least two code
+   * points, and consist mostly of CJK code points. Horizontal CJK, Latin, RTL and single characters
+   * never match, so the existing horizontal paths are unaffected.
    *
    * @param text the recognized text of the word (logical order, top-to-bottom)
    * @param width the bounding-box width in image pixels
@@ -118,8 +118,8 @@ public class PdfVerticalTextUtils {
   /**
    * Computes the PDF text matrix for one vertical column as {@code [a, b, c, d, e, f]}.
    *
-   * <p>The matrix rotates the text run by -90° so the writing direction points down the page
-   * while the content stream keeps the logical character order. The advance is scaled so that the
+   * <p>The matrix rotates the text run by -90° so the writing direction points down the page while
+   * the content stream keeps the logical character order. The advance is scaled so that the
    * measured run length matches the visible column height (clamped to avoid extreme matrices from
    * tiny measured widths).
    *

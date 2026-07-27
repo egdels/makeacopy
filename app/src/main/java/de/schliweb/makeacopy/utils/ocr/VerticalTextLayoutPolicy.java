@@ -30,8 +30,8 @@ import java.util.List;
 public final class VerticalTextLayoutPolicy {
 
   /**
-   * Aspect ratio (height/width) at or above which a word bounding box counts as "tall". Matches
-   * the crop-rotation threshold used by the PaddleOCR reference implementation (h/w &gt;= 1.5).
+   * Aspect ratio (height/width) at or above which a word bounding box counts as "tall". Matches the
+   * crop-rotation threshold used by the PaddleOCR reference implementation (h/w &gt;= 1.5).
    */
   public static final float DEFAULT_TALL_BOX_ASPECT_RATIO = 1.5f;
 
@@ -55,7 +55,10 @@ public final class VerticalTextLayoutPolicy {
    */
   public static boolean isVerticalLayout(float[] widths, float[] heights) {
     return isVerticalLayout(
-        widths, heights, DEFAULT_TALL_BOX_ASPECT_RATIO, DEFAULT_MIN_BOXES,
+        widths,
+        heights,
+        DEFAULT_TALL_BOX_ASPECT_RATIO,
+        DEFAULT_MIN_BOXES,
         DEFAULT_DOMINANCE_FRACTION);
   }
 
@@ -112,8 +115,8 @@ public final class VerticalTextLayoutPolicy {
   }
 
   /**
-   * Tolerance factor for grouping boxes into vertical columns: two boxes belong to the same
-   * column when their center-X distance is at most {@code factor × median box width}. Matches the
+   * Tolerance factor for grouping boxes into vertical columns: two boxes belong to the same column
+   * when their center-X distance is at most {@code factor × median box width}. Matches the
    * line-grouping tolerance used by the Paddle result builder.
    */
   public static final float COLUMN_TOLERANCE_FACTOR = 0.6f;
@@ -131,8 +134,8 @@ public final class VerticalTextLayoutPolicy {
    * @param tops top edges of the boxes (same length)
    * @param rights right edges of the boxes (same length)
    * @param bottoms bottom edges of the boxes (same length)
-   * @return list of columns in reading order (right→left); each column contains the indices of
-   *     its boxes ordered top→bottom. Empty list for invalid input.
+   * @return list of columns in reading order (right→left); each column contains the indices of its
+   *     boxes ordered top→bottom. Empty list for invalid input.
    */
   public static List<int[]> groupIntoVerticalColumns(
       float[] lefts, float[] tops, float[] rights, float[] bottoms) {
@@ -221,7 +224,9 @@ public final class VerticalTextLayoutPolicy {
    *     vertical text layout — i.e. the page is correctly oriented and must not be rotated
    */
   public static boolean shouldPreferZeroRotation(
-      int bestRotationDegrees, boolean zeroAttemptHasContent, List<RecognizedWord> zeroAttemptWords) {
+      int bestRotationDegrees,
+      boolean zeroAttemptHasContent,
+      List<RecognizedWord> zeroAttemptWords) {
     if (bestRotationDegrees != 90 && bestRotationDegrees != 270) return false;
     if (!zeroAttemptHasContent) return false;
     return isVerticalLayout(zeroAttemptWords);
