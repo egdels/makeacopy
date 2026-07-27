@@ -1,0 +1,4 @@
+MakeACopy 4.6.2
+* New support for vertical Japanese text: correct detection, reading order and PDF text layer for vertical layouts.
+* Added Noto Sans JP (Kana subset) font for better Japanese rendering in exported PDFs.
+* Updated build tooling (Gradle 8.14.3).
