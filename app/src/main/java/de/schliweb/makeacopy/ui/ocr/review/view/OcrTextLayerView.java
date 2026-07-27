@@ -101,6 +101,10 @@ public class OcrTextLayerView extends View {
       toViewRect(w, tmp);
       float h = tmp.height();
       if (h <= dp(6f)) continue;
+      if (OcrDocReadingOrder.isVerticalCjkWord(w.t, tmp.width(), h)) {
+        drawVerticalWord(canvas, w.t, tmp);
+        continue;
+      }
       float size = Math.max(dp(8f), h * 0.8f);
       textPaint.setTextSize(size);
       boolean rtl = OcrDocReadingOrder.isRtlText(w.t);
@@ -115,6 +119,34 @@ public class OcrTextLayerView extends View {
       }
       canvas.restoreToCount(save);
     }
+  }
+
+  /**
+   * Draws a vertical (top-to-bottom) CJK word: characters are stacked inside the box, sized to
+   * fit both the column width and the per-character cell height. Without this, the horizontal
+   * rendering path would scale the text to the full column height and clip it away entirely.
+   */
+  private void drawVerticalWord(Canvas canvas, String text, RectF box) {
+    int charCount = text.codePointCount(0, text.length());
+    if (charCount <= 0) return;
+    float cell = box.height() / charCount;
+    float size = Math.max(dp(8f), Math.min(box.width() * 0.9f, cell * 0.95f));
+    textPaint.setTextSize(size);
+    int save = canvas.save();
+    canvas.clipRect(box);
+    float centerX = box.centerX();
+    int index = 0;
+    for (int i = 0; i < text.length(); index++) {
+      int cp = text.codePointAt(i);
+      int next = i + Character.charCount(cp);
+      String ch = text.substring(i, next);
+      float chWidth = textPaint.measureText(ch);
+      float x = centerX - chWidth * 0.5f;
+      float y = box.top + cell * index + cell * 0.85f;
+      canvas.drawText(ch, x, y, textPaint);
+      i = next;
+    }
+    canvas.restoreToCount(save);
   }
 
   private void computeTransform() {

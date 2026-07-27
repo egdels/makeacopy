@@ -188,6 +188,10 @@ public final class PdfTextUtils {
           "fonts/NotoSans-Regular.ttf",
           "fonts/NotoSansThai-Regular.ttf",
           "fonts/NotoSansCJKsc-Regular.ttf",
+          // Kana/Japanese punctuation subset of Noto Sans JP (OFL). The bundled CJKsc subset
+          // only covers Han + CJK punctuation/fullwidth ranges; Hiragana/Katakana would
+          // otherwise degrade to U+FFFD in the searchable text layer (issue #88).
+          "fonts/NotoSansJP-Kana.ttf",
           "fonts/NotoNaskhArabic-Regular.ttf",
           "fonts/NotoSansDevanagari-Regular.ttf"
         };

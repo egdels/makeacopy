@@ -482,6 +482,30 @@ public class PdfCreator {
     }
     if (clean.isEmpty()) return;
 
+    // --- 1b) Split off vertical CJK columns (issue #88) ---
+    // PaddleOCR emits vertical Japanese columns as one word per column with a tall, narrow box
+    // and the text in logical top-to-bottom order. They must not fall into the horizontal
+    // Y-center line clustering below (which would merge all columns into one left-to-right
+    // "line" and derive a huge font size from the column height). Columns are rendered as
+    // rotated text runs in right-to-left order; all other words use the unchanged paths.
+    List<RecognizedWord> verticalColumns = new ArrayList<>();
+    for (int i = clean.size() - 1; i >= 0; i--) {
+      RecognizedWord w = clean.get(i);
+      RectF b = w.getBoundingBox();
+      if (PdfVerticalTextUtils.isVerticalCjkColumn(w.getText(), b.width(), b.height())) {
+        verticalColumns.add(w);
+        clean.remove(i);
+      }
+    }
+    if (!verticalColumns.isEmpty()) {
+      verticalColumns.sort(
+          (a, b) ->
+              PdfVerticalTextUtils.compareColumnsRightToLeft(
+                  a.getBoundingBox().centerX(), b.getBoundingBox().centerX()));
+      addVerticalColumnsImageSpace(cs, verticalColumns, fonts, imageWidth, imageHeight);
+    }
+    if (clean.isEmpty()) return;
+
     // Compute dynamic tolerance based on median word height.
     // Words within this Y-distance are considered on the same line.
     final float lineToleranceY = calculateLineToleranceY(clean);
@@ -629,6 +653,52 @@ public class PdfCreator {
       try {
         cs.setRenderingMode(RenderingMode.NEITHER); // unsichtbar aber auswählbar
         cs.setTextMatrix(new Matrix(scaleX, 0f, 0f, 1f, x_img, y_img));
+        showTextWithFallbacks(cs, token, fontSize, fonts);
+      } finally {
+        cs.endText();
+      }
+    }
+  }
+
+  /**
+   * Renders vertical CJK columns (issue #88) as invisible, selectable text runs.
+   *
+   * <p>Each column is written as one text object whose text matrix rotates the writing direction
+   * by -90° (down the page). The characters therefore stay in logical top-to-bottom Unicode order
+   * in the content stream, so extraction/search/copy yield the correct text, while the glyph
+   * positions overlay the visible vertical column. The caller passes the columns already sorted
+   * right-to-left (Japanese vertical reading order).
+   *
+   * @param cs the content stream (image-space CTM already applied)
+   * @param columns the vertical column words, sorted right-to-left
+   * @param fonts fallback font list
+   * @param imageWidth image width in pixels
+   * @param imageHeight image height in pixels
+   * @throws Exception if writing to the content stream fails
+   */
+  private static void addVerticalColumnsImageSpace(
+      PDPageContentStream cs,
+      List<RecognizedWord> columns,
+      List<PDFont> fonts,
+      int imageWidth,
+      int imageHeight)
+      throws Exception {
+    for (RecognizedWord w : columns) {
+      String tokenRaw = safeText(w.getText()).trim();
+      if (tokenRaw.isEmpty()) continue;
+      String token = java.text.Normalizer.normalize(tokenRaw, java.text.Normalizer.Form.NFC);
+
+      RectF b = w.getBoundingBox();
+      float fontSize = PdfVerticalTextUtils.columnFontSize(b.width());
+      float measured = measureTextWidth(token, fontSize, fonts);
+      float[] m =
+          PdfVerticalTextUtils.columnTextMatrix(
+              b.left, b.top, b.height(), measured, imageWidth, imageHeight);
+
+      cs.beginText();
+      try {
+        cs.setRenderingMode(RenderingMode.NEITHER); // invisible but selectable
+        cs.setTextMatrix(new Matrix(m[0], m[1], m[2], m[3], m[4], m[5]));
         showTextWithFallbacks(cs, token, fontSize, fonts);
       } finally {
         cs.endText();

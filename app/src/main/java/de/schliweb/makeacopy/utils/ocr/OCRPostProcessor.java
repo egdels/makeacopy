@@ -697,6 +697,14 @@ public class OCRPostProcessor {
       return "";
     }
 
+    // Vertical CJK layout (top-to-bottom columns, read right→left): the horizontal line
+    // grouping below would merge all columns into one "line" sorted left→right, reversing
+    // the column reading order. Detect the layout from the box geometry and reconstruct the
+    // text column-wise instead. Horizontal (LTR/RTL) documents are unaffected.
+    if (VerticalTextLayoutPolicy.isVerticalLayout(words)) {
+      return verticalWordsToText(words);
+    }
+
     // Sort words by position using a strict, transitive order. Line grouping below still decides
     // which nearby words belong together; the initial sort must not use pair-dependent thresholds
     // because TimSort rejects non-transitive comparators on dense Paddle OCR boxes.
@@ -807,6 +815,45 @@ public class OCRPostProcessor {
       lastLineBottomY = lineBottomY;
     }
 
+    return result.toString();
+  }
+
+  /**
+   * Reconstructs the text of a vertical (CJK top-to-bottom) page: columns are ordered
+   * right-to-left, segments within a column top-to-bottom. Segments of the same column are
+   * concatenated without artificial spaces; complete columns are separated by a newline. The
+   * column grouping is delegated to {@link VerticalTextLayoutPolicy#groupIntoVerticalColumns} so
+   * the ordering is deterministic and covered by JVM unit tests.
+   *
+   * @param words the recognized words (non-null, non-empty)
+   * @return the reconstructed text in vertical reading order
+   */
+  private static String verticalWordsToText(List<RecognizedWord> words) {
+    int n = words.size();
+    float[] lefts = new float[n];
+    float[] tops = new float[n];
+    float[] rights = new float[n];
+    float[] bottoms = new float[n];
+    for (int i = 0; i < n; i++) {
+      android.graphics.RectF r = words.get(i).getBoundingBox();
+      lefts[i] = r.left;
+      tops[i] = r.top;
+      rights[i] = r.right;
+      bottoms[i] = r.bottom;
+    }
+    List<int[]> columns =
+        VerticalTextLayoutPolicy.groupIntoVerticalColumns(lefts, tops, rights, bottoms);
+    StringBuilder result = new StringBuilder();
+    for (int c = 0; c < columns.size(); c++) {
+      if (c > 0) {
+        result.append('\n');
+      }
+      for (int idx : columns.get(c)) {
+        String text = words.get(idx).getText();
+        if (text == null) continue;
+        result.append(decodeHtmlEntities(text));
+      }
+    }
     return result.toString();
   }
 

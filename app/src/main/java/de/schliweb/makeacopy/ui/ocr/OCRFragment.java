@@ -1503,6 +1503,9 @@ public class OCRFragment extends Fragment {
                   OCRHelper.OcrResultWords bestResult = null;
                   OCRViewModel.OcrTransform bestTx = null;
                   int bestRot = 0;
+                  // Result of the 0° attempt, kept for the vertical-layout guard below.
+                  OCRHelper.OcrResultWords zeroResult = null;
+                  OCRViewModel.OcrTransform zeroTx = null;
 
                   for (int extra : extraRots) {
                     if (ocrCancelled.get()) {
@@ -1681,6 +1684,12 @@ public class OCRFragment extends Fragment {
                       return;
                     }
 
+                    // Keep the 0° attempt for the vertical-layout guard after the loop.
+                    if (extra == 0) {
+                      zeroResult = r;
+                      zeroTx = tx;
+                    }
+
                     // Early-exit: if the first attempt (extra=0) is already strong enough, skip
                     // other rotations. Decision delegated to OcrEarlyExitPolicy so the gate is
                     // unit-testable and tuned against real production samples.
@@ -1762,6 +1771,30 @@ public class OCRFragment extends Fragment {
                       bestResult = r;
                       bestTx = tx;
                       bestRot = extra;
+                    }
+                  }
+
+                  // Vertical-layout guard: for genuinely vertical documents (CJK top-to-bottom
+                  // columns) the 90°/270° attempts can "win" by confidence because vertical
+                  // columns then look like horizontal lines to the detector — but the page is
+                  // correctly oriented. When the 0° attempt already produced content whose
+                  // boxes are predominantly tall, prefer the 0° result and do not rotate.
+                  if (zeroResult != null && zeroTx != null) {
+                    boolean zeroHasContent =
+                        (zeroResult.words != null && !zeroResult.words.isEmpty())
+                            || (zeroResult.text != null && !zeroResult.text.trim().isEmpty());
+                    if (de.schliweb.makeacopy.utils.ocr.VerticalTextLayoutPolicy
+                        .shouldPreferZeroRotation(bestRot, zeroHasContent, zeroResult.words)) {
+                      Log.i(
+                          TAG,
+                          LP
+                              + "Vertical text layout detected at 0°; overriding auto-rotate"
+                              + " (was extra="
+                              + bestRot
+                              + "°)");
+                      bestResult = zeroResult;
+                      bestTx = zeroTx;
+                      bestRot = 0;
                     }
                   }
 
