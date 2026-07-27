@@ -107,6 +107,54 @@ public final class OcrDocReadingOrder {
     return rtl > ltr;
   }
 
+  /**
+   * Aspect-ratio threshold above which a word box counts as a vertical column: the box must be at
+   * least twice as tall as it is wide.
+   */
+  private static final float VERTICAL_BOX_ASPECT = 2.0f;
+
+  /**
+   * Decides whether a word must be rendered as a vertical (top-to-bottom) CJK column: the box is
+   * clearly taller than wide and the text is dominated by CJK code points. Pure function so the
+   * decision is covered by JVM unit tests.
+   *
+   * @param text the recognized text of the word (may be null)
+   * @param boxWidth the width of the word box in image pixels
+   * @param boxHeight the height of the word box in image pixels
+   * @return true when the word should be drawn character-by-character top-to-bottom
+   */
+  public static boolean isVerticalCjkWord(String text, float boxWidth, float boxHeight) {
+    if (text == null || text.isEmpty()) return false;
+    if (boxWidth <= 0 || boxHeight < boxWidth * VERTICAL_BOX_ASPECT) return false;
+    int cjk = 0;
+    int total = 0;
+    for (int i = 0; i < text.length(); ) {
+      int cp = text.codePointAt(i);
+      if (!Character.isWhitespace(cp)) {
+        total++;
+        if (isCjkCodePoint(cp)) cjk++;
+      }
+      i += Character.charCount(cp);
+    }
+    return total > 0 && cjk * 2 >= total;
+  }
+
+  private static boolean isCjkCodePoint(int cp) {
+    Character.UnicodeBlock block = Character.UnicodeBlock.of(cp);
+    return block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
+        || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
+        || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B
+        || block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS
+        || block == Character.UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION
+        || block == Character.UnicodeBlock.HIRAGANA
+        || block == Character.UnicodeBlock.KATAKANA
+        || block == Character.UnicodeBlock.KATAKANA_PHONETIC_EXTENSIONS
+        || block == Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS
+        || block == Character.UnicodeBlock.HANGUL_SYLLABLES
+        || block == Character.UnicodeBlock.HANGUL_JAMO
+        || block == Character.UnicodeBlock.BOPOMOFO;
+  }
+
   public static boolean isRtlText(String text) {
     int[] counts = countDirections(text != null ? text : "");
     return counts[0] > counts[1];
