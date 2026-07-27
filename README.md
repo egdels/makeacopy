@@ -278,6 +278,7 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 | OCR Language Data (`standard` legacy flavor) | [tessdata](https://github.com/tesseract-ocr/tessdata) | Apache 2.0 |
 | PDF | Android PdfDocument, pdfbox-android | Apache 2.0 |
 | Fonts (CJK) | [Noto Sans CJK](https://github.com/notofonts/noto-cjk) | OFL 1.1 |
+| Fonts (Japanese Kana) | [Noto Sans JP](https://github.com/notofonts/noto-cjk) (Kana subset) | OFL 1.1 |
 | Fonts (Latin) | [Noto Sans](https://github.com/notofonts/noto-fonts) | OFL 1.1 |
 | Fonts (Arabic) | [Noto Naskh Arabic](https://github.com/notofonts/arabic) | OFL 1.1 |
 | Fonts (Devanagari) | [Noto Sans Devanagari](https://github.com/notofonts/devanagari) | OFL 1.1 |

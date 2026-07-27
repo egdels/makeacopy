@@ -75,7 +75,7 @@ includes third-party components under their respective licenses as noted below.
           – SHA-256 checksum updated accordingly.
           – Added sync-marker comment referencing makeacopy wrapper.
 
-3) Noto Sans CJK (fonts; used for CJK PDF text layer)
+3) Noto Sans CJK / Noto Sans JP (fonts; used for CJK PDF text layer)
     - Project: https://github.com/notofonts/noto-cjk
     - License: SIL Open Font License 1.1
     - Notes: The bundled fonts are derived from the official Noto Sans CJK OTF
@@ -83,6 +83,15 @@ includes third-party components under their respective licenses as noted below.
       TrueType (TTF) format and subsetted to reduce size. No glyph outlines have
       been modified. The OFL license notice is included at
       third_party_licenses/OFL.txt.
+    - Bundled files:
+        * NotoSansCJKsc-Regular.ttf – Simplified Chinese subset (Han + CJK
+          punctuation/fullwidth ranges) of Noto Sans CJK SC.
+        * NotoSansJP-Kana.ttf – Kana/Japanese punctuation subset of
+          Noto Sans JP, covering Hiragana, Katakana, small Kana, and
+          fullwidth forms. It complements the CJKsc subset (which contains
+          no Kana) so that Japanese text can be embedded in the searchable
+          PDF text layer. Kanji glyphs are still provided by
+          NotoSansCJKsc-Regular.ttf.
 
 4) Tesseract OCR language data (tessdata)
     - Project: https://github.com/tesseract-ocr/tessdata
