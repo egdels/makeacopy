@@ -53,6 +53,27 @@ final class PaddleResultBuilder {
     @VisibleForTesting static final boolean ENABLE_WIDE_QUAD_SPLITTER = false;
     @VisibleForTesting static final boolean ENABLE_DEBUG_DUMPS = false;
 
+    /**
+     * Seitenverhältnis (Höhe/Breite der Quad-Bounding-Box), ab dem ein Det-Quad als
+     * „hochkant" gilt. Entspricht der Referenz-Implementierung von PaddleOCR
+     * (get_rotate_crop_image: {@code h/w >= 1.5} → Crop um 90° rotieren), die für
+     * vertikale CJK-Textspalten benötigt wird.
+     */
+    @VisibleForTesting static final double VERTICAL_QUAD_ASPECT_RATIO = 1.5;
+
+    /**
+     * Mindestanzahl an Det-Quads, ab der ein Dokument überhaupt als vertikales Layout
+     * eingestuft werden kann. Verhindert, dass ein einzelner schmaler Treffer (z.&nbsp;B.
+     * eine Ziffer) das gesamte Seitenlayout umschaltet.
+     */
+    @VisibleForTesting static final int VERTICAL_LAYOUT_MIN_QUADS = 2;
+
+    /**
+     * Anteil hochkanter Quads, ab dem das Seitenlayout als vertikal (CJK top-to-bottom,
+     * Spalten rechts→links) behandelt wird.
+     */
+    @VisibleForTesting static final double VERTICAL_LAYOUT_DOMINANCE = 0.5;
+
     private PaddleResultBuilder() {}
 
     private static final class QuadRecognition {
@@ -103,10 +124,22 @@ final class PaddleResultBuilder {
             PaddleDebugDumper.dumpOriginalWithQuads(full, effectiveQuads);
         }
 
+        // Vertikales CJK-Layout (Spalten top-to-bottom, rechts→links) erkennen: dominieren
+        // hochkante Det-Quads, wird statt der Zeilen- eine Spalten-Gruppierung verwendet.
+        boolean verticalLayout = isVerticalLayout(effectiveQuads);
+        if (verticalLayout) {
+            Log.i(TAG, "vertical text layout detected (quads=" + effectiveQuads.size() + ")");
+        }
+
         // Reading-Order via Zeilen-Gruppierung: vertikales Center-Y-Overlap mit Toleranz
         // = LINE_TOLERANCE_FACTOR * mediane Quad-Höhe. Innerhalb der Zeile nach Center-X
-        // sortiert. Zwischen Zeilen '\n', innerhalb single-space.
-        List<List<Quad>> lines = groupQuadsIntoLines(effectiveQuads);
+        // sortiert. Zwischen Zeilen '\n', innerhalb single-space. Bei vertikalem Layout
+        // stattdessen Spalten-Gruppierung (Center-X-Overlap, Spalten rechts→links, innerhalb
+        // der Spalte top-to-bottom).
+        List<List<Quad>> lines =
+                verticalLayout
+                        ? groupQuadsIntoColumns(effectiveQuads)
+                        : groupQuadsIntoLines(effectiveQuads);
 
         List<RecognizedWord> words = new ArrayList<>();
         StringBuilder textBuilder = new StringBuilder();
@@ -178,7 +211,9 @@ final class PaddleResultBuilder {
                 if (rtl) {
                     emittedText = reverseByCodepoints(emittedText);
                 }
-                if (qi > 0 && textBuilder.length() > 0) {
+                // In vertikalen CJK-Spalten sind Spaces zwischen Quad-Segmenten nicht
+                // sinnvoll — Segmente derselben Spalte werden direkt konkateniert.
+                if (!verticalLayout && qi > 0 && textBuilder.length() > 0) {
                     char last = textBuilder.charAt(textBuilder.length() - 1);
                     if (last != ' ' && last != '\n' && !emittedText.isEmpty()
                             && emittedText.charAt(0) != ' ') {
@@ -232,7 +267,48 @@ final class PaddleResultBuilder {
         Bitmap crop = null;
         try {
             crop = cropper.crop(full, q);
-            PaddleRecOrtRunner.RecOutput out = rec.recognize(crop);
+
+            // Hochkante Crops (vertikale CJK-Textspalten): das Rec-Modell erwartet
+            // horizontale Textzeilen. Analog zur PaddleOCR-Referenz wird der Crop um 90°
+            // rotiert; die 0°/180°-Ambiguität (CCW vs. CW) wird per Konfidenzvergleich
+            // aufgelöst. Der unrotierte Crop bleibt als Kandidat, um Regressionen bei
+            // schmalen horizontalen Crops (z. B. Einzelzeichen) zu vermeiden.
+            PaddleRecOrtRunner.RecOutput out;
+            boolean rotatedVertical = false;
+            if (isTallCrop(crop)) {
+                Bitmap ccw = rotateBitmap(crop, 270);
+                Bitmap cw = rotateBitmap(crop, 90);
+                try {
+                    PaddleRecOrtRunner.RecOutput out0 = rec.recognize(crop);
+                    PaddleRecOrtRunner.RecOutput outCcw = rec.recognize(ccw);
+                    PaddleRecOrtRunner.RecOutput outCw = rec.recognize(cw);
+                    int chosen =
+                            chooseRotationCandidate(
+                                    new String[] {out0.text(), outCcw.text(), outCw.text()},
+                                    new float[] {
+                                        out0.confidence(), outCcw.confidence(), outCw.confidence()
+                                    });
+                    out = (chosen == 1) ? outCcw : (chosen == 2) ? outCw : out0;
+                    rotatedVertical = chosen != 0;
+                    if (rotatedVertical) {
+                        Log.d(
+                                TAG,
+                                "tall crop rotated "
+                                        + (chosen == 1 ? "90° CCW" : "90° CW")
+                                        + " conf0="
+                                        + out0.confidence()
+                                        + " confCcw="
+                                        + outCcw.confidence()
+                                        + " confCw="
+                                        + outCw.confidence());
+                    }
+                } finally {
+                    if (ccw != null && ccw != crop && !ccw.isRecycled()) ccw.recycle();
+                    if (cw != null && cw != crop && !cw.isRecycled()) cw.recycle();
+                }
+            } else {
+                out = rec.recognize(crop);
+            }
             String text = out.text() != null ? out.text() : "";
 
             // Debug-Dump pro Crop (nur wenn aktiv).
@@ -253,6 +329,19 @@ final class PaddleResultBuilder {
             // pro Quad; Sub-Word-Geometrie für den PDF-Layer kommt aus der CTC-Frame-
             // basierten buildSubWords (geometrisch korrekt unabhängig von Schriftrichtung).
             float aggConf100 = Math.max(0f, Math.min(100f, out.confidence() * 100f));
+
+            // Bei rotierten Vertikal-Crops sind weder die Pixel-Spalten des Crops noch die
+            // CTC-Frame-Geometrie auf die (unrotierte) Quad-Geometrie abbildbar: WordSplitter
+            // und buildSubWords würden falsche Boxen liefern. Der gesamte Quad wird daher als
+            // ein Wort mit der vollen Det-Box emittiert.
+            if (rotatedVertical) {
+                List<RecognizedWord> vWords = new ArrayList<>(1);
+                if (!text.isEmpty()) {
+                    vWords.add(new RecognizedWord(text, quadBBox(q), aggConf100));
+                }
+                return new QuadRecognition(text, vWords);
+            }
+
             boolean cropIsRtl = isRtlText(text);
             List<RecognizedWord> subWords =
                     (!ENABLE_BITMAP_WORD_SPLITTER || cropIsRtl)
@@ -330,6 +419,134 @@ final class PaddleResultBuilder {
             lines.add(current);
         }
         return lines;
+    }
+
+    /**
+     * Prüft, ob die Bounding-Box eines Det-Quads „hochkant" ist
+     * (Höhe/Breite ≥ {@link #VERTICAL_QUAD_ASPECT_RATIO}).
+     */
+    @VisibleForTesting
+    static boolean isTallQuad(Quad q) {
+        double w = Math.max(1.0, q.maxX() - q.minX());
+        double h = Math.max(1.0, q.maxY() - q.minY());
+        return h / w >= VERTICAL_QUAD_ASPECT_RATIO;
+    }
+
+    private static boolean isTallCrop(Bitmap crop) {
+        if (crop == null) return false;
+        int w = Math.max(1, crop.getWidth());
+        int h = Math.max(1, crop.getHeight());
+        return ((double) h) / w >= VERTICAL_QUAD_ASPECT_RATIO;
+    }
+
+    /**
+     * Erkennt ein vertikales Seitenlayout (CJK top-to-bottom): mindestens
+     * {@link #VERTICAL_LAYOUT_MIN_QUADS} Quads und mehr als
+     * {@link #VERTICAL_LAYOUT_DOMINANCE} Anteil hochkanter Quads.
+     */
+    @VisibleForTesting
+    static boolean isVerticalLayout(List<Quad> quads) {
+        if (quads == null || quads.size() < VERTICAL_LAYOUT_MIN_QUADS) return false;
+        int tall = 0;
+        for (Quad q : quads) {
+            if (isTallQuad(q)) tall++;
+        }
+        return tall > quads.size() * VERTICAL_LAYOUT_DOMINANCE;
+    }
+
+    /**
+     * Wählt den besten Rotationskandidaten für einen hochkanten Crop.
+     * Kandidatenreihenfolge: 0 = unrotiert, 1 = 90° CCW, 2 = 90° CW.
+     * Primärkriterium: nicht-leerer Text schlägt leeren; sekundär höhere Konfidenz;
+     * Tie-Break: mehr Codepoints, dann der frühere Kandidat (bevorzugt unrotiert,
+     * dann CCW wie in der PaddleOCR-Referenz {@code np.rot90}).
+     */
+    @VisibleForTesting
+    static int chooseRotationCandidate(String[] texts, float[] confs) {
+        int best = 0;
+        for (int i = 1; i < texts.length; i++) {
+            boolean bestHasText = texts[best] != null && !texts[best].trim().isEmpty();
+            boolean hasText = texts[i] != null && !texts[i].trim().isEmpty();
+            if (hasText != bestHasText) {
+                if (hasText) best = i;
+                continue;
+            }
+            if (confs[i] > confs[best] + 1e-4f) {
+                best = i;
+            } else if (Math.abs(confs[i] - confs[best]) <= 1e-4f) {
+                int len = texts[i] == null ? 0 : texts[i].codePointCount(0, texts[i].length());
+                int bestLen =
+                        texts[best] == null
+                                ? 0
+                                : texts[best].codePointCount(0, texts[best].length());
+                if (len > bestLen) best = i;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Gruppiert Quads in vertikale Spalten (analog zu {@link #groupQuadsIntoLines(List)},
+     * mit vertauschten Achsen): Cluster über Center-X-Overlap mit Toleranz
+     * = {@link #LINE_TOLERANCE_FACTOR} × mediane Quad-Breite. Spalten werden in
+     * Leserichtung rechts→links geliefert, innerhalb einer Spalte top-to-bottom.
+     */
+    @VisibleForTesting
+    static List<List<Quad>> groupQuadsIntoColumns(List<Quad> quads) {
+        List<Quad> sortedByX = new ArrayList<>(quads);
+        // Primärsortierung nach Center-X absteigend (rechts→links), Tie-Break Center-Y.
+        sortedByX.sort(
+                java.util.Comparator.<Quad>comparingDouble(PaddleResultBuilder::centerX)
+                        .reversed()
+                        .thenComparingDouble(PaddleResultBuilder::centerY));
+
+        // Mediane Breite als Skalenreferenz für die Toleranz.
+        double[] widths = new double[sortedByX.size()];
+        for (int i = 0; i < sortedByX.size(); i++) {
+            widths[i] = Math.max(1.0, sortedByX.get(i).maxX() - sortedByX.get(i).minX());
+        }
+        double[] sortedWidths = widths.clone();
+        java.util.Arrays.sort(sortedWidths);
+        double medianWidth = sortedWidths[sortedWidths.length / 2];
+        double tol = LINE_TOLERANCE_FACTOR * medianWidth;
+
+        List<List<Quad>> columns = new ArrayList<>();
+        List<Quad> current = new ArrayList<>();
+        double currentRefX = Double.NaN;
+        for (Quad q : sortedByX) {
+            double cx = centerX(q);
+            if (current.isEmpty()) {
+                current.add(q);
+                currentRefX = cx;
+            } else if (Math.abs(cx - currentRefX) <= tol) {
+                current.add(q);
+                // Referenz als laufender Mittelwert aktualisieren, robustifiziert gegen Drift.
+                currentRefX = (currentRefX * (current.size() - 1) + cx) / current.size();
+            } else {
+                current.sort(java.util.Comparator.comparingDouble(PaddleResultBuilder::centerY));
+                columns.add(current);
+                current = new ArrayList<>();
+                current.add(q);
+                currentRefX = cx;
+            }
+        }
+        if (!current.isEmpty()) {
+            current.sort(java.util.Comparator.comparingDouble(PaddleResultBuilder::centerY));
+            columns.add(current);
+        }
+        return columns;
+    }
+
+    /**
+     * Rotiert eine Bitmap um den angegebenen Winkel im Uhrzeigersinn.
+     * Bei 0° (mod 360) wird die Original-Bitmap unverändert zurückgegeben.
+     */
+    private static Bitmap rotateBitmap(Bitmap src, int degreesCw) {
+        int deg = ((degreesCw % 360) + 360) % 360;
+        if (deg == 0) return src;
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        m.postRotate(deg);
+        return Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), m, true);
     }
 
     private static double centerY(Quad q) {
