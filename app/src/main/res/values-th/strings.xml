@@ -256,6 +256,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (รวดเร็ว)</string>
     <string name="ocr_mode_robust">OpenCV Robust (คุณภาพสูง)</string>
     <string name="opt_paddle_best_ocr">คุณภาพ Paddle OCR ดีที่สุด (ช้าลง)</string>
+    <string name="opt_multi_column_ocr">เลย์เอาต์หลายคอลัมน์ (หนังสือพิมพ์ นิตยสาร)</string>
     <string name="ocr_prep_mode_set">ตั้งค่าโหมดการรู้จำเป็น %1$s แล้ว</string>
 
     <!-- Labels -->

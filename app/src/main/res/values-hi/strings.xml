@@ -245,6 +245,7 @@
     <string name="ocr_mode_quick">OpenCV क्विक (तेज़)</string>
     <string name="ocr_mode_robust">OpenCV रोबस्ट (उच्च गुणवत्ता)</string>
     <string name="opt_paddle_best_ocr">सर्वोत्तम Paddle OCR गुणवत्ता (धीमा)</string>
+    <string name="opt_multi_column_ocr">बहु-स्तंभ लेआउट (समाचार पत्र, पत्रिकाएँ)</string>
     <string name="ocr_prep_mode_set">पहचान मोड सेट: %1$s</string>
 
     <!-- Labels -->

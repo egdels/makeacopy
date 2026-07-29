@@ -259,6 +259,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (snel)</string>
     <string name="ocr_mode_robust">OpenCV Robust (hoge kwaliteit)</string>
     <string name="opt_paddle_best_ocr">Beste Paddle OCR-kwaliteit (langzamer)</string>
+    <string name="opt_multi_column_ocr">Meerkoloms lay-out (kranten, tijdschriften)</string>
     <string name="ocr_prep_mode_set">Herkenningsmodus ingesteld op %1$s</string>
 
     <!-- Labels -->

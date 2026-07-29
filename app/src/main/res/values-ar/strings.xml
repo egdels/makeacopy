@@ -251,6 +251,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (سريع)</string>
     <string name="ocr_mode_robust">OpenCV Robust (جودة عالية)</string>
     <string name="opt_paddle_best_ocr">أفضل جودة Paddle OCR (أبطأ)</string>
+    <string name="opt_multi_column_ocr">تخطيط متعدد الأعمدة (صحف ومجلات)</string>
     <string name="ocr_prep_mode_set">تم تعيين وضع التعرّف إلى %1$s</string>
 
     <!-- Labels -->

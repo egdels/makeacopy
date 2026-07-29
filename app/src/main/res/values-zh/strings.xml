@@ -245,6 +245,7 @@
     <string name="ocr_mode_quick">OpenCV Quick（快速）</string>
     <string name="ocr_mode_robust">OpenCV Robust（高质量）</string>
     <string name="opt_paddle_best_ocr">最佳 Paddle OCR 质量（较慢）</string>
+    <string name="opt_multi_column_ocr">多栏版式（报纸、杂志）</string>
     <string name="ocr_prep_mode_set">识别模式已设置为 %1$s</string>
 
     <!-- Labels -->

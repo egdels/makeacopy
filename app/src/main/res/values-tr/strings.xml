@@ -256,6 +256,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (hızlı)</string>
     <string name="ocr_mode_robust">OpenCV Robust (yüksek kalite)</string>
     <string name="opt_paddle_best_ocr">En iyi Paddle OCR kalitesi (daha yavaş)</string>
+    <string name="opt_multi_column_ocr">Çok sütunlu düzen (gazeteler, dergiler)</string>
     <string name="ocr_prep_mode_set">Tanıma modu %1$s olarak ayarlandı</string>
 
     <!-- Labels -->

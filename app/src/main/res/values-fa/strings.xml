@@ -255,6 +255,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (سریع)</string>
     <string name="ocr_mode_robust">OpenCV Robust (کیفیت بالا)</string>
     <string name="opt_paddle_best_ocr">بهترین کیفیت Paddle OCR (کندتر)</string>
+    <string name="opt_multi_column_ocr">چیدمان چندستونی (روزنامه‌ها، مجلات)</string>
     <string name="ocr_prep_mode_set">حالت تشخیص روی %1$s تنظیم شد</string>
 
     <!-- Labels -->

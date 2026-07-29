@@ -257,6 +257,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (rask)</string>
     <string name="ocr_mode_robust">OpenCV Robust (høy kvalitet)</string>
     <string name="opt_paddle_best_ocr">Beste Paddle OCR-kvalitet (tregere)</string>
+    <string name="opt_multi_column_ocr">Flerspaltet oppsett (aviser, magasiner)</string>
     <string name="ocr_prep_mode_set">Gjenkjenningsmodus satt til %1$s</string>
 
     <!-- Labels -->

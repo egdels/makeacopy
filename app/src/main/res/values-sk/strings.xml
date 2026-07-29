@@ -263,6 +263,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (rýchly)</string>
     <string name="ocr_mode_robust">OpenCV Robust (vysoká kvalita)</string>
     <string name="opt_paddle_best_ocr">Najlepšia kvalita Paddle OCR (pomalšie)</string>
+    <string name="opt_multi_column_ocr">Viacstĺpcové rozloženie (noviny, časopisy)</string>
     <string name="ocr_prep_mode_set">Režim rozpoznávania nastavený na %1$s</string>
 
     <!-- Labels -->

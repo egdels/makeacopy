@@ -257,6 +257,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (gyors)</string>
     <string name="ocr_mode_robust">OpenCV Robust (magas minőség)</string>
     <string name="opt_paddle_best_ocr">Legjobb Paddle OCR-minőség (lassabb)</string>
+    <string name="opt_multi_column_ocr">Többhasábos elrendezés (újságok, magazinok)</string>
     <string name="ocr_prep_mode_set">Felismerési mód beállítva: %1$s</string>
 
     <!-- Labels -->

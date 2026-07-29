@@ -266,6 +266,7 @@
     <string name="ocr_mode_robust">OpenCV Robust (hohe Qualität)</string>
     <string name="ocr_mode_paddle">PaddleOCR (experimentell, ohne Vorverarbeitung)</string>
     <string name="opt_paddle_best_ocr">Beste Paddle-OCR-Qualität (langsamer)</string>
+    <string name="opt_multi_column_ocr">Mehrspaltiges Layout (Zeitungen, Zeitschriften)</string>
     <string name="ocr_prep_mode_set">Erkennungsmodus gesetzt: %1$s</string>
 
     <!-- Labels -->

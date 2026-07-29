@@ -261,6 +261,7 @@
     <string name="ocr_mode_quick">OpenCV Quick (rapid)</string>
     <string name="ocr_mode_robust">OpenCV Robust (calitate ridicată)</string>
     <string name="opt_paddle_best_ocr">Cea mai bună calitate Paddle OCR (mai lent)</string>
+    <string name="opt_multi_column_ocr">Aspect pe mai multe coloane (ziare, reviste)</string>
     <string name="ocr_prep_mode_set">Modul de recunoaștere setat la %1$s</string>
 
 

@@ -249,6 +249,7 @@
     <string name="ocr_mode_robust">OpenCV Robust (υψηλή ποιότητα)</string>
     <string name="ocr_mode_paddle" tools:ignore="MissingTranslation">PaddleOCR (πειραματικό, χωρίς προεπεξεργασία)</string>
     <string name="opt_paddle_best_ocr">Καλύτερη ποιότητα Paddle OCR (πιο αργό)</string>
+    <string name="opt_multi_column_ocr">Διάταξη πολλών στηλών (εφημερίδες, περιοδικά)</string>
     <string name="ocr_prep_mode_set">Η λειτουργία αναγνώρισης ορίστηκε σε %1$s</string>
 
     <!-- Labels -->
