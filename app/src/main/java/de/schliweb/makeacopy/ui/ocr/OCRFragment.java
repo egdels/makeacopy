@@ -965,6 +965,8 @@ public class OCRFragment extends Fragment {
         view.findViewById(R.id.checkbox_layout_analysis_dialog);
     android.widget.CheckBox cbPaddleBestOcr =
         view.findViewById(R.id.checkbox_paddle_best_ocr_dialog);
+    android.widget.CheckBox cbMultiColumnOcr =
+        view.findViewById(R.id.checkbox_multi_column_ocr_dialog);
     android.widget.RadioButton rbPaddle = view.findViewById(R.id.rbtn_mode_paddle);
     final boolean fixedPaddleMode = de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR;
 
@@ -977,6 +979,8 @@ public class OCRFragment extends Fragment {
     cbLayoutAnalysis.setVisibility(
         layoutFeatureEnabled ? android.view.View.VISIBLE : android.view.View.GONE);
     cbPaddleBestOcr.setVisibility(
+        fixedPaddleMode ? android.view.View.VISIBLE : android.view.View.GONE);
+    cbMultiColumnOcr.setVisibility(
         fixedPaddleMode ? android.view.View.VISIBLE : android.view.View.GONE);
 
     // PaddleOCR (experimental): visible as third radio option only when feature flag
@@ -1002,6 +1006,7 @@ public class OCRFragment extends Fragment {
     boolean ocrPostProcessing = true; // default ON
     boolean layoutAnalysis = false; // default OFF
     boolean paddleBestOcr = false; // default OFF
+    boolean multiColumnOcr = false; // default OFF
     try {
       android.content.SharedPreferences p =
           requireContext()
@@ -1010,6 +1015,7 @@ public class OCRFragment extends Fragment {
       ocrPostProcessing = p.getBoolean(BUNDLE_OCR_POST_PROCESSING, true);
       layoutAnalysis = p.getBoolean(BUNDLE_LAYOUT_ANALYSIS, false);
       paddleBestOcr = p.getBoolean(BUNDLE_PADDLE_BEST_OCR, false);
+      multiColumnOcr = p.getBoolean(MultiColumnOcrPrefs.KEY, false);
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }
@@ -1019,6 +1025,7 @@ public class OCRFragment extends Fragment {
         initialMode == OCR_MODE_PADDLE ? android.view.View.GONE : android.view.View.VISIBLE);
     cbLayoutAnalysis.setChecked(layoutAnalysis && layoutFeatureEnabled);
     cbPaddleBestOcr.setChecked(fixedPaddleMode && paddleBestOcr);
+    cbMultiColumnOcr.setChecked(fixedPaddleMode && multiColumnOcr);
     rg.setOnCheckedChangeListener(
         (group, checkedId) ->
             cbOcrPostProc.setVisibility(
@@ -1062,7 +1069,10 @@ public class OCRFragment extends Fragment {
                             .putBoolean(BUNDLE_LAYOUT_ANALYSIS, cbLayoutAnalysis.isChecked())
                             .putBoolean(
                                 BUNDLE_PADDLE_BEST_OCR,
-                                fixedPaddleMode && cbPaddleBestOcr.isChecked());
+                                fixedPaddleMode && cbPaddleBestOcr.isChecked())
+                            .putBoolean(
+                                MultiColumnOcrPrefs.KEY,
+                                fixedPaddleMode && cbMultiColumnOcr.isChecked());
                     if (postProcessingVisible) {
                       editor.putBoolean(BUNDLE_OCR_POST_PROCESSING, postProcessingSelected);
                     }
@@ -1121,6 +1131,13 @@ public class OCRFragment extends Fragment {
                         .append(paddleBestLabel)
                         .append(": ")
                         .append(paddleBestState);
+                    String multiColumnLabel = getString(R.string.opt_multi_column_ocr);
+                    String multiColumnState = cbMultiColumnOcr.isChecked() ? "[ON]" : "[OFF]";
+                    toastMsg
+                        .append("\n")
+                        .append(multiColumnLabel)
+                        .append(": ")
+                        .append(multiColumnState);
                   }
                   UIUtils.showToast(requireContext(), toastMsg.toString(), Toast.LENGTH_SHORT);
                   prepareReprocessAfterModelChange();
@@ -1854,7 +1871,9 @@ public class OCRFragment extends Fragment {
                       ocrWords =
                           OCRPostProcessor.processWithDictionary(ocrWords, lang, dictionaryManager);
                       // Derive text from processed words instead of processing text separately
-                      ocrText = OCRPostProcessor.wordsToText(ocrWords);
+                      ocrText =
+                          OCRPostProcessor.wordsToText(
+                              ocrWords, MultiColumnOcrPrefs.isEnabled(requireContext()));
                       if (ocrText == null || ocrText.trim().isEmpty()) ocrText = "";
                       // Log quality statistics
                       OCRPostProcessor.OcrQualityStats stats =
@@ -1871,7 +1890,9 @@ public class OCRFragment extends Fragment {
                                 ? "OCR post-processing skipped for PaddleOCR"
                                 : "OCR post-processing disabled by user preference"));
                     // Even without post-processing, derive text from words for consistency
-                    ocrText = OCRPostProcessor.wordsToText(ocrWords); // TODO
+                    ocrText =
+                        OCRPostProcessor.wordsToText(
+                            ocrWords, MultiColumnOcrPrefs.isEnabled(requireContext()));
                     if (ocrText == null || ocrText.trim().isEmpty()) ocrText = "";
                   }
 

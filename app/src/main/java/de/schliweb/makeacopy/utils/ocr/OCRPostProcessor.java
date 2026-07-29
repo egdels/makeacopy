@@ -693,6 +693,23 @@ public class OCRPostProcessor {
    *     null or empty
    */
   public static String wordsToText(List<RecognizedWord> words) {
+    return wordsToText(words, false);
+  }
+
+  /**
+   * Variant of {@link #wordsToText(List)} with optional multi-column layout reconstruction
+   * (newspapers, magazines). When {@code multiColumn} is {@code true} and the box geometry forms a
+   * multi-column layout (see {@link MultiColumnLayoutPolicy}), the text is rebuilt segment by
+   * segment in column reading order: full-width headlines first, then each column completely
+   * top-to-bottom, columns left-to-right (or right-to-left for predominantly RTL content).
+   * Otherwise the regular single-flow reconstruction is used.
+   *
+   * @param words The list of recognized words to convert
+   * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
+   * @return The extracted text with proper line breaks and paragraphs, or empty string if words is
+   *     null or empty
+   */
+  public static String wordsToText(List<RecognizedWord> words, boolean multiColumn) {
     if (words == null || words.isEmpty()) {
       return "";
     }
@@ -705,6 +722,25 @@ public class OCRPostProcessor {
       return verticalWordsToText(words);
     }
 
+    if (multiColumn) {
+      String columnText = multiColumnWordsToText(words);
+      if (columnText != null) {
+        return columnText;
+      }
+    }
+
+    return horizontalWordsToText(words);
+  }
+
+  /**
+   * Reconstructs the text of a horizontal (LTR/RTL) page: words are grouped into visual lines by
+   * vertical proximity, ordered by the line's reading direction and joined with paragraph
+   * detection based on vertical gaps.
+   *
+   * @param words the recognized words (non-null, non-empty)
+   * @return the reconstructed text
+   */
+  private static String horizontalWordsToText(List<RecognizedWord> words) {
     // Sort words by position using a strict, transitive order. Line grouping below still decides
     // which nearby words belong together; the initial sort must not use pair-dependent thresholds
     // because TimSort rejects non-transitive comparators on dense Paddle OCR boxes.
@@ -815,6 +851,52 @@ public class OCRPostProcessor {
       lastLineBottomY = lineBottomY;
     }
 
+    return result.toString();
+  }
+
+  /**
+   * Reconstructs the text of a multi-column page (newspapers, magazines): the column grouping is
+   * delegated to {@link MultiColumnLayoutPolicy#groupIntoColumnSegments}, then every segment (a
+   * full-width band or one column of a band) is rebuilt with the regular line/paragraph logic and
+   * the segments are joined with blank lines. Columns are read right-to-left when the page content
+   * is predominantly RTL.
+   *
+   * @param words the recognized words (non-null, non-empty)
+   * @return the reconstructed text, or {@code null} if the boxes do not form a multi-column layout
+   *     (caller falls back to the single-flow reconstruction)
+   */
+  private static String multiColumnWordsToText(List<RecognizedWord> words) {
+    int n = words.size();
+    float[] lefts = new float[n];
+    float[] tops = new float[n];
+    float[] rights = new float[n];
+    float[] bottoms = new float[n];
+    for (int i = 0; i < n; i++) {
+      android.graphics.RectF r = words.get(i).getBoundingBox();
+      lefts[i] = r.left;
+      tops[i] = r.top;
+      rights[i] = r.right;
+      bottoms[i] = r.bottom;
+    }
+    boolean rtl = isLineRtl(words);
+    List<int[]> segments =
+        MultiColumnLayoutPolicy.groupIntoColumnSegments(lefts, tops, rights, bottoms, rtl);
+    if (segments.size() < 2) {
+      return null;
+    }
+    StringBuilder result = new StringBuilder();
+    for (int s = 0; s < segments.size(); s++) {
+      List<RecognizedWord> segmentWords = new ArrayList<>(segments.get(s).length);
+      for (int idx : segments.get(s)) {
+        segmentWords.add(words.get(idx));
+      }
+      String segmentText = horizontalWordsToText(segmentWords);
+      if (segmentText.isEmpty()) continue;
+      if (result.length() > 0) {
+        result.append("\n\n");
+      }
+      result.append(segmentText);
+    }
     return result.toString();
   }
 

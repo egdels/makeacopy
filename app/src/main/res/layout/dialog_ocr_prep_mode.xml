@@ -73,5 +73,13 @@
             android:text="@string/opt_paddle_best_ocr"
             android:visibility="gone" />
 
+        <CheckBox
+            android:id="@+id/checkbox_multi_column_ocr_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/opt_multi_column_ocr"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>
