@@ -370,4 +370,76 @@ public class PaddleResultBuilderVerticalTest {
                         new String[] {"", "", ""}, new float[] {0f, 0f, 0f});
         assertEquals(0, chosen);
     }
+
+    // ---------------------------------------------------------------------
+    // mergeVerticalFragments
+    // ---------------------------------------------------------------------
+
+    @Test
+    public void mergeVerticalFragments_smallGlyphBelowColumn_mergedIntoColumn() {
+        // Issue #88: kleines っ/。 wird von der DB-Detection als eigenes Mini-Quad
+        // direkt unter der Spalte abgetrennt und muss zurückgemerged werden.
+        Quad column = rect(350, 100, 36, 230); // Spalte bis y=330
+        Quad fragment = rect(352, 322, 21, 38); // っ überlappt/knapp darunter
+        Quad otherColumn = rect(200, 100, 36, 1200);
+
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(
+                        Arrays.asList(column, fragment, otherColumn));
+
+        assertEquals(2, merged.size());
+        // Die gemergte Spalte umfasst nun die Bounding-Box-Union.
+        Quad mergedColumn = null;
+        for (Quad q : merged) {
+            if (q.minX() < 300) continue;
+            mergedColumn = q;
+        }
+        assertTrue(mergedColumn != null);
+        assertEquals(350.0, mergedColumn.minX(), 1e-9);
+        assertEquals(100.0, mergedColumn.minY(), 1e-9);
+        assertEquals(386.0, mergedColumn.maxX(), 1e-9);
+        assertEquals(360.0, mergedColumn.maxY(), 1e-9);
+    }
+
+    @Test
+    public void mergeVerticalFragments_fragmentFarAway_staysStandalone() {
+        Quad column = rect(350, 100, 36, 230);
+        Quad otherColumn = rect(200, 100, 36, 1200);
+        // Fragment weit unterhalb (Gap >> 1.5 × mediane Breite) → bleibt eigenständig.
+        Quad farFragment = rect(352, 800, 21, 30);
+
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(
+                        Arrays.asList(column, farFragment, otherColumn));
+
+        assertEquals(3, merged.size());
+    }
+
+    @Test
+    public void mergeVerticalFragments_fragmentWithoutXOverlap_staysStandalone() {
+        Quad column = rect(350, 100, 36, 230);
+        Quad otherColumn = rect(200, 100, 36, 1200);
+        // Fragment horizontal zwischen den Spalten, ohne X-Overlap → bleibt eigenständig.
+        Quad besideFragment = rect(280, 320, 21, 30);
+
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(
+                        Arrays.asList(column, besideFragment, otherColumn));
+
+        assertEquals(3, merged.size());
+    }
+
+    @Test
+    public void mergeVerticalFragments_noTallQuads_returnsInputUnchanged() {
+        List<Quad> qs =
+                Arrays.asList(rect(0, 0, 400, 30), rect(0, 50, 380, 30));
+        assertSame(qs, PaddleResultBuilder.mergeVerticalFragments(qs));
+    }
+
+    @Test
+    public void mergeVerticalFragments_noFragments_returnsInputUnchanged() {
+        List<Quad> qs =
+                Arrays.asList(rect(300, 0, 30, 400), rect(200, 0, 30, 380));
+        assertSame(qs, PaddleResultBuilder.mergeVerticalFragments(qs));
+    }
 }

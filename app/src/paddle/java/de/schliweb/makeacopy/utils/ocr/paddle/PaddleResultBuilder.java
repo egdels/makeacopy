@@ -74,6 +74,36 @@ final class PaddleResultBuilder {
      */
     @VisibleForTesting static final double VERTICAL_LAYOUT_DOMINANCE = 0.5;
 
+    /**
+     * Weißer Rand um rotierte Hochkant-Crops vor der Recognition, als Anteil der
+     * (rotierten) Crop-Höhe. Ohne diesen Kontext-Rand verschluckt PP-OCRv5 in
+     * vertikalen CJK-Spalten systematisch kleine Glyphen (っ/ッ, 。): das Rec-Modell
+     * braucht Größenkontext, um kleine Kana von ihren großen Pendants (つ) zu
+     * unterscheiden. Empirisch kalibriert am Issue-#88-Eval (jpn vertikal):
+     * 0.4 → っ 5/5 statt 1/5, ohne Regression bei horizontalem Layout.
+     */
+    @VisibleForTesting static final double VERTICAL_CROP_PAD_FRACTION = 0.4;
+
+    /**
+     * Maximale Größe (relativ zur medianen Spaltenbreite) eines Det-Quads, damit es als
+     * „Fragment" gilt (einzelne kleine Glyphe wie 。 oder versetztes っ, die die
+     * DB-Detection von der Spalte abgetrennt hat). Fragmente werden per
+     * {@link #mergeVerticalFragments(List)} wieder in ihre Spalte integriert.
+     */
+    @VisibleForTesting static final double VERTICAL_FRAGMENT_MAX_SIZE_FACTOR = 1.5;
+
+    /**
+     * Maximaler vertikaler Abstand (relativ zur medianen Spaltenbreite) zwischen einem
+     * Fragment und einer Spalte, damit das Fragment in die Spalte gemerged wird.
+     */
+    @VisibleForTesting static final double VERTICAL_FRAGMENT_MAX_GAP_FACTOR = 1.5;
+
+    /**
+     * Horizontaler Toleranzbereich (relativ zur medianen Spaltenbreite), um den das
+     * Center-X eines Fragments außerhalb der Spalten-X-Range liegen darf.
+     */
+    @VisibleForTesting static final double VERTICAL_FRAGMENT_X_SLACK_FACTOR = 0.5;
+
     private PaddleResultBuilder() {}
 
     private static final class QuadRecognition {
@@ -129,6 +159,20 @@ final class PaddleResultBuilder {
         boolean verticalLayout = isVerticalLayout(effectiveQuads);
         if (verticalLayout) {
             Log.i(TAG, "vertical text layout detected (quads=" + effectiveQuads.size() + ")");
+            // Kleine, von der Detection abgetrennte Einzel-Glyphen (typisch: 。 oder
+            // versetztes っ) zurück in ihre Spalte mergen. Isoliert erkannt würden sie
+            // vom Rec-Modell als „o"/„0" fehlgedeutet; im Spaltenkontext stimmen sie.
+            List<Quad> mergedQuads = mergeVerticalFragments(effectiveQuads);
+            if (mergedQuads.size() != effectiveQuads.size()) {
+                Log.i(
+                        TAG,
+                        "vertical fragment merge: "
+                                + effectiveQuads.size()
+                                + " -> "
+                                + mergedQuads.size()
+                                + " quads");
+                effectiveQuads = mergedQuads;
+            }
         }
 
         // Reading-Order via Zeilen-Gruppierung: vertikales Center-Y-Overlap mit Toleranz
@@ -276,8 +320,8 @@ final class PaddleResultBuilder {
             PaddleRecOrtRunner.RecOutput out;
             boolean rotatedVertical = false;
             if (isTallCrop(crop)) {
-                Bitmap ccw = rotateBitmap(crop, 270);
-                Bitmap cw = rotateBitmap(crop, 90);
+                Bitmap ccw = padWhiteVertical(rotateBitmap(crop, 270));
+                Bitmap cw = padWhiteVertical(rotateBitmap(crop, 90));
                 try {
                     PaddleRecOrtRunner.RecOutput out0 = rec.recognize(crop);
                     PaddleRecOrtRunner.RecOutput outCcw = rec.recognize(ccw);
@@ -535,6 +579,108 @@ final class PaddleResultBuilder {
             columns.add(current);
         }
         return columns;
+    }
+
+    /**
+     * Merged kleine Fragment-Quads (einzelne Glyphen wie 。 oder versetztes っ, die die
+     * DB-Detection von ihrer Textspalte abgetrennt hat) in die überlappende Spalte.
+     * Ein Quad gilt als Fragment, wenn Breite und Höhe kleiner als
+     * {@link #VERTICAL_FRAGMENT_MAX_SIZE_FACTOR} × mediane Spaltenbreite sind. Es wird
+     * in die Spalte gemerged, deren X-Range (± {@link #VERTICAL_FRAGMENT_X_SLACK_FACTOR}
+     * × mediane Breite) sein Center-X enthält und deren vertikaler Abstand am kleinsten
+     * ist (max. {@link #VERTICAL_FRAGMENT_MAX_GAP_FACTOR} × mediane Breite). Merge =
+     * achsenparallele Bounding-Box-Union; der Score der Spalte bleibt erhalten.
+     * Fragmente ohne passende Spalte bleiben eigenständig.
+     */
+    @VisibleForTesting
+    static List<Quad> mergeVerticalFragments(List<Quad> quads) {
+        List<Quad> tallQuads = new ArrayList<>();
+        for (Quad q : quads) {
+            if (isTallQuad(q)) tallQuads.add(q);
+        }
+        if (tallQuads.isEmpty()) return quads;
+
+        double[] widths = new double[tallQuads.size()];
+        for (int i = 0; i < tallQuads.size(); i++) {
+            widths[i] = Math.max(1.0, tallQuads.get(i).maxX() - tallQuads.get(i).minX());
+        }
+        java.util.Arrays.sort(widths);
+        double medianWidth = widths[widths.length / 2];
+        double maxFragmentSize = VERTICAL_FRAGMENT_MAX_SIZE_FACTOR * medianWidth;
+        double maxGap = VERTICAL_FRAGMENT_MAX_GAP_FACTOR * medianWidth;
+        double xSlack = VERTICAL_FRAGMENT_X_SLACK_FACTOR * medianWidth;
+
+        // Spalten als mutable Bounding-Boxen [minX, minY, maxX, maxY, score].
+        List<double[]> columns = new ArrayList<>();
+        List<Quad> fragments = new ArrayList<>();
+        for (Quad q : quads) {
+            double w = q.maxX() - q.minX();
+            double h = q.maxY() - q.minY();
+            if (w < maxFragmentSize && h < maxFragmentSize) {
+                fragments.add(q);
+            } else {
+                columns.add(new double[] {q.minX(), q.minY(), q.maxX(), q.maxY(), q.score});
+            }
+        }
+        if (fragments.isEmpty()) return quads;
+
+        List<Quad> standalone = new ArrayList<>();
+        for (Quad f : fragments) {
+            double cx = centerX(f);
+            double[] best = null;
+            double bestGap = Double.MAX_VALUE;
+            for (double[] col : columns) {
+                if (cx < col[0] - xSlack || cx > col[2] + xSlack) continue;
+                double gap = Math.max(0.0, Math.max(col[1] - f.maxY(), f.minY() - col[3]));
+                if (gap < bestGap) {
+                    bestGap = gap;
+                    best = col;
+                }
+            }
+            if (best != null && bestGap < maxGap) {
+                best[0] = Math.min(best[0], f.minX());
+                best[1] = Math.min(best[1], f.minY());
+                best[2] = Math.max(best[2], f.maxX());
+                best[3] = Math.max(best[3], f.maxY());
+            } else {
+                standalone.add(f);
+            }
+        }
+
+        List<Quad> result = new ArrayList<>(columns.size() + standalone.size());
+        for (double[] col : columns) {
+            result.add(
+                    new Quad(
+                            new double[] {col[0], col[2], col[2], col[0]},
+                            new double[] {col[1], col[1], col[3], col[3]},
+                            col[4]));
+        }
+        result.addAll(standalone);
+        return result;
+    }
+
+    /**
+     * Umgibt einen (bereits rotierten) Vertikal-Crop mit einem weißen Rand von
+     * {@link #VERTICAL_CROP_PAD_FRACTION} × Crop-Höhe. Der Rand gibt dem Rec-Modell den
+     * nötigen Größenkontext, damit kleine Kana (っ/ッ) und Interpunktion (。) in langen
+     * Spalten-Crops nicht verschluckt bzw. als große Pendants fehlgedeutet werden.
+     * Die Quelle wird recycelt, sofern ein neues Bitmap erzeugt wurde.
+     */
+    private static Bitmap padWhiteVertical(Bitmap src) {
+        int pad = (int) Math.round(VERTICAL_CROP_PAD_FRACTION * src.getHeight());
+        if (pad <= 0) return src;
+        Bitmap out =
+                Bitmap.createBitmap(
+                        src.getWidth() + 2 * pad,
+                        src.getHeight() + 2 * pad,
+                        Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(out);
+        canvas.drawColor(android.graphics.Color.WHITE);
+        canvas.drawBitmap(src, pad, pad, null);
+        if (!src.isRecycled()) {
+            src.recycle();
+        }
+        return out;
     }
 
     /**
