@@ -2152,7 +2152,9 @@ public class OcrReviewFragment extends Fragment {
   private String buildFullText(@Nullable OcrDoc doc) {
     if (doc == null) return "";
     java.util.List<RecognizedWord> words = toRecognizedWords(doc);
-    String text = OCRPostProcessor.wordsToText(words);
+    String text =
+        OCRPostProcessor.wordsToText(
+            words, de.schliweb.makeacopy.utils.ocr.MultiColumnOcrPrefs.isEnabled(getContext()));
     if (text != null && !text.isEmpty()) return text;
 
     StringBuilder sb = new StringBuilder();
@@ -2266,7 +2268,10 @@ public class OcrReviewFragment extends Fragment {
           new ViewModelProvider(requireActivity())
               .get(de.schliweb.makeacopy.ui.ocr.OCRViewModel.class);
       java.util.List<RecognizedWord> reviewedWords = toRecognizedWords(doc);
-      String reviewedText = OCRPostProcessor.wordsToText(reviewedWords);
+      String reviewedText =
+          OCRPostProcessor.wordsToText(
+              reviewedWords,
+              de.schliweb.makeacopy.utils.ocr.MultiColumnOcrPrefs.isEnabled(getContext()));
       if (reviewedText == null || reviewedText.isEmpty()) reviewedText = buildFullText(doc);
       ocrViewModel.applyReviewResult(reviewedText, reviewedWords);
     } catch (Throwable t) {
