@@ -9,7 +9,9 @@
  */
 package de.schliweb.makeacopy.utils.ocr;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
@@ -109,6 +111,97 @@ public class JapaneseVerticalEvalTest {
                             + inH
                             + (inGt > 0 && inV < inGt ? "  << MISSING IN VERTICAL" : ""));
         }
+    }
+
+    /**
+     * Realistische vertikale Bilder aus Issue #88 (Tester-Feedback zu 4.6.2-rc2):
+     *
+     * <ul>
+     *   <li>{@code vertical_jpn_noto.png} — digital gerendert mit Noto Sans CJK JP und
+     *       realistischem (engem) Buchsatz-Zeichenabstand.
+     *   <li>{@code vertical_jpn_book.jpg} — Foto des echten Buchs (Serifenschrift,
+     *       Kamerabeleuchtung, 478×3872 px Hochformat-Ausschnitt).
+     * </ul>
+     *
+     * <p>Gleicher Referenztext wie das synthetische Bild → gleiche Ground-Truth. Der Test
+     * loggt CER und die Statistik der kritischen Zeichen pro Bild getrennt. Asserts:
+     * Engine liefert nicht-leeren Text pro Bild und die CER bleibt unter den
+     * Regressionsschwellen (gemessen auf Pixel_9a-Emulator/arm64 nach der
+     * Quad-Aufweitung + Foto-Enhance-Optimierung: noto 0.0247, Buchfoto 0.0864;
+     * Schwellen mit Puffer für Geräte-Varianz).
+     */
+    @Test
+    public void evaluateRealisticVerticalImages() throws Exception {
+        assumeTrue(
+                "arm64-v8a not present — skipping Japanese vertical eval",
+                Arrays.asList(Build.SUPPORTED_ABIS).contains("arm64-v8a"));
+
+        Context ctx = ApplicationProvider.getApplicationContext();
+        Context testCtx = InstrumentationRegistry.getInstrumentation().getContext();
+
+        String gt = loadText(testCtx, "eval/jpn/vertical_jpn.gt.txt");
+        String[] assets = {"eval/jpn/vertical_jpn_noto.png", "eval/jpn/vertical_jpn_book.jpg"};
+
+        OcrEngine engine = PaddleEngineProvider.create(ctx, "jpn");
+        assertNotNull("Paddle engine must be creatable for jpn", engine);
+        try {
+            for (String asset : assets) {
+                Bitmap bmp = loadBitmap(testCtx, asset);
+                assumeTrue("eval asset missing — skipping: " + asset, bmp != null);
+
+                double maxCer = asset.endsWith(".jpg") ? 0.12 : 0.05;
+                OCRHelper.OcrResultWords res = engine.run(bmp);
+                String pred = res != null && res.text != null ? res.text : "";
+                Log.i(TAG, "[" + asset + "] conf=" + (res != null ? res.meanConfidence : null));
+                Log.i(TAG, "[" + asset + "] PRED:\n" + pred);
+                Log.i(
+                        TAG,
+                        String.format(
+                                java.util.Locale.ROOT,
+                                "[%s] CER=%.4f (%dx%d px)",
+                                asset,
+                                cer(gt, pred),
+                                bmp.getWidth(),
+                                bmp.getHeight()));
+                for (String ch : CRITICAL_CHARS) {
+                    int inGt = count(gt, ch);
+                    int inPred = count(pred, ch);
+                    Log.i(
+                            TAG,
+                            "["
+                                    + asset
+                                    + "] critical char '"
+                                    + ch
+                                    + "': gt="
+                                    + inGt
+                                    + " pred="
+                                    + inPred
+                                    + (inGt > 0 && inPred < inGt ? "  << MISSING" : ""));
+                }
+                assertTrue("OCR must produce non-empty text for " + asset, !pred.isEmpty());
+                assertTrue(
+                        "CER regression for " + asset + ": " + cer(gt, pred) + " > " + maxCer,
+                        cer(gt, pred) <= maxCer);
+            }
+        } finally {
+            engine.close();
+        }
+    }
+
+    /**
+     * Guard gegen zu aggressive Normalisierung: Die CER-Metrik darf reale OCR-Fehler wie
+     * fehlendes kleines っ (引っ越す → 引越す), fehlende Interpunktion (、 。) oder
+     * Halbbreiten-Substitution (１ → 1) nicht verdecken. Nur Whitespace ist normalisiert.
+     */
+    @Test
+    public void cerMetric_doesNotHideSmallKanaPunctuationOrWidthErrors() {
+        assertTrue("small っ omission must count as error", cer("引っ越す", "引越す") > 0);
+        assertTrue("missing 。 must count as error", cer("なくなった。", "なくなった") > 0);
+        assertTrue("missing 、 must count as error", cer("すると、１億円", "すると１億円") > 0);
+        assertTrue("small→large kana must count as error", cer("マンション", "マンシヨン") > 0);
+        assertTrue("fullwidth １ vs 1 must count as error", cer("１億円", "1億円") > 0);
+        // Nur layoutbedingter Whitespace (Zeilenumbrüche) darf neutralisiert werden.
+        assertEquals(0.0, cer("引っ越す\nこと", "引っ越すこと"), 1e-9);
     }
 
     // ------------------------------------------------------------------

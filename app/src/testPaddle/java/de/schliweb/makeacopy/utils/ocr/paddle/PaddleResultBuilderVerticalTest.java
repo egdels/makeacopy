@@ -430,6 +430,73 @@ public class PaddleResultBuilderVerticalTest {
     }
 
     @Test
+    public void mergeVerticalFragments_tightBookSpacing_smallTsuNotDropped() {
+        // Realistischer Buchsatz (Issue #88 Tester-Feedback): Zeichenabstand ≈ 0, das
+        // kleine っ sitzt mit nur ~4px Lücke direkt unter der Spalte. Es darf weder als
+        // Rauschen verworfen noch eigenständig bleiben.
+        Quad column = rect(320, 100, 36, 300); // Spalte bis y=400
+        Quad fragment = rect(336, 404, 14, 16); // kleines っ, 4px Gap, rechts versetzt
+        Quad otherColumn = rect(200, 100, 36, 400);
+
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(
+                        Arrays.asList(column, fragment, otherColumn));
+
+        assertEquals(2, merged.size());
+        Quad mergedColumn = null;
+        for (Quad q : merged) {
+            if (q.minX() >= 300) mergedColumn = q;
+        }
+        assertTrue(mergedColumn != null);
+        assertEquals(420.0, mergedColumn.maxY(), 1e-9);
+    }
+
+    @Test
+    public void mergeVerticalFragments_punctuationOffsetTopRight_mergedIntoOwnColumn() {
+        // Typografisch korrekt sitzt 。/、 im vertikalen Satz rechts oben in seiner
+        // Zelle — das Fragment-Center liegt also in der rechten Hälfte der Spalte.
+        Quad column = rect(320, 100, 36, 300); // Spalte [320..356], bis y=400
+        Quad punct = rect(344, 402, 12, 12); // 。 rechts oben in der Folgezelle
+        Quad leftColumn = rect(200, 100, 36, 500);
+
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(
+                        Arrays.asList(column, punct, leftColumn));
+
+        assertEquals(2, merged.size());
+        Quad mergedColumn = null;
+        for (Quad q : merged) {
+            if (q.minX() >= 300) mergedColumn = q;
+        }
+        assertTrue(mergedColumn != null);
+        assertEquals(414.0, mergedColumn.maxY(), 1e-9);
+    }
+
+    @Test
+    public void mergeVerticalFragments_twoAdjacentColumns_fragmentJoinsVerticallyNearestColumn() {
+        // Mehrspaltiger Fall: Das Fragment überlappt per X-Slack beide Spalten,
+        // ist aber nur zur rechten Spalte vertikal benachbart → dort mergen.
+        Quad rightColumn = rect(320, 100, 36, 300); // bis y=400
+        Quad leftColumn = rect(280, 100, 36, 260); // bis y=360
+        Quad fragment = rect(322, 404, 14, 16); // 4px unter rightColumn
+
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(
+                        Arrays.asList(rightColumn, leftColumn, fragment));
+
+        assertEquals(2, merged.size());
+        Quad mergedRight = null;
+        Quad unchangedLeft = null;
+        for (Quad q : merged) {
+            if (q.minX() >= 300) mergedRight = q;
+            else unchangedLeft = q;
+        }
+        assertTrue(mergedRight != null && unchangedLeft != null);
+        assertEquals(420.0, mergedRight.maxY(), 1e-9);
+        assertEquals(360.0, unchangedLeft.maxY(), 1e-9);
+    }
+
+    @Test
     public void mergeVerticalFragments_noTallQuads_returnsInputUnchanged() {
         List<Quad> qs =
                 Arrays.asList(rect(0, 0, 400, 30), rect(0, 50, 380, 30));
@@ -441,5 +508,60 @@ public class PaddleResultBuilderVerticalTest {
         List<Quad> qs =
                 Arrays.asList(rect(300, 0, 30, 400), rect(200, 0, 30, 380));
         assertSame(qs, PaddleResultBuilder.mergeVerticalFragments(qs));
+    }
+
+    // --- expandTallQuad: Sicherheitsrand hochkanter Det-Quads (Issue #88) ---
+
+    @Test
+    public void expandTallQuad_expandsByFractionOfColumnWidth() {
+        Quad column = rect(100, 100, 40, 400);
+        Quad expanded =
+                PaddleResultBuilder.expandTallQuad(column, 1000, 1000, Collections.emptyList());
+        double m = PaddleResultBuilder.TALL_QUAD_EXPAND_FRACTION * 40;
+        assertEquals(100 - m, expanded.minX(), 1e-9);
+        assertEquals(140 + m, expanded.maxX(), 1e-9);
+        assertEquals(100 - m, expanded.minY(), 1e-9);
+        assertEquals(500 + m, expanded.maxY(), 1e-9);
+    }
+
+    @Test
+    public void expandTallQuad_clampsToImageBounds() {
+        Quad column = rect(0, 0, 40, 400);
+        Quad expanded =
+                PaddleResultBuilder.expandTallQuad(column, 42, 401, Collections.emptyList());
+        assertEquals(0.0, expanded.minX(), 1e-9);
+        assertEquals(42.0, expanded.maxX(), 1e-9);
+        assertEquals(0.0, expanded.minY(), 1e-9);
+        assertEquals(401.0, expanded.maxY(), 1e-9);
+    }
+
+    @Test
+    public void expandTallQuad_limitsHorizontalGrowthToHalfGapTowardsNeighbor() {
+        // Enger Spaltensatz: Nachbarspalte endet bei x=96, Lücke zu x=100 beträgt 4 px.
+        Quad column = rect(100, 100, 40, 400);
+        Quad neighbor = rect(56, 100, 40, 400);
+        Quad expanded =
+                PaddleResultBuilder.expandTallQuad(
+                        column, 1000, 1000, Arrays.asList(neighbor, column));
+        assertEquals(98.0, expanded.minX(), 1e-9); // 100 - 4/2
+        double m = PaddleResultBuilder.TALL_QUAD_EXPAND_FRACTION * 40;
+        assertEquals(140 + m, expanded.maxX(), 1e-9); // rechts kein Nachbar
+    }
+
+    @Test
+    public void expandTallQuad_ignoresNeighborsWithoutVerticalOverlap() {
+        Quad column = rect(100, 100, 40, 400);
+        Quad above = rect(96, 0, 40, 50); // kein y-Überlapp
+        Quad expanded =
+                PaddleResultBuilder.expandTallQuad(
+                        column, 1000, 1000, Arrays.asList(above, column));
+        double m = PaddleResultBuilder.TALL_QUAD_EXPAND_FRACTION * 40;
+        assertEquals(100 - m, expanded.minX(), 1e-9);
+    }
+
+    @Test
+    public void expandTallQuad_returnsHorizontalQuadUnchanged() {
+        Quad line = rect(100, 100, 400, 40);
+        assertSame(line, PaddleResultBuilder.expandTallQuad(line, 1000, 1000, Collections.emptyList()));
     }
 }
