@@ -85,14 +85,40 @@ final class PaddleResultBuilder {
     @VisibleForTesting static final double VERTICAL_CROP_PAD_FRACTION = 0.4;
 
     /**
-     * Weißrand-Anteil für kontrastarme Foto-Crops (Buchfotos mit Grauschleier).
-     * Empirisch am Issue-#88-Eval kalibriert: das Rec-Modell braucht bei unscharfen
-     * Serifen-Fotos deutlich mehr Größenkontext, um kleine Kana (っ/ョ) und
-     * Interpunktion (、。) nicht zu verschlucken; 0.7 senkt die CER des
-     * Buchfoto-Evals von 0.16 auf 0.05, während saubere Crops (volle Luminanzspanne)
-     * unverändert mit {@link #VERTICAL_CROP_PAD_FRACTION} verarbeitet werden.
+     * Weißrand-Anteil der primären Variante für kontrastarme Foto-Crops (Buchfotos
+     * mit Grauschleier): starkes Downscaling der Glyphen im 48-px-Rec-Input wirkt bei
+     * unscharfen Serifen-Fotos wie eine Rauschglättung und stabilisiert kleine Kana
+     * im Zeilenkontext. Empirisch am Issue-#88-Eval kalibriert; saubere Crops (volle
+     * Luminanzspanne) werden unverändert mit {@link #VERTICAL_CROP_PAD_FRACTION}
+     * verarbeitet.
      */
     @VisibleForTesting static final double VERTICAL_CROP_PAD_FRACTION_PHOTO = 0.7;
+
+    /**
+     * Zweite Pad-Variante für kontrastarme Foto-Crops: kleiner Weißrand, sodass die
+     * Glyphen nahezu die volle 48-px-Höhe des Rec-Inputs behalten. Blurry Fotos werden
+     * pro Crop mit beiden Pad-Varianten (Downscaling vs. volle Skala) erkannt und die
+     * Texte per {@link #mergeAlignedCandidateTexts(String, String, boolean)} vereinigt;
+     * versetzte Interpunktion (、) überlebt meist nur in der Voll-Skala-Variante,
+     * kleine Kana (っ) nur in der Downscale-Variante.
+     */
+    @VisibleForTesting static final double VERTICAL_CROP_PAD_FRACTION_PHOTO_FULL_SCALE = 0.15;
+
+    /**
+     * Schärfungs-σ pro effektivem Downscale-Faktor für Foto-Crops: das Unsharp-Masking
+     * in {@link #enhanceLowContrastCrop(Bitmap, double)} muss auf der finalen
+     * Rec-Skala (48-px-Inputhöhe) wirken, nicht auf der nativen Crop-Auflösung — sonst
+     * mittelt das Downscale die geschärften Kanten wieder weg. σ = Faktor ×
+     * (Crop-Breite × (1 + 2·Pad)) / 48; kalibriert am Issue-#88-Buchfoto-Eval.
+     */
+    @VisibleForTesting static final double PHOTO_SHARPEN_SIGMA_PER_DOWNSCALE = 1.7;
+
+    /**
+     * Mindest-Konfidenz beider Foto-Pad-Varianten, damit ihre Texte per Alignment
+     * vereinigt werden. Verhindert, dass eine fehlerhafte Variante (z. B. falsche
+     * Rotation, Garbage) Zeichen in das Ergebnis einschleust.
+     */
+    @VisibleForTesting static final float PHOTO_VARIANT_MIN_CONFIDENCE = 0.85f;
 
     /**
      * Schwellwert der Perzentil-Luminanzspanne (P98 − P2), unterhalb derer ein
@@ -133,6 +159,25 @@ final class PaddleResultBuilder {
      * Center-X eines Fragments außerhalb der Spalten-X-Range liegen darf.
      */
     @VisibleForTesting static final double VERTICAL_FRAGMENT_X_SLACK_FACTOR = 0.5;
+
+    /**
+     * Aufweitung hochkanter Det-Quads entlang der Spaltenachse (oben/unten), relativ
+     * zur Spaltenbreite. Deutlich größer als die horizontale Aufweitung
+     * ({@link #TALL_QUAD_EXPAND_FRACTION}), weil hängende Interpunktion (。 、) am
+     * Spaltenende bei engem Buchsatz von der DB-Detection regelmäßig komplett
+     * außerhalb der Box liegt (~eine halbe Zeichenzelle). Gegen Überlappungen mit
+     * gestapelten Nachbar-Quads derselben Spalte wird auf die halbe Lücke gekappt.
+     */
+    @VisibleForTesting static final double TALL_QUAD_EXPAND_FRACTION_COLUMN_AXIS = 0.5;
+
+    /**
+     * Maximale vertikale Lücke (relativ zur medianen Spaltenbreite), bis zu der zwei
+     * übereinanderliegende, stark x-überlappende Spalten-Quads als Detection-Split
+     * derselben Spalte gelten und vereint werden. Bewusst klein: echte Splits
+     * berühren/überlappen sich typischerweise; Absätze mit sichtbarem Abstand
+     * (≥ Zeichengröße) bleiben getrennt.
+     */
+    @VisibleForTesting static final double VERTICAL_STACKED_COLUMN_MAX_GAP_FACTOR = 0.15;
 
     private PaddleResultBuilder() {}
 
@@ -356,14 +401,29 @@ final class PaddleResultBuilder {
             // schmalen horizontalen Crops (z. B. Einzelzeichen) zu vermeiden.
             PaddleRecOrtRunner.RecOutput out;
             boolean rotatedVertical = false;
+            String overrideText = null;
             if (isTallCrop(crop)) {
                 // Kontrastarme Foto-Crops (Buchfotos): Kontrast spreizen + nachschärfen
                 // und mit größerem Weißrand erkennen. Kontrastreiche Crops werden auf
                 // die Tinten-Bounding-Box zurückgetrimmt (Weißraum der Quad-Aufweitung
                 // entfernen, Rec-Skalierung stabil halten).
                 double padFraction = VERTICAL_CROP_PAD_FRACTION;
-                Bitmap enhanced = enhanceLowContrastCrop(crop);
+                Bitmap variantB = null;
+                Bitmap enhanced =
+                        enhanceLowContrastCrop(
+                                crop, photoSharpenSigma(crop, VERTICAL_CROP_PAD_FRACTION_PHOTO));
                 if (enhanced != crop) {
+                    // Zweite Foto-Variante: kleiner Weißrand (volle Glyphenskala) mit
+                    // an diese Skala angepasster Schärfung. Blurry Serifen-Fotos liefern
+                    // je nach Variante komplementäre Ergebnisse (Downscale rettet kleine
+                    // Kana im Zeilenkontext, volle Skala rettet Interpunktion); die Texte
+                    // beider Varianten werden per Alignment vereinigt.
+                    variantB =
+                            enhanceLowContrastCrop(
+                                    crop,
+                                    photoSharpenSigma(
+                                            crop, VERTICAL_CROP_PAD_FRACTION_PHOTO_FULL_SCALE));
+                    if (variantB == crop) variantB = null;
                     crop.recycle();
                     crop = enhanced;
                     padFraction = VERTICAL_CROP_PAD_FRACTION_PHOTO;
@@ -400,14 +460,46 @@ final class PaddleResultBuilder {
                                         + " confCw="
                                         + outCw.confidence());
                     }
+                    if (rotatedVertical && variantB != null) {
+                        Bitmap rotB =
+                                padWhiteVertical(
+                                        rotateBitmap(variantB, chosen == 1 ? 270 : 90),
+                                        VERTICAL_CROP_PAD_FRACTION_PHOTO_FULL_SCALE);
+                        try {
+                            PaddleRecOrtRunner.RecOutput outB = rec.recognize(rotB);
+                            if (outB.text() != null
+                                    && !outB.text().isEmpty()
+                                    && outB.confidence() >= PHOTO_VARIANT_MIN_CONFIDENCE
+                                    && out.confidence() >= PHOTO_VARIANT_MIN_CONFIDENCE) {
+                                overrideText =
+                                        mergeAlignedCandidateTexts(
+                                                out.text(),
+                                                outB.text(),
+                                                out.confidence() >= outB.confidence());
+                                Log.d(
+                                        TAG,
+                                        "photo variant union: a='"
+                                                + out.text()
+                                                + "' b='"
+                                                + outB.text()
+                                                + "' -> '"
+                                                + overrideText
+                                                + "'");
+                            }
+                        } finally {
+                            if (!rotB.isRecycled()) rotB.recycle();
+                        }
+                    }
                 } finally {
                     if (ccw != null && ccw != crop && !ccw.isRecycled()) ccw.recycle();
                     if (cw != null && cw != crop && !cw.isRecycled()) cw.recycle();
+                    if (variantB != null && !variantB.isRecycled()) variantB.recycle();
                 }
             } else {
                 out = rec.recognize(crop);
             }
-            String text = out.text() != null ? out.text() : "";
+            String text =
+                    overrideText != null ? overrideText : (out.text() != null ? out.text() : "");
 
             // Debug-Dump pro Crop (nur wenn aktiv).
             if (ENABLE_DEBUG_DUMPS) {
@@ -676,8 +768,7 @@ final class PaddleResultBuilder {
                 columns.add(new double[] {q.minX(), q.minY(), q.maxX(), q.maxY(), q.score});
             }
         }
-        if (fragments.isEmpty()) return quads;
-
+        boolean anyFragmentMerged = false;
         List<Quad> standalone = new ArrayList<>();
         for (Quad f : fragments) {
             double cx = centerX(f);
@@ -696,10 +787,48 @@ final class PaddleResultBuilder {
                 best[1] = Math.min(best[1], f.minY());
                 best[2] = Math.max(best[2], f.maxX());
                 best[3] = Math.max(best[3], f.maxY());
+                anyFragmentMerged = true;
             } else {
                 standalone.add(f);
             }
         }
+
+        // Gestapelte Spaltenteile vereinen: Die DB-Detection zerlegt sehr lange
+        // Spalten gelegentlich in mehrere übereinanderliegende Quads; der Schnitt kann
+        // mitten durch eine Zeichenzelle (inkl. versetzter Interpunktion) laufen.
+        // Quads mit deutlicher X-Überlappung, die sich berühren/überlappen (Lücke ≤
+        // VERTICAL_STACKED_COLUMN_MAX_GAP_FACTOR × mediane Breite), werden daher zu
+        // einer Spalte vereint (Bounding-Box-Union, max. Score). Segmente mit echtem
+        // Abstand bleiben getrennt.
+        double stackedMaxGap = VERTICAL_STACKED_COLUMN_MAX_GAP_FACTOR * medianWidth;
+        boolean anyColumnMerged = false;
+        boolean mergedAny = true;
+        while (mergedAny) {
+            mergedAny = false;
+            outer:
+            for (int i = 0; i < columns.size(); i++) {
+                double[] a = columns.get(i);
+                for (int k = i + 1; k < columns.size(); k++) {
+                    double[] b = columns.get(k);
+                    double xOverlap = Math.min(a[2], b[2]) - Math.max(a[0], b[0]);
+                    double minW = Math.min(a[2] - a[0], b[2] - b[0]);
+                    double yGap = Math.max(b[1] - a[3], a[1] - b[3]);
+                    if (xOverlap >= 0.5 * minW && yGap <= stackedMaxGap) {
+                        a[0] = Math.min(a[0], b[0]);
+                        a[1] = Math.min(a[1], b[1]);
+                        a[2] = Math.max(a[2], b[2]);
+                        a[3] = Math.max(a[3], b[3]);
+                        a[4] = Math.max(a[4], b[4]);
+                        columns.remove(k);
+                        mergedAny = true;
+                        anyColumnMerged = true;
+                        break outer;
+                    }
+                }
+            }
+        }
+
+        if (!anyFragmentMerged && !anyColumnMerged) return quads;
 
         List<Quad> result = new ArrayList<>(columns.size() + standalone.size());
         for (double[] col : columns) {
@@ -717,7 +846,10 @@ final class PaddleResultBuilder {
      * Weitet hochkante Det-Quads (vertikale Textspalten, Höhe ≥ 2 × Breite) um
      * {@link #TALL_QUAD_EXPAND_FRACTION} × Spaltenbreite auf,
      * geklemmt an die Bildgrenzen. Nicht-hochkante Quads werden unverändert
-     * zurückgegeben.
+     * zurückgegeben. Entlang der Spaltenachse wird um
+     * {@link #TALL_QUAD_EXPAND_FRACTION_COLUMN_AXIS} × Breite aufgeweitet (hängende
+     * Interpunktion am Spaltenanfang/-ende); gegen gestapelte Nachbar-Quads derselben
+     * Spalte (x-Überlappung) wird auf die halbe Lücke gekappt.
      */
     @VisibleForTesting
     static Quad expandTallQuad(Quad q, int imgW, int imgH, List<Quad> allQuads) {
@@ -725,26 +857,40 @@ final class PaddleResultBuilder {
         double bh = q.maxY() - q.minY();
         if (bw <= 0 || bh < 2 * bw) return q;
         double m = TALL_QUAD_EXPAND_FRACTION * bw;
+        double mv = TALL_QUAD_EXPAND_FRACTION_COLUMN_AXIS * bw;
         // Horizontale Aufweitung je Seite auf die halbe Lücke zum nächsten vertikal
-        // überlappenden Nachbar-Quad begrenzen (enger Spaltensatz).
+        // überlappenden Nachbar-Quad begrenzen (enger Spaltensatz); entlang der
+        // Spaltenachse analog zum nächsten horizontal überlappenden Nachbarn.
         double mxLeft = m;
         double mxRight = m;
+        double myTop = mv;
+        double myBottom = mv;
         if (allQuads != null) {
             for (Quad other : allQuads) {
                 if (other == q) continue;
-                double overlap =
+                double overlapY =
                         Math.min(q.maxY(), other.maxY()) - Math.max(q.minY(), other.minY());
-                if (overlap <= 0) continue;
-                if (other.maxX() <= q.minX()) {
-                    mxLeft = Math.min(mxLeft, Math.max(0, (q.minX() - other.maxX()) / 2));
-                } else if (other.minX() >= q.maxX()) {
-                    mxRight = Math.min(mxRight, Math.max(0, (other.minX() - q.maxX()) / 2));
+                if (overlapY > 0) {
+                    if (other.maxX() <= q.minX()) {
+                        mxLeft = Math.min(mxLeft, Math.max(0, (q.minX() - other.maxX()) / 2));
+                    } else if (other.minX() >= q.maxX()) {
+                        mxRight = Math.min(mxRight, Math.max(0, (other.minX() - q.maxX()) / 2));
+                    }
+                }
+                double overlapX =
+                        Math.min(q.maxX(), other.maxX()) - Math.max(q.minX(), other.minX());
+                if (overlapX > 0) {
+                    if (other.maxY() <= q.minY()) {
+                        myTop = Math.min(myTop, Math.max(0, (q.minY() - other.maxY()) / 2));
+                    } else if (other.minY() >= q.maxY()) {
+                        myBottom = Math.min(myBottom, Math.max(0, (other.minY() - q.maxY()) / 2));
+                    }
                 }
             }
         }
         // TL=0, TR=1, BR=2, BL=3: links/rechts bzw. oben/unten nach außen schieben.
         double[] xs = {q.x[0] - mxLeft, q.x[1] + mxRight, q.x[2] + mxRight, q.x[3] - mxLeft};
-        double[] ys = {q.y[0] - m, q.y[1] - m, q.y[2] + m, q.y[3] + m};
+        double[] ys = {q.y[0] - myTop, q.y[1] - myTop, q.y[2] + myBottom, q.y[3] + myBottom};
         for (int i = 0; i < 4; i++) {
             xs[i] = Math.min(imgW, Math.max(0, xs[i]));
             ys[i] = Math.min(imgH, Math.max(0, ys[i]));
@@ -813,6 +959,12 @@ final class PaddleResultBuilder {
      */
     @VisibleForTesting
     static Bitmap enhanceLowContrastCrop(Bitmap src) {
+        return enhanceLowContrastCrop(src, 2.0);
+    }
+
+    /** Variante mit skalenangepasstem Unsharp-σ, siehe {@link #photoSharpenSigma}. */
+    @VisibleForTesting
+    static Bitmap enhanceLowContrastCrop(Bitmap src, double sigma) {
         int w = src.getWidth();
         int h = src.getHeight();
         int[] px = new int[w * h];
@@ -846,9 +998,9 @@ final class PaddleResultBuilder {
             stretched[i] = v < 0f ? 0f : Math.min(v, 255f);
         }
 
-        // Unsharp-Mask: separierbarer Gauß-Blur (σ=2), sharp = orig + 1.5·(orig − blur)
-        // nur wenn |orig − blur| ≥ 2 (Rausch-Schwelle).
-        float[] blurred = gaussianBlur(stretched, w, h, 2.0);
+        // Unsharp-Mask: separierbarer Gauß-Blur (σ skalenangepasst, s. photoSharpenSigma),
+        // sharp = orig + 1.5·(orig − blur) nur wenn |orig − blur| ≥ 2 (Rausch-Schwelle).
+        float[] blurred = gaussianBlur(stretched, w, h, sigma);
         int[] outPx = new int[w * h];
         for (int i = 0; i < stretched.length; i++) {
             float diff = stretched[i] - blurred[i];
@@ -861,6 +1013,69 @@ final class PaddleResultBuilder {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         out.setPixels(outPx, 0, w, 0, 0, w, h);
         return out;
+    }
+
+    /**
+     * Unsharp-σ für einen Foto-Crop, angepasst an den effektiven Downscale-Faktor bis
+     * zur 48-px-Rec-Inputhöhe: nach Rotation+Pad wird der Crop um den Faktor
+     * (minDim × (1 + 2·padFraction)) / 48 verkleinert; die Schärfung muss auf dieser
+     * Zielskala wirken, sonst wird sie beim Downscale wieder weggemittelt.
+     */
+    @VisibleForTesting
+    static double photoSharpenSigma(Bitmap crop, double padFraction) {
+        int minDim = Math.min(crop.getWidth(), crop.getHeight());
+        double downscale = (minDim * (1 + 2 * padFraction)) / 48.0;
+        return Math.max(2.0, PHOTO_SHARPEN_SIGMA_PER_DOWNSCALE * downscale);
+    }
+
+    /**
+     * Vereinigt die Texte zweier Rec-Varianten desselben Crops per Edit-Distanz-
+     * Alignment (Codepoints): Matches bleiben, bei Substitutionen gewinnt die
+     * bevorzugte (konfidenzstärkere) Variante, einseitig fehlende Zeichen (CTC-Drops
+     * der jeweils anderen Variante) werden übernommen. So ergänzen sich die
+     * Downscale-Variante (kleine Kana im Zeilenkontext) und die Voll-Skala-Variante
+     * (Interpunktion) generisch, ohne sprach- oder zeichen-spezifische Regeln.
+     */
+    @VisibleForTesting
+    static String mergeAlignedCandidateTexts(String a, String b, boolean preferA) {
+        int[] ca = codePoints(a);
+        int[] cb = codePoints(b);
+        int n = ca.length;
+        int m = cb.length;
+        int[][] d = new int[n + 1][m + 1];
+        for (int i = 0; i <= n; i++) d[i][0] = i;
+        for (int j = 0; j <= m; j++) d[0][j] = j;
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                int cost = ca[i - 1] == cb[j - 1] ? 0 : 1;
+                d[i][j] =
+                        Math.min(
+                                Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1),
+                                d[i - 1][j - 1] + cost);
+            }
+        }
+        StringBuilder sb = new StringBuilder(Math.max(n, m));
+        int i = n;
+        int j = m;
+        while (i > 0 || j > 0) {
+            if (i > 0 && j > 0 && d[i][j] == d[i - 1][j - 1] + (ca[i - 1] == cb[j - 1] ? 0 : 1)) {
+                sb.appendCodePoint(
+                        ca[i - 1] == cb[j - 1] ? ca[i - 1] : (preferA ? ca[i - 1] : cb[j - 1]));
+                i--;
+                j--;
+            } else if (i > 0 && d[i][j] == d[i - 1][j] + 1) {
+                sb.appendCodePoint(ca[i - 1]); // nur in A vorhanden → übernehmen
+                i--;
+            } else {
+                sb.appendCodePoint(cb[j - 1]); // nur in B vorhanden → übernehmen
+                j--;
+            }
+        }
+        return sb.reverse().toString();
+    }
+
+    private static int[] codePoints(String s) {
+        return s == null ? new int[0] : s.codePoints().toArray();
     }
 
     /** Separierbarer Gauß-Blur (Kernel-Radius = ⌈3σ⌉) für ein Graustufen-Float-Array. */

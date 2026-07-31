@@ -501,14 +501,33 @@ class PaddleRecOrtRunner implements AutoCloseable {
         int paddedW = ((scaledW + REC_WIDTH_STRIDE - 1) / REC_WIDTH_STRIDE) * REC_WIDTH_STRIDE;
         if (paddedW < REC_WIDTH_STRIDE) paddedW = REC_WIDTH_STRIDE;
 
+        // Downscale-Qualität: Androids Bilinear-Filter tastet bei Faktoren > 2 nur
+        // 2×2-Nachbarschaften ab (Aliasing) und zerstört damit dünne Striche kleiner
+        // Glyphen (、。 っ) in hohen vertikalen Spalten-Crops. Daher wird vor dem
+        // finalen Scale stufenweise halbiert (Mipmap-Ansatz), bis der Restfaktor ≤ 2 ist.
+        Bitmap prescaled = quadCrop;
+        while (prescaled.getHeight() > 2 * targetH && prescaled.getWidth() >= 2) {
+            Bitmap half =
+                    Bitmap.createScaledBitmap(
+                            prescaled,
+                            Math.max(1, prescaled.getWidth() / 2),
+                            Math.max(1, prescaled.getHeight() / 2),
+                            true);
+            if (prescaled != quadCrop) prescaled.recycle();
+            prescaled = half;
+        }
+
         Bitmap target = Bitmap.createBitmap(paddedW, targetH, Bitmap.Config.ARGB_8888);
         try {
             Canvas canvas = new Canvas(target);
             canvas.drawColor(Color.WHITE);
             Matrix m = new Matrix();
-            m.postScale((float) scaledW / Math.max(1, srcW), (float) targetH / Math.max(1, srcH));
+            m.postScale(
+                    (float) scaledW / Math.max(1, prescaled.getWidth()),
+                    (float) targetH / Math.max(1, prescaled.getHeight()));
             Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-            canvas.drawBitmap(quadCrop, m, paint);
+            canvas.drawBitmap(prescaled, m, paint);
+            if (prescaled != quadCrop) prescaled.recycle();
 
             float[] input = bitmapToNchwRgbNormalized(target, paddedW, targetH);
             long[] inputShape = new long[] {1, 3, targetH, paddedW};
