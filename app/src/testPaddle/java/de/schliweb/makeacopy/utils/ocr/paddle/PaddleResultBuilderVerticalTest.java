@@ -510,6 +510,64 @@ public class PaddleResultBuilderVerticalTest {
         assertSame(qs, PaddleResultBuilder.mergeVerticalFragments(qs));
     }
 
+    @Test
+    public void mergeVerticalFragments_overlappingStackedColumnParts_mergedIntoOneColumn() {
+        // Detection-Split derselben Spalte: die Teile überlappen sich vertikal leicht
+        // (wie beim Issue-#88-Buchfoto, Spalte 3) → eine Spalte (Bounding-Box-Union).
+        Quad top = rect(300, 0, 30, 500);
+        Quad bottom = rect(300, 495, 30, 600);
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(Arrays.asList(top, bottom));
+        assertEquals(1, merged.size());
+        assertEquals(0.0, merged.get(0).minY(), 1e-9);
+        assertEquals(1095.0, merged.get(0).maxY(), 1e-9);
+    }
+
+    @Test
+    public void mergeVerticalFragments_stackedColumnPartsWithRealGap_stayASeparate() {
+        // Segmente mit sichtbarem Abstand (≥ Zeichengröße) sind kein Detection-Split
+        // und bleiben getrennt.
+        Quad top = rect(300, 0, 30, 180);
+        Quad bottom = rect(300, 220, 30, 180);
+        List<Quad> merged =
+                PaddleResultBuilder.mergeVerticalFragments(Arrays.asList(top, bottom));
+        assertEquals(2, merged.size());
+    }
+
+    // --- mergeAlignedCandidateTexts: Union der Foto-Pad-Varianten (Issue #88) ---
+
+    @Test
+    public void mergeAlignedCandidateTexts_unionRecoversDroppedChars() {
+        // Variante A (Downscale) hat っ, Variante B (volle Skala) hat 、 —
+        // die Union enthält beide.
+        String a = "すると１億円を受け取った";
+        String b = "すると、１億円を受け取た";
+        assertEquals(
+                "すると、１億円を受け取った",
+                PaddleResultBuilder.mergeAlignedCandidateTexts(a, b, true));
+    }
+
+    @Test
+    public void mergeAlignedCandidateTexts_substitutionPrefersPreferredVariant() {
+        assertEquals(
+                "高級", PaddleResultBuilder.mergeAlignedCandidateTexts("高殺", "高級", false));
+        assertEquals(
+                "高殺", PaddleResultBuilder.mergeAlignedCandidateTexts("高殺", "高級", true));
+    }
+
+    @Test
+    public void mergeAlignedCandidateTexts_identicalTextsUnchanged() {
+        assertEquals(
+                "引っ越す",
+                PaddleResultBuilder.mergeAlignedCandidateTexts("引っ越す", "引っ越す", true));
+    }
+
+    @Test
+    public void mergeAlignedCandidateTexts_emptySideYieldsOther() {
+        assertEquals("あ", PaddleResultBuilder.mergeAlignedCandidateTexts("", "あ", true));
+        assertEquals("あ", PaddleResultBuilder.mergeAlignedCandidateTexts("あ", "", false));
+    }
+
     // --- expandTallQuad: Sicherheitsrand hochkanter Det-Quads (Issue #88) ---
 
     @Test
@@ -518,10 +576,11 @@ public class PaddleResultBuilderVerticalTest {
         Quad expanded =
                 PaddleResultBuilder.expandTallQuad(column, 1000, 1000, Collections.emptyList());
         double m = PaddleResultBuilder.TALL_QUAD_EXPAND_FRACTION * 40;
+        double mv = PaddleResultBuilder.TALL_QUAD_EXPAND_FRACTION_COLUMN_AXIS * 40;
         assertEquals(100 - m, expanded.minX(), 1e-9);
         assertEquals(140 + m, expanded.maxX(), 1e-9);
-        assertEquals(100 - m, expanded.minY(), 1e-9);
-        assertEquals(500 + m, expanded.maxY(), 1e-9);
+        assertEquals(100 - mv, expanded.minY(), 1e-9);
+        assertEquals(500 + mv, expanded.maxY(), 1e-9);
     }
 
     @Test

@@ -189,6 +189,79 @@ public class JapaneseVerticalEvalTest {
     }
 
     /**
+     * Strenger Regressionstest für das reale Buchfoto {@code vertical_jpn_book.jpg}
+     * (Issue #88, Tester-Feedback): Nach dem Fix (Mipmap-Downscale im Rec-Runner,
+     * skalenangepasste Schärfung, Spaltenachsen-Aufweitung, Stacked-Column-Merge und
+     * Foto-Pad-Varianten-Union) wird der Zieltext auf dem Referenz-Emulator exakt
+     * erkannt (CER 0.0000). Der Test prüft:
+     *
+     * <ol>
+     *   <li>Spaltenreihenfolge (rechts→links) über die Reihenfolge der Satzanfänge,
+     *   <li>strengen CER-Grenzwert (≤ 0.02 ≈ max. 1 Zeichenfehler, Puffer für
+     *       Geräte-Varianz),
+     *   <li>exakte Anzahl der kritischen Zeichen (、 。 っ ョ １),
+     *   <li>Vorhandensein der kritischen Textfragmente inkl. 高級 und 引っ越す.
+     * </ol>
+     *
+     * <p>Normalisiert wird ausschließlich Whitespace (Zeilenumbrüche sind
+     * layoutabhängig); Interpunktion, Kana, Kanji und Ziffern gehen voll in die
+     * Bewertung ein (siehe {@link #cerMetric_doesNotHideSmallKanaPunctuationOrWidthErrors()}).
+     */
+    @Test
+    public void evaluateVerticalBookPhotoStrict() throws Exception {
+        assumeTrue(
+                "arm64-v8a not present — skipping Japanese vertical book eval",
+                Arrays.asList(Build.SUPPORTED_ABIS).contains("arm64-v8a"));
+
+        Context ctx = ApplicationProvider.getApplicationContext();
+        Context testCtx = InstrumentationRegistry.getInstrumentation().getContext();
+
+        Bitmap bmp = loadBitmap(testCtx, "eval/jpn/vertical_jpn_book.jpg");
+        String gt = loadText(testCtx, "eval/jpn/vertical_jpn.gt.txt");
+        assumeTrue("eval asset missing — skipping", bmp != null && !gt.isEmpty());
+
+        OcrEngine engine = PaddleEngineProvider.create(ctx, "jpn");
+        assertNotNull("Paddle engine must be creatable for jpn", engine);
+        String pred;
+        try {
+            OCRHelper.OcrResultWords res = engine.run(bmp);
+            pred = res != null && res.text != null ? res.text : "";
+        } finally {
+            engine.close();
+        }
+        Log.i(TAG, "[book strict] PRED:\n" + pred);
+        double cer = cer(gt, pred);
+        Log.i(TAG, String.format(java.util.Locale.ROOT, "[book strict] CER=%.4f", cer));
+
+        // 1) Spaltenreihenfolge: rechte Spalte zuerst, linke zuletzt.
+        int c1 = pred.indexOf("すると");
+        int c2 = pred.indexOf("１億円で");
+        int c3 = pred.indexOf("なくなったら");
+        assertTrue("column 1 (rightmost) text missing", c1 >= 0);
+        assertTrue("column 2 (middle) text missing", c2 >= 0);
+        assertTrue("column 3 (leftmost) text missing", c3 >= 0);
+        assertTrue("column order must be right-to-left", c1 < c2 && c2 < c3);
+
+        // 2) Strenger CER-Grenzwert.
+        assertTrue("CER regression for book photo: " + cer + " > 0.02", cer <= 0.02);
+
+        // 3) Kritische Zeichen: exakte Anzahl.
+        assertEquals("、 count", 2, count(pred, "、"));
+        assertEquals("。 count", 3, count(pred, "。"));
+        assertEquals("small っ count", 5, count(pred, "っ"));
+        assertEquals("small ョ count", 1, count(pred, "ョ"));
+        assertEquals("fullwidth １ count", 2, count(pred, "１"));
+
+        // 4) Kritische Fragmente.
+        String[] fragments = {
+            "すると、", "１億円で", "だろう。", "思ったので、", "高級マンション", "引っ越すことにした。"
+        };
+        for (String fragment : fragments) {
+            assertTrue("missing fragment: " + fragment, pred.contains(fragment));
+        }
+    }
+
+    /**
      * Guard gegen zu aggressive Normalisierung: Die CER-Metrik darf reale OCR-Fehler wie
      * fehlendes kleines っ (引っ越す → 引越す), fehlende Interpunktion (、 。) oder
      * Halbbreiten-Substitution (１ → 1) nicht verdecken. Nur Whitespace ist normalisiert.
