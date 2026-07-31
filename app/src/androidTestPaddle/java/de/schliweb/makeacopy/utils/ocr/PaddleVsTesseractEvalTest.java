@@ -29,11 +29,12 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import org.junit.Test;
@@ -138,7 +139,9 @@ public class PaddleVsTesseractEvalTest {
         // Reports persistieren.
         File outDir = ctx.getExternalFilesDir(EVAL_DIR);
         if (outDir != null && (outDir.exists() || outDir.mkdirs())) {
-            String stamp = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
+            String stamp =
+                    DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss", Locale.ROOT)
+                            .format(LocalDateTime.now(ZoneId.systemDefault()));
             writeJson(new File(outDir, "report-paddle-" + stamp + ".json"), paddleReport);
             writeJson(new File(outDir, "report-tesseract-" + stamp + ".json"), tessReport);
             Log.i(TAG, "Reports written to " + outDir.getAbsolutePath());
@@ -170,7 +173,7 @@ public class PaddleVsTesseractEvalTest {
     private static List<Sample> loadSamples(Context ctx) throws Exception {
         AssetManager am = ctx.getAssets();
         String[] entries = am.list(EVAL_DIR);
-        if (entries == null) return Collections.emptyList();
+        if (entries == null) return new ArrayList<>();
         List<String> names = new ArrayList<>();
         for (String e : entries) {
             String lower = e.toLowerCase(Locale.ROOT);

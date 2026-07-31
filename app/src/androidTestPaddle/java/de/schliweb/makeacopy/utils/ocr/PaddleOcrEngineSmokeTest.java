@@ -19,6 +19,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.RectF;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.InputStream;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,8 +31,9 @@ import org.junit.runner.RunWith;
  * x86_64 unter {@code src/main/jniLibs/}, die PP-OCRv5 {@code .ort}-Modelle unter
  * {@code src/paddle/assets/paddleocr/v5/} sind ABI-neutral.
  *
- * <p>Asset {@code clean_scan.jpg} unter {@code app/src/androidTest/assets/} wird als Eingabe
- * genutzt — kein neues Asset, das nach {@code main/assets/} fließen könnte.
+ * <p>Asset {@code eval/clean_scan.jpg} unter {@code app/src/androidTestPaddle/assets/} wird als
+ * Eingabe genutzt — kein neues Asset, das nach {@code main/assets/} fließen könnte. Der Zugriff
+ * erfolgt über den Instrumentation-Kontext, da Test-Assets im Test-APK liegen.
  */
 @RunWith(AndroidJUnit4.class)
 public class PaddleOcrEngineSmokeTest {
@@ -39,10 +41,11 @@ public class PaddleOcrEngineSmokeTest {
     @Test
     public void recognize_cleanScan_yieldsTextAndWords() throws Exception {
         Context ctx = ApplicationProvider.getApplicationContext();
-        AssetManager am = ctx.getAssets();
+        Context testCtx = InstrumentationRegistry.getInstrumentation().getContext();
+        AssetManager am = testCtx.getAssets();
 
         Bitmap bm;
-        try (InputStream is = am.open("clean_scan.jpg")) {
+        try (InputStream is = am.open("eval/clean_scan.jpg")) {
             bm = BitmapFactory.decodeStream(is);
         }
         assertNotNull("sample bitmap must decode", bm);
