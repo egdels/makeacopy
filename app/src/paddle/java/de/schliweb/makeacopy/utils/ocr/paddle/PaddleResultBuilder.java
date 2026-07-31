@@ -903,16 +903,11 @@ final class PaddleResultBuilder {
 
     /**
      * Umgibt einen (bereits rotierten) Vertikal-Crop mit einem weißen Rand von
-     * {@link #VERTICAL_CROP_PAD_FRACTION} × Crop-Höhe. Der Rand gibt dem Rec-Modell den
+     * {@code padFraction} × Crop-Höhe. Der Rand gibt dem Rec-Modell den
      * nötigen Größenkontext, damit kleine Kana (っ/ッ) und Interpunktion (。) in langen
      * Spalten-Crops nicht verschluckt bzw. als große Pendants fehlgedeutet werden.
      * Die Quelle wird recycelt, sofern ein neues Bitmap erzeugt wurde.
      */
-    private static Bitmap padWhiteVertical(Bitmap src) {
-        return padWhiteVertical(src, VERTICAL_CROP_PAD_FRACTION);
-    }
-
-    /** Variante mit explizitem Rand-Anteil (Foto-Crops brauchen mehr Größenkontext). */
     private static Bitmap padWhiteVertical(Bitmap src, double padFraction) {
         int pad = (int) Math.round(padFraction * src.getHeight());
         if (pad <= 0) return src;
