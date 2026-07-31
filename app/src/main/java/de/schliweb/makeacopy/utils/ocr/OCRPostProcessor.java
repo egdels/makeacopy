@@ -734,8 +734,8 @@ public class OCRPostProcessor {
 
   /**
    * Reconstructs the text of a horizontal (LTR/RTL) page: words are grouped into visual lines by
-   * vertical proximity, ordered by the line's reading direction and joined with paragraph
-   * detection based on vertical gaps.
+   * vertical proximity, ordered by the line's reading direction and joined with paragraph detection
+   * based on vertical gaps.
    *
    * @param words the recognized words (non-null, non-empty)
    * @return the reconstructed text

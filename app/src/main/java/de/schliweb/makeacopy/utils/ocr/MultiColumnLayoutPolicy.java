@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Christian Kierdorf
+ * Copyright 2025 Christian Kierdorf
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,24 +24,23 @@ import java.util.List;
  * separators, and returns segments in reading order: full-width band, then the columns of the next
  * band left-to-right (or right-to-left for RTL scripts), each column top-to-bottom.
  *
- * <p>This class is a pure function on box coordinates and intentionally has no Android
- * dependencies so that it is fully covered by JVM unit tests (mirrors {@link
- * VerticalTextLayoutPolicy}).
+ * <p>This class is a pure function on box coordinates and intentionally has no Android dependencies
+ * so that it is fully covered by JVM unit tests (mirrors {@link VerticalTextLayoutPolicy}).
  */
 public final class MultiColumnLayoutPolicy {
 
   /**
-   * Fraction of the content width at or above which a box counts as "full-width" (headline,
-   * caption spanning all columns). Full-width boxes never participate in column clustering; they
-   * separate the page into vertical bands instead.
+   * Fraction of the content width at or above which a box counts as "full-width" (headline, caption
+   * spanning all columns). Full-width boxes never participate in column clustering; they separate
+   * the page into vertical bands instead.
    */
   public static final float FULL_WIDTH_FRACTION = 0.6f;
 
   /**
    * Minimum horizontal gap between two column clusters, expressed as a factor of the median box
    * height. Boxes whose horizontal intervals overlap or are closer than this gap are merged into
-   * the same column. The median box height approximates the line height and thus the typical
-   * gutter width between newspaper columns.
+   * the same column. The median box height approximates the line height and thus the typical gutter
+   * width between newspaper columns.
    */
   public static final float MIN_GAP_FACTOR = 0.5f;
 
@@ -179,10 +178,9 @@ public final class MultiColumnLayoutPolicy {
   }
 
   /**
-   * Merges the horizontal intervals of the given boxes into column clusters. Intervals that
-   * overlap or whose gap is smaller than {@code minGap} join the same cluster. Fills {@code
-   * clusterOf} with the cluster id per box and returns the {@code [left, right]} range of each
-   * cluster.
+   * Merges the horizontal intervals of the given boxes into column clusters. Intervals that overlap
+   * or whose gap is smaller than {@code minGap} join the same cluster. Fills {@code clusterOf} with
+   * the cluster id per box and returns the {@code [left, right]} range of each cluster.
    */
   private static List<float[]> clusterIntervals(
       float[] lefts, float[] rights, List<Integer> boxes, float minGap, int[] clusterOf) {
