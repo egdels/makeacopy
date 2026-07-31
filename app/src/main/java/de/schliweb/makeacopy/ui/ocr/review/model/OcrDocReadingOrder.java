@@ -141,18 +141,18 @@ public final class OcrDocReadingOrder {
 
   private static boolean isCjkCodePoint(int cp) {
     Character.UnicodeBlock block = Character.UnicodeBlock.of(cp);
-    return block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
-        || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
-        || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B
-        || block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS
-        || block == Character.UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION
-        || block == Character.UnicodeBlock.HIRAGANA
-        || block == Character.UnicodeBlock.KATAKANA
-        || block == Character.UnicodeBlock.KATAKANA_PHONETIC_EXTENSIONS
-        || block == Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS
-        || block == Character.UnicodeBlock.HANGUL_SYLLABLES
-        || block == Character.UnicodeBlock.HANGUL_JAMO
-        || block == Character.UnicodeBlock.BOPOMOFO;
+    return Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS.equals(block)
+        || Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A.equals(block)
+        || Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B.equals(block)
+        || Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS.equals(block)
+        || Character.UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION.equals(block)
+        || Character.UnicodeBlock.HIRAGANA.equals(block)
+        || Character.UnicodeBlock.KATAKANA.equals(block)
+        || Character.UnicodeBlock.KATAKANA_PHONETIC_EXTENSIONS.equals(block)
+        || Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS.equals(block)
+        || Character.UnicodeBlock.HANGUL_SYLLABLES.equals(block)
+        || Character.UnicodeBlock.HANGUL_JAMO.equals(block)
+        || Character.UnicodeBlock.BOPOMOFO.equals(block);
   }
 
   public static boolean isRtlText(String text) {
