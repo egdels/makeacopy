@@ -286,6 +286,10 @@ dependencies {
         exclude group: 'org.hamcrest', module: 'hamcrest-core'
         exclude group: 'org.hamcrest', module: 'hamcrest-library'
     }
+    // Align androidx.test:core on the debug runtime classpath with the androidTest stack
+    // (fragment-testing pulls in an older test:core; consistent resolution would otherwise
+    // pin the androidTest classpath to that older version)
+    debugImplementation(libs.androidx.test.core)
     // Align Hamcrest to a single modern version to avoid duplicate classes
     androidTestImplementation libs.hamcrest
     androidTestImplementation libs.awaitility
