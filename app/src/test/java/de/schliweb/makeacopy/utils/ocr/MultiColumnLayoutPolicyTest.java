@@ -208,6 +208,101 @@ public class MultiColumnLayoutPolicyTest {
   }
 
   @Test
+  public void bandsWithDifferentColumnGeometry_clusteredIndependently() {
+    // Band 1 has two wide columns, band 2 (after a full-width caption) has three narrow
+    // columns whose gutters fall inside band 1's column intervals. A global clustering merges
+    // them; the per-band analysis must reconstruct both bands correctly.
+    float[][] boxes = {
+      // Band 1: two columns at 100-500 and 600-1000, three rows each (interleaved).
+      {100, 100, 500, 120},
+      {600, 100, 1000, 120},
+      {100, 130, 500, 150},
+      {600, 130, 1000, 150},
+      {100, 160, 500, 180},
+      {600, 160, 1000, 180},
+      // Full-width caption between the bands.
+      {100, 200, 1000, 240}, // 6
+      // Band 2: three columns at 100-350, 420-670, 740-990, three rows each.
+      {100, 260, 350, 280},
+      {420, 260, 670, 280},
+      {740, 260, 990, 280},
+      {100, 290, 350, 310},
+      {420, 290, 670, 310},
+      {740, 290, 990, 310},
+      {100, 320, 350, 340},
+      {420, 320, 670, 340},
+      {740, 320, 990, 340}
+    };
+    List<int[]> segments = group(boxes, false);
+    // band1-left, band1-right, caption, band2-left, band2-middle, band2-right
+    assertEquals(6, segments.size());
+    assertArrayEquals(new int[] {0, 2, 4}, segments.get(0));
+    assertArrayEquals(new int[] {1, 3, 5}, segments.get(1));
+    assertArrayEquals(new int[] {6}, segments.get(2));
+    assertArrayEquals(new int[] {7, 10, 13}, segments.get(3));
+    assertArrayEquals(new int[] {8, 11, 14}, segments.get(4));
+    assertArrayEquals(new int[] {9, 12, 15}, segments.get(5));
+  }
+
+  @Test
+  public void bandLocalHeadline_splitsBandIntoSubBands() {
+    // The page content is wider than the two-column body (a full-width headline at the top
+    // defines the content width). A sub-headline inside the body spans both body columns but
+    // less than 60% of the page width, so only the band-local pass can recognize it as a
+    // separator between the upper and lower part of the columns.
+    float[][] boxes = {
+      {100, 40, 1200, 80}, // 0: page-wide headline
+      // Upper part: two columns at 100-400 and 500-740, three rows each.
+      {100, 100, 400, 120}, // 1
+      {500, 100, 740, 120}, // 2
+      {100, 130, 400, 150}, // 3
+      {500, 130, 740, 150}, // 4
+      {100, 160, 400, 180}, // 5
+      {500, 160, 740, 180}, // 6
+      // Sub-headline spanning both body columns (width 640 of 1100 page width = 58%).
+      {100, 200, 740, 230}, // 7
+      // Lower part: the two columns continue, three rows each.
+      {100, 260, 400, 280}, // 8
+      {500, 260, 740, 280}, // 9
+      {100, 290, 400, 310}, // 10
+      {500, 290, 740, 310}, // 11
+      {100, 320, 400, 340}, // 12
+      {500, 320, 740, 340} // 13
+    };
+    List<int[]> segments = group(boxes, false);
+    // headline, upper-left, upper-right, sub-headline, lower-left, lower-right
+    assertEquals(6, segments.size());
+    assertArrayEquals(new int[] {0}, segments.get(0));
+    assertArrayEquals(new int[] {1, 3, 5}, segments.get(1));
+    assertArrayEquals(new int[] {2, 4, 6}, segments.get(2));
+    assertArrayEquals(new int[] {7}, segments.get(3));
+    assertArrayEquals(new int[] {8, 10, 12}, segments.get(4));
+    assertArrayEquals(new int[] {9, 11, 13}, segments.get(5));
+  }
+
+  @Test
+  public void mixedFontSizes_bandLocalGutterEstimate() {
+    // A band with large-print lines elsewhere on the page must not inflate the gutter
+    // estimate of the body band: the two body columns (small line height, narrow gutter)
+    // must still be separated.
+    float[][] boxes = {
+      {100, 40, 900, 90}, // 0: full-width headline with large line height (50)
+      // Body: two columns with small line height (14) and a narrow gutter (30 px).
+      {100, 120, 480, 134}, // 1
+      {510, 120, 890, 134}, // 2
+      {100, 140, 480, 154}, // 3
+      {510, 140, 890, 154}, // 4
+      {100, 160, 480, 174}, // 5
+      {510, 160, 890, 174} // 6
+    };
+    List<int[]> segments = group(boxes, false);
+    assertEquals(3, segments.size());
+    assertArrayEquals(new int[] {0}, segments.get(0));
+    assertArrayEquals(new int[] {1, 3, 5}, segments.get(1));
+    assertArrayEquals(new int[] {2, 4, 6}, segments.get(2));
+  }
+
+  @Test
   public void allBoxesAppearExactlyOnce() {
     float[][] boxes = {
       {100, 40, 900, 80},
