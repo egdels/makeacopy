@@ -30,6 +30,7 @@ import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.ocr.MultiColumnLayoutPolicy;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -255,6 +256,46 @@ public class PdfCreator {
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode) {
+    return createSearchablePdf(
+        context,
+        bitmap,
+        words,
+        outputUri,
+        jpegQuality,
+        convertToGrayscale,
+        convertToBlackWhite,
+        targetDpi,
+        bwMode,
+        pageFormat,
+        cleanupMode,
+        textLayerMode,
+        false);
+  }
+
+  /**
+   * Variant of {@link #createSearchablePdf(Context, Bitmap, List, Uri, int, boolean, boolean, int,
+   * BwMode, PageFormat, DocumentCleanupMode, TextLayerMode)} with optional multi-column layout
+   * reconstruction (newspapers, magazines). When {@code multiColumn} is {@code true} and the box
+   * geometry forms a multi-column layout (see {@link MultiColumnLayoutPolicy}), the invisible text
+   * layer is written segment by segment in column reading order so that text extraction and
+   * copy/paste follow the columns instead of interleaving them line by line.
+   *
+   * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
+   */
+  public static Uri createSearchablePdf(
+      Context context,
+      Bitmap bitmap,
+      List<RecognizedWord> words,
+      Uri outputUri,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode,
+      boolean multiColumn) {
     Log.d(
         TAG,
         "createSearchablePdf: uri="
@@ -381,7 +422,13 @@ public class PdfCreator {
             Log.d(TAG, "createSearchablePdf: " + normWords.size() + " OCR words");
             // now output text in IMAGE coordinates (0..imgW / 0..imgH)
             addTextLayerImageSpace(
-                cs, normWords, fonts, prepared.getWidth(), prepared.getHeight(), textLayerMode);
+                cs,
+                normWords,
+                fonts,
+                prepared.getWidth(),
+                prepared.getHeight(),
+                textLayerMode,
+                multiColumn);
             cs.restoreGraphicsState();
           }
         }
@@ -439,7 +486,8 @@ public class PdfCreator {
       List<PDFont> fonts,
       int imageWidth,
       int imageHeight,
-      TextLayerMode textLayerMode)
+      TextLayerMode textLayerMode,
+      boolean multiColumn)
       throws Exception {
     if (words == null || words.isEmpty()) return;
     if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
@@ -504,6 +552,67 @@ public class PdfCreator {
                   a.getBoundingBox().centerX(), b.getBoundingBox().centerX()));
       addVerticalColumnsImageSpace(cs, verticalColumns, fonts, imageWidth, imageHeight);
     }
+    if (clean.isEmpty()) return;
+
+    // --- 1c) Multi-column layout (issue #87): write the text layer segment by segment ---
+    // The Y-center line clustering below merges the lines of side-by-side columns into one
+    // left-to-right "line", which destroys the reading order of the extracted text. When the
+    // user option is enabled and the box geometry forms a multi-column layout, the boxes are
+    // grouped into reading-order segments (full-width bands, then each column top-to-bottom)
+    // and each segment is rendered independently with the unchanged line-based logic. The
+    // glyph positions stay identical; only the order in the content stream changes.
+    if (multiColumn) {
+      List<int[]> segments = groupCleanWordsIntoColumnSegments(clean);
+      if (!segments.isEmpty()) {
+        for (int[] segment : segments) {
+          List<RecognizedWord> segmentWords = new ArrayList<>(segment.length);
+          for (int i : segment) segmentWords.add(clean.get(i));
+          renderHorizontalWordsImageSpace(
+              cs, segmentWords, fonts, imageWidth, imageHeight, textLayerMode);
+        }
+        return;
+      }
+    }
+
+    renderHorizontalWordsImageSpace(cs, clean, fonts, imageWidth, imageHeight, textLayerMode);
+  }
+
+  /**
+   * Groups the cleaned word boxes into multi-column reading-order segments via {@link
+   * MultiColumnLayoutPolicy}. Returns an empty list when the geometry does not form a reliable
+   * multi-column layout — the caller then falls back to the regular single-flow rendering.
+   */
+  private static List<int[]> groupCleanWordsIntoColumnSegments(List<RecognizedWord> clean) {
+    int n = clean.size();
+    float[] lefts = new float[n];
+    float[] tops = new float[n];
+    float[] rights = new float[n];
+    float[] bottoms = new float[n];
+    for (int i = 0; i < n; i++) {
+      RectF b = clean.get(i).getBoundingBox();
+      lefts[i] = b.left;
+      tops[i] = b.top;
+      rights[i] = b.right;
+      bottoms[i] = b.bottom;
+    }
+    boolean rtl = containsRtlText(clean);
+    return MultiColumnLayoutPolicy.groupIntoColumnSegments(lefts, tops, rights, bottoms, rtl);
+  }
+
+  /**
+   * Renders horizontal words as invisible, selectable text: clusters them into visual lines by
+   * Y-center proximity and writes the lines top-to-bottom (extracted from the former single-flow
+   * body of {@code addTextLayerImageSpace}; called once per reading-order segment for multi-column
+   * pages).
+   */
+  private static void renderHorizontalWordsImageSpace(
+      PDPageContentStream cs,
+      List<RecognizedWord> clean,
+      List<PDFont> fonts,
+      int imageWidth,
+      int imageHeight,
+      TextLayerMode textLayerMode)
+      throws Exception {
     if (clean.isEmpty()) return;
 
     // Compute dynamic tolerance based on median word height.
@@ -1301,6 +1410,46 @@ public class PdfCreator {
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode) {
+    return createSearchablePdf(
+        context,
+        bitmaps,
+        perPageWords,
+        outputUri,
+        jpegQuality,
+        convertToGrayscale,
+        convertToBlackWhite,
+        targetDpi,
+        listener,
+        bwMode,
+        pageFormat,
+        cleanupMode,
+        textLayerMode,
+        false);
+  }
+
+  /**
+   * Variant of the multi-page {@code createSearchablePdf} with optional multi-column layout
+   * reconstruction (newspapers, magazines). When {@code multiColumn} is {@code true} and the box
+   * geometry of a page forms a multi-column layout (see {@link MultiColumnLayoutPolicy}), the
+   * invisible text layer of that page is written segment by segment in column reading order.
+   *
+   * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
+   */
+  public static Uri createSearchablePdf(
+      Context context,
+      List<Bitmap> bitmaps,
+      List<List<RecognizedWord>> perPageWords,
+      Uri outputUri,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      ProgressListener listener,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode,
+      boolean multiColumn) {
     if (bitmaps == null || bitmaps.isEmpty() || outputUri == null) return null;
     if (pageFormat == null) pageFormat = PageFormat.A4;
     if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
@@ -1427,7 +1576,13 @@ public class PdfCreator {
                 normWords = words;
               }
               addTextLayerImageSpace(
-                  cs, normWords, fonts, prepared.getWidth(), prepared.getHeight(), textLayerMode);
+                  cs,
+                  normWords,
+                  fonts,
+                  prepared.getWidth(),
+                  prepared.getHeight(),
+                  textLayerMode,
+                  multiColumn);
               cs.restoreGraphicsState();
             }
           }

@@ -1679,7 +1679,8 @@ public class ExportFragment extends Fragment {
                           bwMode,
                           pageFormat,
                           cleanupMode,
-                          textLayerMode);
+                          textLayerMode,
+                          MultiColumnOcrPrefs.isEnabled(appContext));
                   // Recycle any temporary bitmaps we created (those not part of the session's
                   // in-memory references)
                   final HashSet<Bitmap> sessionBitmaps = new HashSet<>();
@@ -1711,7 +1712,8 @@ public class ExportFragment extends Fragment {
                           bwMode,
                           pageFormat,
                           cleanupMode,
-                          textLayerMode);
+                          textLayerMode,
+                          MultiColumnOcrPrefs.isEnabled(appContext));
                 }
 
                 final Uri finalUri = exportUri;

@@ -17,11 +17,17 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.pdf.PdfRenderer;
+import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.text.PDFTextStripper;
+import de.schliweb.makeacopy.utils.export.PageFormat;
+import de.schliweb.makeacopy.utils.export.PdfCreator;
+import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -86,6 +92,63 @@ public class MultiColumnPdfPaddleTest {
         assertOrder(text, "Rosemary", "Filmaufnahmen");
         // Ende der rechten Spalte kommt zum Schluss.
         assertOrder(text, "Filmaufnahmen", "Sonntag");
+    }
+
+    /**
+     * End-to-End-Test für das OCR-Overlay des PDF-Exports: Der Zeitungsartikel wird mit Paddle
+     * erkannt, über {@link PdfCreator#createSearchablePdf} mit aktivierter Spaltenrekonstruktion
+     * exportiert und der unsichtbare Textlayer mit dem PDFBox-{@link PDFTextStripper} extrahiert.
+     * Die extrahierte Lesereihenfolge muss den Spalten folgen (linke Spalte komplett vor der
+     * rechten), nicht der zeilenweise verschränkten Y-Reihenfolge.
+     */
+    @Test
+    public void newspaperArticle_pdfTextLayerFollowsColumns() throws Exception {
+        Context ctx = ApplicationProvider.getApplicationContext();
+        Context testCtx = InstrumentationRegistry.getInstrumentation().getContext();
+        Bitmap bitmap = renderPdfFirstPage(ctx, testCtx, ASSET_DIR + "/newspaper_untergang.pdf");
+        assertNotNull("PDF must render", bitmap);
+        File outFile = new File(ctx.getCacheDir(), "newspaper_untergang_overlay.pdf");
+        try (OcrEngine paddle = PaddleEngineProvider.create(ctx, "deu")) {
+            assertNotNull("Paddle engine must be creatable", paddle);
+            OCRHelper.OcrResultWords res = paddle.run(bitmap);
+            assertNotNull(res);
+            Uri out = PdfCreator.createSearchablePdf(
+                    ctx,
+                    bitmap,
+                    res.words,
+                    Uri.fromFile(outFile),
+                    85,
+                    false,
+                    false,
+                    300,
+                    null,
+                    PageFormat.A4,
+                    DocumentCleanupMode.ORIGINAL,
+                    PdfCreator.TextLayerMode.LINE_BASED,
+                    true);
+            assertNotNull("PDF export must succeed", out);
+        } finally {
+            bitmap.recycle();
+        }
+        try {
+            String text;
+            try (PDDocument doc = PDDocument.load(outFile)) {
+                text = new PDFTextStripper().getText(doc);
+            }
+            Log.i(TAG, "newspaper_untergang overlay text >>>\n" + text + "\n<<<");
+            assertFalse("extracted PDF text must not be empty", text.trim().isEmpty());
+
+            // Überschrift vor dem Fließtext.
+            assertOrder(text, "Untergang", "tragisches");
+            // Linke Spalte komplett vor der rechten: "Rosemary" (Ende linke Spalte) muss vor
+            // "Filmaufnahmen" (Anfang rechte Spalte) liegen.
+            assertOrder(text, "Rosemary", "Filmaufnahmen");
+            // Ende der rechten Spalte kommt zum Schluss.
+            assertOrder(text, "Filmaufnahmen", "Sonntag");
+        } finally {
+            //noinspection ResultOfMethodCallIgnored
+            outFile.delete();
+        }
     }
 
     /** Führt Render + Paddle-OCR + Multi-Column-Textaufbau für das angegebene PDF-Asset aus. */
