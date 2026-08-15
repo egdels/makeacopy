@@ -17,7 +17,9 @@ import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
 import com.tom_roush.pdfbox.pdmodel.font.PDFont;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.text.PDFTextStripperByArea;
+import de.schliweb.makeacopy.utils.export.PageFormat;
 import de.schliweb.makeacopy.utils.export.PdfCreator;
+import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import java.io.File;
 import java.io.InputStream;
@@ -279,7 +281,23 @@ public class PdfCreatorInstrumentedTest {
       File out = new File(ctx.getCacheDir(), "test_ocr_align.pdf");
       Uri uri = Uri.fromFile(out);
 
-      Uri res = PdfCreator.createSearchablePdf(ctx, bmp, words, uri, 90, false);
+      // Exact per-word overlay alignment is only guaranteed by WORD_POSITIONED mode.
+      // The default LINE_BASED mode writes each line as a single horizontally scaled
+      // text run, so inner word boundaries are only approximately aligned.
+      Uri res =
+          PdfCreator.createSearchablePdf(
+              ctx,
+              bmp,
+              words,
+              uri,
+              90,
+              false,
+              false,
+              300,
+              null,
+              PageFormat.A4,
+              DocumentCleanupMode.ORIGINAL,
+              PdfCreator.TextLayerMode.WORD_POSITIONED);
       assertNotNull("PDF creation failed", res);
 
       try (PDDocument doc = PDDocument.load(out)) {

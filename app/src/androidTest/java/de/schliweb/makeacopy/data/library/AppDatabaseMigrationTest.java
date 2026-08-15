@@ -56,6 +56,11 @@ public class AppDatabaseMigrationTest {
             .allowMainThreadQueries()
             .build();
     assertNotNull(database.scanPageTextDao());
+    // Room opens the database lazily; force the open so MIGRATION_1_2 actually runs,
+    // then close Room before accessing the file with the framework SQLite API.
+    database.getOpenHelper().getWritableDatabase();
+    database.close();
+    database = null;
 
     try (SQLiteDatabase migrated =
         SQLiteDatabase.openDatabase(
