@@ -96,7 +96,7 @@ public class JpegExporterInstrumentedTest {
 
     int baseQ = 85;
 
-    JpegExportOptions optsAuto = new JpegExportOptions(baseQ, 0, JpegExportOptions.Mode.AUTO);
+    JpegExportOptions optsAuto = new JpegExportOptions(baseQ, 0, JpegExportOptions.Mode.NONE);
     optsAuto.forceGrayscaleJpeg = false;
     optsAuto.maxLongEdgeGuardPx = 4096;
     optsAuto.roundResizeToMultipleOf8 = true;
@@ -107,7 +107,7 @@ public class JpegExporterInstrumentedTest {
     optsBw.roundResizeToMultipleOf8 = true;
 
     JpegExportOptions optsAutoForceGray =
-        new JpegExportOptions(baseQ, 0, JpegExportOptions.Mode.AUTO);
+        new JpegExportOptions(baseQ, 0, JpegExportOptions.Mode.NONE);
     optsAutoForceGray.forceGrayscaleJpeg = true;
     optsAutoForceGray.maxLongEdgeGuardPx = 4096;
     optsAutoForceGray.roundResizeToMultipleOf8 = true;
