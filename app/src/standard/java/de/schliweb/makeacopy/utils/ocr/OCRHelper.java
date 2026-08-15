@@ -497,6 +497,15 @@ public class OCRHelper {
       setVariable("tessedit_enable_dict_correction", "1");
     }
 
+    // Für Devanagari-Schriften (Hindi, Marathi, Nepali, Sanskrit): kleine diakritische
+    // Zeichen (Matras, Anusvara, Virama) dürfen nicht von der aggressiven Rauschunterdrückung
+    // entfernt werden, sonst gehen z.B. bei "हिंदी" die Vokalzeichen verloren.
+    boolean isDevanagari =
+        ls.contains("hin") || ls.contains("mar") || ls.contains("nep") || ls.contains("san");
+    if (isDevanagari) {
+      setVariable("textord_heavy_nr", "0");
+    }
+
     // Whitelist handling: Best models work better without whitelist restrictions
     // RTL scripts (Arabic/Persian) should never use Latin whitelist
     if (useBestModelSettings || isRtlArabic) {
