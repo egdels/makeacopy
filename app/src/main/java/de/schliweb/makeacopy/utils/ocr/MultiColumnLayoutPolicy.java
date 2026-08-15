@@ -57,9 +57,9 @@ public final class MultiColumnLayoutPolicy {
   public static final int VALLEY_COVERAGE_MAX = 2;
 
   /**
-   * Minimum column width as fraction of the band width. Valleys that would create a narrower
-   * column (e.g. vertically aligned word gaps in a sparse text block) are discarded by merging the
-   * narrow region with its neighbor.
+   * Minimum column width as fraction of the band width. Valleys that would create a narrower column
+   * (e.g. vertically aligned word gaps in a sparse text block) are discarded by merging the narrow
+   * region with its neighbor.
    */
   public static final float MIN_COLUMN_WIDTH_FRACTION = 0.1f;
 
@@ -442,8 +442,7 @@ public final class MultiColumnLayoutPolicy {
           if (localFull.contains(idx)) {
             if (!subBand.isEmpty()) {
               any |=
-                  emitBandSegments(
-                      subBand, lefts, tops, rights, bottoms, rtl, depth - 1, segments);
+                  emitBandSegments(subBand, lefts, tops, rights, bottoms, rtl, depth - 1, segments);
               subBand = new ArrayList<>();
             }
             fullRun.add(idx);
