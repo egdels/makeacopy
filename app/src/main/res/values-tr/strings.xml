@@ -340,6 +340,7 @@
     <string name="selected_count">%1$d seçildi</string>
     <string name="delete_selected">Sil (%1$d)</string>
     <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d dosya cihazdan silinecek. Bu işlem geri alınamaz.</item>
         <item quantity="other">%1$d dosya cihazdan silinecek. Bu işlem geri alınamaz.</item>
     </plurals>
 

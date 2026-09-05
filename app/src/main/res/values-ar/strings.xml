@@ -334,6 +334,7 @@
     <string name="selected_count">%1$d محدد</string>
     <string name="delete_selected">حذف (%1$d)</string>
     <plurals name="delete_selected_warning">
+        <item quantity="zero">لن يتم حذف أي ملفات من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
         <item quantity="one">سيتم حذف ملف واحد من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
         <item quantity="two">سيتم حذف ملفين من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
         <item quantity="few">سيتم حذف %1$d ملفات من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
