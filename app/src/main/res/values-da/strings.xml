@@ -334,6 +334,16 @@
     <string name="indexed_new_items">Indekserede %1$d nye element(er)</string>
     <string name="nothing_new_to_index">Intet nyt at indeksere</string>
 
+    <!-- ScansLibraryFragment: flervalg til sletning -->
+    <string name="select_scans">Vælg scanninger</string>
+    <string name="exit_selection">Afslut valgtilstand</string>
+    <string name="selected_count">%1$d valgt</string>
+    <string name="delete_selected">Slet (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d fil vil blive slettet fra enheden. Denne handling kan ikke fortrydes.</item>
+        <item quantity="other">%1$d filer vil blive slettet fra enheden. Denne handling kan ikke fortrydes.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokument justeret</string>
     <string name="a11y_hint_move_left">Flyt til venstre</string>

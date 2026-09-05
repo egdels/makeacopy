@@ -336,6 +336,18 @@
     <string name="indexed_new_items">Zindeksowano %1$d nowych element(ów)</string>
     <string name="nothing_new_to_index">Brak nowych elementów do zindeksowania</string>
 
+    <!-- ScansLibraryFragment: zaznaczanie wielokrotne do usunięcia -->
+    <string name="select_scans">Wybierz skany</string>
+    <string name="exit_selection">Zakończ tryb wyboru</string>
+    <string name="selected_count">Wybrano: %1$d</string>
+    <string name="delete_selected">Usuń (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d plik zostanie usunięty z urządzenia. Tej operacji nie można cofnąć.</item>
+        <item quantity="few">%1$d pliki zostaną usunięte z urządzenia. Tej operacji nie można cofnąć.</item>
+        <item quantity="many">%1$d plików zostanie usuniętych z urządzenia. Tej operacji nie można cofnąć.</item>
+        <item quantity="other">%1$d pliku zostanie usunięte z urządzenia. Tej operacji nie można cofnąć.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokument wyrównany</string>
     <string name="a11y_hint_move_left">Przesuń w lewo</string>

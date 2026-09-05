@@ -338,6 +338,16 @@
     <string name="indexed_new_items">%1$d nouvel(s) élément(s) indexé(s)</string>
     <string name="nothing_new_to_index">Aucun nouvel élément à indexer</string>
 
+    <!-- ScansLibraryFragment : sélection multiple pour suppression -->
+    <string name="select_scans">Sélectionner des numérisations</string>
+    <string name="exit_selection">Quitter le mode sélection</string>
+    <string name="selected_count">%1$d sélectionné(s)</string>
+    <string name="delete_selected">Supprimer (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d fichier sera supprimé de l’appareil. Cette action est irréversible.</item>
+        <item quantity="other">%1$d fichiers seront supprimés de l’appareil. Cette action est irréversible.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Document aligné</string>
     <string name="a11y_hint_move_left">Déplacez-vous à gauche</string>

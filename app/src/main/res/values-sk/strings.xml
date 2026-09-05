@@ -342,6 +342,18 @@
     <string name="indexed_new_items">Zindexovaných %1$d nových položiek</string>
     <string name="nothing_new_to_index">Žiadne nové položky na indexovanie</string>
 
+    <!-- ScansLibraryFragment: viacnásobný výber na odstránenie -->
+    <string name="select_scans">Vybrať skeny</string>
+    <string name="exit_selection">Ukončiť režim výberu</string>
+    <string name="selected_count">Vybraté: %1$d</string>
+    <string name="delete_selected">Odstrániť (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d súbor bude odstránený zo zariadenia. Túto akciu nie je možné vrátiť späť.</item>
+        <item quantity="few">%1$d súbory budú odstránené zo zariadenia. Túto akciu nie je možné vrátiť späť.</item>
+        <item quantity="many">%1$d súboru bude odstránené zo zariadenia. Túto akciu nie je možné vrátiť späť.</item>
+        <item quantity="other">%1$d súborov bude odstránených zo zariadenia. Túto akciu nie je možné vrátiť späť.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokument zarovnaný</string>
     <string name="a11y_hint_move_left">Posuňte doľava</string>

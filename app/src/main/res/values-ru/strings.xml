@@ -339,6 +339,18 @@
     <string name="indexed_new_items">Проиндексировано %1$d новых элемент(ов)</string>
     <string name="nothing_new_to_index">Нет новых элементов для индексирования</string>
 
+    <!-- ScansLibraryFragment: множественный выбор для удаления -->
+    <string name="select_scans">Выбрать сканы</string>
+    <string name="exit_selection">Выйти из режима выбора</string>
+    <string name="selected_count">Выбрано: %1$d</string>
+    <string name="delete_selected">Удалить (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d файл будет удалён с устройства. Это действие нельзя отменить.</item>
+        <item quantity="few">%1$d файла будут удалены с устройства. Это действие нельзя отменить.</item>
+        <item quantity="many">%1$d файлов будет удалено с устройства. Это действие нельзя отменить.</item>
+        <item quantity="other">%1$d файла будет удалено с устройства. Это действие нельзя отменить.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Документ выровнен</string>
     <string name="a11y_hint_move_left">Сместитесь влево</string>

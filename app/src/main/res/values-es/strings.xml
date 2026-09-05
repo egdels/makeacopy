@@ -344,6 +344,16 @@
     <string name="indexed_new_items">Se indexaron %1$d nuevos elemento(s)</string>
     <string name="nothing_new_to_index">No hay nada nuevo para indexar</string>
 
+    <!-- ScansLibraryFragment: selección múltiple para eliminar -->
+    <string name="select_scans">Seleccionar escaneos</string>
+    <string name="exit_selection">Salir del modo de selección</string>
+    <string name="selected_count">%1$d seleccionado(s)</string>
+    <string name="delete_selected">Eliminar (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">Se eliminará %1$d archivo del dispositivo. Esta acción no se puede deshacer.</item>
+        <item quantity="other">Se eliminarán %1$d archivos del dispositivo. Esta acción no se puede deshacer.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Documento alineado</string>
     <string name="a11y_hint_move_left">Muévete a la izquierda</string>

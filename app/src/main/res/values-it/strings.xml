@@ -340,6 +340,16 @@
     <string name="indexed_new_items">%1$d nuovo/i elemento/i indicizzato/i</string>
     <string name="nothing_new_to_index">Nessun nuovo elemento da indicizzare</string>
 
+    <!-- ScansLibraryFragment: selezione multipla per l'eliminazione -->
+    <string name="select_scans">Seleziona scansioni</string>
+    <string name="exit_selection">Esci dalla modalità selezione</string>
+    <string name="selected_count">%1$d selezionati</string>
+    <string name="delete_selected">Elimina (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d file verrà eliminato dal dispositivo. Questa azione non può essere annullata.</item>
+        <item quantity="other">%1$d file verranno eliminati dal dispositivo. Questa azione non può essere annullata.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Documento allineato</string>
     <string name="a11y_hint_move_left">Spostati a sinistra</string>

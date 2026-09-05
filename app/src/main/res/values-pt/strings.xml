@@ -340,6 +340,16 @@
     <string name="indexed_new_items">Zindeksowano %1$d nowych element(ów)</string>
     <string name="nothing_new_to_index">Brak nowych elementów do zindeksowania</string>
 
+    <!-- ScansLibraryFragment: seleção múltipla para exclusão -->
+    <string name="select_scans">Selecionar digitalizações</string>
+    <string name="exit_selection">Sair do modo de seleção</string>
+    <string name="selected_count">%1$d selecionado(s)</string>
+    <string name="delete_selected">Excluir (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d arquivo será excluído do dispositivo. Esta ação não pode ser desfeita.</item>
+        <item quantity="other">%1$d arquivos serão excluídos do dispositivo. Esta ação não pode ser desfeita.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Documento alinhado</string>
     <string name="a11y_hint_move_left">Desloque-se para a esquerda</string>

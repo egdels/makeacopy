@@ -333,6 +333,15 @@
     <string name="indexed_new_items">จัดทำดัชนี %1$d รายการใหม่แล้ว</string>
     <string name="nothing_new_to_index">ไม่มีรายการใหม่สำหรับจัดทำดัชนี</string>
 
+    <!-- ScansLibraryFragment: เลือกหลายรายการเพื่อลบ -->
+    <string name="select_scans">เลือกเอกสารสแกน</string>
+    <string name="exit_selection">ออกจากโหมดเลือก</string>
+    <string name="selected_count">เลือกแล้ว %1$d รายการ</string>
+    <string name="delete_selected">ลบ (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="other">%1$d ไฟล์จะถูกลบออกจากอุปกรณ์ การดำเนินการนี้ไม่สามารถยกเลิกได้</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">จัดแนวเอกสารแล้ว</string>
     <string name="a11y_hint_move_left">ขยับไปทางซ้าย</string>

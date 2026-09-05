@@ -328,6 +328,19 @@
     <string name="indexed_new_items">تمت فهرسة %1$d عنصر/عناصر جديدة</string>
     <string name="nothing_new_to_index">لا يوجد شيء جديد للفهرسة</string>
 
+    <!-- ScansLibraryFragment: تحديد متعدد للحذف -->
+    <string name="select_scans">تحديد المستندات الممسوحة</string>
+    <string name="exit_selection">الخروج من وضع التحديد</string>
+    <string name="selected_count">%1$d محدد</string>
+    <string name="delete_selected">حذف (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">سيتم حذف ملف واحد من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="two">سيتم حذف ملفين من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="few">سيتم حذف %1$d ملفات من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="many">سيتم حذف %1$d ملفًا من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="other">سيتم حذف %1$d ملف من الجهاز. لا يمكن التراجع عن هذا الإجراء.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">تمت محاذاة المستند</string>
     <string name="a11y_hint_move_left">تحرّك لليسار</string>

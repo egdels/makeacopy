@@ -335,6 +335,16 @@
     <string name="indexed_new_items">Indexerade %1$d nya objekt</string>
     <string name="nothing_new_to_index">Inget nytt att indexera</string>
 
+    <!-- ScansLibraryFragment: flerval för radering -->
+    <string name="select_scans">Välj skanningar</string>
+    <string name="exit_selection">Avsluta markeringsläge</string>
+    <string name="selected_count">%1$d markerade</string>
+    <string name="delete_selected">Radera (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d fil kommer att tas bort från enheten. Denna åtgärd kan inte ångras.</item>
+        <item quantity="other">%1$d filer kommer att tas bort från enheten. Denna åtgärd kan inte ångras.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokumentet är justerat</string>
     <string name="a11y_hint_move_left">Flytta åt vänster</string>

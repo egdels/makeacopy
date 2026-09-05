@@ -325,6 +325,16 @@
     <string name="indexed_new_items">%1$d नए आइटम अनुक्रमित किए गए</string>
     <string name="nothing_new_to_index">अनुक्रमित करने के लिए कुछ नया नहीं</string>
 
+    <!-- ScansLibraryFragment: हटाने के लिए बहु-चयन -->
+    <string name="select_scans">स्कैन चुनें</string>
+    <string name="exit_selection">चयन मोड से बाहर निकलें</string>
+    <string name="selected_count">%1$d चयनित</string>
+    <string name="delete_selected">हटाएँ (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d फ़ाइल डिवाइस से हटा दी जाएगी। यह क्रिया पूर्ववत नहीं की जा सकती।</item>
+        <item quantity="other">%1$d फ़ाइलें डिवाइस से हटा दी जाएँगी। यह क्रिया पूर्ववत नहीं की जा सकती।</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">दस्तावेज़ संरेखित</string>
     <string name="a11y_hint_move_left">बाएँ ले जाएँ</string>

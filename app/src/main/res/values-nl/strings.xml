@@ -338,6 +338,16 @@
     <string name="indexed_new_items">%1$d nieuw(e) item(s) geïndexeerd</string>
     <string name="nothing_new_to_index">Niets nieuws om te indexeren</string>
 
+    <!-- ScansLibraryFragment: meervoudige selectie om te verwijderen -->
+    <string name="select_scans">Scans selecteren</string>
+    <string name="exit_selection">Selectiemodus verlaten</string>
+    <string name="selected_count">%1$d geselecteerd</string>
+    <string name="delete_selected">Verwijderen (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d bestand wordt van het apparaat verwijderd. Deze actie kan niet ongedaan worden gemaakt.</item>
+        <item quantity="other">%1$d bestanden worden van het apparaat verwijderd. Deze actie kan niet ongedaan worden gemaakt.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Document uitgelijnd</string>
     <string name="a11y_hint_move_left">Beweeg naar links</string>

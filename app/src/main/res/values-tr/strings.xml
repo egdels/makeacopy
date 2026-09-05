@@ -334,6 +334,15 @@
     <string name="indexed_new_items">%1$d yeni öğe dizinlendi</string>
     <string name="nothing_new_to_index">Dizinlenecek yeni öğe yok</string>
 
+    <!-- ScansLibraryFragment: silmek için çoklu seçim -->
+    <string name="select_scans">Taramaları seç</string>
+    <string name="exit_selection">Seçim modundan çık</string>
+    <string name="selected_count">%1$d seçildi</string>
+    <string name="delete_selected">Sil (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="other">%1$d dosya cihazdan silinecek. Bu işlem geri alınamaz.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Belge hizalandı</string>
     <string name="a11y_hint_move_left">Sola hareket edin</string>

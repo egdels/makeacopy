@@ -336,6 +336,16 @@
     <string name="indexed_new_items">%1$d új elem indexelve</string>
     <string name="nothing_new_to_index">Nincs új elem indexelésre</string>
 
+    <!-- ScansLibraryFragment: több kijelölés törléshez -->
+    <string name="select_scans">Szkennelések kiválasztása</string>
+    <string name="exit_selection">Kilépés a kijelölési módból</string>
+    <string name="selected_count">%1$d kiválasztva</string>
+    <string name="delete_selected">Törlés (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d fájl törölve lesz az eszközről. Ez a művelet nem vonható vissza.</item>
+        <item quantity="other">%1$d fájl törölve lesz az eszközről. Ez a művelet nem vonható vissza.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokumentum igazítva</string>
     <string name="a11y_hint_move_left">Mozduljon balra</string>

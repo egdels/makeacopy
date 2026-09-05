@@ -343,6 +343,17 @@
     <string name="indexed_new_items">Au fost indexate %1$d element(e) noi</string>
     <string name="nothing_new_to_index">Nimic nou de indexat</string>
 
+    <!-- ScansLibraryFragment: selecție multiplă pentru ștergere -->
+    <string name="select_scans">Selectează scanări</string>
+    <string name="exit_selection">Ieșire din modul de selecție</string>
+    <string name="selected_count">%1$d selectate</string>
+    <string name="delete_selected">Șterge (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d fișier va fi șters de pe dispozitiv. Această acțiune nu poate fi anulată.</item>
+        <item quantity="few">%1$d fișiere vor fi șterse de pe dispozitiv. Această acțiune nu poate fi anulată.</item>
+        <item quantity="other">%1$d de fișiere vor fi șterse de pe dispozitiv. Această acțiune nu poate fi anulată.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Document aliniat</string>
     <string name="a11y_hint_move_left">Mutați spre stânga</string>

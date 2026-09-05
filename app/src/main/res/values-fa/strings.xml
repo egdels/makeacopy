@@ -333,6 +333,16 @@
     <string name="indexed_new_items">%1$d مورد جدید فهرست شد</string>
     <string name="nothing_new_to_index">چیز جدیدی برای فهرست‌کردن نیست</string>
 
+    <!-- ScansLibraryFragment: انتخاب چندگانه برای حذف -->
+    <string name="select_scans">انتخاب اسکن‌ها</string>
+    <string name="exit_selection">خروج از حالت انتخاب</string>
+    <string name="selected_count">%1$d مورد انتخاب‌شده</string>
+    <string name="delete_selected">حذف (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d فایل از دستگاه حذف خواهد شد. این عمل قابل بازگشت نیست.</item>
+        <item quantity="other">%1$d فایل از دستگاه حذف خواهند شد. این عمل قابل بازگشت نیست.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">سند تراز است</string>
     <string name="a11y_hint_move_left">به چپ حرکت کنید</string>

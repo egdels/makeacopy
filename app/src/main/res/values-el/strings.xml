@@ -327,6 +327,16 @@
     <string name="indexed_new_items">Ευρετηριάστηκαν %1$d νέα στοιχεία</string>
     <string name="nothing_new_to_index">Δεν υπάρχει τίποτα νέο για ευρετηρίαση</string>
 
+    <!-- ScansLibraryFragment: πολλαπλή επιλογή για διαγραφή -->
+    <string name="select_scans">Επιλογή σαρώσεων</string>
+    <string name="exit_selection">Έξοδος από τη λειτουργία επιλογής</string>
+    <string name="selected_count">%1$d επιλεγμένα</string>
+    <string name="delete_selected">Διαγραφή (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d αρχείο θα διαγραφεί από τη συσκευή. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.</item>
+        <item quantity="other">%1$d αρχεία θα διαγραφούν από τη συσκευή. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Το έγγραφο είναι ευθυγραμμισμένο</string>
     <string name="a11y_hint_move_left">Μετακινήστε αριστερά</string>

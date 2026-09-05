@@ -335,6 +335,18 @@
     <string name="indexed_new_items">Indexováno %1$d nových položek</string>
     <string name="nothing_new_to_index">Žádné nové položky k indexování</string>
 
+    <!-- ScansLibraryFragment: hromadné mazání -->
+    <string name="select_scans">Vybrat skeny</string>
+    <string name="exit_selection">Ukončit režim výběru</string>
+    <string name="selected_count">Vybráno: %1$d</string>
+    <string name="delete_selected">Smazat (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d soubor bude odstraněn ze zařízení. Tuto akci nelze vrátit zpět.</item>
+        <item quantity="few">%1$d soubory budou odstraněny ze zařízení. Tuto akci nelze vrátit zpět.</item>
+        <item quantity="many">%1$d souboru bude odstraněno ze zařízení. Tuto akci nelze vrátit zpět.</item>
+        <item quantity="other">%1$d souborů bude odstraněno ze zařízení. Tuto akci nelze vrátit zpět.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokument zarovnán</string>
     <string name="a11y_hint_move_left">Posuňte doleva</string>
