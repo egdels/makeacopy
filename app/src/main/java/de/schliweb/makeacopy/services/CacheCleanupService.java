@@ -475,16 +475,15 @@ public class CacheCleanupService extends Service {
         if (s != null && s.id() != null) registryIds.add(s.id());
       }
 
-      // Remove Room entries that are no longer in the registry
+      // Remove Room entries that are no longer in the registry (see
+      // CompletedScansCleanupPolicy#idsToRemoveFromLibrary for why this must be scoped to
+      // registry-sourced entries only).
       int removed = 0;
       List<de.schliweb.makeacopy.data.library.ScanEntity> allScans = scansRepo.getAllScans(this);
       if (allScans != null) {
-        for (de.schliweb.makeacopy.data.library.ScanEntity se : allScans) {
-          if (se == null || se.id == null) continue;
-          if (!registryIds.contains(se.id)) {
-            scansRepo.deleteScan(this, se.id);
-            removed++;
-          }
+        for (String id : CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds)) {
+          scansRepo.deleteScan(this, id);
+          removed++;
         }
       }
 

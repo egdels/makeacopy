@@ -9,11 +9,13 @@
  */
 package de.schliweb.makeacopy.services;
 
+import de.schliweb.makeacopy.data.library.ScanEntity;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -82,6 +84,34 @@ public final class CompletedScansCleanupPolicy {
       if (totalSize <= maxStorageBytes) break;
       totalSize -= sizeById.getOrDefault(s.id(), 0L);
       result.add(s.id());
+    }
+    return result;
+  }
+
+  /**
+   * Returns the IDs of Room scan-library entries that should be removed while re-indexing after a
+   * completed-scans cleanup pass.
+   *
+   * <p>Only entries that were themselves sourced from the {@code CompletedScansRegistry} (single
+   * page items indexed by {@code ExistingScansIndexer}, marked via {@code sourceMetaJson}
+   * containing {@code "CompletedScanEntry"}) and are no longer present in the registry are
+   * eligible. Real exported library documents are indexed separately at export time (see {@code
+   * ScanLibraryIndexer}) with a freshly generated id that is never present in the registry, so
+   * they must never be removed here just because their id isn't a registry id.
+   *
+   * @param allScans all current Room scan-library entries
+   * @param registryIds ids currently present in the CompletedScansRegistry
+   */
+  public static List<String> idsToRemoveFromLibrary(
+      List<ScanEntity> allScans, Set<String> registryIds) {
+    List<String> result = new ArrayList<>();
+    for (ScanEntity se : allScans) {
+      if (se == null || se.id == null) continue;
+      boolean isCompletedScanEntry =
+          se.sourceMetaJson != null && se.sourceMetaJson.contains("\"CompletedScanEntry\"");
+      if (isCompletedScanEntry && !registryIds.contains(se.id)) {
+        result.add(se.id);
+      }
     }
     return result;
   }

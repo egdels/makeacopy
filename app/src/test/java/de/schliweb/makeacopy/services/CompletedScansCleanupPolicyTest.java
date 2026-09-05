@@ -3,12 +3,15 @@ package de.schliweb.makeacopy.services;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import de.schliweb.makeacopy.data.library.ScanEntity;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
@@ -239,6 +242,87 @@ public class CompletedScansCleanupPolicyTest {
   @Test
   public void byCount_singleScan_maxCountOne_noneRemoved() {
     List<String> ids = CompletedScansCleanupPolicy.idsToRemoveByCount(List.of(scan("a", 1)), 1);
+    assertTrue(ids.isEmpty());
+  }
+
+  // ---- idsToRemoveFromLibrary tests ----
+  // Regression coverage for a bug where the library reindex after a completed-scans cleanup
+  // deleted every "real" exported document, because those are indexed with a freshly generated
+  // id that is never present in the CompletedScansRegistry. Only registry-sourced entries
+  // (marked via sourceMetaJson as "CompletedScanEntry") may be swept up here.
+
+  private static ScanEntity completedScanEntryEntity(String id) {
+    return new ScanEntity(id, "title", 0L, 1, null, null, "{\"kind\":\"CompletedScanEntry\"}");
+  }
+
+  private static ScanEntity realExportedDocument(String id) {
+    // Real exports are indexed with sourceMetaJson == null (see ScanLibraryIndexer).
+    return new ScanEntity(id, "My Document", 0L, 3, null, "[\"content://export/doc.pdf\"]", null);
+  }
+
+  @Test
+  public void library_realExportedDocuments_neverRemoved_evenIfNotInRegistry() {
+    List<ScanEntity> allScans =
+        Arrays.asList(realExportedDocument("doc-1"), realExportedDocument("doc-2"));
+    // Registry only ever contains per-page ids, never a document's freshly generated id.
+    Set<String> registryIds = Collections.emptySet();
+
+    List<String> ids = CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds);
+
+    assertTrue(ids.isEmpty());
+  }
+
+  @Test
+  public void library_completedScanEntry_removedWhenNoLongerInRegistry() {
+    List<ScanEntity> allScans = List.of(completedScanEntryEntity("page-1"));
+    Set<String> registryIds = Collections.emptySet();
+
+    List<String> ids = CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds);
+
+    assertEquals(1, ids.size());
+    assertEquals("page-1", ids.get(0));
+  }
+
+  @Test
+  public void library_completedScanEntry_keptWhenStillInRegistry() {
+    List<ScanEntity> allScans = List.of(completedScanEntryEntity("page-1"));
+    Set<String> registryIds = new HashSet<>(List.of("page-1"));
+
+    List<String> ids = CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds);
+
+    assertTrue(ids.isEmpty());
+  }
+
+  @Test
+  public void library_mixedEntries_onlyRegistrySourcedAndStaleOnesRemoved() {
+    List<ScanEntity> allScans =
+        Arrays.asList(
+            realExportedDocument("doc-1"), // must survive: real document, never in registry
+            completedScanEntryEntity("page-1"), // stale: no longer in registry -> removed
+            completedScanEntryEntity("page-2") // still current -> kept
+            );
+    Set<String> registryIds = new HashSet<>(List.of("page-2"));
+
+    List<String> ids = CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds);
+
+    assertEquals(1, ids.size());
+    assertEquals("page-1", ids.get(0));
+  }
+
+  @Test
+  public void library_emptyScanList_returnsEmpty() {
+    List<String> ids =
+        CompletedScansCleanupPolicy.idsToRemoveFromLibrary(
+            Collections.emptyList(), Collections.emptySet());
+    assertTrue(ids.isEmpty());
+  }
+
+  @Test
+  public void library_nullSourceMetaJson_treatedAsRealDocument_notRemoved() {
+    ScanEntity entity = new ScanEntity("doc-1", "title", 0L, 1, null, null, null);
+    List<String> ids =
+        CompletedScansCleanupPolicy.idsToRemoveFromLibrary(
+            List.of(entity), Collections.emptySet());
     assertTrue(ids.isEmpty());
   }
 }
