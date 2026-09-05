@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -108,6 +109,26 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>
 
+        <!-- IC icon to enter/exit multi-select mode for bulk deletion -->
+        <ImageButton
+            android:id="@+id/buttonSelectMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_select_all_24"
+            android:contentDescription="@string/select_scans"
+            app:tint="?attr/colorControlNormal"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            app:tooltipText="@string/select_scans"
+            app:layout_constraintBottom_toTopOf="@id/button_container"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/buttonIndexExistingIcon"
+            app:layout_constraintHorizontal_chainStyle="packed"
+            android:visibility="visible"/>
+
         <!-- IC icon above the button container that mirrors "Index existing" action -->
         <ImageButton
             android:id="@+id/buttonIndexExistingIcon"
@@ -123,9 +144,8 @@
             android:minHeight="48dp"
             app:tooltipText="@string/index_existing_scans"
             app:layout_constraintBottom_toTopOf="@id/button_container"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/buttonSelectMode"
             app:layout_constraintEnd_toStartOf="@id/buttonCleanupSettings"
-            app:layout_constraintHorizontal_chainStyle="packed"
             android:visibility="gone"/>
 
         <!-- IC icon for scan cleanup settings -->
@@ -148,7 +168,57 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:visibility="visible"/>
 
-        <!-- Bottom button container: Back + Collections + (optional) Index Existing -->
+        <!-- Selection toolbar: shown instead of the icon row above while multi-select is active -->
+        <LinearLayout
+            android:id="@+id/selectionToolbar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toTopOf="@id/button_container"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageButton
+                android:id="@+id/buttonSelectAllToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_select_all_24"
+                android:contentDescription="@string/select_all"
+                app:tint="?attr/colorControlNormal"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                app:tooltipText="@string/select_all"/>
+
+            <TextView
+                android:id="@+id/textSelectedCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                tools:text="3 ausgewählt"/>
+
+            <ImageButton
+                android:id="@+id/buttonExitSelection"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close"
+                android:contentDescription="@string/exit_selection"
+                app:tint="?attr/colorControlNormal"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                app:tooltipText="@string/exit_selection"/>
+
+        </LinearLayout>
+
+        <!-- Bottom button container: Back + Collections, or Delete-selected while multi-select is active -->
         <LinearLayout
             android:id="@+id/button_container"
             android:layout_width="match_parent"
@@ -188,6 +258,19 @@
                 android:text="@string/open_collections"
                 android:maxLines="1"
                 android:ellipsize="end" />
+
+            <Button
+                android:id="@+id/buttonDeleteSelected"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="@string/delete"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:enabled="false"
+                android:visibility="gone" />
 
         </LinearLayout>
 

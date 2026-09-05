@@ -357,6 +357,16 @@
     <string name="indexed_new_items">Indexed %1$d new item(s)</string>
     <string name="nothing_new_to_index">Nothing new to index</string>
 
+    <!-- ScansLibraryFragment: multi-select delete -->
+    <string name="select_scans">Select scans</string>
+    <string name="exit_selection">Exit selection mode</string>
+    <string name="selected_count">%1$d selected</string>
+    <string name="delete_selected">Delete (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d file will be deleted from the device. This action cannot be undone.</item>
+        <item quantity="other">%1$d files will be deleted from the device. This action cannot be undone.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Document aligned</string>
     <string name="a11y_hint_move_left">Move left</string>

@@ -347,6 +347,16 @@
     <string name="indexed_new_items">%1$d neue Element(e) indiziert</string>
     <string name="nothing_new_to_index">Nichts Neues zu indizieren</string>
 
+    <!-- ScansLibraryFragment: Mehrfachauswahl löschen -->
+    <string name="select_scans">Scans auswählen</string>
+    <string name="exit_selection">Auswahlmodus verlassen</string>
+    <string name="selected_count">%1$d ausgewählt</string>
+    <string name="delete_selected">Löschen (%1$d)</string>
+    <plurals name="delete_selected_warning">
+        <item quantity="one">%1$d Datei wird vom Gerät gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.</item>
+        <item quantity="other">%1$d Dateien werden vom Gerät gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.</item>
+    </plurals>
+
     <!-- Accessibility guidance phrases -->
     <string name="a11y_hint_ok">Dokument ausgerichtet</string>
     <string name="a11y_hint_move_left">Nach links bewegen</string>

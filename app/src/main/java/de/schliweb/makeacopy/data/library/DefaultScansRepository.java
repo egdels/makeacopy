@@ -281,6 +281,16 @@ public class DefaultScansRepository implements ScansRepository {
     }
   }
 
+  @Override
+  public void deleteScans(Context context, List<String> ids) {
+    if (ids == null || ids.isEmpty()) return;
+    // Copy defensively: callers may pass a live, mutable selection set/list.
+    for (String id : new java.util.ArrayList<>(ids)) {
+      if (id == null) continue;
+      deleteScan(context, id);
+    }
+  }
+
   private void bestEffortDeleteBackedFiles(Context ctx, ScanEntity e) {
     if (ctx == null || e == null) return;
     Set<String> seen = new HashSet<>();

@@ -70,6 +70,12 @@ public class ScansLibraryFragment extends Fragment {
   private View backButton;
   private View buttonIndexExistingIcon;
   private View buttonCleanupSettings;
+  private View buttonSelectMode;
+  private View selectionToolbar;
+  private View buttonSelectAllToggle;
+  private android.widget.TextView textSelectedCount;
+  private View buttonExitSelection;
+  private android.widget.Button buttonDeleteSelected;
   private android.widget.TextView titleCollection;
   private ScansAdapter adapter;
   private String collectionIdArg;
@@ -91,6 +97,12 @@ public class ScansLibraryFragment extends Fragment {
     titleCollection = root.findViewById(R.id.titleCollection);
     buttonIndexExistingIcon = root.findViewById(R.id.buttonIndexExistingIcon);
     buttonCleanupSettings = root.findViewById(R.id.buttonCleanupSettings);
+    buttonSelectMode = root.findViewById(R.id.buttonSelectMode);
+    selectionToolbar = root.findViewById(R.id.selectionToolbar);
+    buttonSelectAllToggle = root.findViewById(R.id.buttonSelectAllToggle);
+    textSelectedCount = root.findViewById(R.id.textSelectedCount);
+    buttonExitSelection = root.findViewById(R.id.buttonExitSelection);
+    buttonDeleteSelected = root.findViewById(R.id.buttonDeleteSelected);
 
     // Apply system insets: the AppBarLayout (fitsSystemWindows) handles the status bar; the
     // bottom button container gets the nav bar inset added to its base margin.
@@ -128,6 +140,27 @@ public class ScansLibraryFragment extends Fragment {
                     android.widget.Toast.LENGTH_SHORT);
               }
             });
+    adapter.setOnSelectionChangedListener(this::onSelectionChanged);
+
+    if (buttonSelectMode != null) {
+      buttonSelectMode.setOnClickListener(v -> setSelectionModeActive(!adapter.isSelectionMode()));
+    }
+    if (buttonExitSelection != null) {
+      buttonExitSelection.setOnClickListener(v -> setSelectionModeActive(false));
+    }
+    if (buttonSelectAllToggle != null) {
+      buttonSelectAllToggle.setOnClickListener(
+          v -> {
+            if (adapter.getSelectedCount() > 0) {
+              adapter.clearSelection();
+            } else {
+              adapter.selectAll();
+            }
+          });
+    }
+    if (buttonDeleteSelected != null) {
+      buttonDeleteSelected.setOnClickListener(v -> confirmDeleteSelected());
+    }
 
     // Back button action
     if (backButton != null) {
@@ -443,6 +476,95 @@ public class ScansLibraryFragment extends Fragment {
                   scansRepository.searchOcrText(requireContext(), trimmed, 50);
               if (!isAdded()) return;
               requireActivity().runOnUiThread(() -> adapter.setOcrMatches(results));
+            })
+        .start();
+  }
+
+  /**
+   * Toggles multi-select mode on the adapter and swaps the bottom toolbar/icon row between the
+   * normal actions (Back / Open collections / cleanup icons) and the selection actions (select
+   * all, count, exit, delete selected).
+   */
+  private void setSelectionModeActive(boolean active) {
+    adapter.setSelectionMode(active);
+    if (selectionToolbar != null) {
+      selectionToolbar.setVisibility(active ? View.VISIBLE : View.GONE);
+    }
+    if (buttonSelectMode != null) {
+      buttonSelectMode.setVisibility(active ? View.GONE : View.VISIBLE);
+    }
+    if (buttonIndexExistingIcon != null) {
+      buttonIndexExistingIcon.setVisibility(
+          !active && FeatureFlags.isScanLibraryEnable() ? View.VISIBLE : View.GONE);
+    }
+    if (buttonCleanupSettings != null) {
+      buttonCleanupSettings.setVisibility(active ? View.GONE : View.VISIBLE);
+    }
+    if (backButton != null) {
+      backButton.setVisibility(active ? View.GONE : View.VISIBLE);
+    }
+    if (buttonOpenCollections != null) {
+      buttonOpenCollections.setVisibility(active ? View.GONE : View.VISIBLE);
+    }
+    if (buttonDeleteSelected != null) {
+      buttonDeleteSelected.setVisibility(active ? View.VISIBLE : View.GONE);
+    }
+    onSelectionChanged(adapter.getSelectedCount());
+  }
+
+  private void onSelectionChanged(int count) {
+    if (textSelectedCount != null) {
+      textSelectedCount.setText(getString(R.string.selected_count, count));
+    }
+    if (buttonDeleteSelected != null) {
+      buttonDeleteSelected.setEnabled(count > 0);
+      buttonDeleteSelected.setText(getString(R.string.delete_selected, count));
+    }
+  }
+
+  private void confirmDeleteSelected() {
+    final List<String> ids = adapter.getSelectedIds();
+    if (ids.isEmpty()) return;
+    final int count = ids.size();
+    String message =
+        getResources().getQuantityString(R.plurals.delete_selected_warning, count, count);
+    final androidx.appcompat.app.AlertDialog dialog =
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.confirm)
+            .setMessage(message)
+            .setPositiveButton(R.string.delete, (d, w) -> doDeleteSelected(ids))
+            .setNegativeButton(android.R.string.cancel, null)
+            .create();
+    dialog.setOnShowListener(
+        d -> {
+          try {
+            DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext());
+          } catch (Throwable ignore) {
+            // Best-effort; failure is non-critical
+          }
+        });
+    dialog.show();
+  }
+
+  private void doDeleteSelected(List<String> ids) {
+    showLoading(true);
+    final android.content.Context appCtx = requireContext().getApplicationContext();
+    new Thread(
+            () -> {
+              try {
+                scansRepository.deleteScans(appCtx, ids);
+              } catch (Throwable ignore) {
+                // Best-effort; failure is non-critical
+              }
+              if (!isAdded()) return;
+              requireActivity()
+                  .runOnUiThread(
+                      () -> {
+                        UIUtils.showToast(
+                            requireContext(), R.string.deleted, android.widget.Toast.LENGTH_SHORT);
+                        setSelectionModeActive(false);
+                        loadDataAsync();
+                      });
             })
         .start();
   }

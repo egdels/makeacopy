@@ -31,9 +31,11 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -77,6 +79,11 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
   // Track missing/unreadable primary export per scan id to guard clicks and annotate UI
   private final Map<String, Boolean> unreadableMap = new LinkedHashMap<>();
 
+  // Multi-select state for bulk deletion
+  private boolean selectionMode = false;
+  private final Set<String> selectedIds = new LinkedHashSet<>();
+  private OnSelectionChangedListener selectionChangedListener;
+
   public interface OnItemClickListener {
     void onItemClick(@NonNull ScanEntity item);
   }
@@ -85,12 +92,74 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
     void onItemLongClick(@NonNull ScanEntity item);
   }
 
+  public interface OnSelectionChangedListener {
+    void onSelectionChanged(int selectedCount);
+  }
+
   public ScansAdapter(@NonNull OnItemClickListener listener) {
     this.listener = listener;
   }
 
   public void setOnItemLongClickListener(OnItemLongClickListener longClickListener) {
     this.longClickListener = longClickListener;
+  }
+
+  public void setOnSelectionChangedListener(OnSelectionChangedListener listener) {
+    this.selectionChangedListener = listener;
+  }
+
+  public boolean isSelectionMode() {
+    return selectionMode;
+  }
+
+  /** Enters or exits multi-select mode. Exiting always clears the current selection. */
+  public void setSelectionMode(boolean enabled) {
+    if (selectionMode == enabled) return;
+    selectionMode = enabled;
+    if (!enabled) selectedIds.clear();
+    notifyDataSetChanged();
+    notifySelectionChanged();
+  }
+
+  public List<String> getSelectedIds() {
+    return new ArrayList<>(selectedIds);
+  }
+
+  public int getSelectedCount() {
+    return selectedIds.size();
+  }
+
+  /** Selects every currently visible (filtered) item. */
+  public void selectAll() {
+    selectedIds.clear();
+    for (ScanEntity e : items) {
+      if (e != null && e.id != null) selectedIds.add(e.id);
+    }
+    notifyDataSetChanged();
+    notifySelectionChanged();
+  }
+
+  public void clearSelection() {
+    if (selectedIds.isEmpty()) return;
+    selectedIds.clear();
+    notifyDataSetChanged();
+    notifySelectionChanged();
+  }
+
+  private void notifySelectionChanged() {
+    if (selectionChangedListener != null) {
+      selectionChangedListener.onSelectionChanged(selectedIds.size());
+    }
+  }
+
+  private void toggleSelection(@NonNull String id, int position) {
+    if (selectedIds.contains(id)) {
+      selectedIds.remove(id);
+    } else {
+      selectedIds.add(id);
+    }
+    if (position != RecyclerView.NO_POSITION) notifyItemChanged(position);
+    notifySelectionChanged();
   }
 
   public void submitList(List<ScanEntity> data) {
@@ -191,23 +260,41 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
       }
     }
 
-    // Default click: navigate to details; if unreadable, show a hint toast first
-    h.itemView.setOnClickListener(
-        v -> {
-          Boolean unread = unreadableMap.get(e.id);
-          if (Boolean.TRUE.equals(unread)) {
-            try {
-              UIUtils.showToast(
-                  v.getContext(), R.string.missing_file, android.widget.Toast.LENGTH_SHORT);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
+    // Multi-select checkbox: visible only in selection mode
+    if (h.checkbox != null) {
+      h.checkbox.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+      h.checkbox.setChecked(e.id != null && selectedIds.contains(e.id));
+    }
+
+    if (selectionMode) {
+      View.OnClickListener toggle =
+          v -> {
+            if (e.id == null) return;
+            toggleSelection(e.id, h.getBindingAdapterPosition());
+          };
+      h.itemView.setOnClickListener(toggle);
+      if (h.checkbox != null) h.checkbox.setOnClickListener(toggle);
+    } else {
+      // Default click: navigate to details; if unreadable, show a hint toast first
+      h.itemView.setOnClickListener(
+          v -> {
+            Boolean unread = unreadableMap.get(e.id);
+            if (Boolean.TRUE.equals(unread)) {
+              try {
+                UIUtils.showToast(
+                    v.getContext(), R.string.missing_file, android.widget.Toast.LENGTH_SHORT);
+              } catch (Throwable ignore) {
+                // Best-effort; failure is non-critical
+              }
             }
-          }
-          listener.onItemClick(e);
-        });
-    // Optional long-click callback (e.g., remove from collection)
+            listener.onItemClick(e);
+          });
+      if (h.checkbox != null) h.checkbox.setOnClickListener(null);
+    }
+    // Optional long-click callback (e.g., remove from collection); suppressed while selecting
     h.itemView.setOnLongClickListener(
         v -> {
+          if (selectionMode) return true;
           if (longClickListener != null) {
             longClickListener.onItemLongClick(e);
             return true;
@@ -383,6 +470,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
     TextView subtitle;
     TextView ocrMatch;
     TextView membership;
+    android.widget.CheckBox checkbox;
 
     VH(@NonNull View itemView) {
       super(itemView);
@@ -391,6 +479,7 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
       subtitle = itemView.findViewById(R.id.textSubtitle);
       ocrMatch = itemView.findViewById(R.id.textOcrMatch);
       membership = itemView.findViewById(R.id.textMembership);
+      checkbox = itemView.findViewById(R.id.checkbox);
     }
   }
 }
