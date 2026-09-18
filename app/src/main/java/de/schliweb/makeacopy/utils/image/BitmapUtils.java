@@ -183,6 +183,49 @@ public final class BitmapUtils {
   }
 
   /**
+   * Fast-path variant of {@link #loadPreviewBitmapForCompletedScan}: decodes only the small
+   * thumbnail ({@code thumbPath}) of the given scan, applying the same rotation policy. Intended as
+   * an instant placeholder while the full-resolution preview is decoded and processed in the
+   * background. Returns null when no thumbnail exists or decoding fails.
+   *
+   * @param scan The {@code CompletedScan} whose thumbnail should be decoded. May be null.
+   * @param reqW The requested width for sampled decoding. Must be a positive integer.
+   * @param reqH The requested height for sampled decoding. Must be a positive integer.
+   * @return The decoded (and possibly rotated) thumbnail bitmap, or null.
+   */
+  public static Bitmap loadQuickThumbBitmapForCompletedScan(
+      CompletedScan scan, int reqW, int reqH) {
+    if (scan == null) return null;
+    try {
+      String thumbPath = scan.thumbPath();
+      if (thumbPath == null) return null;
+      Bitmap bmp = ImageDecodeUtils.decodeSampled(thumbPath, Math.max(1, reqW), Math.max(1, reqH));
+      if (bmp == null) return null;
+      int deg = 0;
+      try {
+        deg = scan.rotationDeg();
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+      String mode = null;
+      try {
+        mode = scan.orientationMode();
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+      boolean shouldRotate;
+      try {
+        shouldRotate = RotationPolicy.shouldRotateForThumbnail(true, mode, deg);
+      } catch (Throwable ignore) {
+        shouldRotate = false;
+      }
+      return shouldRotate ? maybeRotate(bmp, deg) : bmp;
+    } catch (Throwable ignore) {
+      return null;
+    }
+  }
+
+  /**
    * Rotates the given bitmap by the specified degrees if necessary. - Degrees are normalized to [0,
    * 360). - Returns the original bitmap if rotation is 0 or if any error occurs. - If rotation
    * succeeds, returns the rotated instance (caller may recycle original if desired).

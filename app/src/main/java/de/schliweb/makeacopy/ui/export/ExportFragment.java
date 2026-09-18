@@ -114,6 +114,59 @@ public class ExportFragment extends Fragment {
   private String lastFreshMultipagePageId;
   private final ExecutorService previewExecutor = Executors.newSingleThreadExecutor();
   private int previewRenderGeneration = 0;
+  // Multipage: guards against stale results when the user quickly selects several pages while
+  // page bitmaps are decoded off the main thread.
+  private int previewPageLoadGeneration = 0;
+
+  /**
+   * Loads the preview bitmap for the given session page off the main thread and delivers the result
+   * back on the UI thread. Decoding multi-page bitmaps from disk (plus rotation) is expensive and
+   * previously blocked the main thread, causing long delays until the preview appeared. A
+   * generation counter ensures only the most recent request wins when the user switches pages
+   * quickly.
+   *
+   * @param page the session page whose preview should be loaded; no-op when null
+   * @param onLoaded callback invoked on the main thread with the decoded bitmap (never null)
+   */
+  private void loadPageIntoPreviewAsync(
+      de.schliweb.makeacopy.ui.export.session.CompletedScan page,
+      java.util.function.Consumer<Bitmap> onLoaded) {
+    if (page == null) return;
+    int[] sz =
+        ViewSizeUtils.sizeOrDefault(binding != null ? binding.documentPreview : null, 2048, 2048);
+    final int reqW = sz[0];
+    final int reqH = sz[1];
+    final int generation = ++previewPageLoadGeneration;
+    // Fast path: show the small thumbnail immediately as a placeholder so the preview reacts
+    // instantly to a filmstrip selection; the fully decoded and processed bitmap replaces it
+    // as soon as it is ready. Skipped when the page bitmap is already in memory.
+    if (page.inMemoryBitmap() == null && page.thumbPath() != null) {
+      previewExecutor.execute(
+          () -> {
+            Bitmap quick = BitmapUtils.loadQuickThumbBitmapForCompletedScan(page, 512, 512);
+            if (quick == null) return;
+            mainHandler.post(
+                () -> {
+                  if (!isAdded() || binding == null || generation != previewPageLoadGeneration)
+                    return;
+                  binding.documentPreview.setImageBitmap(quick);
+                  binding.documentPreview.setVisibility(View.VISIBLE);
+                });
+          });
+    }
+    previewExecutor.execute(
+        () -> {
+          Bitmap bmp = BitmapUtils.loadPreviewBitmapForCompletedScan(page, reqW, reqH);
+          mainHandler.post(
+              () -> {
+                if (!isAdded()
+                    || binding == null
+                    || generation != previewPageLoadGeneration
+                    || bmp == null) return;
+                onLoaded.accept(bmp);
+              });
+        });
+  }
 
   /**
    * A BroadcastReceiver to handle updates from OCR processing jobs. This receiver listens for
@@ -627,16 +680,12 @@ public class ExportFragment extends Fragment {
                 de.schliweb.makeacopy.ui.export.session.CompletedScan sel = cur.get(position);
                 if (sel == null) return;
                 activeSessionPageIndex = position;
-                int[] sz =
-                    ViewSizeUtils.sizeOrDefault(
-                        binding != null ? binding.documentPreview : null, 2048, 2048);
-                int reqW = sz[0];
-                int reqH = sz[1];
-                Bitmap bmp = BitmapUtils.loadPreviewBitmapForCompletedScan(sel, reqW, reqH);
-                if (bmp != null) {
-                  exportViewModel.setDocumentBitmap(bmp);
-                  exportViewModel.setDocumentReady(true);
-                }
+                loadPageIntoPreviewAsync(
+                    sel,
+                    bmp -> {
+                      exportViewModel.setDocumentBitmap(bmp);
+                      exportViewModel.setDocumentReady(true);
+                    });
               }
 
               @Override
@@ -741,24 +790,21 @@ public class ExportFragment extends Fragment {
               if (!found && pages != null && !pages.isEmpty()) {
                 de.schliweb.makeacopy.ui.export.session.CompletedScan first = pages.get(0);
                 if (first != null) {
-                  int[] sz =
-                      ViewSizeUtils.sizeOrDefault(
-                          binding != null ? binding.documentPreview : null, 2048, 2048);
-                  int reqW = sz[0];
-                  int reqH = sz[1];
-                  Bitmap bmp = BitmapUtils.loadPreviewBitmapForCompletedScan(first, reqW, reqH);
-                  if (bmp != null) {
-                    activeSessionPageIndex = 0;
-                    exportViewModel.setDocumentBitmap(bmp);
-                    if (n <= 1) {
-                      try {
-                        cropViewModel.setLastFreshPageBitmap(bmp);
-                      } catch (Throwable ignore) {
-                        // Best-effort; failure is non-critical
-                      }
-                    }
-                    exportViewModel.setDocumentReady(true);
-                  }
+                  final int pageCount = n;
+                  loadPageIntoPreviewAsync(
+                      first,
+                      bmp -> {
+                        activeSessionPageIndex = 0;
+                        exportViewModel.setDocumentBitmap(bmp);
+                        if (pageCount <= 1) {
+                          try {
+                            cropViewModel.setLastFreshPageBitmap(bmp);
+                          } catch (Throwable ignore) {
+                            // Best-effort; failure is non-critical
+                          }
+                        }
+                        exportViewModel.setDocumentReady(true);
+                      });
                 }
               }
               // Accessibility: Announce updated page count when it changes
@@ -2483,6 +2529,7 @@ public class ExportFragment extends Fragment {
   @Override
   public void onDestroyView() {
     previewRenderGeneration++;
+    previewPageLoadGeneration++;
     super.onDestroyView();
     binding = null;
   }
