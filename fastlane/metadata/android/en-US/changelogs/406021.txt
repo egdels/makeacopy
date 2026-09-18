@@ -4,3 +4,4 @@ MakeACopy 4.6.2
 * Added support for "Multi-column layout" OCR
 * Updated build tooling (Gradle 8.14.3).
 * Bulk-delete scans; cleanup fix.
+* Faster preview updates for multi-page scans: page bitmaps are now decoded in the background with an instant thumbnail placeholder (fixes slow B/W preview refresh).
