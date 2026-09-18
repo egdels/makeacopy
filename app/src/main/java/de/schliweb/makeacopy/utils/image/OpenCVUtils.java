@@ -375,6 +375,563 @@ public final class OpenCVUtils {
     }
   }
 
+  /** Sagitta (px) below which the curved model is treated as straight (perspective fallback). */
+  private static final double DEWARP_STRAIGHT_TOLERANCE_PX = 1.5;
+
+  /** Number of samples used for the arc-length reparameterization of each edge curve. */
+  private static final int DEWARP_ARC_SAMPLES = 128;
+
+  /** Grid resolution (per axis) of the coarse remap grid that is upscaled to the target size. */
+  private static final int DEWARP_GRID_SIZE = 33;
+
+  /**
+   * Fraction of the ruled surface that is cropped away on each side of the dewarp result. Even
+   * with well-traced edge profiles, thin slivers of the (anti-aliased) paper edge or of the dark
+   * background remain directly at the model boundary; sampling only the inner {@code [inset,
+   * 1 - inset]} range of the surface removes these strips at the cost of a barely visible content
+   * margin. Applied to both the {@code u} (horizontal) and {@code v} (vertical) parameters.
+   */
+  private static final double DEWARP_EDGE_INSET_FRAC = 0.012;
+
+  /**
+   * Applies a dewarp (crop + flattening of a cylindrically curved page) to the given bitmap based
+   * on a {@link DewarpModel} (issue #91, Phase 1).
+   *
+   * <p>The model's top and bottom edges are quadratic Bezier curves; the side edges are straight.
+   * The method builds a ruled-surface mapping between the two arc-length-parameterized curves,
+   * renders it into coarse {@code map_x}/{@code map_y} grids, upscales them to the target size and
+   * resamples the source via {@link Imgproc#remap}. The coarse grid keeps the memory overhead
+   * negligible while remaining exact for the smooth cylindrical mapping.
+   *
+   * <p>The target size is determined exactly like in {@link #applyPerspectiveCorrection(Bitmap,
+   * Point[], WarpMode, Double)}, using the model's four corners. When the curves are effectively
+   * straight, the method delegates to the plain perspective pipeline (identical behaviour, cheaper
+   * and battle-tested).
+   *
+   * @param originalBitmap source bitmap
+   * @param model dewarp model in source-bitmap pixel coordinates
+   * @param mode warp target-size strategy (see {@link #applyPerspectiveCorrection(Bitmap, Point[],
+   *     WarpMode, Double)})
+   * @param targetShortOverLong short/long edge ratio in {@code (0, 1]}; only used when {@code mode
+   *     == FIXED_RATIO}
+   * @return the dewarped bitmap, or {@code originalBitmap} when the input is invalid or an error
+   *     occurs
+   */
+  public static Bitmap applyDewarp(
+      Bitmap originalBitmap,
+      DewarpModel model,
+      WarpMode mode,
+      @androidx.annotation.Nullable Double targetShortOverLong) {
+    if (originalBitmap == null || model == null) return originalBitmap;
+    Point[] corners = model.getCorners();
+    if (corners == null || corners.length != 4) return originalBitmap;
+    if (mode == null) mode = WarpMode.AUTO_PROJECTIVE;
+
+    // Straight curves (and neutral depth): identical to a perspective warp; use the existing
+    // (cheaper) pipeline. A non-zero depth changes the vertical distribution and therefore must
+    // go through the remap path even when the curves are straight.
+    if (model.isEffectivelyStraight(DEWARP_STRAIGHT_TOLERANCE_PX) && model.getDepth() == 0.0) {
+      Log.d(TAG, "applyDewarp: curves effectively straight; using perspective pipeline");
+      return applyPerspectiveCorrection(originalBitmap, corners, mode, targetShortOverLong);
+    }
+
+    Bitmap bitmapForOpenCv = ensureBitmapToMatCompatible(originalBitmap);
+    Mat src = new Mat();
+    Mat gridX = new Mat();
+    Mat gridY = new Mat();
+    Mat mapX = new Mat();
+    Mat mapY = new Mat();
+    Mat dst = new Mat();
+    try {
+      Utils.bitmapToMat(bitmapForOpenCv, src);
+
+      Size targetSize =
+          computeDewarpTargetSize(
+              corners,
+              mode,
+              targetShortOverLong,
+              originalBitmap.getWidth(),
+              originalBitmap.getHeight());
+      int outW = Math.max(1, (int) Math.round(targetSize.width));
+      int outH = Math.max(1, (int) Math.round(targetSize.height));
+
+      // Arc-length reparameterization of both curves so that equal horizontal steps in the output
+      // correspond to equal path lengths on the (cylindrical) page surface.
+      double[] topArcLut = buildArcLengthLut(model, true);
+      double[] bottomArcLut = buildArcLengthLut(model, false);
+
+      // Coarse mapping grid: grid(u, v) = (1 - w) * top(u) + w * bottom(u), a ruled surface
+      // between the two curves (straight generatrices = straight side edges). The blend weight
+      // w = model.blendWeight(v) applies the perspective-depth fine adjustment (issue #91,
+      // Phase 3); for depth == 0 it is simply w = v (linear blend).
+      int g = DEWARP_GRID_SIZE;
+      float[] gx = new float[g * g];
+      float[] gy = new float[g * g];
+      // Sample only the inner part of the surface (small symmetric inset) so that residual
+      // paper-edge/background slivers directly at the model boundary do not end up in the result.
+      double inset = DEWARP_EDGE_INSET_FRAC;
+      double span = 1.0 - 2.0 * inset;
+      for (int j = 0; j < g; j++) {
+        double v = inset + span * (j / (double) (g - 1));
+        double w = model.blendWeight(v);
+        for (int i = 0; i < g; i++) {
+          double u = inset + span * (i / (double) (g - 1));
+          double tTop = lookupArcParam(topArcLut, u);
+          double tBottom = lookupArcParam(bottomArcLut, u);
+          Point pTop = model.topAt(tTop);
+          Point pBottom = model.bottomAt(tBottom);
+          gx[j * g + i] = (float) ((1.0 - w) * pTop.x + w * pBottom.x);
+          gy[j * g + i] = (float) ((1.0 - w) * pTop.y + w * pBottom.y);
+        }
+      }
+      gridX.create(g, g, CvType.CV_32FC1);
+      gridY.create(g, g, CvType.CV_32FC1);
+      gridX.put(0, 0, gx);
+      gridY.put(0, 0, gy);
+
+      // Upscale the smooth grid to full map resolution (memory-friendly; see concept §Speicher).
+      Imgproc.resize(gridX, mapX, new Size(outW, outH), 0, 0, Imgproc.INTER_LINEAR);
+      Imgproc.resize(gridY, mapY, new Size(outW, outH), 0, 0, Imgproc.INTER_LINEAR);
+
+      Imgproc.remap(src, dst, mapX, mapY, Imgproc.INTER_LINEAR, Core.BORDER_REPLICATE);
+
+      Bitmap output = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
+      Utils.matToBitmap(dst, output);
+      Log.d(
+          TAG,
+          "applyDewarp: done, out="
+              + outW
+              + "x"
+              + outH
+              + ", maxSagitta="
+              + Math.round(model.maxSagitta())
+              + "px");
+      return output;
+    } catch (Throwable t) {
+      Log.e(TAG, "applyDewarp failed; returning original bitmap", t);
+      return originalBitmap;
+    } finally {
+      release(src, gridX, gridY, mapX, mapY, dst);
+    }
+  }
+
+  /**
+   * Computes the dewarp target size using the same {@link WarpMode} strategy as {@link
+   * #applyPerspectiveCorrection(Bitmap, Point[], WarpMode, Double)}.
+   */
+  private static Size computeDewarpTargetSize(
+      Point[] corners,
+      WarpMode mode,
+      @androidx.annotation.Nullable Double targetShortOverLong,
+      int srcWidth,
+      int srcHeight) {
+    switch (mode) {
+      case LEGACY_HEURISTIC:
+        return computeWarpTargetSize(corners);
+      case FIXED_RATIO:
+        if (targetShortOverLong == null
+            || !Double.isFinite(targetShortOverLong)
+            || targetShortOverLong <= 0.0
+            || targetShortOverLong > 1.0) {
+          Log.w(
+              TAG,
+              "applyDewarp: FIXED_RATIO requested without a valid short/long ratio;"
+                  + " falling back to AUTO_PROJECTIVE");
+          return computeWarpTargetSize(corners, srcWidth, srcHeight);
+        }
+        return computeWarpTargetSizeForFixedRatio(corners, targetShortOverLong);
+      case AUTO_PROJECTIVE:
+      default:
+        return computeWarpTargetSize(corners, srcWidth, srcHeight);
+    }
+  }
+
+  /**
+   * Samples one edge curve of the model and returns its normalized cumulative arc length at {@code
+   * DEWARP_ARC_SAMPLES + 1} uniformly spaced parameter values.
+   *
+   * @param model the dewarp model
+   * @param top {@code true} for the top curve, {@code false} for the bottom curve
+   * @return LUT where {@code lut[i]} is the normalized arc length at {@code t = i / SAMPLES}
+   */
+  private static double[] buildArcLengthLut(DewarpModel model, boolean top) {
+    int n = DEWARP_ARC_SAMPLES;
+    double[] lut = new double[n + 1];
+    Point prev = top ? model.topAt(0) : model.bottomAt(0);
+    double acc = 0;
+    for (int i = 1; i <= n; i++) {
+      double t = i / (double) n;
+      Point p = top ? model.topAt(t) : model.bottomAt(t);
+      acc += Math.hypot(p.x - prev.x, p.y - prev.y);
+      lut[i] = acc;
+      prev = p;
+    }
+    if (acc > 0) {
+      for (int i = 0; i <= n; i++) lut[i] /= acc;
+    } else {
+      for (int i = 0; i <= n; i++) lut[i] = i / (double) n; // degenerate: uniform
+    }
+    return lut;
+  }
+
+  /**
+   * Inverts an arc-length LUT: returns the curve parameter {@code t} at which the normalized arc
+   * length equals {@code s} (both in {@code [0, 1]}), using linear interpolation.
+   */
+  private static double lookupArcParam(double[] lut, double s) {
+    int n = lut.length - 1;
+    if (s <= 0) return 0;
+    if (s >= 1) return 1;
+    int lo = 0, hi = n;
+    while (hi - lo > 1) {
+      int mid = (lo + hi) >>> 1;
+      if (lut[mid] <= s) lo = mid;
+      else hi = mid;
+    }
+    double span = lut[hi] - lut[lo];
+    double frac = span > 0 ? (s - lut[lo]) / span : 0;
+    return (lo + frac) / n;
+  }
+
+  /** Working width (px) of the rectified page used for the automatic curve estimation. */
+  private static final int DEWARP_ESTIMATE_WIDTH = 600;
+
+  /** Number of column bins sampled along the rectified page for the paper-edge envelope. */
+  private static final int DEWARP_ESTIMATE_BINS = 32;
+
+  /** Minimum number of valid column bins required for a reliable quadratic fit. */
+  private static final int DEWARP_ESTIMATE_MIN_BINS = 10;
+
+  /** Maximum |offset| (fraction of the chord length) returned by the automatic estimation. */
+  private static final double DEWARP_ESTIMATE_MAX_OFFSET_FRAC = 0.2;
+
+  /**
+   * Vertical expansion of the selection quad (fraction of the quad height, applied on each side)
+   * before rectification. The curved page edges typically bulge OUTSIDE the straight corner chords
+   * (e.g. the bottom edge of a cylindrically bent page dips below the BL–BR chord), so the plain
+   * quad rectification would clip them; the expanded band keeps both edges visible for tracing.
+   */
+  private static final double DEWARP_ESTIMATE_EXPAND_FRAC = 0.18;
+
+  /**
+   * Maximum fraction of column bins whose traced edge may sit at the expanded-band boundary
+   * (saturated = page continues beyond the band, i.e. no visible edge) before the estimate for
+   * that edge is considered unreliable and reset to {@code 0} (straight).
+   */
+  private static final double DEWARP_ESTIMATE_MAX_SATURATED_FRAC = 0.3;
+
+  /**
+   * Number of uniform samples per edge in the offset profiles returned by {@link
+   * #estimateDewarpEdgeProfiles}. Matches the remap grid resolution so the traced edge shape is
+   * carried into the warp without further loss.
+   */
+  private static final int DEWARP_PROFILE_SAMPLES = 33;
+
+  /**
+   * Convenience wrapper around {@link #estimateDewarpEdgeProfiles(Bitmap, Point[])} that reduces
+   * each traced edge profile to its midpoint offset (the value used for the draggable curve
+   * handles). See that method for the algorithm and the sign convention.
+   *
+   * @param bitmap source bitmap (typically the displayed bitmap of the crop screen)
+   * @param corners selection quad in {@code bitmap} image coordinates (TL, TR, BR, BL)
+   * @return {@code double[2]} with {@code {topOffsetFrac, bottomOffsetFrac}} ({@code 0} for an
+   *     edge without visible curvature), or {@code null} when no reliable estimate is possible
+   */
+  public static double[] estimateDewarpCurveOffsets(Bitmap bitmap, Point[] corners) {
+    double[][] profiles = estimateDewarpEdgeProfiles(bitmap, corners);
+    if (profiles == null) return null;
+    double top = profiles[0] == null ? 0 : DewarpModel.sampleProfile(profiles[0], 0.5);
+    double bottom = profiles[1] == null ? 0 : DewarpModel.sampleProfile(profiles[1], 0.5);
+    return new double[] {top, bottom};
+  }
+
+  /**
+   * Estimates the shape of the curved page edges for the dewarp model by tracing the paper edges
+   * (issue #91, Phase 2 — automatic curve suggestion; follow-up — corner accuracy).
+   *
+   * <p>The selection quad is expanded vertically by {@link #DEWARP_ESTIMATE_EXPAND_FRAC} along its
+   * side edges and rectified with a plain perspective warp to a moderate working resolution, so
+   * that the curved top/bottom page edges are visible even where they bulge outside the corner
+   * chords. For a set of column bins, the paper/background transition is located with subpixel
+   * precision (mean-gray Otsu-threshold crossing), the traced envelope points are mapped back to
+   * image space through the inverse rectification homography (eliminating the perspective bias of
+   * the band) and a corner-constrained quartic offset curve is fitted per edge (see {@link
+   * #fitEdgeProfile}). The result is sampled into a uniform offset PROFILE of {@link
+   * #DEWARP_PROFILE_SAMPLES} chord-normalized offsets (see {@link DewarpModel#withEdgeProfiles});
+   * unlike a single quadratic Bezier, the profile also captures sine-like edge shapes whose corner
+   * slope differs from a parabola's, which removes the residual distortion near the corners.
+   *
+   * <p>When an edge is not visible inside the expanded band (the selection lies well inside the
+   * page, so no dark background is reached), its estimate saturates at the band boundary; such
+   * edges are reported as {@code null} (straight/Bezier) instead of guessing.
+   *
+   * <p>Sign convention: a POSITIVE offset means the on-curve midpoint is displaced from the
+   * straight chord midpoint in the direction of the chord direction rotated by +90° in image
+   * coordinates (x right, y down) — i.e. "downwards" for a left-to-right top edge (TL→TR) and for
+   * the bottom edge (BL→BR).
+   *
+   * <p>This method may take a few hundred milliseconds and must be called off the UI thread.
+   *
+   * @param bitmap source bitmap (typically the displayed bitmap of the crop screen)
+   * @param corners selection quad in {@code bitmap} image coordinates (TL, TR, BR, BL)
+   * @return {@code double[2][]} with {@code {topProfile, bottomProfile}} (an element is {@code
+   *     null} when that edge has no reliably visible curvature), or {@code null} when no estimate
+   *     is possible at all
+   */
+  public static double[][] estimateDewarpEdgeProfiles(Bitmap bitmap, Point[] corners) {
+    if (bitmap == null || bitmap.isRecycled() || corners == null || corners.length != 4) {
+      return null;
+    }
+    for (Point p : corners) if (p == null) return null;
+
+    Bitmap bitmapForOpenCv = ensureBitmapToMatCompatible(bitmap);
+    Mat src = new Mat();
+    Mat rectified = new Mat();
+    Mat gray = new Mat();
+    Mat paper = new Mat();
+    try {
+      Utils.bitmapToMat(bitmapForOpenCv, src);
+
+      double wTop = Math.hypot(corners[1].x - corners[0].x, corners[1].y - corners[0].y);
+      double wBottom = Math.hypot(corners[2].x - corners[3].x, corners[2].y - corners[3].y);
+      double hLeft = Math.hypot(corners[3].x - corners[0].x, corners[3].y - corners[0].y);
+      double hRight = Math.hypot(corners[2].x - corners[1].x, corners[2].y - corners[1].y);
+      double avgW = 0.5 * (wTop + wBottom);
+      double avgH = 0.5 * (hLeft + hRight);
+      if (avgW < 8 || avgH < 8) return null;
+      int rw = DEWARP_ESTIMATE_WIDTH;
+      int rh = (int) Math.max(80, Math.min(1200, Math.round(rw * avgH / avgW)));
+      int ext = (int) Math.round(rh * DEWARP_ESTIMATE_EXPAND_FRAC);
+      int rhx = rh + 2 * ext;
+
+      // Expand the quad along its (straight) side edges so both curved page edges stay visible;
+      // the homography maps the straight chords straight, the curved page edges stay curved.
+      Point[] expanded = new Point[4];
+      double exL = DEWARP_ESTIMATE_EXPAND_FRAC * hLeft;
+      double exR = DEWARP_ESTIMATE_EXPAND_FRAC * hRight;
+      double dLx = (corners[3].x - corners[0].x) / hLeft;
+      double dLy = (corners[3].y - corners[0].y) / hLeft;
+      double dRx = (corners[2].x - corners[1].x) / hRight;
+      double dRy = (corners[2].y - corners[1].y) / hRight;
+      expanded[0] = new Point(corners[0].x - dLx * exL, corners[0].y - dLy * exL);
+      expanded[1] = new Point(corners[1].x - dRx * exR, corners[1].y - dRy * exR);
+      expanded[2] = new Point(corners[2].x + dRx * exR, corners[2].y + dRy * exR);
+      expanded[3] = new Point(corners[3].x + dLx * exL, corners[3].y + dLy * exL);
+      rectified = warpPerspectiveSafe(src, expanded, new Size(rw, rhx));
+      if (rectified == null || rectified.empty() || rectified == src) return null;
+
+      // Grayscale + blur; the Otsu threshold VALUE separates paper (bright) from background.
+      Imgproc.cvtColor(rectified, gray, Imgproc.COLOR_RGBA2GRAY);
+      Imgproc.GaussianBlur(gray, gray, new Size(3, 3), 0);
+      double thr = Imgproc.threshold(gray, paper, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+      byte[] grayPx = new byte[rw * rhx];
+      gray.get(0, 0, grayPx);
+
+      // Trace the paper edges per column bin with SUBPIXEL precision: average the gray values
+      // over the bin's columns and locate the first/last crossing of the Otsu threshold. This is
+      // markedly less biased than counting binary majority rows (the binary mask flips a row or
+      // two early/late depending on the local mix of edge and background pixels).
+      int bins = DEWARP_ESTIMATE_BINS;
+      int binW = rw / bins;
+      int marginX = rw / 20;
+      java.util.List<double[]> topPts = new java.util.ArrayList<>();
+      java.util.List<double[]> bottomPts = new java.util.ArrayList<>();
+      int topSaturated = 0;
+      int bottomSaturated = 0;
+      double[] rowMean = new double[rhx];
+      for (int b = 0; b < bins; b++) {
+        int x0 = b * binW;
+        int x1 = Math.min(rw, x0 + binW);
+        if (x1 <= marginX || x0 >= rw - marginX) continue;
+        x0 = Math.max(x0, marginX);
+        x1 = Math.min(x1, rw - marginX);
+        int nx = x1 - x0;
+        if (nx <= 0) continue;
+        for (int y = 0; y < rhx; y++) {
+          int sum = 0;
+          int rowOff = y * rw;
+          for (int x = x0; x < x1; x++) sum += grayPx[rowOff + x] & 0xFF;
+          rowMean[y] = sum / (double) nx;
+        }
+        int top = -1, bottom = -1;
+        for (int y = 0; y < rhx; y++) {
+          if (rowMean[y] >= thr) {
+            if (top < 0) top = y;
+            bottom = y;
+          }
+        }
+        if (top >= 0 && bottom > top) {
+          double xc = 0.5 * (x0 + x1);
+          topPts.add(new double[] {xc, subpixelCrossing(rowMean, top, thr, true)});
+          bottomPts.add(new double[] {xc, subpixelCrossing(rowMean, bottom, thr, false)});
+          if (top <= 1) topSaturated++;
+          if (bottom >= rhx - 2) bottomSaturated++;
+        }
+      }
+      if (topPts.size() < DEWARP_ESTIMATE_MIN_BINS) {
+        Log.d(
+            TAG,
+            "estimateDewarpEdgeProfiles: too few valid bins (" + topPts.size() + "); no estimate");
+        return null;
+      }
+
+      // Map the traced envelope points back to IMAGE space through the inverse rectification
+      // homography. Measuring the offsets in image space (relative to the actual corner chords)
+      // avoids the perspective bias of the rectified band, where vertical distances are scaled
+      // differently near the top and bottom of the photographed page.
+      org.opencv.core.MatOfPoint2f bandCorners =
+          new org.opencv.core.MatOfPoint2f(
+              new Point(0, 0), new Point(rw, 0), new Point(rw, rhx), new Point(0, rhx));
+      org.opencv.core.MatOfPoint2f quadCorners = new org.opencv.core.MatOfPoint2f(expanded);
+      Mat inverseH = Imgproc.getPerspectiveTransform(bandCorners, quadCorners);
+      java.util.List<double[]> topImg = transformEnvelope(topPts, inverseH);
+      java.util.List<double[]> bottomImg = transformEnvelope(bottomPts, inverseH);
+      release(bandCorners, quadCorners, inverseH);
+
+      // An edge whose envelope saturates at the expanded-band boundary is not visible (selection
+      // inside the page); report it as null (straight) rather than tracing the band boundary.
+      double maxSaturated = topPts.size() * DEWARP_ESTIMATE_MAX_SATURATED_FRAC;
+      double[] topProfile =
+          topSaturated > maxSaturated ? null : fitEdgeProfile(topImg, corners[0], corners[1]);
+      double[] bottomProfile =
+          bottomSaturated > maxSaturated
+              ? null
+              : fitEdgeProfile(bottomImg, corners[3], corners[2]);
+      if (topProfile == null && bottomProfile == null) {
+        Log.d(TAG, "estimateDewarpEdgeProfiles: both edges saturated/invisible; no estimate");
+        return null;
+      }
+      Log.d(
+          TAG,
+          "estimateDewarpEdgeProfiles: topMid="
+              + (topProfile == null ? "null" : DewarpModel.sampleProfile(topProfile, 0.5))
+              + ", bottomMid="
+              + (bottomProfile == null ? "null" : DewarpModel.sampleProfile(bottomProfile, 0.5))
+              + " (bins="
+              + topPts.size()
+              + ", saturated="
+              + topSaturated
+              + "/"
+              + bottomSaturated
+              + ")");
+      return new double[][] {topProfile, bottomProfile};
+    } catch (Throwable t) {
+      Log.w(TAG, "estimateDewarpEdgeProfiles failed", t);
+      return null;
+    } finally {
+      release(src, rectified, gray, paper);
+    }
+  }
+
+  /**
+   * Refines an Otsu-threshold crossing to subpixel precision by linear interpolation between the
+   * first row at/above the threshold and its neighbor just outside the paper.
+   *
+   * @param rowMean per-row mean gray values of the current column bin
+   * @param idx index of the first (top) or last (bottom) row whose mean is {@code >= thr}
+   * @param thr Otsu threshold value
+   * @param top {@code true} for the top edge (neighbor above), {@code false} for the bottom edge
+   */
+  private static double subpixelCrossing(double[] rowMean, int idx, double thr, boolean top) {
+    int j = top ? idx - 1 : idx + 1;
+    if (j < 0 || j >= rowMean.length) return idx;
+    double inside = rowMean[idx];
+    double outside = rowMean[j];
+    if (inside == outside) return idx;
+    double f = (thr - outside) / (inside - outside);
+    return j + f * (idx - j);
+  }
+
+  /** Transforms a list of {@code {x, y}} points with the given 3x3 perspective homography. */
+  private static java.util.List<double[]> transformEnvelope(
+      java.util.List<double[]> pts, Mat homography) {
+    Point[] in = new Point[pts.size()];
+    for (int i = 0; i < pts.size(); i++) in[i] = new Point(pts.get(i)[0], pts.get(i)[1]);
+    org.opencv.core.MatOfPoint2f srcM = new org.opencv.core.MatOfPoint2f(in);
+    org.opencv.core.MatOfPoint2f dstM = new org.opencv.core.MatOfPoint2f();
+    org.opencv.core.Core.perspectiveTransform(srcM, dstM, homography);
+    Point[] out = dstM.toArray();
+    release(srcM, dstM);
+    java.util.List<double[]> res = new java.util.ArrayList<>(out.length);
+    for (Point p : out) res.add(new double[] {p.x, p.y});
+    return res;
+  }
+
+  /**
+   * Fits an edge offset profile to traced envelope points in IMAGE space and samples it into
+   * {@link #DEWARP_PROFILE_SAMPLES} uniform chord-normalized offsets.
+   *
+   * <p>Each point is projected onto the edge chord {@code p0 → p2}: {@code u} = normalized chord
+   * parameter, {@code off} = signed distance along the +90° chord normal, normalized by the chord
+   * length (the model's sign convention). A corner-constrained quartic {@code off(u) = u(1-u)(c0 +
+   * c1·u + c2·u²)} is fitted by least squares — it vanishes at both corners by construction, is
+   * robust against bin noise and approximates typical page-edge shapes (parabolic AND sine-like
+   * bends) to a fraction of a percent, which keeps the warp accurate near the corners.
+   *
+   * @return the sampled profile, or {@code null} when the fit is degenerate
+   */
+  private static double[] fitEdgeProfile(java.util.List<double[]> pts, Point p0, Point p2) {
+    if (pts == null || pts.size() < 5) return null;
+    double dx = p2.x - p0.x, dy = p2.y - p0.y;
+    double len = Math.hypot(dx, dy);
+    if (len < 1e-9) return null;
+    double dirX = dx / len, dirY = dy / len;
+    double nX = -dirY, nY = dirX;
+    int m = pts.size();
+    double[] us = new double[m];
+    double[] offs = new double[m];
+    for (int i = 0; i < m; i++) {
+      double px = pts.get(i)[0] - p0.x, py = pts.get(i)[1] - p0.y;
+      us[i] = (px * dirX + py * dirY) / len;
+      offs[i] = (px * nX + py * nY) / len;
+    }
+    // Least squares for off(u) = c0*f1 + c1*f2 + c2*f3 with f1=u(1-u), f2=u²(1-u), f3=u³(1-u):
+    // solve the 3x3 normal equations with Cramer's rule.
+    double s11 = 0, s12 = 0, s13 = 0, s22 = 0, s23 = 0, s33 = 0, b1 = 0, b2 = 0, b3 = 0;
+    for (int i = 0; i < m; i++) {
+      double u = us[i];
+      double f1 = u * (1 - u);
+      double f2 = u * f1;
+      double f3 = u * f2;
+      s11 += f1 * f1;
+      s12 += f1 * f2;
+      s13 += f1 * f3;
+      s22 += f2 * f2;
+      s23 += f2 * f3;
+      s33 += f3 * f3;
+      b1 += f1 * offs[i];
+      b2 += f2 * offs[i];
+      b3 += f3 * offs[i];
+    }
+    double det =
+        s11 * (s22 * s33 - s23 * s23) - s12 * (s12 * s33 - s23 * s13) + s13 * (s12 * s23 - s22 * s13);
+    if (!Double.isFinite(det) || Math.abs(det) < 1e-12) return null;
+    double c0 =
+        (b1 * (s22 * s33 - s23 * s23) - s12 * (b2 * s33 - b3 * s23) + s13 * (b2 * s23 - b3 * s22))
+            / det;
+    double c1 =
+        (s11 * (b2 * s33 - b3 * s23) - b1 * (s12 * s33 - s23 * s13) + s13 * (s12 * b3 - b2 * s13))
+            / det;
+    double c2 =
+        (s11 * (s22 * b3 - b2 * s23) - s12 * (s12 * b3 - b2 * s13) + b1 * (s12 * s23 - s22 * s13))
+            / det;
+    if (!Double.isFinite(c0) || !Double.isFinite(c1) || !Double.isFinite(c2)) return null;
+    int n = DEWARP_PROFILE_SAMPLES;
+    double[] profile = new double[n];
+    for (int i = 0; i < n; i++) {
+      double u = i / (double) (n - 1);
+      double v = u * (1 - u) * (c0 + c1 * u + c2 * u * u);
+      profile[i] =
+          clamp(v, -DEWARP_ESTIMATE_MAX_OFFSET_FRAC, DEWARP_ESTIMATE_MAX_OFFSET_FRAC);
+    }
+    return profile;
+  }
+
+  private static double clamp(double v, double lo, double hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
   private static Bitmap ensureBitmapToMatCompatible(Bitmap bitmap) {
     if (bitmap == null) return null;
     Bitmap.Config config = bitmap.getConfig();

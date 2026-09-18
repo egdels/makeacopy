@@ -324,6 +324,12 @@ public class CropFragment extends Fragment {
     // §5)
     setupSnapToggleButton();
 
+    // Curved-edges toggle (Issue #91: manual dewarping of curved book pages)
+    setupCurvedToggleButton();
+
+    // Perspective-depth slider (Issue #91, Phase 3)
+    setupDepthSlider();
+
     // Bitmap-Change
     cropViewModel
         .getImageBitmap()
@@ -798,21 +804,100 @@ public class CropFragment extends Fragment {
       cornersForSource = imgCornersDisplay;
     }
 
+    // Issue #91: in curved mode, additionally transform the two on-curve midpoints (top/bottom
+    // edge) from view → displayed-image coordinates and scale them to full-res exactly like the
+    // corners above, then build the DewarpModel. If anything fails, dewarpModel stays null and
+    // the existing straight perspective-correction path below is used unchanged.
+    de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel = null;
+    if (binding.trapezoidSelection.isCurvedMode()) {
+      try {
+        org.opencv.core.Point[] midsView = binding.trapezoidSelection.getCurveMidpointsViewCoords();
+        org.opencv.core.Point[] midsDisplay =
+            CoordinateTransformUtils.transformViewToImageCoordinates(
+                midsView, displayedBitmap, binding.imageToCrop);
+        if (midsDisplay != null
+            && midsDisplay.length == 2
+            && midsDisplay[0] != null
+            && midsDisplay[1] != null) {
+          double sx = 1.0;
+          double sy = 1.0;
+          if (fullResSource != displayedBitmap) {
+            sx = fullResSource.getWidth() / (double) displayedBitmap.getWidth();
+            sy = fullResSource.getHeight() / (double) displayedBitmap.getHeight();
+          }
+          org.opencv.core.Point topMid =
+              new org.opencv.core.Point(midsDisplay[0].x * sx, midsDisplay[0].y * sy);
+          org.opencv.core.Point bottomMid =
+              new org.opencv.core.Point(midsDisplay[1].x * sx, midsDisplay[1].y * sy);
+          dewarpModel =
+              de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
+                  cornersForSource, topMid, bottomMid);
+          if (dewarpModel != null
+              && (estimatedTopEdgeProfile != null || estimatedBottomEdgeProfile != null)) {
+            // Issue #91 follow-up (corner accuracy): carry the traced edge SHAPE from the
+            // automatic estimation into the warp; the profiles are chord-normalized and get
+            // rescaled to the user's current curve-handle positions inside the model.
+            dewarpModel =
+                dewarpModel.withEdgeProfiles(estimatedTopEdgeProfile, estimatedBottomEdgeProfile);
+          }
+          if (dewarpModel != null && dewarpDepth != 0.0) {
+            // Issue #91 (Phase 3): apply the perspective-depth fine adjustment from the slider.
+            dewarpModel = dewarpModel.withDepth(dewarpDepth);
+          }
+          android.util.Log.d(
+              TAG,
+              LP
+                  + "performCrop: curved mode, topMid="
+                  + topMid
+                  + ", bottomMid="
+                  + bottomMid
+                  + ", depth="
+                  + dewarpDepth);
+        } else {
+          android.util.Log.w(
+              TAG, LP + "performCrop: curve midpoint transform invalid; falling back to straight");
+        }
+      } catch (Throwable t) {
+        android.util.Log.w(
+            TAG, LP + "performCrop: curved-mode midpoint transform failed, falling back: " + t);
+        dewarpModel = null;
+      }
+    }
+
     long t0 = android.os.SystemClock.uptimeMillis();
     Bitmap croppedBitmap;
     {
       CropAspectRatio sel = CropPrefsHelper.getLastAspect(requireContext());
       if (sel == CropAspectRatio.ORIGINAL) {
-        android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → legacy heuristic");
-        croppedBitmap =
-            OpenCVUtils.applyPerspectiveCorrectionLegacyHeuristic(fullResSource, cornersForSource);
+        if (dewarpModel != null) {
+          // Issue #91: the legacy heuristic has no WarpMode counterpart; use AUTO_PROJECTIVE
+          // for dewarping so the curved selection is honored under aspect=ORIGINAL as well.
+          android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → dewarp AUTO_PROJECTIVE");
+          croppedBitmap =
+              OpenCVUtils.applyDewarp(
+                  fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+        } else {
+          android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → legacy heuristic");
+          croppedBitmap =
+              OpenCVUtils.applyPerspectiveCorrectionLegacyHeuristic(
+                  fullResSource, cornersForSource);
+        }
       } else {
         Double ratio = CropPrefsHelper.resolveActiveRatio(requireContext());
         if (ratio == null) {
-          android.util.Log.d(TAG, LP + "performCrop: aspect=" + sel + " → AUTO_PROJECTIVE");
+          android.util.Log.d(
+              TAG,
+              LP
+                  + "performCrop: aspect="
+                  + sel
+                  + " → AUTO_PROJECTIVE"
+                  + (dewarpModel != null ? " (dewarp)" : ""));
           croppedBitmap =
-              OpenCVUtils.applyPerspectiveCorrection(
-                  fullResSource, cornersForSource, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+              dewarpModel != null
+                  ? OpenCVUtils.applyDewarp(
+                      fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null)
+                  : OpenCVUtils.applyPerspectiveCorrection(
+                      fullResSource, cornersForSource, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
         } else {
           android.util.Log.d(
               TAG,
@@ -820,10 +905,14 @@ public class CropFragment extends Fragment {
                   + "performCrop: aspect="
                   + sel
                   + " → FIXED_RATIO short/long="
-                  + String.format(java.util.Locale.US, "%.4f", ratio));
+                  + String.format(java.util.Locale.US, "%.4f", ratio)
+                  + (dewarpModel != null ? " (dewarp)" : ""));
           croppedBitmap =
-              OpenCVUtils.applyPerspectiveCorrection(
-                  fullResSource, cornersForSource, OpenCVUtils.WarpMode.FIXED_RATIO, ratio);
+              dewarpModel != null
+                  ? OpenCVUtils.applyDewarp(
+                      fullResSource, dewarpModel, OpenCVUtils.WarpMode.FIXED_RATIO, ratio)
+                  : OpenCVUtils.applyPerspectiveCorrection(
+                      fullResSource, cornersForSource, OpenCVUtils.WarpMode.FIXED_RATIO, ratio);
         }
       }
     }
@@ -1158,6 +1247,257 @@ public class CropFragment extends Fragment {
             // Best-effort accessibility announcement
           }
         });
+  }
+
+  /**
+   * Wires up the Curved-edges toggle button (Issue #91). Clicking flips the curved mode of the
+   * trapezoid selection via {@link TrapezoidSelectionView#setCurvedMode(boolean)}. The button uses
+   * {@link View#setSelected(boolean)} plus a tint change for visual feedback (same pattern as the
+   * Snap-to-Right-Angle toggle) and announces the new state for accessibility. The mode is
+   * intentionally not persisted in this MVP; it resets when the fragment is recreated.
+   */
+  private void setupCurvedToggleButton() {
+    if (binding == null) return;
+    applyCurvedToggleVisuals(binding.trapezoidSelection.isCurvedMode());
+    binding.cropCurvedToggleButton.setOnClickListener(
+        v -> {
+          boolean newState = !binding.trapezoidSelection.isCurvedMode();
+          binding.trapezoidSelection.setCurvedMode(newState);
+          applyCurvedToggleVisuals(newState);
+          // Issue #91 (Phase 3): the depth slider is only meaningful in curved mode; reset it
+          // to neutral whenever the mode is toggled and show/hide it accordingly.
+          dewarpDepth = 0.0;
+          binding.cropDepthSlider.setProgress(DEPTH_SLIDER_NEUTRAL);
+          binding.trapezoidSelection.setDepthPreview(0.0);
+          estimatedTopEdgeProfile = null;
+          estimatedBottomEdgeProfile = null;
+          showDepthSlider(newState);
+          if (newState) {
+            // Issue #91 (Phase 2): kick off the automatic initial curve estimation in the
+            // background; the result is applied only if curved mode is still active.
+            startCurveEstimation();
+          }
+          String msg =
+              getString(newState ? R.string.crop_curved_mode_on : R.string.crop_curved_mode_off);
+          try {
+            android.widget.Toast.makeText(requireContext(), msg, android.widget.Toast.LENGTH_SHORT)
+                .show();
+          } catch (Throwable ignore) {
+            // Best-effort user-visible message
+          }
+          try {
+            de.schliweb.makeacopy.utils.ui.A11yUtils.announce(v, msg);
+          } catch (Throwable ignore) {
+            // Best-effort accessibility announcement
+          }
+        });
+  }
+
+  /** Neutral (center) progress value of the depth slider (Issue #91, Phase 3). */
+  private static final int DEPTH_SLIDER_NEUTRAL = 100;
+
+  /**
+   * Current perspective-depth fine adjustment in {@code [-1, 1]} (Issue #91, Phase 3); {@code 0} =
+   * neutral. Applied to the {@link de.schliweb.makeacopy.utils.image.DewarpModel} via {@code
+   * withDepth} in {@link #performCrop()} when curved mode is active. Intentionally not persisted
+   * (MVP); resets when the fragment is recreated or the curved mode is toggled.
+   */
+  private double dewarpDepth = 0.0;
+
+  /**
+   * Chord-normalized offset profile of the top page edge from the last successful automatic curve
+   * estimation (issue #91 follow-up: corner accuracy), or {@code null}. Consumed in {@link
+   * #performCrop()} via {@link de.schliweb.makeacopy.utils.image.DewarpModel#withEdgeProfiles};
+   * reset whenever the curved mode is toggled or a new estimation run starts.
+   */
+  private double[] estimatedTopEdgeProfile;
+
+  /** Bottom-edge counterpart of {@link #estimatedTopEdgeProfile}. */
+  private double[] estimatedBottomEdgeProfile;
+
+  /**
+   * Wires up the perspective-depth slider (Issue #91, Phase 3). The slider maps its progress range
+   * {@code [0, 200]} linearly to a depth value in {@code [-1, 1]} (center = neutral). It is only
+   * visible while curved mode is active; the value is consumed in {@link #performCrop()}.
+   */
+  private void setupDepthSlider() {
+    if (binding == null) return;
+    showDepthSlider(binding.trapezoidSelection.isCurvedMode());
+    binding.cropDepthSlider.setOnSeekBarChangeListener(
+        new android.widget.SeekBar.OnSeekBarChangeListener() {
+          @Override
+          public void onProgressChanged(
+              android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+            dewarpDepth = (progress - DEPTH_SLIDER_NEUTRAL) / (double) DEPTH_SLIDER_NEUTRAL;
+            // Live preview: mirror the depth into the overlay so its grid lines shift
+            // towards the top/bottom curve while the slider is dragged.
+            if (binding != null) binding.trapezoidSelection.setDepthPreview(dewarpDepth);
+          }
+
+          @Override
+          public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
+            // No-op
+          }
+
+          @Override
+          public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+            android.util.Log.d(TAG, "setupDepthSlider: depth=" + dewarpDepth);
+          }
+        });
+  }
+
+  /**
+   * Shows or hides the depth slider (Issue #91, Phase 3). The layout keeps the slider outside the
+   * image area (the preview's bottom is constrained to the slider's top), so the
+   * {@link TrapezoidSelectionView} overlay never overlaps it and cannot consume its touch events
+   * (which would pan the preview instead of moving the slider thumb). Raising elevation/Z here is
+   * kept as an additional safety net.
+   *
+   * @param visible whether the slider should be visible
+   */
+  private void showDepthSlider(boolean visible) {
+    if (binding == null) return;
+    binding.cropDepthSlider.setVisibility(visible ? View.VISIBLE : View.GONE);
+    if (visible) {
+      try {
+        ViewCompat.setElevation(binding.cropDepthSlider, 200f);
+        ViewCompat.setTranslationZ(binding.cropDepthSlider, 200f);
+        binding.cropDepthSlider.bringToFront();
+      } catch (Throwable ignored) {
+        // Best-effort; failure is non-critical
+      }
+    }
+  }
+
+  /**
+   * Generation counter guarding against overlapping curve-estimation runs (Issue #91, Phase 2).
+   * Incremented on every {@link #startCurveEstimation()} call; a background run applies its result
+   * only if the counter still matches, so quickly toggling the curved mode on/off/on cannot apply a
+   * stale estimate.
+   */
+  private final java.util.concurrent.atomic.AtomicInteger curveEstimationGeneration =
+      new java.util.concurrent.atomic.AtomicInteger(0);
+
+  /**
+   * Starts the automatic initial curve estimation (Issue #91, Phase 2) on a background thread. The
+   * current view-space corners are transformed to displayed-image coordinates via {@link
+   * CoordinateTransformUtils#transformViewToImageCoordinates}, validated with {@link
+   * TrapezoidSelectionView#isValidImageQuad}, and passed to {@code
+   * OpenCVUtils.estimateDewarpCurveOffsets}. The resulting offset fractions (same sign convention
+   * as {@link TrapezoidSelectionView#setCurveOffsetFractions(double, double)}) are posted back to
+   * the main thread and applied only if the binding is still alive, curved mode is still active and
+   * no newer estimation run has been started. A {@code null} estimate leaves the handles straight
+   * (log only, no toast).
+   */
+  private void startCurveEstimation() {
+    if (binding == null) return;
+    final int generation = curveEstimationGeneration.incrementAndGet();
+    estimatedTopEdgeProfile = null;
+    estimatedBottomEdgeProfile = null;
+    final Bitmap displayedBitmap = cropViewModel.getImageBitmap().getValue();
+    if (displayedBitmap == null || displayedBitmap.isRecycled()) {
+      android.util.Log.w(TAG, "startCurveEstimation: no displayed bitmap available");
+      return;
+    }
+    final org.opencv.core.Point[] imgCorners;
+    try {
+      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
+      imgCorners =
+          CoordinateTransformUtils.transformViewToImageCoordinates(
+              viewCorners, displayedBitmap, binding.imageToCrop);
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, "startCurveEstimation: corner transform failed: " + t);
+      return;
+    }
+    if (!TrapezoidSelectionView.isValidImageQuad(
+        imgCorners, displayedBitmap.getWidth(), displayedBitmap.getHeight())) {
+      android.util.Log.w(TAG, "startCurveEstimation: invalid image-space quad; skipping");
+      return;
+    }
+    final View postTarget = binding.trapezoidSelection;
+    new Thread(
+            () -> {
+              double[][] profiles = null;
+              try {
+                profiles =
+                    de.schliweb.makeacopy.utils.image.OpenCVUtils.estimateDewarpEdgeProfiles(
+                        displayedBitmap, imgCorners);
+              } catch (Throwable t) {
+                android.util.Log.w(TAG, "startCurveEstimation: estimation failed: " + t);
+              }
+              if (profiles == null || profiles.length != 2) {
+                android.util.Log.d(
+                    TAG, "startCurveEstimation: no reliable estimate; leaving handles straight");
+                return;
+              }
+              final double[] topProfile = profiles[0];
+              final double[] bottomProfile = profiles[1];
+              final double topFrac =
+                  topProfile == null
+                      ? 0
+                      : de.schliweb.makeacopy.utils.image.DewarpModel.sampleProfile(
+                          topProfile, 0.5);
+              final double bottomFrac =
+                  bottomProfile == null
+                      ? 0
+                      : de.schliweb.makeacopy.utils.image.DewarpModel.sampleProfile(
+                          bottomProfile, 0.5);
+              postTarget.post(
+                  () -> {
+                    try {
+                      if (binding == null) return;
+                      if (generation != curveEstimationGeneration.get()) {
+                        android.util.Log.d(
+                            TAG, "startCurveEstimation: stale generation; result discarded");
+                        return;
+                      }
+                      if (!binding.trapezoidSelection.isCurvedMode()) {
+                        android.util.Log.d(
+                            TAG, "startCurveEstimation: curved mode no longer active; discarded");
+                        return;
+                      }
+                      android.util.Log.d(
+                          TAG,
+                          "startCurveEstimation: applying estimate top="
+                              + topFrac
+                              + ", bottom="
+                              + bottomFrac);
+                      binding.trapezoidSelection.setCurveOffsetFractions(topFrac, bottomFrac);
+                      // Keep the full traced edge shapes for performCrop (corner accuracy).
+                      estimatedTopEdgeProfile = topProfile;
+                      estimatedBottomEdgeProfile = bottomProfile;
+                    } catch (Throwable t) {
+                      android.util.Log.w(TAG, "startCurveEstimation: apply failed: " + t);
+                    }
+                  });
+            },
+            "CurveEstimation")
+        .start();
+  }
+
+  private void applyCurvedToggleVisuals(boolean active) {
+    if (binding == null) return;
+    binding.cropCurvedToggleButton.setSelected(active);
+    int tint;
+    if (active) {
+      android.util.TypedValue tvActive = new android.util.TypedValue();
+      requireContext()
+          .getTheme()
+          .resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tvActive, true);
+      tint =
+          tvActive.resourceId != 0
+              ? androidx.core.content.ContextCompat.getColor(requireContext(), tvActive.resourceId)
+              : tvActive.data;
+    } else {
+      android.util.TypedValue tv = new android.util.TypedValue();
+      requireContext().getTheme().resolveAttribute(android.R.attr.colorControlNormal, tv, true);
+      tint =
+          tv.resourceId != 0
+              ? androidx.core.content.ContextCompat.getColor(requireContext(), tv.resourceId)
+              : tv.data;
+    }
+    androidx.core.widget.ImageViewCompat.setImageTintList(
+        binding.cropCurvedToggleButton, android.content.res.ColorStateList.valueOf(tint));
   }
 
   private void applySnapToggleVisuals(boolean active) {

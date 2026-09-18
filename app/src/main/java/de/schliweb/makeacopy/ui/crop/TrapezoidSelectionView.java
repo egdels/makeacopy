@@ -114,6 +114,45 @@ public class TrapezoidSelectionView extends View {
 
   private final float[] edgeAnchorYs = new float[4];
 
+  // === Curved mode (Issue #91: manual dewarping of curved book pages) ===
+  /** Visual radius of the two curve midpoint handles (top/bottom edge, curved mode only). */
+  private static final int CURVE_HANDLE_RADIUS = 24;
+
+  /** Maximum perpendicular offset of a curve handle, as a fraction of the edge chord length. */
+  private static final float CURVE_MAX_OFFSET_FRAC = 0.75f;
+
+  /**
+   * Whether curved mode is active. When {@code true}, the top and bottom edges of the selection are
+   * rendered as quadratic Bezier curves whose on-curve midpoint (t=0.5) is user-draggable.
+   */
+  private boolean curvedMode = false;
+
+  /**
+   * Curvature state of the top (index 0) and bottom (index 1) edge, stored as the SIGNED
+   * perpendicular offset of the on-curve midpoint from the straight chord midpoint, normalized by
+   * the chord length. Storing a chord-relative fraction (instead of an absolute position) was the
+   * least complex choice that keeps the handle sensible under all existing corner mechanics: the
+   * handle position is fully derived from the corners on every draw, so corner drags, edge drags,
+   * rotation, pan/zoom and view resizes (relativeCorners) all keep working without extra state
+   * synchronization. {@code 0} means a straight edge.
+   */
+  private final float[] curveOffsetFrac = new float[] {0f, 0f};
+
+  /** Index of the actively dragged curve handle (0=top, 1=bottom) or -1. Curved mode only. */
+  private int activeCurveHandleIndex = -1;
+
+  private Paint curveHandlePaint; // Paint for the curve midpoint handles (curved mode)
+
+  private Paint depthPreviewPaint; // Paint for the depth-preview grid lines (curved mode)
+
+  /**
+   * Perspective-depth preview value in {@code [-1, 1]} (Issue #91, Phase 3); {@code 0} = neutral.
+   * Mirrors the depth slider so the intermediate grid lines drawn in {@link #onDraw(Canvas)}
+   * visualize how the dewarp blend shifts towards the top/bottom curve. Purely visual; the actual
+   * warp uses {@code DewarpModel.withDepth} in the crop step.
+   */
+  private double depthPreview = 0.0;
+
   // === Pan/Zoom view transform (Phase 2 step 1, see docs/edge_drag_pan_zoom_concept.md §4.1) ===
   /**
    * Pure-math representation of the canvas transform applied in {@link #onDraw(Canvas)}. Touch
@@ -618,6 +657,21 @@ public class TrapezoidSelectionView extends View {
     edgeHandlePaint.setStyle(Paint.Style.FILL);
     edgeHandlePaint.setAntiAlias(true);
     edgeHandlePaint.setShadowLayer(4.0f, 2.0f, 2.0f, Color.BLACK);
+
+    // Curve midpoint handle paint (Issue #91): filled cyan circle, visually distinct from the
+    // orange corner handles and the orange edge midpoint handles.
+    curveHandlePaint = new Paint();
+    curveHandlePaint.setColor(Color.rgb(0, 200, 255));
+    curveHandlePaint.setStyle(Paint.Style.FILL);
+    curveHandlePaint.setAntiAlias(true);
+    curveHandlePaint.setShadowLayer(4.0f, 2.0f, 2.0f, Color.BLACK);
+
+    // Depth-preview grid paint (Issue #91, Phase 3): thin semi-transparent cyan lines between the
+    // top and bottom curves that visualize the perspective-depth reparameterization live.
+    depthPreviewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    depthPreviewPaint.setColor(Color.argb(140, 0, 200, 255));
+    depthPreviewPaint.setStyle(Paint.Style.STROKE);
+    depthPreviewPaint.setStrokeWidth(2f);
 
     // Active edge paint: bright yellow stroke drawn on top of the trapezoid outline while an
     // edge is being translated (parallel drag).
@@ -2373,12 +2427,28 @@ public class TrapezoidSelectionView extends View {
       updateAnimation();
     }
 
-    // Reuse preallocated path for the trapezoid
+    // Reuse preallocated path for the trapezoid. In curved mode (Issue #91) the top and bottom
+    // edges become quadratic Beziers through the on-curve midpoint M: control point C = 2*M -
+    // 0.5*(P0+P2); side edges stay straight lines.
     drawPath.reset();
     drawPath.moveTo(corners[0].x, corners[0].y);
-    drawPath.lineTo(corners[1].x, corners[1].y);
+    if (curvedMode) {
+      PointF topMid = computeCurveHandle(0);
+      float cx = 2f * topMid.x - 0.5f * (corners[0].x + corners[1].x);
+      float cy = 2f * topMid.y - 0.5f * (corners[0].y + corners[1].y);
+      drawPath.quadTo(cx, cy, corners[1].x, corners[1].y);
+    } else {
+      drawPath.lineTo(corners[1].x, corners[1].y);
+    }
     drawPath.lineTo(corners[2].x, corners[2].y);
-    drawPath.lineTo(corners[3].x, corners[3].y);
+    if (curvedMode) {
+      PointF bottomMid = computeCurveHandle(1);
+      float cx = 2f * bottomMid.x - 0.5f * (corners[2].x + corners[3].x);
+      float cy = 2f * bottomMid.y - 0.5f * (corners[2].y + corners[3].y);
+      drawPath.quadTo(cx, cy, corners[3].x, corners[3].y);
+    } else {
+      drawPath.lineTo(corners[3].x, corners[3].y);
+    }
     drawPath.close();
 
     // Draw the semi-transparent background inside the trapezoid
@@ -2386,6 +2456,15 @@ public class TrapezoidSelectionView extends View {
 
     // Draw the trapezoid outline
     canvas.drawPath(drawPath, trapezoidPaint);
+
+    // Depth-preview grid (Issue #91, Phase 3): in curved mode, draw intermediate "generatrix"
+    // lines between the top and bottom curves. Their vertical position uses the same blend
+    // reparameterization as DewarpModel.blendWeight (w = v + depth*v*(1-v)), so dragging the
+    // depth slider visibly shifts the lines towards the top/bottom curve — a live preview of
+    // how the dewarp will compress/stretch the page content.
+    if (curvedMode) {
+      drawDepthPreviewGrid(canvas);
+    }
 
     // Highlight the active edge (when an edge is being dragged) so the user gets clear visual
     // feedback that the whole line is being translated, not just a corner.
@@ -2420,12 +2499,25 @@ public class TrapezoidSelectionView extends View {
     }
 
     // Draw small midpoint handles on each edge to indicate that edges (lines) can be dragged.
+    // In curved mode the top/bottom edge midpoints carry the dedicated curve handles instead,
+    // so their straight-chord midpoint handles are skipped to avoid overlapping handles.
     for (int i = 0; i < 4; i++) {
+      if (curvedMode && (i == 0 || i == 2)) continue;
       int j = (i + 1) % 4;
       float mx = (corners[i].x + corners[j].x) * 0.5f;
       float my = (corners[i].y + corners[j].y) * 0.5f;
       Paint mp = (i == activeEdgeIndex) ? activePaint : edgeHandlePaint;
       canvas.drawCircle(mx, my, EDGE_HANDLE_RADIUS, mp);
+    }
+
+    // Draw the curve midpoint handles (Issue #91) as filled circles, visually distinct from the
+    // corner handles.
+    if (curvedMode) {
+      for (int i = 0; i < 2; i++) {
+        PointF m = computeCurveHandle(i);
+        Paint p = (i == activeCurveHandleIndex) ? activePaint : curveHandlePaint;
+        canvas.drawCircle(m.x, m.y, CURVE_HANDLE_RADIUS, p);
+      }
     }
 
     // Draw the corner handles
@@ -2810,6 +2902,30 @@ public class TrapezoidSelectionView extends View {
                   + ", rawY="
                   + event.getRawY());
         }
+        // Curved mode (Issue #91): check the two curve midpoint handles first so they win over
+        // the underlying top/bottom edge hit areas.
+        if (curvedMode) {
+          int curveIdx = findCurveHandleIndex(x, y);
+          if (curveIdx != -1) {
+            activeCurveHandleIndex = curveIdx;
+            userHasEdited = true;
+            isUserAdjusting = true;
+            cancelAdjustIdle();
+            try {
+              getParent().requestDisallowInterceptTouchEvent(true);
+            } catch (Throwable ignore) {
+              // Best-effort; failure is non-critical
+            }
+            updateSystemGestureExclusion();
+            notifyDragStateChanged(true);
+            invalidate();
+            if (debugLogsEnabled) {
+              Log.d(TAG, "ACTION_DOWN curve handle hit, index=" + curveIdx);
+            }
+            return true;
+          }
+        }
+
         // Check if a corner was touched
         activeCornerIndex = findCornerIndex(x, y);
         if (activeCornerIndex != -1) {
@@ -3073,6 +3189,20 @@ public class TrapezoidSelectionView extends View {
           return true;
         }
 
+        // Curved mode (Issue #91): drag the active curve midpoint handle along the chord normal.
+        if (activeCurveHandleIndex != -1) {
+          isUserAdjusting = true;
+          cancelAdjustIdle();
+          try {
+            getParent().requestDisallowInterceptTouchEvent(true);
+          } catch (Throwable ignore) {
+            // Best-effort
+          }
+          updateCurveHandleFromTouch(activeCurveHandleIndex, x, y);
+          invalidate();
+          return true;
+        }
+
         // Edge drag (parallel translation): apply only the orthogonal
         // component of the finger motion to both endpoints of the active edge.
         if (activeEdgeIndex != -1) {
@@ -3207,6 +3337,8 @@ public class TrapezoidSelectionView extends View {
         activeCornerIndex = -1;
         // Reset edge-drag state
         activeEdgeIndex = -1;
+        // Reset curve-handle drag state (Issue #91)
+        activeCurveHandleIndex = -1;
         // Reset implicit Pan state and snap residual zoom on lift.
         if (isPanning) {
           isPanning = false;
@@ -3292,6 +3424,219 @@ public class TrapezoidSelectionView extends View {
       points[i] = new Point(corners[i].x, corners[i].y);
     }
     return points;
+  }
+
+  /**
+   * Enables or disables curved mode (Issue #91). When enabling, the two curve handles start at the
+   * straight-edge midpoints (zero curvature); when disabling, any curvature is discarded so the
+   * edges are rendered straight again.
+   *
+   * @param enabled {@code true} to activate curved mode
+   */
+  public void setCurvedMode(boolean enabled) {
+    if (this.curvedMode == enabled) return;
+    this.curvedMode = enabled;
+    // Reset curvature on every mode change: entering starts at the straight midpoints, leaving
+    // discards the curvature so a later re-enable starts fresh as well.
+    curveOffsetFrac[0] = 0f;
+    curveOffsetFrac[1] = 0f;
+    activeCurveHandleIndex = -1;
+    Log.d(TAG, "setCurvedMode: " + enabled);
+    invalidate();
+  }
+
+  /** Returns whether curved mode (Issue #91) is currently active. */
+  public boolean isCurvedMode() {
+    return curvedMode;
+  }
+
+  /**
+   * Sets the perspective-depth preview value (Issue #91, Phase 3). Mirrors the depth slider in the
+   * crop UI; only affects the intermediate grid lines drawn in curved mode (see {@link
+   * #onDraw(Canvas)}), not the selection geometry itself.
+   *
+   * @param depth depth adjustment in {@code [-1, 1]}; {@code 0} = neutral (evenly spaced grid)
+   */
+  public void setDepthPreview(double depth) {
+    if (!Double.isFinite(depth)) depth = 0.0;
+    depth = Math.max(-1.0, Math.min(1.0, depth));
+    if (this.depthPreview == depth) return;
+    this.depthPreview = depth;
+    if (curvedMode) invalidate();
+  }
+
+  /**
+   * Draws the depth-preview grid lines between the top and bottom edge curves (curved mode only).
+   * Each line is the ruled-surface cross-section at output row {@code v}, using the blend weight
+   * {@code w = v + depth*v*(1-v)} — identical to {@code DewarpModel.blendWeight} — so the preview
+   * matches the warp applied on crop.
+   */
+  private void drawDepthPreviewGrid(Canvas canvas) {
+    PointF topMid = computeCurveHandle(0);
+    PointF bottomMid = computeCurveHandle(1);
+    // Quadratic Bezier control points recovered from the on-curve midpoints (C = 2*M - 0.5*(P0+P2)).
+    float tcx = 2f * topMid.x - 0.5f * (corners[0].x + corners[1].x);
+    float tcy = 2f * topMid.y - 0.5f * (corners[0].y + corners[1].y);
+    float bcx = 2f * bottomMid.x - 0.5f * (corners[3].x + corners[2].x);
+    float bcy = 2f * bottomMid.y - 0.5f * (corners[3].y + corners[2].y);
+    final int samples = 16;
+    final float[] rows = {0.25f, 0.5f, 0.75f};
+    for (float v : rows) {
+      float w = (float) (v + depthPreview * v * (1.0 - v));
+      drawPath.reset();
+      for (int k = 0; k <= samples; k++) {
+        float t = k / (float) samples;
+        float omt = 1f - t;
+        float a = omt * omt, b = 2f * omt * t, d = t * t;
+        // Top curve TL→TR and bottom curve BL→BR at parameter t (both left-to-right).
+        float txp = a * corners[0].x + b * tcx + d * corners[1].x;
+        float typ = a * corners[0].y + b * tcy + d * corners[1].y;
+        float bxp = a * corners[3].x + b * bcx + d * corners[2].x;
+        float byp = a * corners[3].y + b * bcy + d * corners[2].y;
+        float x = (1f - w) * txp + w * bxp;
+        float y = (1f - w) * typ + w * byp;
+        if (k == 0) drawPath.moveTo(x, y);
+        else drawPath.lineTo(x, y);
+      }
+      canvas.drawPath(drawPath, depthPreviewPaint);
+    }
+  }
+
+  /**
+   * Returns the two on-curve midpoints (t=0.5) of the top and bottom edge in the same VIEW
+   * coordinate space as {@link #getCorners()}, so the host fragment can reuse {@link
+   * CoordinateTransformUtils#transformViewToImageCoordinates} unchanged.
+   *
+   * @return array {topMid, bottomMid} as OpenCV points in view coordinates
+   */
+  public Point[] getCurveMidpointsViewCoords() {
+    PointF top = computeCurveHandle(0);
+    PointF bottom = computeCurveHandle(1);
+    return new Point[] {new Point(top.x, top.y), new Point(bottom.x, bottom.y)};
+  }
+
+  /**
+   * Sets the curvature of the top and bottom edge programmatically (Issue #91, Phase 2: automatic
+   * initial curve estimation). Each value is the signed perpendicular offset of the on-curve
+   * midpoint (t=0.5) from the straight chord midpoint, normalized by the chord length, and is
+   * clamped to ±{@link #CURVE_MAX_OFFSET_FRAC}.
+   *
+   * <p>Sign convention: a POSITIVE value moves the handle along the chord's unit normal {@code
+   * (-dy, dx)/len} (see {@link #computeCurveHandle(int)}), i.e. the chord direction rotated +90° in
+   * screen coordinates (x right, y down). This is IDENTICAL to the convention of {@code
+   * OpenCVUtils.estimateDewarpCurveOffsets}: for the left-to-right top edge (TL→TR) a positive
+   * value bends the edge downwards / towards the page interior, and for the bottom edge (BL→BR,
+   * corners 3→2) a positive value also bends downwards in image space. Values from the estimator
+   * can therefore be passed through unchanged.
+   *
+   * @param topFrac signed offset fraction for the top edge (corners 0→1)
+   * @param bottomFrac signed offset fraction for the bottom edge (corners 3→2)
+   */
+  public void setCurveOffsetFractions(double topFrac, double bottomFrac) {
+    curveOffsetFrac[0] =
+        Math.max(-CURVE_MAX_OFFSET_FRAC, Math.min(CURVE_MAX_OFFSET_FRAC, (float) topFrac));
+    curveOffsetFrac[1] =
+        Math.max(-CURVE_MAX_OFFSET_FRAC, Math.min(CURVE_MAX_OFFSET_FRAC, (float) bottomFrac));
+    Log.d(
+        TAG,
+        "setCurveOffsetFractions: top=" + curveOffsetFrac[0] + ", bottom=" + curveOffsetFrac[1]);
+    invalidate();
+  }
+
+  /**
+   * Computes the current on-curve midpoint (t=0.5) of the top ({@code which == 0}) or bottom
+   * ({@code which == 1}) edge. The position is derived from the corners on every call: chord
+   * midpoint plus {@link #curveOffsetFrac} times the chord length along the chord's unit normal.
+   *
+   * @param which 0 for the top edge (corners 0→1), 1 for the bottom edge (corners 3→2)
+   * @return the handle position in local (unscaled) view coordinates
+   */
+  private PointF computeCurveHandle(int which) {
+    int a = (which == 0) ? 0 : 3;
+    int b = (which == 0) ? 1 : 2;
+    float mx = 0.5f * (corners[a].x + corners[b].x);
+    float my = 0.5f * (corners[a].y + corners[b].y);
+    float dx = corners[b].x - corners[a].x;
+    float dy = corners[b].y - corners[a].y;
+    float len = (float) Math.hypot(dx, dy);
+    if (len < 1e-3f) {
+      return new PointF(mx, my);
+    }
+    // Unit normal of the chord; the sign of curveOffsetFrac selects the side.
+    float nx = -dy / len;
+    float ny = dx / len;
+    float t = curveOffsetFrac[which] * len;
+    return new PointF(mx + t * nx, my + t * ny);
+  }
+
+  /**
+   * Finds the curve handle (0=top, 1=bottom) under the given local touch point, or {@code -1} if
+   * none. Uses the same hit radius as the corner handles.
+   */
+  private int findCurveHandleIndex(float x, float y) {
+    for (int i = 0; i < 2; i++) {
+      PointF m = computeCurveHandle(i);
+      float dx = x - m.x;
+      float dy = y - m.y;
+      if (Math.sqrt(dx * dx + dy * dy) < CORNER_TOUCH_RADIUS) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Updates the curvature of the given edge from a touch position: the touch point is projected
+   * onto the chord normal through the chord midpoint, the signed offset is clamped to {@link
+   * #CURVE_MAX_OFFSET_FRAC} of the chord length and further restricted so the resulting handle
+   * stays within the view bounds.
+   *
+   * @param which 0 for the top edge, 1 for the bottom edge
+   * @param x local touch X
+   * @param y local touch Y
+   */
+  private void updateCurveHandleFromTouch(int which, float x, float y) {
+    int a = (which == 0) ? 0 : 3;
+    int b = (which == 0) ? 1 : 2;
+    float mx = 0.5f * (corners[a].x + corners[b].x);
+    float my = 0.5f * (corners[a].y + corners[b].y);
+    float dx = corners[b].x - corners[a].x;
+    float dy = corners[b].y - corners[a].y;
+    float len = (float) Math.hypot(dx, dy);
+    if (len < 1e-3f) return;
+    float nx = -dy / len;
+    float ny = dx / len;
+    // Signed perpendicular offset of the touch from the chord midpoint.
+    float t = (x - mx) * nx + (y - my) * ny;
+    float maxT = CURVE_MAX_OFFSET_FRAC * len;
+    t = Math.max(-maxT, Math.min(maxT, t));
+    // Constrain the handle to the view bounds by clipping t along the normal through the chord
+    // midpoint (the midpoint itself is inside the view because the corners are clamped).
+    int w = getWidth();
+    int h = getHeight();
+    if (w > 0 && h > 0) {
+      float tMin = -Float.MAX_VALUE;
+      float tMax = Float.MAX_VALUE;
+      if (Math.abs(nx) > 1e-6f) {
+        float t1 = (0f - mx) / nx;
+        float t2 = (w - mx) / nx;
+        tMin = Math.max(tMin, Math.min(t1, t2));
+        tMax = Math.min(tMax, Math.max(t1, t2));
+      }
+      if (Math.abs(ny) > 1e-6f) {
+        float t1 = (0f - my) / ny;
+        float t2 = (h - my) / ny;
+        tMin = Math.max(tMin, Math.min(t1, t2));
+        tMax = Math.min(tMax, Math.max(t1, t2));
+      }
+      if (tMin <= tMax) {
+        t = Math.max(tMin, Math.min(tMax, t));
+      }
+    }
+    curveOffsetFrac[which] = t / len;
+    if (debugLogsEnabled) {
+      Log.d(TAG, "updateCurveHandleFromTouch: which=" + which + ", frac=" + curveOffsetFrac[which]);
+    }
   }
 
   /**

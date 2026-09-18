@@ -511,5 +511,11 @@
     <string name="crop_snap_toggle_cd" tools:ignore="MissingTranslation">Toggle right-angle snap</string>
     <string name="crop_snap_toggle_on" tools:ignore="MissingTranslation">Right-angle snap on</string>
     <string name="crop_snap_toggle_off" tools:ignore="MissingTranslation">Right-angle snap off</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode" tools:ignore="MissingTranslation">Curved edges</string>
+    <string name="crop_curved_mode_cd" tools:ignore="MissingTranslation">Toggle curved edges for book pages</string>
+    <string name="crop_curved_mode_on" tools:ignore="MissingTranslation">Curved edges on</string>
+    <string name="crop_curved_mode_off" tools:ignore="MissingTranslation">Curved edges off</string>
+    <string name="crop_depth_slider_cd" tools:ignore="MissingTranslation">Adjust perspective depth</string>
     <string name="search_scans">Search scans</string>
 </resources>

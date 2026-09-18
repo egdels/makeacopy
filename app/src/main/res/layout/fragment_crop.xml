@@ -44,7 +44,7 @@
             android:contentDescription="@string/image_to_crop"
             android:scaleType="fitCenter"
             app:layout_constraintTop_toBottomOf="@id/workflow_stepper"
-            app:layout_constraintBottom_toTopOf="@id/rotation_button_bar"
+            app:layout_constraintBottom_toTopOf="@+id/crop_depth_slider"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
@@ -205,4 +205,42 @@
             app:layout_constraintBottom_toBottomOf="@id/rotation_button_bar"
             app:layout_constraintEnd_toStartOf="@id/crop_aspect_button"
             android:layout_marginEnd="4dp"/>
+
+    <!-- Curved-edges Toggle (Issue #91): schaltet den Kurvenmodus (Bezier-Kanten oben/unten)
+         der Trapez-Auswahl um. Activated state via android:selected + Tint (wie Snap-Toggle). -->
+    <ImageButton
+            android:id="@+id/crop_curved_toggle_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/crop_curved_mode_cd"
+            android:padding="8dp"
+            android:src="@drawable/ic_menu_book"
+            app:tint="?attr/colorControlNormal"
+            app:tooltipText="@string/crop_curved_mode"
+            app:layout_constraintTop_toTopOf="@id/rotation_button_bar"
+            app:layout_constraintBottom_toBottomOf="@id/rotation_button_bar"
+            app:layout_constraintEnd_toStartOf="@id/crop_snap_toggle_button"
+            android:layout_marginEnd="4dp"/>
+
+    <!-- Depth-Slider (Issue #91, Phase 3): Feinjustierung der Perspektivtiefe im Kurvenmodus.
+         Mitte (progress=100) = neutral; nur sichtbar, wenn der Kurvenmodus aktiv ist.
+         Das Vorschaubild (image_to_crop) endet an der Oberkante dieses Sliders, damit die
+         TrapezoidSelectionView den Slider nicht überlappt und dessen Touch-Events nicht
+         abfängt (sonst wird das Bild verschoben statt der Slider bewegt). Bei GONE
+         kollabiert der Slider und das Bild reicht wie zuvor bis zur rotation_button_bar. -->
+    <SeekBar
+            android:id="@+id/crop_depth_slider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:max="200"
+            android:progress="100"
+            android:contentDescription="@string/crop_depth_slider_cd"
+            android:visibility="gone"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="4dp"
+            app:layout_constraintBottom_toTopOf="@id/rotation_button_bar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
 </androidx.constraintlayout.widget.ConstraintLayout>
