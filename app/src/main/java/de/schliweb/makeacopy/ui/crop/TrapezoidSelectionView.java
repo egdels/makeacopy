@@ -77,8 +77,8 @@ public class TrapezoidSelectionView extends View {
   private Paint cornerPaint; // Paint for the corner handles
   private Paint activePaint; // Paint for the active corner handle
   private Paint backgroundPaint; // Paint for the semi-transparent background
-  private Paint hintPaint; // Paint for the hint text
-  private Paint hintBackgroundPaint; // Paint for the hint text background
+  private Paint hintPaint; // Paint for the drag-hint text
+  private Paint hintBackgroundPaint; // Paint for the drag-hint text background
   private Paint edgeHandlePaint; // Paint for the edge midpoint handles
   private Paint activeEdgePaint; // Paint for highlighting the actively dragged edge
   private final Path drawPath = new Path(); // Preallocated path for onDraw
@@ -122,6 +122,14 @@ public class TrapezoidSelectionView extends View {
   private static final float CURVE_MAX_OFFSET_FRAC = 0.75f;
 
   /**
+   * Maximum tangential (along-the-chord) offset of a curve handle, as a fraction of the edge chord
+   * length. Deliberately much smaller than {@link #CURVE_MAX_OFFSET_FRAC}: sideways movement lets
+   * the user match an asymmetric page curl (peak not centered on the edge), but is meant as a
+   * fine-tune on top of the perpendicular curvature, not an equally-weighted second axis.
+   */
+  private static final float CURVE_MAX_TANGENT_FRAC = 0.2f;
+
+  /**
    * Whether curved mode is active. When {@code true}, the top and bottom edges of the selection are
    * rendered as quadratic Bezier curves whose on-curve midpoint (t=0.5) is user-draggable.
    */
@@ -137,6 +145,15 @@ public class TrapezoidSelectionView extends View {
    * synchronization. {@code 0} means a straight edge.
    */
   private final float[] curveOffsetFrac = new float[] {0f, 0f};
+
+  /**
+   * Tangential (along-the-chord) counterpart of {@link #curveOffsetFrac}: the SIGNED offset of the
+   * curve handle along the chord direction (positive towards the second corner, e.g. TL→TR for the
+   * top edge), normalized by the chord length. {@code 0} keeps the handle's on-curve parameter at
+   * {@code t = 0.5} (a symmetric curve); a non-zero value shifts the curve's peak off-center to
+   * match an asymmetric page curl. Clamped to ±{@link #CURVE_MAX_TANGENT_FRAC}.
+   */
+  private final float[] curveTangentFrac = new float[] {0f, 0f};
 
   /** Index of the actively dragged curve handle (0=top, 1=bottom) or -1. Curved mode only. */
   private int activeCurveHandleIndex = -1;
@@ -642,14 +659,15 @@ public class TrapezoidSelectionView extends View {
     backgroundPaint.setStyle(Paint.Style.FILL);
     backgroundPaint.setAntiAlias(true);
 
-    // Initialize the hint text paint
+    // Initialize the drag-hint text paint (only shown while a corner/edge is actively dragged;
+    // see drawUserGuidance()).
     hintPaint = new Paint();
     hintPaint.setColor(Color.WHITE);
     hintPaint.setTextSize(40); // Large text size for visibility
     hintPaint.setTextAlign(Paint.Align.CENTER);
     hintPaint.setAntiAlias(true);
 
-    // Initialize the hint background paint
+    // Initialize the drag-hint background paint
     hintBackgroundPaint = new Paint();
     hintBackgroundPaint.setColor(Color.argb(180, 0, 0, 0)); // Semi-transparent black
     hintBackgroundPaint.setStyle(Paint.Style.FILL);
@@ -2547,7 +2565,9 @@ public class TrapezoidSelectionView extends View {
       canvas.drawText(String.valueOf(i), corners[i].x, corners[i].y + 15, indexTextPaint);
     }
 
-    // Draw user guidance hints
+    // Drag hints: only shown while a corner or edge is actively being dragged (see
+    // drawUserGuidance()); the idle-state "start" hint was removed as visually distracting,
+    // since binding.textCrop already gives a persistent, localized instruction.
     drawUserGuidance(canvas);
 
     // Debug overlay (image rect + exclusion rects + hit areas)
@@ -2628,20 +2648,40 @@ public class TrapezoidSelectionView extends View {
     return (int) (dp * d + 0.5f);
   }
 
+  /**
+   * Draws a short hint describing the corner/edge currently being dragged (e.g. "Drag to move top
+   * edge"), positioned opposite the active handle so the finger does not cover it. Shown only
+   * while a drag is in progress — there is deliberately no hint in the idle state, since
+   * {@code binding.textCrop} already gives a persistent, localized instruction and a canvas-drawn
+   * "start" hint here was found visually distracting.
+   */
   private void drawUserGuidance(Canvas canvas) {
     int width = getWidth();
     int height = getHeight();
-
-    // Don't draw hints if dimensions are invalid
     if (width <= 0 || height <= 0) {
       return;
     }
 
-    // Determine the hint to show based on the current state
     String hint;
     float hintY;
 
-    if (activeEdgeIndex != -1) {
+    if (activeCurveHandleIndex != -1) {
+      // Show a hint while a curve handle (Issue #91) is being dragged. The handle now moves in
+      // two dimensions (see updateCurveHandleFromTouch()): perpendicular to the edge adjusts the
+      // curve's strength, along the edge shifts its peak off-center.
+      hint =
+          activeCurveHandleIndex == 0
+              ? "Drag to shape the top curve"
+              : "Drag to shape the bottom curve";
+      // Place hint opposite to the active handle so the finger does not cover it.
+      if (activeCurveHandleIndex == 0) { // top curve handle → hint near bottom
+        int baseBottomOffset = Math.max(100, bottomUiInsetPx + dp(getContext(), 12));
+        hintY = height - baseBottomOffset;
+      } else { // bottom curve handle → hint near top
+        hintY = 100;
+      }
+      drawHintText(canvas, hint, width / 2f, hintY);
+    } else if (activeEdgeIndex != -1) {
       // Show edge-specific hint while a line/edge is being translated in parallel.
       switch (activeEdgeIndex) {
         case 0:
@@ -2691,8 +2731,6 @@ public class TrapezoidSelectionView extends View {
           break;
       }
 
-      // Determine position based on which corner is active
-
       // Position hint at the bottom of the screen for top corners
       // and at the top of the screen for bottom corners
       if (activeCornerIndex < 2) { // Top corners
@@ -2702,30 +2740,7 @@ public class TrapezoidSelectionView extends View {
         hintY = 100; // Position near top
       }
 
-      // Draw the hint
       drawHintText(canvas, hint, width / 2f, hintY);
-
-    } else {
-      // No corner is active, show general guidance
-
-      // Check if the trapezoid is close to a rectangle
-      boolean isNearlyRectangular = isNearlyRectangular();
-
-      if (isNearlyRectangular) {
-        hint = "Drag corners or edges to match document";
-      } else {
-        hint = "Drag corners or edges to fine-tune selection";
-      }
-
-      // Position the hint at the bottom of the screen, considering bottom UI inset
-      int baseBottomOffset = Math.max(100, bottomUiInsetPx + dp(getContext(), 12));
-      hintY = height - baseBottomOffset;
-
-      // Draw the hint
-      drawHintText(canvas, hint, width / 2, hintY);
-
-      // Draw indicators for corners that might need adjustment
-      highlightCornersNeedingAdjustment(canvas);
     }
   }
 
@@ -2756,70 +2771,6 @@ public class TrapezoidSelectionView extends View {
 
     // Draw text
     canvas.drawText(text, x, y, hintPaint);
-  }
-
-  /**
-   * Highlights corners that might need adjustment based on the trapezoid shape
-   *
-   * @param canvas Canvas to draw on
-   */
-  private void highlightCornersNeedingAdjustment(Canvas canvas) {
-    // This is a simplified implementation that highlights corners
-    // that are too close to each other or to the edges
-
-    int width = getWidth();
-    int height = getHeight();
-
-    // Minimum distance from edges (5% of dimension)
-    float minEdgeDistance = Math.min(width, height) * 0.05f;
-
-    // Check each corner
-    for (int i = 0; i < 4; i++) {
-      boolean needsAdjustment =
-          corners[i].x < minEdgeDistance
-              || corners[i].x > width - minEdgeDistance
-              || corners[i].y < minEdgeDistance
-              || corners[i].y > height - minEdgeDistance;
-
-      // Check if too close to edges
-
-      // If corner needs adjustment, highlight it
-      if (needsAdjustment) {
-        Paint highlightPaint = new Paint();
-        highlightPaint.setColor(Color.YELLOW);
-        highlightPaint.setStrokeWidth(3);
-        highlightPaint.setStyle(Paint.Style.STROKE);
-        highlightPaint.setAntiAlias(true);
-
-        // Draw a pulsating circle
-        long time = System.currentTimeMillis() % 1000;
-        float pulseRadius = CORNER_RADIUS + 5 + (float) (Math.sin(time / 1000.0 * 2 * Math.PI) * 5);
-
-        canvas.drawCircle(corners[i].x, corners[i].y, pulseRadius, highlightPaint);
-      }
-    }
-  }
-
-  /**
-   * Checks if the trapezoid is nearly rectangular
-   *
-   * @return true if the trapezoid is nearly rectangular, false otherwise
-   */
-  private boolean isNearlyRectangular() {
-    // Calculate slopes of the top and bottom edges
-    double topSlope =
-        Math.abs((corners[1].y - corners[0].y) / (corners[1].x - corners[0].x + 0.0001));
-    double bottomSlope =
-        Math.abs((corners[2].y - corners[3].y) / (corners[2].x - corners[3].x + 0.0001));
-
-    // Calculate slopes of the left and right edges
-    double leftSlope =
-        Math.abs((corners[3].y - corners[0].y) / (corners[3].x - corners[0].x + 0.0001));
-    double rightSlope =
-        Math.abs((corners[2].y - corners[1].y) / (corners[2].x - corners[1].x + 0.0001));
-
-    // Check if the slopes are similar (indicating a rectangle)
-    return Math.abs(topSlope - bottomSlope) < 0.1 && Math.abs(leftSlope - rightSlope) < 0.1;
   }
 
   @Override
@@ -3429,6 +3380,8 @@ public class TrapezoidSelectionView extends View {
     // discards the curvature so a later re-enable starts fresh as well.
     curveOffsetFrac[0] = 0f;
     curveOffsetFrac[1] = 0f;
+    curveTangentFrac[0] = 0f;
+    curveTangentFrac[1] = 0f;
     activeCurveHandleIndex = -1;
     Log.d(TAG, "setCurvedMode: " + enabled);
     invalidate();
@@ -3481,9 +3434,11 @@ public class TrapezoidSelectionView extends View {
   }
 
   /**
-   * Computes the current on-curve midpoint (t=0.5) of the top ({@code which == 0}) or bottom
+   * Computes the current on-curve handle position of the top ({@code which == 0}) or bottom
    * ({@code which == 1}) edge. The position is derived from the corners on every call: chord
-   * midpoint plus {@link #curveOffsetFrac} times the chord length along the chord's unit normal.
+   * midpoint plus {@link #curveOffsetFrac} times the chord length along the chord's unit normal,
+   * plus {@link #curveTangentFrac} times the chord length along the chord's unit tangent (the
+   * on-curve parameter is {@code t = 0.5} only while the tangential offset is zero).
    *
    * @param which 0 for the top edge (corners 0→1), 1 for the bottom edge (corners 3→2)
    * @return the handle position in local (unscaled) view coordinates
@@ -3502,8 +3457,12 @@ public class TrapezoidSelectionView extends View {
     // Unit normal of the chord; the sign of curveOffsetFrac selects the side.
     float nx = -dy / len;
     float ny = dx / len;
+    // Unit tangent of the chord (a→b direction); the sign of curveTangentFrac selects the side.
+    float ux = dx / len;
+    float uy = dy / len;
     float t = curveOffsetFrac[which] * len;
-    return new PointF(mx + t * nx, my + t * ny);
+    float s = curveTangentFrac[which] * len;
+    return new PointF(mx + t * nx + s * ux, my + t * ny + s * uy);
   }
 
   /**
@@ -3524,9 +3483,11 @@ public class TrapezoidSelectionView extends View {
 
   /**
    * Updates the curvature of the given edge from a touch position: the touch point is projected
-   * onto the chord normal through the chord midpoint, the signed offset is clamped to {@link
-   * #CURVE_MAX_OFFSET_FRAC} of the chord length and further restricted so the resulting handle
-   * stays within the view bounds.
+   * onto the chord's normal AND tangent through the chord midpoint. The normal component (curve
+   * strength) is clamped to {@link #CURVE_MAX_OFFSET_FRAC} and the tangent component (peak
+   * off-center shift) to {@link #CURVE_MAX_TANGENT_FRAC} of the chord length; the resulting handle
+   * position is then clamped to the view bounds (re-deriving both components from the clamped
+   * point so the stored fractions always match what gets drawn).
    *
    * @param which 0 for the top edge, 1 for the bottom edge
    * @param x local touch X
@@ -3543,36 +3504,44 @@ public class TrapezoidSelectionView extends View {
     if (len < 1e-3f) return;
     float nx = -dy / len;
     float ny = dx / len;
-    // Signed perpendicular offset of the touch from the chord midpoint.
-    float t = (x - mx) * nx + (y - my) * ny;
+    float ux = dx / len;
+    float uy = dy / len;
+    // Signed perpendicular (t) and tangential (s) offset of the touch from the chord midpoint.
+    float ox = x - mx;
+    float oy = y - my;
+    float t = ox * nx + oy * ny;
+    float s = ox * ux + oy * uy;
     float maxT = CURVE_MAX_OFFSET_FRAC * len;
+    float maxS = CURVE_MAX_TANGENT_FRAC * len;
     t = Math.max(-maxT, Math.min(maxT, t));
-    // Constrain the handle to the view bounds by clipping t along the normal through the chord
-    // midpoint (the midpoint itself is inside the view because the corners are clamped).
+    s = Math.max(-maxS, Math.min(maxS, s));
+    // Constrain the handle to the view bounds. The (normal, tangent) basis is orthonormal, so a
+    // plain rectangle clamp of the resulting point can be re-projected back onto it exactly.
     int w = getWidth();
     int h = getHeight();
     if (w > 0 && h > 0) {
-      float tMin = -Float.MAX_VALUE;
-      float tMax = Float.MAX_VALUE;
-      if (Math.abs(nx) > 1e-6f) {
-        float t1 = (0f - mx) / nx;
-        float t2 = (w - mx) / nx;
-        tMin = Math.max(tMin, Math.min(t1, t2));
-        tMax = Math.min(tMax, Math.max(t1, t2));
-      }
-      if (Math.abs(ny) > 1e-6f) {
-        float t1 = (0f - my) / ny;
-        float t2 = (h - my) / ny;
-        tMin = Math.max(tMin, Math.min(t1, t2));
-        tMax = Math.min(tMax, Math.max(t1, t2));
-      }
-      if (tMin <= tMax) {
-        t = Math.max(tMin, Math.min(tMax, t));
+      float hx = mx + t * nx + s * ux;
+      float hy = my + t * ny + s * uy;
+      float chx = Math.max(0f, Math.min((float) w, hx));
+      float chy = Math.max(0f, Math.min((float) h, hy));
+      if (chx != hx || chy != hy) {
+        float cox = chx - mx;
+        float coy = chy - my;
+        t = cox * nx + coy * ny;
+        s = cox * ux + coy * uy;
       }
     }
     curveOffsetFrac[which] = t / len;
+    curveTangentFrac[which] = s / len;
     if (debugLogsEnabled) {
-      Log.d(TAG, "updateCurveHandleFromTouch: which=" + which + ", frac=" + curveOffsetFrac[which]);
+      Log.d(
+          TAG,
+          "updateCurveHandleFromTouch: which="
+              + which
+              + ", normalFrac="
+              + curveOffsetFrac[which]
+              + ", tangentFrac="
+              + curveTangentFrac[which]);
     }
   }
 
