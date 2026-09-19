@@ -207,7 +207,10 @@
             android:layout_marginEnd="4dp"/>
 
     <!-- Curved-edges Toggle (Issue #91): schaltet den Kurvenmodus (Bezier-Kanten oben/unten)
-         der Trapez-Auswahl um. Activated state via android:selected + Tint (wie Snap-Toggle). -->
+         der Trapez-Auswahl um. Activated state via android:selected + Tint (wie Snap-Toggle).
+         Bewusst am linken Rand der Leiste platziert (spiegelbildlich zum Aspect-Ratio-Icon
+         rechts), damit es sich von der rechten Icon-Gruppe (Rechtwinkel/Seitenverhältnis) klar
+         absetzt und nicht als drittes, gleichrangiges Settings-Icon wirkt. -->
     <ImageButton
             android:id="@+id/crop_curved_toggle_button"
             android:layout_width="48dp"
@@ -220,8 +223,8 @@
             app:tooltipText="@string/crop_curved_mode"
             app:layout_constraintTop_toTopOf="@id/rotation_button_bar"
             app:layout_constraintBottom_toBottomOf="@id/rotation_button_bar"
-            app:layout_constraintEnd_toStartOf="@id/crop_snap_toggle_button"
-            android:layout_marginEnd="4dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="8dp"/>
 
     <!-- Depth-Slider (Issue #91, Phase 3): Feinjustierung der Perspektivtiefe im Kurvenmodus.
          Mitte (progress=100) = neutral; nur sichtbar, wenn der Kurvenmodus aktiv ist.
