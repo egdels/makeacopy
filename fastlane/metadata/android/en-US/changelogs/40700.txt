@@ -1,3 +1,4 @@
 MakeACopy 4.7.0
 * New: manual dewarping for curved book pages in the crop screen — flatten book-spine curvature with draggable top/bottom curve handles (now adjustable sideways too, for off-center curls) and a perspective-depth slider with live preview.
+* New: multi-page workflow — import several PDF pages at once with progress, batch-OCR them, and export large documents without high memory use. Unfinished documents survive a restart; any page can be re-edited later.
 * Completed translations for crop-editing hints and toggles across all supported languages.
