@@ -143,16 +143,6 @@ public class TrapezoidSelectionView extends View {
 
   private Paint curveHandlePaint; // Paint for the curve midpoint handles (curved mode)
 
-  private Paint depthPreviewPaint; // Paint for the depth-preview grid lines (curved mode)
-
-  /**
-   * Perspective-depth preview value in {@code [-1, 1]} (Issue #91, Phase 3); {@code 0} = neutral.
-   * Mirrors the depth slider so the intermediate grid lines drawn in {@link #onDraw(Canvas)}
-   * visualize how the dewarp blend shifts towards the top/bottom curve. Purely visual; the actual
-   * warp uses {@code DewarpModel.withDepth} in the crop step.
-   */
-  private double depthPreview = 0.0;
-
   // === Pan/Zoom view transform (Phase 2 step 1, see docs/edge_drag_pan_zoom_concept.md §4.1) ===
   /**
    * Pure-math representation of the canvas transform applied in {@link #onDraw(Canvas)}. Touch
@@ -680,13 +670,6 @@ public class TrapezoidSelectionView extends View {
     curveHandlePaint.setStyle(Paint.Style.FILL);
     curveHandlePaint.setAntiAlias(true);
     curveHandlePaint.setShadowLayer(4.0f, 2.0f, 2.0f, Color.BLACK);
-
-    // Depth-preview grid paint (Issue #91, Phase 3): thin semi-transparent cyan lines between the
-    // top and bottom curves that visualize the perspective-depth reparameterization live.
-    depthPreviewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    depthPreviewPaint.setColor(Color.argb(140, 0, 200, 255));
-    depthPreviewPaint.setStyle(Paint.Style.STROKE);
-    depthPreviewPaint.setStrokeWidth(2f);
 
     // Active edge paint: bright yellow stroke drawn on top of the trapezoid outline while an
     // edge is being translated (parallel drag).
@@ -2472,15 +2455,6 @@ public class TrapezoidSelectionView extends View {
     // Draw the trapezoid outline
     canvas.drawPath(drawPath, trapezoidPaint);
 
-    // Depth-preview grid (Issue #91, Phase 3): in curved mode, draw intermediate "generatrix"
-    // lines between the top and bottom curves. Their vertical position uses the same blend
-    // reparameterization as DewarpModel.blendWeight (w = v + depth*v*(1-v)), so dragging the
-    // depth slider visibly shifts the lines towards the top/bottom curve — a live preview of
-    // how the dewarp will compress/stretch the page content.
-    if (curvedMode) {
-      drawDepthPreviewGrid(canvas);
-    }
-
     // Highlight the active edge (when an edge is being dragged) so the user gets clear visual
     // feedback that the whole line is being translated, not just a corner.
     if (activeEdgeIndex != -1) {
@@ -3463,58 +3437,6 @@ public class TrapezoidSelectionView extends View {
   /** Returns whether curved mode (Issue #91) is currently active. */
   public boolean isCurvedMode() {
     return curvedMode;
-  }
-
-  /**
-   * Sets the perspective-depth preview value (Issue #91, Phase 3). Mirrors the depth slider in the
-   * crop UI; only affects the intermediate grid lines drawn in curved mode (see {@link
-   * #onDraw(Canvas)}), not the selection geometry itself.
-   *
-   * @param depth depth adjustment in {@code [-1, 1]}; {@code 0} = neutral (evenly spaced grid)
-   */
-  public void setDepthPreview(double depth) {
-    if (!Double.isFinite(depth)) depth = 0.0;
-    depth = Math.max(-1.0, Math.min(1.0, depth));
-    if (this.depthPreview == depth) return;
-    this.depthPreview = depth;
-    if (curvedMode) invalidate();
-  }
-
-  /**
-   * Draws the depth-preview grid lines between the top and bottom edge curves (curved mode only).
-   * Each line is the ruled-surface cross-section at output row {@code v}, using the blend weight
-   * {@code w = v + depth*v*(1-v)} — identical to {@code DewarpModel.blendWeight} — so the preview
-   * matches the warp applied on crop.
-   */
-  private void drawDepthPreviewGrid(Canvas canvas) {
-    PointF topMid = computeCurveHandle(0);
-    PointF bottomMid = computeCurveHandle(1);
-    // Quadratic Bezier control points recovered from the on-curve midpoints (C = 2*M - 0.5*(P0+P2)).
-    float tcx = 2f * topMid.x - 0.5f * (corners[0].x + corners[1].x);
-    float tcy = 2f * topMid.y - 0.5f * (corners[0].y + corners[1].y);
-    float bcx = 2f * bottomMid.x - 0.5f * (corners[3].x + corners[2].x);
-    float bcy = 2f * bottomMid.y - 0.5f * (corners[3].y + corners[2].y);
-    final int samples = 16;
-    final float[] rows = {0.25f, 0.5f, 0.75f};
-    for (float v : rows) {
-      float w = (float) (v + depthPreview * v * (1.0 - v));
-      drawPath.reset();
-      for (int k = 0; k <= samples; k++) {
-        float t = k / (float) samples;
-        float omt = 1f - t;
-        float a = omt * omt, b = 2f * omt * t, d = t * t;
-        // Top curve TL→TR and bottom curve BL→BR at parameter t (both left-to-right).
-        float txp = a * corners[0].x + b * tcx + d * corners[1].x;
-        float typ = a * corners[0].y + b * tcy + d * corners[1].y;
-        float bxp = a * corners[3].x + b * bcx + d * corners[2].x;
-        float byp = a * corners[3].y + b * bcy + d * corners[2].y;
-        float x = (1f - w) * txp + w * bxp;
-        float y = (1f - w) * typ + w * byp;
-        if (k == 0) drawPath.moveTo(x, y);
-        else drawPath.lineTo(x, y);
-      }
-      canvas.drawPath(drawPath, depthPreviewPaint);
-    }
   }
 
   /**

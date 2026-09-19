@@ -1268,7 +1268,6 @@ public class CropFragment extends Fragment {
           // to neutral whenever the mode is toggled and show/hide it accordingly.
           dewarpDepth = 0.0;
           binding.cropDepthSlider.setProgress(DEPTH_SLIDER_NEUTRAL);
-          binding.trapezoidSelection.setDepthPreview(0.0);
           estimatedTopEdgeProfile = null;
           estimatedBottomEdgeProfile = null;
           showDepthSlider(newState);
@@ -1335,9 +1334,6 @@ public class CropFragment extends Fragment {
           public void onProgressChanged(
               android.widget.SeekBar seekBar, int progress, boolean fromUser) {
             dewarpDepth = (progress - DEPTH_SLIDER_NEUTRAL) / (double) DEPTH_SLIDER_NEUTRAL;
-            // Live preview: mirror the depth into the overlay so its grid lines shift
-            // towards the top/bottom curve while the slider is dragged.
-            if (binding != null) binding.trapezoidSelection.setDepthPreview(dewarpDepth);
             if (fromUser) scheduleDepthPreviewRender();
           }
 
@@ -1356,11 +1352,7 @@ public class CropFragment extends Fragment {
           public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
             android.util.Log.d(TAG, "setupDepthSlider: depth=" + dewarpDepth);
             restoreDepthPreviewImage();
-            if (binding != null) {
-              binding.trapezoidSelection.setVisibility(View.VISIBLE);
-              binding.trapezoidSelection.setDepthPreview(dewarpDepth);
-              binding.trapezoidSelection.invalidate();
-            }
+            if (binding != null) binding.trapezoidSelection.setVisibility(View.VISIBLE);
           }
         });
   }
