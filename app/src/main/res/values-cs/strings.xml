@@ -492,6 +492,14 @@
     <string name="crop_aspect_output_size_hint">Výstup: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Roh mimo obrázek — výstup může obsahovat černé okraje</string>
     <string name="crop_edge_dragged">Hrana vybrána. Tažením přesuňte hranu.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Upravit oříznutí</string>
+    <string name="edit_crop_original_unavailable">Původní obrázek už není k dispozici — oříznutí nelze znovu upravit.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Hrana přichycena k pravému úhlu</string>
+    <string name="crop_snap_toggle_cd">Přepnout přichytávání k pravému úhlu</string>
+    <string name="crop_snap_toggle_on">Přichytávání k pravému úhlu zapnuto</string>
+    <string name="crop_snap_toggle_off">Přichytávání k pravému úhlu vypnuto</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Zakřivené hrany</string>
     <string name="crop_curved_mode_cd">Přepnout zakřivené hrany pro knižní strany</string>

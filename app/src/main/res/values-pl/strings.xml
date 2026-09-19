@@ -493,6 +493,14 @@
     <string name="crop_aspect_output_size_hint">Wyjście: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Róg poza obrazem — wynik może mieć czarne obramowania</string>
     <string name="crop_edge_dragged">Krawędź wybrana. Przeciągnij, aby przesunąć krawędź.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Dostosuj przycinanie</string>
+    <string name="edit_crop_original_unavailable">Oryginalny obraz nie jest już dostępny — nie można ponownie edytować przycinania.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Krawędź dopasowana do kąta prostego</string>
+    <string name="crop_snap_toggle_cd">Przełącz przyciąganie do kąta prostego</string>
+    <string name="crop_snap_toggle_on">Przyciąganie do kąta prostego włączone</string>
+    <string name="crop_snap_toggle_off">Przyciąganie do kąta prostego wyłączone</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Zakrzywione krawędzie</string>
     <string name="crop_curved_mode_cd">Przełącz zakrzywione krawędzie dla stron książki</string>

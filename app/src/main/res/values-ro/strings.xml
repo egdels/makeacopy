@@ -499,6 +499,14 @@
     <string name="crop_aspect_output_size_hint">Ieșire: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Colț în afara imaginii — ieșirea poate avea margini negre</string>
     <string name="crop_edge_dragged">Margine selectată. Trageți pentru a muta marginea.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Ajustează decuparea</string>
+    <string name="edit_crop_original_unavailable">Imaginea originală nu mai este disponibilă — decuparea nu poate fi editată din nou.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Marginea a fost aliniată la unghi drept</string>
+    <string name="crop_snap_toggle_cd">Comută alinierea la unghi drept</string>
+    <string name="crop_snap_toggle_on">Alinierea la unghi drept este activă</string>
+    <string name="crop_snap_toggle_off">Alinierea la unghi drept este dezactivată</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Margini curbate</string>
     <string name="crop_curved_mode_cd">Comută marginile curbate pentru paginile de carte</string>

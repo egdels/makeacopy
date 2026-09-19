@@ -486,6 +486,14 @@
     <string name="crop_aspect_output_size_hint">خروجی: %1$d × %2$d پیکسل</string>
     <string name="crop_hint_corner_off_image">گوشه خارج از تصویر — خروجی ممکن است حاشیه‌های سیاه داشته باشد</string>
     <string name="crop_edge_dragged">لبه انتخاب شد. برای جابجایی لبه بکشید.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">تنظیم برش</string>
+    <string name="edit_crop_original_unavailable">تصویر اصلی دیگر در دسترس نیست — امکان ویرایش مجدد برش وجود ندارد.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">لبه به زاویه قائمه چسبید</string>
+    <string name="crop_snap_toggle_cd">تغییر وضعیت چسبیدن به زاویه قائمه</string>
+    <string name="crop_snap_toggle_on">چسبیدن به زاویه قائمه روشن</string>
+    <string name="crop_snap_toggle_off">چسبیدن به زاویه قائمه خاموش</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">لبه‌های منحنی</string>
     <string name="crop_curved_mode_cd">تغییر وضعیت لبه‌های منحنی برای صفحات کتاب</string>

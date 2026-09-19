@@ -504,13 +504,13 @@
     <string name="crop_hint_corner_off_image">Corner outside image — warped output may contain black borders</string>
     <string name="crop_edge_dragged">Edge selected. Drag to move the edge.</string>
     <!-- FR #72: Re-Edit shape from export preview -->
-    <string name="btn_edit_crop" tools:ignore="MissingTranslation">Adjust crop</string>
-    <string name="edit_crop_original_unavailable" tools:ignore="MissingTranslation">Original image no longer available — cannot re-edit crop.</string>
+    <string name="btn_edit_crop">Adjust crop</string>
+    <string name="edit_crop_original_unavailable">Original image no longer available — cannot re-edit crop.</string>
     <!-- FR #72 companion: Snap-to-Right-Angle -->
-    <string name="crop_snap_engaged" tools:ignore="MissingTranslation">Edge snapped to right angle</string>
-    <string name="crop_snap_toggle_cd" tools:ignore="MissingTranslation">Toggle right-angle snap</string>
-    <string name="crop_snap_toggle_on" tools:ignore="MissingTranslation">Right-angle snap on</string>
-    <string name="crop_snap_toggle_off" tools:ignore="MissingTranslation">Right-angle snap off</string>
+    <string name="crop_snap_engaged">Edge snapped to right angle</string>
+    <string name="crop_snap_toggle_cd">Toggle right-angle snap</string>
+    <string name="crop_snap_toggle_on">Right-angle snap on</string>
+    <string name="crop_snap_toggle_off">Right-angle snap off</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Curved edges</string>
     <string name="crop_curved_mode_cd">Toggle curved edges for book pages</string>

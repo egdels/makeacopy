@@ -487,6 +487,14 @@
     <string name="crop_aspect_output_size_hint">Output: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hjørne uden for billedet — output kan have sorte kanter</string>
     <string name="crop_edge_dragged">Kant valgt. Træk for at flytte kanten.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Juster beskæring</string>
+    <string name="edit_crop_original_unavailable">Det originale billede er ikke længere tilgængeligt — beskæring kan ikke redigeres igen.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Kant justeret til ret vinkel</string>
+    <string name="crop_snap_toggle_cd">Slå fastgørelse til ret vinkel til/fra</string>
+    <string name="crop_snap_toggle_on">Fastgørelse til ret vinkel til</string>
+    <string name="crop_snap_toggle_off">Fastgørelse til ret vinkel fra</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Buede kanter</string>
     <string name="crop_curved_mode_cd">Skift buede kanter til bogsider</string>

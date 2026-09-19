@@ -493,6 +493,14 @@
     <string name="crop_aspect_output_size_hint">Saída: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Canto fora da imagem — a saída pode ter bordas pretas</string>
     <string name="crop_edge_dragged">Borda selecionada. Arraste para mover a borda.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Ajustar recorte</string>
+    <string name="edit_crop_original_unavailable">A imagem original não está mais disponível — não é possível editar o recorte novamente.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Borda ajustada a ângulo reto</string>
+    <string name="crop_snap_toggle_cd">Alternar ajuste a ângulo reto</string>
+    <string name="crop_snap_toggle_on">Ajuste a ângulo reto ativado</string>
+    <string name="crop_snap_toggle_off">Ajuste a ângulo reto desativado</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Bordas curvas</string>
     <string name="crop_curved_mode_cd">Alternar bordas curvas para páginas de livro</string>

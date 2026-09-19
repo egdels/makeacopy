@@ -493,6 +493,14 @@
     <string name="crop_aspect_output_size_hint">Вывод: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Угол вне изображения — на выходе возможны чёрные поля</string>
     <string name="crop_edge_dragged">Край выбран. Перетащите, чтобы переместить край.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Настроить обрезку</string>
+    <string name="edit_crop_original_unavailable">Исходное изображение больше недоступно — невозможно повторно отредактировать обрезку.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Край выровнен по прямому углу</string>
+    <string name="crop_snap_toggle_cd">Переключить привязку к прямому углу</string>
+    <string name="crop_snap_toggle_on">Привязка к прямому углу включена</string>
+    <string name="crop_snap_toggle_off">Привязка к прямому углу выключена</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Изогнутые края</string>
     <string name="crop_curved_mode_cd">Переключить изогнутые края для книжных страниц</string>

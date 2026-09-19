@@ -493,6 +493,14 @@
     <string name="crop_aspect_output_size_hint">Uitvoer: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hoek buiten afbeelding — uitvoer kan zwarte randen bevatten</string>
     <string name="crop_edge_dragged">Rand geselecteerd. Sleep om de rand te verplaatsen.</string>
+    <!-- FR #72: Re-Edit shape from export preview -->
+    <string name="btn_edit_crop">Bijsnijden aanpassen</string>
+    <string name="edit_crop_original_unavailable">Originele afbeelding niet meer beschikbaar — bijsnijden kan niet opnieuw worden bewerkt.</string>
+    <!-- FR #72 companion: Snap-to-Right-Angle -->
+    <string name="crop_snap_engaged">Rand uitgelijnd op rechte hoek</string>
+    <string name="crop_snap_toggle_cd">Uitlijning op rechte hoek in-/uitschakelen</string>
+    <string name="crop_snap_toggle_on">Uitlijning op rechte hoek aan</string>
+    <string name="crop_snap_toggle_off">Uitlijning op rechte hoek uit</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
     <string name="crop_curved_mode">Gebogen randen</string>
     <string name="crop_curved_mode_cd">Gebogen randen voor boekpagina\'s in-/uitschakelen</string>
