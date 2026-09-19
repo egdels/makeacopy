@@ -1,0 +1,3 @@
+MakeACopy 4.7.0
+* New: manual dewarping for curved book pages in the crop screen — flatten book-spine curvature with draggable top/bottom curve handles (now adjustable sideways too, for off-center curls) and a perspective-depth slider with live preview.
+* Completed translations for crop-editing hints and toggles across all supported languages.
