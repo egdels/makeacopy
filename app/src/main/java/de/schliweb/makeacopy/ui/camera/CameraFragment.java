@@ -4099,26 +4099,57 @@ public class CameraFragment extends Fragment implements SensorEventListener {
    */
   private void processPdfPages(Uri pdfUri, java.util.List<Integer> pageIndices) {
     if (!isAdded() || pageIndices == null || pageIndices.isEmpty()) return;
+    // Session 4: the target DocumentSession must be stable BEFORE the first page is imported.
+    // Reuse the runtime document id when the session already carries one (add-page into an
+    // existing document); otherwise generate it eagerly so every persisted page can be attached
+    // to the same document immediately.
     final de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionVm =
         new ViewModelProvider(requireActivity())
             .get(de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel.class);
+    if (sessionVm.getDocumentId() == null) {
+      sessionVm.setDocumentId(java.util.UUID.randomUUID().toString());
+    }
+    final String documentId = sessionVm.getDocumentId();
+    final Context appContext = requireContext().getApplicationContext();
     PdfMultiPageImporter.start(
         this,
         pdfUri,
         pageIndices,
-        (imported, failedCount, cancelled) -> {
-          if (!isAdded() || imported.isEmpty()) return;
-          sessionVm.addAll(imported);
-          Context ctx = getContext();
-          if (ctx != null) {
-            // The import fulfils any pending "Add page" request; clear the flag so
-            // ExportFragment does not additionally append a stale cropped bitmap.
-            ExportPrefsHelper.clearPendingAddPage(ctx);
+        new PdfMultiPageImporter.Listener() {
+          @Override
+          public void onPagePersisted(
+              @NonNull de.schliweb.makeacopy.ui.export.session.CompletedScan page) {
+            // Runs on the import thread directly after the page was fully persisted: append the
+            // page id to the active DocumentSession atomically. Persist first, then reference —
+            // a session never points to a page that does not exist. Duplicates are impossible
+            // (append is idempotent and the final runtime sync upserts the same ordered list).
+            try {
+              de.schliweb.makeacopy.data.DocumentSessionRepository.get(appContext)
+                  .appendPageToActive(documentId, page.id());
+            } catch (Throwable t) {
+              Log.w(TAG, "Incremental DocumentSession append failed", t);
+            }
           }
-          try {
-            Navigation.findNavController(requireView()).navigate(R.id.navigation_export);
-          } catch (IllegalArgumentException | IllegalStateException ignored) {
-            // Best-effort; failure is non-critical
+
+          @Override
+          public void onComplete(
+              @NonNull
+                  java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> imported,
+              int failedCount,
+              boolean cancelled) {
+            if (!isAdded() || imported.isEmpty()) return;
+            sessionVm.addAll(imported);
+            Context ctx = getContext();
+            if (ctx != null) {
+              // The import fulfils any pending "Add page" request; clear the flag so
+              // ExportFragment does not additionally append a stale cropped bitmap.
+              ExportPrefsHelper.clearPendingAddPage(ctx);
+            }
+            try {
+              Navigation.findNavController(requireView()).navigate(R.id.navigation_export);
+            } catch (IllegalArgumentException | IllegalStateException ignored) {
+              // Best-effort; failure is non-critical
+            }
           }
         });
   }

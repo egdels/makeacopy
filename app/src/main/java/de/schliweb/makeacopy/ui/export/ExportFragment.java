@@ -1033,14 +1033,7 @@ public class ExportFragment extends Fragment {
                   DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext()));
           dialog.show();
         });
-    binding.buttonLibraryActions.setOnClickListener(
-        v -> {
-          try {
-            Navigation.findNavController(requireView()).navigate(R.id.navigation_scans_library);
-          } catch (IllegalArgumentException | IllegalStateException ex) {
-            Log.w(TAG, "Navigation to library failed", ex);
-          }
-        });
+    binding.buttonLibraryActions.setOnClickListener(v -> showDocumentActionsMenu());
 
     createDocumentLauncher =
         registerForActivityResult(
@@ -2561,6 +2554,93 @@ public class ExportFragment extends Fragment {
             Log.w(TAG, "DocumentSession discard failed", t);
           }
         });
+  }
+
+  /**
+   * Session 4 document lifecycle menu (behind the library-actions icon): open a saved document,
+   * start a new document, close the current document (persisted, not deleted) or open the scan
+   * library. While an OCR batch is running all document-switching actions are blocked so no OCR job
+   * can ever update UI state of a different document.
+   */
+  private void showDocumentActionsMenu() {
+    String[] options =
+        new String[] {
+          getString(R.string.doc_action_saved_documents),
+          getString(R.string.doc_action_new_document),
+          getString(R.string.doc_action_close_document),
+          getString(R.string.doc_action_scan_library)
+        };
+    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.doc_actions_title)
+        .setItems(
+            options,
+            (dlg, which) -> {
+              if (which == 3) {
+                try {
+                  Navigation.findNavController(requireView())
+                      .navigate(R.id.navigation_scans_library);
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                  Log.w(TAG, "Navigation to library failed", ex);
+                }
+                return;
+              }
+              // Document switching (Open/New/Close) is blocked during a running OCR batch.
+              if (ocrBatchController != null && ocrBatchController.isRunning()) {
+                UIUtils.showToast(
+                    requireContext(),
+                    getString(R.string.ocr_batch_already_running),
+                    Toast.LENGTH_SHORT);
+                return;
+              }
+              if (which == 0) {
+                try {
+                  Navigation.findNavController(requireView())
+                      .navigate(R.id.navigation_saved_documents);
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                  Log.w(TAG, "Navigation to saved documents failed", ex);
+                }
+              } else {
+                // New (1) and Close (2): both keep the current session persisted (Close ≠
+                // Delete), clear the active pointer and the runtime session, then return to the
+                // camera. "New" starts a fresh document lazily with the next page.
+                closeDocumentAndReturnToCamera();
+              }
+            })
+        .setNegativeButton(android.R.string.cancel, null)
+        .show();
+  }
+
+  /**
+   * Session 4 "Close document" / "New document": the persisted DocumentSession is kept (empty
+   * drafts are cleaned up by the repository), the active pointer is cleared, the runtime session is
+   * emptied and the user returns to the camera start state.
+   */
+  private void closeDocumentAndReturnToCamera() {
+    Context c = getContext();
+    if (c == null) return;
+    final Context app = c.getApplicationContext();
+    if (exportSessionViewModel != null) {
+      exportSessionViewModel.setDocumentId(null);
+      exportSessionViewModel.setInitial(null);
+    }
+    if (exportViewModel != null) {
+      exportViewModel.setDocumentBitmap(null);
+      exportViewModel.setDocumentReady(false);
+    }
+    documentSessionExecutor.execute(
+        () -> {
+          try {
+            de.schliweb.makeacopy.data.DocumentSessionRepository.get(app).endActiveSession(false);
+          } catch (Throwable t) {
+            Log.w(TAG, "DocumentSession close failed", t);
+          }
+        });
+    UIUtils.showToast(requireContext(), getString(R.string.doc_closed_toast), Toast.LENGTH_SHORT);
+    try {
+      Navigation.findNavController(requireView()).navigate(R.id.navigation_camera);
+    } catch (IllegalArgumentException | IllegalStateException ex) {
+      Log.w(TAG, "Navigation to camera failed", ex);
+    }
   }
 
   // Insert-Hook implementation: persist a newly added CompletedScan to app storage and registry

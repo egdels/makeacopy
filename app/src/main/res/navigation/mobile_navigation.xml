@@ -41,6 +41,13 @@
         android:label="@string/btn_review"
         tools:layout="@layout/fragment_ocr_review" />
 
+    <!-- Session 4: saved document sessions (minimal browser) -->
+    <fragment
+        android:id="@+id/navigation_saved_documents"
+        android:name="de.schliweb.makeacopy.ui.documents.SavedDocumentsFragment"
+        android:label="@string/saved_documents_title"
+        tools:layout="@layout/fragment_saved_documents" />
+
     <!-- Experimental scan library destination -->
     <fragment
         android:id="@+id/navigation_scans_library"

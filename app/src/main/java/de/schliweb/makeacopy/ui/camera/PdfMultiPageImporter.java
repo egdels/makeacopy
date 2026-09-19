@@ -74,6 +74,16 @@ final class PdfMultiPageImporter {
      * @param cancelled true when the user cancelled the import
      */
     void onComplete(@NonNull List<CompletedScan> imported, int failedCount, boolean cancelled);
+
+    /**
+     * Session 4 (incremental import recovery): invoked on the import background thread immediately
+     * after a page has been fully persisted (files + registry entry exist) and before the next page
+     * is rendered. Implementations use this to attach the page to the active {@link
+     * de.schliweb.makeacopy.data.DocumentSession} right away, so a process death mid-import never
+     * loses already imported pages from the document context. Must be fast and must not touch UI
+     * state.
+     */
+    default void onPagePersisted(@NonNull CompletedScan page) {}
   }
 
   private PdfMultiPageImporter() {}
@@ -173,6 +183,15 @@ final class PdfMultiPageImporter {
                       CompletedScan persisted =
                           ScanPersister.persist(appContext, inMemory, null, null);
                       imported.add(persisted);
+                      // Session 4: report the persisted page immediately (same sequential
+                      // thread, right after persistence) so the caller can attach it to the
+                      // active DocumentSession before the next page is rendered. A listener
+                      // failure must never fail the already persisted page.
+                      try {
+                        listener.onPagePersisted(persisted);
+                      } catch (Throwable t) {
+                        Log.w(TAG, "onPagePersisted listener failed", t);
+                      }
                     } catch (Throwable pageError) {
                       Log.w(TAG, "Failed to import PDF page " + pageIndex, pageError);
                       failed++;
