@@ -559,4 +559,9 @@
     <string name="crop_hint_drag_curve_top">Drag to shape the top curve</string>
     <string name="crop_hint_drag_curve_bottom">Drag to shape the bottom curve</string>
     <string name="search_scans">Search scans</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Unfinished document found</string>
+    <string name="resume_document_message">You have an unfinished document with %1$d page(s). Do you want to resume it?</string>
+    <string name="resume_document_resume">Resume</string>
+    <string name="resume_document_start_new">Start new</string>
 </resources>

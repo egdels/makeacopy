@@ -271,6 +271,7 @@ public class CropFragment extends Fragment {
           if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
             cropViewModel.setCameFromExport(false);
             cropViewModel.setReEditPageIndex(-1);
+            cropViewModel.setReEditPageId(null);
             try {
               boolean popped =
                   Navigation.findNavController(requireView())
@@ -656,7 +657,28 @@ public class CropFragment extends Fragment {
     try {
       android.graphics.PointF[] persisted =
           cropViewModel.getLastAcceptedCornersOriginal().getValue();
-      if (persisted == null || persisted.length != 4) return;
+      if (persisted == null || persisted.length != 4) {
+        // Session 3: persisted page re-edit (multi-page) — there are no previously accepted
+        // corners because the stored page.jpg is already baked/cropped. Pre-populate a
+        // full-image trapezoid instead of letting the automatic corner detection run again
+        // on the already-cropped page (setCornersFromImageCoordinates cancels pending
+        // auto-detection).
+        Bitmap displayed = cropViewModel.getImageBitmap().getValue();
+        if (displayed != null && displayed.getWidth() > 0 && displayed.getHeight() > 0) {
+          org.opencv.core.Point[] full =
+              new org.opencv.core.Point[] {
+                new org.opencv.core.Point(0, 0),
+                new org.opencv.core.Point(displayed.getWidth(), 0),
+                new org.opencv.core.Point(displayed.getWidth(), displayed.getHeight()),
+                new org.opencv.core.Point(0, displayed.getHeight())
+              };
+          binding.trapezoidSelection.setCornersFromImageCoordinates(full);
+          reEditCornersRestored = true;
+          android.util.Log.d(
+              TAG, "[FR72] Re-Edit: no persisted corners, pre-populated full-image trapezoid");
+        }
+        return;
+      }
 
       org.opencv.core.Point[] pts = new org.opencv.core.Point[4];
       for (int i = 0; i < 4; i++) {
@@ -1043,6 +1065,10 @@ public class CropFragment extends Fragment {
         // The local copy is still used below to update the correct session page.
         final int reEditIdx = cropViewModel.getReEditPageIndex();
         cropViewModel.setReEditPageIndex(-1);
+        // Session 3: prefer the stable page id over the index — pages may have been moved or
+        // deleted while the editor was open, so the id is the only reliable identifier.
+        final String reEditId = cropViewModel.getReEditPageId();
+        cropViewModel.setReEditPageId(null);
         // Invalidate downstream OCR result so the new crop drives a fresh OCR pass when the
         // user requests one (or via background re-OCR in a future iteration).
         try {
@@ -1114,14 +1140,29 @@ public class CropFragment extends Fragment {
                 java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
                     sessionVm.getPages().getValue();
                 if (pages != null && !pages.isEmpty()) {
-                  // FR #72 multi-page: use the index recorded by ExportFragment when the user
-                  // tapped the Edit overlay, so the correct session page is replaced (not
-                  // hardcoded index 0). Fall back to 0 only when the index is unknown
-                  // (single-page hot workflow without a session match).
-                  int idx = reEditIdx;
-                  if (idx < 0 || idx >= pages.size()) idx = 0;
+                  // Session 3: resolve the edited page by its stable id first; fall back to the
+                  // recorded index only for the legacy single-page hot workflow. Falling back to
+                  // index 0 remains the last resort so the pre-Session-3 behaviour is preserved.
+                  int idx = -1;
+                  if (reEditId != null) {
+                    for (int i = 0; i < pages.size(); i++) {
+                      de.schliweb.makeacopy.ui.export.session.CompletedScan p = pages.get(i);
+                      if (p != null && reEditId.equals(p.id())) {
+                        idx = i;
+                        break;
+                      }
+                    }
+                  }
+                  if (idx < 0) {
+                    idx = reEditIdx;
+                    if (idx < 0 || idx >= pages.size()) idx = 0;
+                  }
                   de.schliweb.makeacopy.ui.export.session.CompletedScan old = pages.get(idx);
                   if (old != null) {
+                    // Same stable page id, fresh bitmap. The image changed, therefore any old
+                    // OCR result is semantically invalid: clear OCR fields and reset the page
+                    // status to IMPORTED. Source provenance (sourceType/pdfPageIndex) and
+                    // createdAt are preserved.
                     de.schliweb.makeacopy.ui.export.session.CompletedScan replacement =
                         new de.schliweb.makeacopy.ui.export.session.CompletedScan(
                             old.id(),
@@ -1135,13 +1176,22 @@ public class CropFragment extends Fragment {
                             toSet.getHeight(),
                             toSet,
                             old.schemaVersion(),
-                            old.orientationMode());
+                            old.orientationMode(),
+                            old.sourceType(),
+                            old.pdfPageIndex(),
+                            de.schliweb.makeacopy.ui.export.session.CompletedScan.STATUS_IMPORTED);
                     sessionVm.updateAt(idx, replacement);
+                    // Session 3: re-persist the edited page under the SAME id (page.jpg/thumb.jpg
+                    // replaced, stale OCR artifacts deleted, registry entry updated) so the
+                    // document survives process death with the edited image.
+                    persistEditedPageAsync(sessionVm, replacement);
                     android.util.Log.d(
                         TAG,
                         "[FR72] Re-Edit: replaced session page "
                             + idx
-                            + " with fresh bitmap "
+                            + " (id="
+                            + old.id()
+                            + ") with fresh bitmap "
                             + toSet.getWidth()
                             + "x"
                             + toSet.getHeight());
@@ -1179,6 +1229,65 @@ public class CropFragment extends Fragment {
     } catch (Throwable ignored) {
       // Best-effort; failure is non-critical
     }
+  }
+
+  /**
+   * Session 3: persists an edited page under its existing stable id on a background thread. Deletes
+   * stale OCR artifacts, rewrites page.jpg/thumb.jpg and replaces the registry entry via {@link
+   * de.schliweb.makeacopy.utils.export.ScanPersister#persistEditedPage}. When done, the session
+   * entry is refreshed on the main thread with the persisted file paths (keeping the in-memory
+   * bitmap for the preview). The page keeps its id, so the persisted DocumentSession page order is
+   * unaffected.
+   */
+  private void persistEditedPageAsync(
+      de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionVm,
+      de.schliweb.makeacopy.ui.export.session.CompletedScan edited) {
+    if (sessionVm == null || edited == null || edited.id() == null) return;
+    final android.content.Context appContext = requireContext().getApplicationContext();
+    final String id = edited.id();
+    new Thread(
+            () -> {
+              try {
+                de.schliweb.makeacopy.ui.export.session.CompletedScan persisted =
+                    de.schliweb.makeacopy.utils.export.ScanPersister.persistEditedPage(
+                        appContext, edited);
+                new android.os.Handler(android.os.Looper.getMainLooper())
+                    .post(
+                        () -> {
+                          java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan>
+                              cur = sessionVm.getPages().getValue();
+                          if (cur == null) return;
+                          for (int i = 0; i < cur.size(); i++) {
+                            de.schliweb.makeacopy.ui.export.session.CompletedScan it = cur.get(i);
+                            if (it != null && id.equals(it.id())) {
+                              sessionVm.updateAt(
+                                  i,
+                                  new de.schliweb.makeacopy.ui.export.session.CompletedScan(
+                                      it.id(),
+                                      persisted.filePath(),
+                                      it.rotationDeg(),
+                                      null,
+                                      null,
+                                      persisted.thumbPath(),
+                                      it.createdAt(),
+                                      it.widthPx(),
+                                      it.heightPx(),
+                                      it.inMemoryBitmap(),
+                                      persisted.schemaVersion(),
+                                      persisted.orientationMode(),
+                                      it.sourceType(),
+                                      it.pdfPageIndex(),
+                                      de.schliweb.makeacopy.ui.export.session.CompletedScan
+                                          .STATUS_IMPORTED));
+                              break;
+                            }
+                          }
+                        });
+              } catch (Exception e) {
+                android.util.Log.w(TAG, "Re-Edit: persisting edited page failed", e);
+              }
+            })
+        .start();
   }
 
   /**

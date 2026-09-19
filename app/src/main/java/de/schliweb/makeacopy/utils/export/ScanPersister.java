@@ -169,10 +169,41 @@ public final class ScanPersister {
             (ocrPath != null) ? CompletedScan.STATUS_OCR_COMPLETE : CompletedScan.STATUS_IMPORTED);
     try {
       CompletedScansRegistry reg = CompletedScansRegistry.get(appContext);
-      reg.insert(persisted);
+      reg.insertOrReplace(persisted);
     } catch (Exception e) {
       Log.w(TAG, "Registry insert failed", e);
     }
     return persisted;
+  }
+
+  /**
+   * Re-persists an edited page under its existing stable id (Session 3, page re-editing).
+   *
+   * <p>The edited bitmap becomes the new authoritative working copy: page.jpg and thumb.jpg are
+   * rewritten in place and the registry entry is replaced. Because the page image changed, any
+   * previous OCR artifacts (text.txt, words.json) are semantically stale and are physically deleted
+   * before persisting, so they can never leak into a later export. The resulting page status is
+   * {@code IMPORTED} (no OCR), never a stale {@code OCR_COMPLETE}. Source provenance ({@code
+   * sourceType}, {@code pdfPageIndex}) is preserved by {@link #persist}.
+   *
+   * @param appContext application context
+   * @param edited completed scan carrying the SAME id as the original page plus the freshly edited
+   *     in-memory bitmap
+   * @return the persisted CompletedScan (file paths set, OCR fields cleared)
+   * @throws Exception for unexpected critical failures
+   */
+  public static CompletedScan persistEditedPage(Context appContext, CompletedScan edited)
+      throws Exception {
+    if (appContext == null || edited == null || edited.id() == null) {
+      throw new IllegalArgumentException("Invalid arguments for persistEditedPage");
+    }
+    File dir = new File(appContext.getFilesDir(), "scans/" + edited.id());
+    for (String stale : new String[] {"text.txt", "words.json"}) {
+      File f = new File(dir, stale);
+      if (f.exists() && !f.delete()) {
+        Log.w(TAG, "persistEditedPage: failed to delete stale OCR artifact " + f);
+      }
+    }
+    return persist(appContext, edited, null, null);
   }
 }

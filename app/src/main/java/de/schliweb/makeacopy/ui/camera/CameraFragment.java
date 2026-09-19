@@ -657,8 +657,97 @@ public class CameraFragment extends Fragment implements SensorEventListener {
               }
             });
 
+    // Session 3: offer resuming an unfinished persisted document (once per process start).
+    maybeOfferDocumentResume();
+
     return root;
   }
+
+  /**
+   * Session 3: when an active persisted {@link de.schliweb.makeacopy.data.DocumentSession} with at
+   * least one resolvable page exists and the runtime session is empty (fresh process / process
+   * death), ask the user whether to resume the unfinished document or start a new one. The prompt
+   * is shown at most once per process so normal camera startup is never disturbed repeatedly.
+   * "Start new" keeps the old session data persisted (nothing is silently deleted) but clears the
+   * active pointer.
+   */
+  private void maybeOfferDocumentResume() {
+    if (resumePromptShownThisProcess) return;
+    try {
+      de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionVm =
+          new ViewModelProvider(requireActivity())
+              .get(de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel.class);
+      java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+          sessionVm.getPages().getValue();
+      if (pages != null && !pages.isEmpty()) {
+        // Runtime session already carries a document (no process death) — nothing to resume.
+        resumePromptShownThisProcess = true;
+        return;
+      }
+      final Context app = requireContext().getApplicationContext();
+      new Thread(
+              () -> {
+                try {
+                  de.schliweb.makeacopy.data.DocumentSessionRepository repo =
+                      de.schliweb.makeacopy.data.DocumentSessionRepository.get(app);
+                  de.schliweb.makeacopy.data.DocumentSession session = repo.getActiveSession();
+                  if (session == null) return;
+                  java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> resolved =
+                      repo.resolveActivePages(
+                          de.schliweb.makeacopy.data.CompletedScansRegistry.get(app));
+                  if (resolved.isEmpty()) return;
+                  final int count = resolved.size();
+                  new Handler(Looper.getMainLooper())
+                      .post(
+                          () -> {
+                            if (!isAdded() || resumePromptShownThisProcess) return;
+                            resumePromptShownThisProcess = true;
+                            AlertDialog dialog =
+                                new MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle(getString(R.string.resume_document_title))
+                                    .setMessage(getString(R.string.resume_document_message, count))
+                                    .setPositiveButton(
+                                        R.string.resume_document_resume,
+                                        (d, w) -> {
+                                          try {
+                                            Navigation.findNavController(requireView())
+                                                .navigate(R.id.navigation_export);
+                                          } catch (IllegalArgumentException
+                                              | IllegalStateException ex) {
+                                            Log.w(TAG, "Resume navigation failed", ex);
+                                          }
+                                        })
+                                    .setNegativeButton(
+                                        R.string.resume_document_start_new,
+                                        (d, w) ->
+                                            new Thread(
+                                                    () -> {
+                                                      try {
+                                                        repo.endActiveSession(false);
+                                                      } catch (Throwable t) {
+                                                        Log.w(TAG, "endActiveSession failed", t);
+                                                      }
+                                                    })
+                                                .start())
+                                    .create();
+                            dialog.setOnShowListener(
+                                dlg ->
+                                    DialogUtils.improveAlertDialogButtonContrastForNight(
+                                        dialog, requireContext()));
+                            dialog.show();
+                          });
+                } catch (Throwable t) {
+                  Log.w(TAG, "Document resume check failed", t);
+                }
+              })
+          .start();
+    } catch (Throwable t) {
+      Log.w(TAG, "maybeOfferDocumentResume failed", t);
+    }
+  }
+
+  /** Session 3: resume prompt guard — shown at most once per app process. */
+  private static boolean resumePromptShownThisProcess = false;
 
   @Override
   public void onResume() {

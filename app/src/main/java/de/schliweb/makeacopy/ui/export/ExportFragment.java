@@ -113,6 +113,10 @@ public class ExportFragment extends Fragment {
   private Bitmap lastFreshMultipagePreviewBitmap;
   private String lastFreshMultipagePageId;
   private final ExecutorService previewExecutor = Executors.newSingleThreadExecutor();
+
+  // Session 3: serializes all DocumentSession persistence I/O (sync/restore/discard) so writes
+  // stay ordered and off the main thread.
+  private final ExecutorService documentSessionExecutor = Executors.newSingleThreadExecutor();
   private int previewRenderGeneration = 0;
   // Multipage: guards against stale results when the user quickly selects several pages while
   // page bitmaps are decoded off the main thread.
@@ -412,6 +416,12 @@ public class ExportFragment extends Fragment {
             cameraViewModel.getImageUri() != null ? cameraViewModel.getImageUri().getValue() : null;
         boolean hasOriginal = (path != null && !path.isEmpty()) || u != null;
         show = hasCorners && hasOriginal && isActivePageReEditable();
+        // Session 3: any persisted page (page.jpg on disk) is editable via the persisted-page
+        // edit path, regardless of whether the original capture is still reachable.
+        if (!show) {
+          de.schliweb.makeacopy.ui.export.session.CompletedScan active = getActivePageForEdit();
+          show = active != null && active.filePath() != null;
+        }
       }
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
@@ -603,6 +613,13 @@ public class ExportFragment extends Fragment {
                     : null;
             boolean hasOriginal = (path != null && !path.isEmpty()) || origUri != null;
             if (!hasOriginal || lastCorners == null || !isActivePageReEditable()) {
+              // Session 3: fall back to editing the persisted page image (page.jpg) so ANY
+              // persisted page of the document can be re-edited, not only the fresh one.
+              de.schliweb.makeacopy.ui.export.session.CompletedScan active = getActivePageForEdit();
+              if (active != null && active.filePath() != null) {
+                startPersistedPageEdit(v, active);
+                return;
+              }
               UIUtils.showToast(
                   requireContext(),
                   getString(R.string.edit_crop_original_unavailable),
@@ -618,6 +635,12 @@ public class ExportFragment extends Fragment {
             // FR #72 multi-page: remember which session page is being re-edited so the
             // confirm path can update the correct page instead of hardcoded index 0.
             cropViewModel.setReEditPageIndex(findActivePageIndex());
+            // Session 3: also record the stable page id — the id survives page moves/deletes
+            // while the editor is open, unlike the index.
+            {
+              de.schliweb.makeacopy.ui.export.session.CompletedScan active = getActivePageForEdit();
+              cropViewModel.setReEditPageId(active != null ? active.id() : null);
+            }
             try {
               // FR #72 — use forward navigate (not popBackStack) so the existing Export
               // entry is preserved on the back stack. On confirm/back the Re-Edit flow can
@@ -629,6 +652,7 @@ public class ExportFragment extends Fragment {
               Log.w(TAG, "Re-Edit navigation failed", t);
               cropViewModel.setCameFromExport(false);
               cropViewModel.setReEditPageIndex(-1);
+              cropViewModel.setReEditPageId(null);
             }
           });
       // Visibility is recomputed whenever the preview is rendered; default hidden.
@@ -839,6 +863,9 @@ public class ExportFragment extends Fragment {
               // controlled by the dialog.
               // Refresh OCR badge overlay on the preview (mirrors filmstrip badge state).
               updatePreviewOcrBadge();
+              // Session 3: keep the persistent DocumentSession snapshot in sync with the runtime
+              // page list (ordered page ids) on every add/addAll/remove/move/update.
+              syncDocumentSessionAsync(pages);
             });
     // Initialize or update pages based on current state and pending add-page flag
     Bitmap initBmp = cropViewModel.getImageBitmap().getValue();
@@ -888,6 +915,9 @@ public class ExportFragment extends Fragment {
         persistCompletedScanAsync(initial);
       } else {
         exportSessionViewModel.setInitial(null);
+        // Session 3: no in-memory state (e.g. fresh process) — try to restore the active
+        // persisted DocumentSession so the document composition survives process death.
+        restoreDocumentSessionAsync();
       }
     } else if (pendingAdd) {
       // User initiated adding another page and returned here after new capture/crop
@@ -1165,6 +1195,10 @@ public class ExportFragment extends Fragment {
                               R.string.confirm,
                               (dialogInterface, which) -> {
                                 // Clear all pages in the session before leaving
+                                // Session 3: the user explicitly discards the document — also
+                                // drop the persisted DocumentSession (pages themselves follow the
+                                // existing registry cleanup policy).
+                                discardActiveDocumentSessionAsync();
                                 if (exportSessionViewModel != null)
                                   exportSessionViewModel.setInitial(null);
                                 // Reset camera/crop state and navigate back to camera
@@ -1199,6 +1233,9 @@ public class ExportFragment extends Fragment {
                   return;
                 }
                 // Default behavior (single/zero page): clear session, reset and navigate back
+                // Session 3: leaving Export back to Camera discards the current document draft
+                // (same semantics as before Session 3, now also for the persisted snapshot).
+                discardActiveDocumentSessionAsync();
                 if (exportSessionViewModel != null) exportSessionViewModel.setInitial(null);
                 cameraViewModel.setImageUri(null);
                 cropViewModel.setImageCropped(false);
@@ -2363,6 +2400,167 @@ public class ExportFragment extends Fragment {
         getOcrTextFromState(),
         exportViewModel.getDocumentBitmap().getValue(),
         () -> deferAssignUntilTxt = false);
+  }
+
+  // ===== Session 3: persistent DocumentSession wiring =====
+
+  /**
+   * Returns the currently active/previewed page, falling back to the single page when the session
+   * has exactly one entry. Used by the edit entry points.
+   */
+  private de.schliweb.makeacopy.ui.export.session.CompletedScan getActivePageForEdit() {
+    if (exportSessionViewModel == null) return null;
+    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+        exportSessionViewModel.getPages().getValue();
+    if (pages == null || pages.isEmpty()) return null;
+    int idx = activeSessionPageIndex;
+    if (idx < 0 || idx >= pages.size()) idx = findActivePageIndex();
+    if ((idx < 0 || idx >= pages.size()) && pages.size() == 1) idx = 0;
+    if (idx < 0 || idx >= pages.size()) return null;
+    return pages.get(idx);
+  }
+
+  /**
+   * Session 3: opens the existing single-page crop editor for a persisted page. The persisted
+   * page.jpg is decoded as the editing source (the authoritative working copy — no re-render from
+   * an original PDF), previous trapezoid state is cleared and the stable page id is recorded so the
+   * editor return path updates the SAME page (no new page id).
+   */
+  private void startPersistedPageEdit(
+      View v, de.schliweb.makeacopy.ui.export.session.CompletedScan page) {
+    if (page == null || page.filePath() == null) return;
+    Bitmap src = null;
+    try {
+      src = android.graphics.BitmapFactory.decodeFile(page.filePath());
+    } catch (Throwable t) {
+      Log.w(TAG, "startPersistedPageEdit: decode failed", t);
+    }
+    if (src == null) {
+      UIUtils.showToast(
+          requireContext(), getString(R.string.edit_crop_original_unavailable), Toast.LENGTH_SHORT);
+      return;
+    }
+    // The persisted page is already baked (rotation 0) — reset editor state so CropFragment
+    // starts from the stored image with default corner detection.
+    cropViewModel.setUserRotationDegrees(0);
+    cropViewModel.setLastAcceptedUserRotationDeg(0);
+    cropViewModel.setLastAcceptedCornersOriginal(null);
+    cropViewModel.setOriginalImageBitmap(src);
+    cropViewModel.setImageCropped(false);
+    cropViewModel.setImageBitmap(src);
+    cropViewModel.setCameFromExport(true);
+    cropViewModel.setReEditPageIndex(findActivePageIndex());
+    cropViewModel.setReEditPageId(page.id());
+    try {
+      Navigation.findNavController(v).navigate(R.id.navigation_crop);
+    } catch (Throwable t) {
+      Log.w(TAG, "Persisted page edit navigation failed", t);
+      cropViewModel.setCameFromExport(false);
+      cropViewModel.setReEditPageIndex(-1);
+      cropViewModel.setReEditPageId(null);
+    }
+  }
+
+  /**
+   * Session 3: persists the ordered page ids of the runtime session into the active
+   * DocumentSession. The document id is generated eagerly on the main thread (race-free), so all
+   * page sources (camera seed, PDF import, add page) funnel through this single sync point. Empty
+   * lists are ignored here — explicit discards go through {@link
+   * #discardActiveDocumentSessionAsync()}.
+   */
+  private void syncDocumentSessionAsync(
+      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages) {
+    if (exportSessionViewModel == null) return;
+    Context c = getContext();
+    if (c == null) return;
+    final Context app = c.getApplicationContext();
+    final ArrayList<String> ids = new ArrayList<>();
+    if (pages != null) {
+      for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
+        if (s != null && s.id() != null) ids.add(s.id());
+      }
+    }
+    if (ids.isEmpty()) return;
+    if (exportSessionViewModel.getDocumentId() == null) {
+      exportSessionViewModel.setDocumentId(java.util.UUID.randomUUID().toString());
+    }
+    final String docId = exportSessionViewModel.getDocumentId();
+    documentSessionExecutor.execute(
+        () -> {
+          try {
+            de.schliweb.makeacopy.data.DocumentSessionRepository.get(app).upsertActive(docId, ids);
+          } catch (Throwable t) {
+            Log.w(TAG, "DocumentSession sync failed", t);
+          }
+        });
+  }
+
+  /**
+   * Session 3: restores the active persisted DocumentSession into the runtime session (after
+   * process death / app restart). Missing pages are skipped and the session is repaired by the
+   * repository; the persisted page order is preserved. No in-memory bitmaps are required — the
+   * preview loads lazily from the persisted files.
+   */
+  private void restoreDocumentSessionAsync() {
+    Context c = getContext();
+    if (c == null) return;
+    final Context app = c.getApplicationContext();
+    documentSessionExecutor.execute(
+        () -> {
+          try {
+            de.schliweb.makeacopy.data.DocumentSessionRepository repo =
+                de.schliweb.makeacopy.data.DocumentSessionRepository.get(app);
+            de.schliweb.makeacopy.data.DocumentSession session = repo.getActiveSession();
+            if (session == null) return;
+            final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> resolved =
+                repo.resolveActivePages(de.schliweb.makeacopy.data.CompletedScansRegistry.get(app));
+            if (resolved.isEmpty()) return;
+            final String docId = session.documentId();
+            postToUiSafe(
+                () -> {
+                  if (exportSessionViewModel == null) return;
+                  List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
+                      exportSessionViewModel.getPages().getValue();
+                  if (cur != null && !cur.isEmpty()) return; // runtime session took over meanwhile
+                  exportSessionViewModel.setDocumentId(docId);
+                  activeSessionPageIndex = 0;
+                  exportSessionViewModel.addAll(resolved);
+                  Log.i(
+                      TAG,
+                      "Restored DocumentSession " + docId + " with " + resolved.size() + " pages");
+                });
+          } catch (Throwable t) {
+            Log.w(TAG, "DocumentSession restore failed", t);
+          }
+        });
+  }
+
+  /**
+   * Session 3: explicit discard of the current document draft (user navigated back / cleared the
+   * multipage session). Deletes the persisted DocumentSession; the underlying CompletedScans follow
+   * the existing registry cleanup policy and are NOT deleted here.
+   */
+  private void discardActiveDocumentSessionAsync() {
+    Context c = getContext();
+    if (c == null) return;
+    final Context app = c.getApplicationContext();
+    final String docId =
+        exportSessionViewModel != null ? exportSessionViewModel.getDocumentId() : null;
+    if (exportSessionViewModel != null) exportSessionViewModel.setDocumentId(null);
+    documentSessionExecutor.execute(
+        () -> {
+          try {
+            de.schliweb.makeacopy.data.DocumentSessionRepository repo =
+                de.schliweb.makeacopy.data.DocumentSessionRepository.get(app);
+            if (docId != null) {
+              repo.delete(docId);
+            } else {
+              repo.endActiveSession(true);
+            }
+          } catch (Throwable t) {
+            Log.w(TAG, "DocumentSession discard failed", t);
+          }
+        });
   }
 
   // Insert-Hook implementation: persist a newly added CompletedScan to app storage and registry

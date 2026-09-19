@@ -566,4 +566,9 @@
     <string name="document_cleanup_clean_text">Reiner Text</string>
     <string name="workflow_step_description">Schritt %1$d von %2$d: %3$s</string>
     <string name="search_scans">Scans durchsuchen</string>
+    <!-- Session 3: persistente Dokument-Sessions / Fortsetzen -->
+    <string name="resume_document_title">Unfertiges Dokument gefunden</string>
+    <string name="resume_document_message">Es existiert ein unfertiges Dokument mit %1$d Seite(n). Möchten Sie es fortsetzen?</string>
+    <string name="resume_document_resume">Fortsetzen</string>
+    <string name="resume_document_start_new">Neu beginnen</string>
 </resources>

@@ -32,6 +32,24 @@ public class ExportSessionViewModel extends ViewModel {
       new MutableLiveData<>(new ArrayList<>());
 
   /**
+   * Session 3: id of the persistent {@link de.schliweb.makeacopy.data.DocumentSession} this runtime
+   * page list belongs to. Runtime-only — the ViewModel remains the runtime state, the
+   * DocumentSessionRepository owns the persistent snapshot. {@code null} until the first page is
+   * added (a new document) or a persisted session is restored.
+   */
+  private String documentId;
+
+  /** Returns the persistent document id backing this runtime session, or null. */
+  public String getDocumentId() {
+    return documentId;
+  }
+
+  /** Binds this runtime session to a persistent document id (or null to unbind). */
+  public void setDocumentId(String documentId) {
+    this.documentId = documentId;
+  }
+
+  /**
    * Retrieves a LiveData object containing a list of CompletedScan objects. This LiveData monitors
    * and provides reactive updates to the collection of completed scans within the export session.
    *

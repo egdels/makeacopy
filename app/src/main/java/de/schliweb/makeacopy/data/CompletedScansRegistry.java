@@ -126,6 +126,46 @@ public final class CompletedScansRegistry {
   }
 
   /**
+   * Inserts the given scan or replaces an existing entry with the same id (upsert). This is used
+   * when a page is re-persisted after editing so the registry never keeps stale metadata (old OCR
+   * paths, old dimensions) for an updated page. Thread-safe; the registry file is rewritten
+   * atomically in a single write.
+   *
+   * @param s the completed scan to insert or replace. Must contain a non-null ID.
+   * @throws IOException if an error occurs while writing to the registry file.
+   */
+  public synchronized void insertOrReplace(CompletedScan s) throws IOException {
+    if (s == null || s.id() == null) return;
+    RegistryFile rf = safeLoad();
+    if (rf.items == null) rf.items = new ArrayList<>();
+    List<CompletedScanEntry> next = new ArrayList<>();
+    for (CompletedScanEntry e : rf.items) {
+      if (e == null || s.id().equals(e.id)) continue;
+      next.add(e);
+    }
+    next.add(fromRuntime(s));
+    rf.items = next;
+    writeAtomically(rf);
+  }
+
+  /**
+   * Finds a completed scan by its unique identifier.
+   *
+   * @param id the id to look up; may be null
+   * @return the runtime representation or null when not found
+   */
+  public synchronized CompletedScan findById(String id) {
+    if (id == null) return null;
+    RegistryFile rf = safeLoad();
+    if (rf.items != null) {
+      for (CompletedScanEntry e : rf.items) {
+        if (e != null && id.equals(e.id)) return toRuntime(e);
+      }
+    }
+    return null;
+  }
+
+  /**
    * Removes a completed scan entry from the registry based on its unique identifier. This operation
    * is thread-safe and updates the registry file atomically. If the provided ID is null, the method
    * does nothing. If the registry is empty or does not contain the specified entry, the operation

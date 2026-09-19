@@ -261,6 +261,14 @@ public class CropViewModel extends BaseViewModel {
   @Setter @Getter private int reEditPageIndex = -1;
 
   /**
+   * Session 3: stable id of the {@code CompletedScan} page being re-edited. Preferred over {@link
+   * #reEditPageIndex} because pages can be moved or deleted while the editor is open — the id is
+   * the only stable identifier. Set by ExportFragment when the user starts editing a page; cleared
+   * by CropFragment on the return path. {@code null} means "unknown / legacy index-based flow".
+   */
+  @Setter @Getter private String reEditPageId = null;
+
+  /**
    * FR #72 V1.3 (multi-page filmstrip identity): identity reference to the in-memory bitmap of the
    * most recently confirmed crop. Held as a {@link java.lang.ref.WeakReference} to avoid extending
    * bitmap lifetime. Used by ExportFragment to decide whether the currently previewed page is the
