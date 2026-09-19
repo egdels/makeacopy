@@ -1033,7 +1033,22 @@ public class ExportFragment extends Fragment {
                   DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext()));
           dialog.show();
         });
-    binding.buttonLibraryActions.setOnClickListener(v -> showDocumentActionsMenu());
+    // Tap keeps the pre-Session-4 direct shortcut to the scan library; the newer document
+    // lifecycle actions (Open/New/Close) sit behind a long-press so they don't cost the common
+    // library shortcut an extra tap.
+    binding.buttonLibraryActions.setOnClickListener(
+        v -> {
+          try {
+            Navigation.findNavController(requireView()).navigate(R.id.navigation_scans_library);
+          } catch (IllegalArgumentException | IllegalStateException ex) {
+            Log.w(TAG, "Navigation to library failed", ex);
+          }
+        });
+    binding.buttonLibraryActions.setOnLongClickListener(
+        v -> {
+          showDocumentActionsMenu();
+          return true;
+        });
 
     createDocumentLauncher =
         registerForActivityResult(
@@ -2557,33 +2572,23 @@ public class ExportFragment extends Fragment {
   }
 
   /**
-   * Session 4 document lifecycle menu (behind the library-actions icon): open a saved document,
-   * start a new document, close the current document (persisted, not deleted) or open the scan
-   * library. While an OCR batch is running all document-switching actions are blocked so no OCR job
-   * can ever update UI state of a different document.
+   * Document lifecycle menu (long-press on the library-actions icon; a plain tap keeps the direct
+   * shortcut to the scan library): open a saved document, start a new document, or close the
+   * current document (persisted, not deleted). While an OCR batch is running all document-switching
+   * actions are blocked so no OCR job can ever update UI state of a different document.
    */
   private void showDocumentActionsMenu() {
     String[] options =
         new String[] {
           getString(R.string.doc_action_saved_documents),
           getString(R.string.doc_action_new_document),
-          getString(R.string.doc_action_close_document),
-          getString(R.string.doc_action_scan_library)
+          getString(R.string.doc_action_close_document)
         };
     new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
         .setTitle(R.string.doc_actions_title)
         .setItems(
             options,
             (dlg, which) -> {
-              if (which == 3) {
-                try {
-                  Navigation.findNavController(requireView())
-                      .navigate(R.id.navigation_scans_library);
-                } catch (IllegalArgumentException | IllegalStateException ex) {
-                  Log.w(TAG, "Navigation to library failed", ex);
-                }
-                return;
-              }
               // Document switching (Open/New/Close) is blocked during a running OCR batch.
               if (ocrBatchController != null && ocrBatchController.isRunning()) {
                 UIUtils.showToast(

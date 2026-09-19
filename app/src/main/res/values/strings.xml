@@ -577,7 +577,6 @@
     <string name="doc_action_saved_documents">Open saved document</string>
     <string name="doc_action_new_document">New document</string>
     <string name="doc_action_close_document">Close document</string>
-    <string name="doc_action_scan_library">Scan library</string>
     <string name="doc_actions_title">Document</string>
     <string name="doc_closed_toast">Document closed</string>
 </resources>

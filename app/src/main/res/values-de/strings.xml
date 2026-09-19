@@ -584,7 +584,6 @@
     <string name="doc_action_saved_documents">Gespeichertes Dokument öffnen</string>
     <string name="doc_action_new_document">Neues Dokument</string>
     <string name="doc_action_close_document">Dokument schließen</string>
-    <string name="doc_action_scan_library">Scan-Bibliothek</string>
     <string name="doc_actions_title">Dokument</string>
     <string name="doc_closed_toast">Dokument geschlossen</string>
 </resources>
