@@ -50,7 +50,35 @@ public record CompletedScan(
     int heightPx,
     @Nullable Bitmap inMemoryBitmap,
     int schemaVersion,
-    @Nullable String orientationMode) {
+    @Nullable String orientationMode,
+    @Nullable String sourceType,
+    int pdfPageIndex,
+    @Nullable String pageStatus) {
+
+  /** Source type for pages captured with the camera (default for legacy entries). */
+  public static final String SOURCE_CAMERA = "camera";
+
+  /** Source type for pages imported from an image file. */
+  public static final String SOURCE_IMAGE = "image";
+
+  /** Source type for pages imported from a PDF document. */
+  public static final String SOURCE_PDF = "pdf";
+
+  /** Transient status while a page is being materialized (never expected to persist). */
+  public static final String STATUS_IMPORTING = "IMPORTING";
+
+  /** Page is fully materialized (page.jpg exists) but has no OCR result yet. */
+  public static final String STATUS_IMPORTED = "IMPORTED";
+
+  /** Page has an OCR result. */
+  public static final String STATUS_OCR_COMPLETE = "OCR_COMPLETE";
+
+  /** OCR was attempted for the page but failed. */
+  public static final String STATUS_OCR_FAILED = "OCR_FAILED";
+
+  /** Sentinel value of {@link #pdfPageIndex()} for pages that do not originate from a PDF. */
+  public static final int NO_PDF_PAGE = -1;
+
   /**
    * Constructs a CompletedScan object representing a completed scan, encapsulating various metadata
    * and associated information about the scan.
@@ -81,5 +109,55 @@ public record CompletedScan(
     if (schemaVersion <= 0) {
       schemaVersion = 1; // legacy entries
     }
+    // Multi-page additive fields (Session 1): safe defaults for legacy entries
+    if (sourceType == null || sourceType.isEmpty()) {
+      sourceType = SOURCE_CAMERA; // legacy entries were camera captures or treated as such
+    }
+    if (!SOURCE_PDF.equals(sourceType) || pdfPageIndex < 0) {
+      pdfPageIndex = NO_PDF_PAGE; // only meaningful for PDF-sourced pages
+    }
+    if (pageStatus == null || pageStatus.isEmpty()) {
+      // Derive status for legacy entries: OCR present -> OCR_COMPLETE, otherwise IMPORTED
+      pageStatus = (ocrTextPath != null) ? STATUS_OCR_COMPLETE : STATUS_IMPORTED;
+    } else if (STATUS_IMPORTING.equals(pageStatus) && filePath != null) {
+      // Recovery normalization: a fully materialized page must not stay in IMPORTING
+      pageStatus = STATUS_IMPORTED;
+    }
+  }
+
+  /**
+   * Backward-compatible constructor matching the pre-multi-page signature. Delegates to the
+   * canonical constructor with safe defaults for {@code sourceType}, {@code pdfPageIndex} and
+   * {@code pageStatus} (normalized in the compact constructor).
+   */
+  public CompletedScan(
+      String id,
+      @Nullable String filePath,
+      int rotationDeg,
+      @Nullable String ocrTextPath,
+      @Nullable String ocrFormat,
+      @Nullable String thumbPath,
+      long createdAt,
+      int widthPx,
+      int heightPx,
+      @Nullable Bitmap inMemoryBitmap,
+      int schemaVersion,
+      @Nullable String orientationMode) {
+    this(
+        id,
+        filePath,
+        rotationDeg,
+        ocrTextPath,
+        ocrFormat,
+        thumbPath,
+        createdAt,
+        widthPx,
+        heightPx,
+        inMemoryBitmap,
+        schemaVersion,
+        orientationMode,
+        null,
+        NO_PDF_PAGE,
+        null);
   }
 }

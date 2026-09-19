@@ -3998,7 +3998,40 @@ public class CameraFragment extends Fragment implements SensorEventListener {
 
   /** Delegates PDF import to {@link PdfImportHelper}. */
   private void handlePdfImport(Uri pdfUri) {
-    PdfImportHelper.handlePdfImport(this, pdfUri, this::processPdfBitmap);
+    PdfImportHelper.handlePdfImport(this, pdfUri, this::processPdfBitmap, this::processPdfPages);
+  }
+
+  /**
+   * Handles the multi-page PDF selection: materializes the selected pages sequentially via {@link
+   * PdfMultiPageImporter} (each page is persisted to disk immediately and freed from RAM), adds the
+   * resulting pages to the export session in PDF order and navigates directly to the export
+   * (document overview) screen. The single-page workflow (Crop → OCR → Export) is bypassed; the
+   * imported pages are treated as complete pages.
+   */
+  private void processPdfPages(Uri pdfUri, java.util.List<Integer> pageIndices) {
+    if (!isAdded() || pageIndices == null || pageIndices.isEmpty()) return;
+    final de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionVm =
+        new ViewModelProvider(requireActivity())
+            .get(de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel.class);
+    PdfMultiPageImporter.start(
+        this,
+        pdfUri,
+        pageIndices,
+        (imported, failedCount, cancelled) -> {
+          if (!isAdded() || imported.isEmpty()) return;
+          sessionVm.addAll(imported);
+          Context ctx = getContext();
+          if (ctx != null) {
+            // The import fulfils any pending "Add page" request; clear the flag so
+            // ExportFragment does not additionally append a stale cropped bitmap.
+            ExportPrefsHelper.clearPendingAddPage(ctx);
+          }
+          try {
+            Navigation.findNavController(requireView()).navigate(R.id.navigation_export);
+          } catch (IllegalArgumentException | IllegalStateException ignored) {
+            // Best-effort; failure is non-critical
+          }
+        });
   }
 
   /**

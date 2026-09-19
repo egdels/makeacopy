@@ -177,7 +177,10 @@ public final class CompletedScansRegistry {
         e.heightPx,
         null, // no in-memory bitmap from persistence
         sv,
-        mode);
+        mode,
+        e.sourceType,
+        e.pdfPageIndex,
+        e.pageStatus);
   }
 
   /**
@@ -200,7 +203,10 @@ public final class CompletedScansRegistry {
         s.widthPx(),
         s.heightPx(),
         s.schemaVersion(),
-        s.orientationMode());
+        s.orientationMode(),
+        s.sourceType(),
+        s.pdfPageIndex(),
+        s.pageStatus());
   }
 
   // ===== Persistence =====

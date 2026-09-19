@@ -47,6 +47,15 @@
             android:background="#88000000"
             android:textColor="#FFFFFF" />
 
+        <CheckBox
+            android:id="@+id/page_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <TextView

@@ -424,6 +424,18 @@
     <string name="error_pdf_page_render_failed">Could not render page</string>
     <string name="pdf_select_page">Select page</string>
     <string name="pdf_page_number">Page %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Select pages</string>
+    <string name="pdf_select_all">Select all</string>
+    <string name="pdf_import_pages">Import (%1$d)</string>
+    <string name="pdf_import_one_page">Import (1)</string>
+    <string name="pdf_import_zero_pages">Import</string>
+    <string name="pdf_importing_title">Importing PDF</string>
+    <string name="pdf_importing_progress">Page %1$d of %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d pages imported, %2$d failed</string>
+    <string name="pdf_import_cancelled">Import cancelled</string>
+    <string name="pdf_import_nothing_imported">No pages could be imported</string>
+    <string name="error_insufficient_storage">Not enough free storage to import these pages</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Select OCR Languages</string>
