@@ -74,7 +74,10 @@ public final class SessionOcrUpdater {
                   it.heightPx(),
                   it.inMemoryBitmap(),
                   persisted.schemaVersion(),
-                  persisted.orientationMode());
+                  persisted.orientationMode(),
+                  persisted.sourceType(),
+                  persisted.pdfPageIndex(),
+                  persisted.pageStatus());
           sessionVM.updateAt(i, updated);
           break;
         }

@@ -372,7 +372,8 @@ public final class OcrBackgroundJobs {
               wos.flush();
             }
 
-            // Update registry to prefer words_json
+            // Update registry to prefer words_json. Preserve multi-page metadata
+            // (sourceType/pdfPageIndex) and mark the page as OCR_COMPLETE.
             CompletedScan updated =
                 new CompletedScan(
                     s.id(),
@@ -386,7 +387,10 @@ public final class OcrBackgroundJobs {
                     s.heightPx(),
                     s.inMemoryBitmap(),
                     s.schemaVersion(),
-                    s.orientationMode());
+                    s.orientationMode(),
+                    s.sourceType(),
+                    s.pdfPageIndex(),
+                    CompletedScan.STATUS_OCR_COMPLETE);
             try {
               reg.remove(s.id());
             } catch (Throwable ignore) {
@@ -400,6 +404,9 @@ public final class OcrBackgroundJobs {
             success = true;
           } catch (Throwable t) {
             Log.e(TAG, "Background OCR failed", t);
+            // Persist OCR_FAILED so the failure survives process death and stays visible in the
+            // UI. Cancelled jobs return early (no exception) and therefore never reach this path.
+            markPageOcrFailed(app, pageId);
           } finally {
             // Release Tesseract on the same thread that used it.
             try {
@@ -421,6 +428,45 @@ public final class OcrBackgroundJobs {
             }
           }
         });
+  }
+
+  /**
+   * Best-effort registry update that marks a page as {@link CompletedScan#STATUS_OCR_FAILED} while
+   * preserving all other persisted fields. No-op when the page no longer exists.
+   */
+  private static void markPageOcrFailed(Context app, String pageId) {
+    try {
+      CompletedScansRegistry reg = CompletedScansRegistry.get(app);
+      CompletedScan s = null;
+      for (CompletedScan it : reg.listAllOrderedByDateDesc()) {
+        if (it != null && pageId.equals(it.id())) {
+          s = it;
+          break;
+        }
+      }
+      if (s == null) return;
+      CompletedScan failed =
+          new CompletedScan(
+              s.id(),
+              s.filePath(),
+              s.rotationDeg(),
+              s.ocrTextPath(),
+              s.ocrFormat(),
+              s.thumbPath(),
+              s.createdAt(),
+              s.widthPx(),
+              s.heightPx(),
+              s.inMemoryBitmap(),
+              s.schemaVersion(),
+              s.orientationMode(),
+              s.sourceType(),
+              s.pdfPageIndex(),
+              CompletedScan.STATUS_OCR_FAILED);
+      reg.remove(s.id());
+      reg.insert(failed);
+    } catch (Throwable t) {
+      Log.w(TAG, "Failed to persist OCR_FAILED status for pageId=" + pageId, t);
+    }
   }
 
   // ------------------------------------------------------------------------------------------

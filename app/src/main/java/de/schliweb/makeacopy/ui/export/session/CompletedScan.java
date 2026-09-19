@@ -70,6 +70,16 @@ public record CompletedScan(
   /** Page is fully materialized (page.jpg exists) but has no OCR result yet. */
   public static final String STATUS_IMPORTED = "IMPORTED";
 
+  /** Page is queued for OCR in a batch run but processing has not started yet. */
+  public static final String STATUS_OCR_PENDING = "OCR_PENDING";
+
+  /**
+   * Transient status while OCR is running for the page. Like {@link #STATUS_IMPORTING} this is
+   * never expected to persist; loaded entries are normalized in the compact constructor so that a
+   * process death can never leave permanent OCR_PROCESSING "zombies".
+   */
+  public static final String STATUS_OCR_PROCESSING = "OCR_PROCESSING";
+
   /** Page has an OCR result. */
   public static final String STATUS_OCR_COMPLETE = "OCR_COMPLETE";
 
@@ -122,6 +132,11 @@ public record CompletedScan(
     } else if (STATUS_IMPORTING.equals(pageStatus) && filePath != null) {
       // Recovery normalization: a fully materialized page must not stay in IMPORTING
       pageStatus = STATUS_IMPORTED;
+    } else if (STATUS_OCR_PROCESSING.equals(pageStatus)) {
+      // Recovery normalization after process death: OCR_PROCESSING must not survive a reload.
+      // If a complete OCR artifact exists the page is effectively done; otherwise it becomes
+      // re-startable via OCR_PENDING.
+      pageStatus = (ocrTextPath != null) ? STATUS_OCR_COMPLETE : STATUS_OCR_PENDING;
     }
   }
 

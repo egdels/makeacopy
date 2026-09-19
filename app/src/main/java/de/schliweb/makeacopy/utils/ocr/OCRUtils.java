@@ -169,4 +169,126 @@ public class OCRUtils {
       "nor", "swe", "rus", "tha", "fas", "ara", "hin", "tur", "chi_sim", "chi_tra"
     };
   }
+
+  /**
+   * Maps an OCR language code to a human-readable, localized display name including the model
+   * variant label (Fast/Best) resolved via the flavor-specific {@link OcrModelManager}. For the
+   * PaddleOCR flavor the Paddle model names are returned instead.
+   *
+   * @param context context used to resolve the installed model variant
+   * @param code OCR language code (e.g. "deu", "chi_sim" or a Paddle model code like "latin")
+   * @return display name such as "German (Best)" or "Latin script (Paddle)"
+   */
+  public static String codeToDisplayName(android.content.Context context, String code) {
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR) {
+      return switch (code) {
+        case "en" -> "English (Paddle)";
+        case "latin" -> "Latin script (Paddle)";
+        case "eslav" -> "East Slavic (Paddle)";
+        case "cyrillic" -> "Cyrillic script (Paddle)";
+        case "arabic" -> "Arabic script (Paddle)";
+        case "devanagari" -> "Devanagari script (Paddle)";
+        case "th" -> "Thai (Paddle)";
+        case "el" -> "Greek (Paddle)";
+        case "zh" -> "Chinese/Japanese/Korean (Paddle)";
+        default -> code + " (Paddle)";
+      };
+    }
+    // Map common Tesseract 3-letter codes to 2-letter BCP-47 where possible, for localization
+    String two;
+    switch (code) {
+      case "eng":
+        two = "en";
+        break;
+      case "deu":
+        two = "de";
+        break;
+      case "fra":
+        two = "fr";
+        break;
+      case "ita":
+        two = "it";
+        break;
+      case "spa":
+        two = "es";
+        break;
+      case "por":
+        two = "pt";
+        break;
+      case "nld":
+        two = "nl";
+        break;
+      case "pol":
+        two = "pl";
+        break;
+      case "ces":
+        two = "cs";
+        break;
+      case "slk":
+        two = "sk";
+        break;
+      case "hun":
+        two = "hu";
+        break;
+      case "ron":
+        two = "ro";
+        break;
+      case "dan":
+        two = "da";
+        break;
+      case "nor":
+        two = "no";
+        break;
+      case "swe":
+        two = "sv";
+        break;
+      case "rus":
+        two = "ru";
+        break;
+      case "tha":
+        two = "th";
+        break;
+      case "fas":
+        two = "fa";
+        break;
+      case "ara":
+        two = "ar";
+        break;
+      case "hin":
+        two = "hi";
+        break;
+      case "tur":
+        two = "tr";
+        break;
+      case "chi_sim":
+        return appendVariantLabel(context, "Chinese (Simplified)", code);
+      case "chi_tra":
+        return appendVariantLabel(context, "Chinese (Traditional)", code);
+      default:
+        // Fallback: try first two letters
+        if (code != null && code.length() >= 2) {
+          two = code.substring(0, 2);
+        } else {
+          two = "en";
+        }
+    }
+    String baseName;
+    try {
+      Locale loc = Locale.forLanguageTag(two);
+      baseName = loc.getDisplayLanguage(Locale.getDefault());
+    } catch (Throwable ignore) {
+      baseName = code;
+    }
+    return appendVariantLabel(context, baseName, code);
+  }
+
+  /**
+   * Appends the model variant label (Fast/Best) to the given base display name, resolved via the
+   * flavor-specific {@link OcrModelManager}.
+   */
+  private static String appendVariantLabel(
+      android.content.Context context, String baseName, String code) {
+    String variant = OcrModelManager.isUsingBestModel(context, code) ? "Best" : "Fast";
+    return baseName + " (" + variant + ")";
+  }
 }

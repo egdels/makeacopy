@@ -197,6 +197,7 @@ public class ExportFragment extends Fragment {
               intent.getBooleanExtra(
                   de.schliweb.makeacopy.jobs.OcrBackgroundJobs.EXTRA_SUCCESS, false);
           if (id == null) return;
+          boolean batchActive = ocrBatchController != null && ocrBatchController.isRunning();
           if (success) {
             try {
               SessionOcrUpdater.applyOcrResultToSession(
@@ -204,12 +205,23 @@ public class ExportFragment extends Fragment {
             } catch (Exception e) {
               Log.w(TAG, "Failed to update session after OCR job", e);
             }
-          } else {
+          } else if (!batchActive) {
             UIUtils.showToast(
                 requireContext(), getString(R.string.ocr_processing_failed), Toast.LENGTH_SHORT);
           }
+          // Drive the batch (if any): the controller starts the next page after each completion.
+          if (ocrBatchController != null) {
+            ocrBatchController.onOcrJobFinished(id, success);
+          }
         }
       };
+
+  // Document-wide OCR batch coordination (Session 2). The controller reuses the existing
+  // per-page OCR pipeline; completion is driven by the ACTION_OCR_UPDATED broadcast above.
+  private de.schliweb.makeacopy.jobs.OcrBatchController ocrBatchController;
+  private androidx.appcompat.app.AlertDialog ocrBatchProgressDialog;
+  private com.google.android.material.progressindicator.LinearProgressIndicator ocrBatchProgressBar;
+  private android.widget.TextView ocrBatchProgressLabel;
 
   private de.schliweb.makeacopy.ui.export.session.ExportPagesAdapter pagesAdapter;
   private ActivityResultLauncher<String> createDocumentLauncher;
@@ -305,7 +317,8 @@ public class ExportFragment extends Fragment {
    *   <li>Shows {@code [OCR]} on a green background when the active page has an existing OCR text
    *       file on disk.
    *   <li>Shows {@code [⚠]} on an orange background when OCR is missing; tapping the badge then
-   *       enqueues a background OCR run for the active page via {@link #runInlineOcrForPage(int)}.
+   *       opens the same OCR options as the filmstrip badge via {@link #showOcrBatchOptions(int)}
+   *       (inline OCR for single-page sessions, current/selected/all pages otherwise).
    * </ul>
    */
   private void updatePreviewOcrBadge() {
@@ -319,9 +332,15 @@ public class ExportFragment extends Fragment {
         badge.setOnClickListener(null);
         return;
       }
-      int idx = findActivePageIndex();
       List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
           (exportSessionViewModel != null) ? exportSessionViewModel.getPages().getValue() : null;
+      // Resolve the active page like the edit entry points do (multi-page pages restored from
+      // disk have a freshly decoded preview bitmap, so the in-memory identity lookup alone
+      // would fail): filmstrip selection first, then bitmap identity, then single-page fallback.
+      int idx = activeSessionPageIndex;
+      int n = (pages == null) ? 0 : pages.size();
+      if (idx < 0 || idx >= n) idx = findActivePageIndex();
+      if ((idx < 0 || idx >= n) && n == 1) idx = 0;
       // Single-page hot workflow without session entry: no badge to show.
       if (idx < 0 || pages == null || idx >= pages.size()) {
         badge.setVisibility(View.GONE);
@@ -352,7 +371,7 @@ public class ExportFragment extends Fragment {
         badge.setText("[\u26A0]");
         badge.setBackgroundColor(0x80FFA500); // semi orange
         final int pos = idx;
-        badge.setOnClickListener(v -> runInlineOcrForPage(pos));
+        badge.setOnClickListener(v -> showOcrBatchOptions(pos));
       }
       badge.setVisibility(View.VISIBLE);
     } catch (Throwable ignore) {
@@ -710,7 +729,7 @@ public class ExportFragment extends Fragment {
 
               @Override
               public void onOcrRequested(int position) {
-                runInlineOcrForPage(position);
+                showOcrBatchOptions(position);
               }
             });
     androidx.recyclerview.widget.LinearLayoutManager lm =
@@ -1599,119 +1618,106 @@ public class ExportFragment extends Fragment {
 
                 Uri exportUri;
                 if (isMulti) {
-                  Log.d(TAG, "performExport: Creating PDF for multipage session");
-                  // Build lists
-                  final ArrayList<Bitmap> bitmaps = new ArrayList<>();
-                  final ArrayList<List<RecognizedWord>> perPage = new ArrayList<>();
+                  Log.d(TAG, "performExport: Creating PDF for multipage session (streaming)");
+                  // Streaming export: pages are loaded lazily one at a time via PageSource so
+                  // peak memory depends on a single page, not on the document page count.
                   final Bitmap current = documentBitmap;
-                  @SuppressWarnings("ModifiedButNotUsed") // tracked for future recycle cleanup
-                  final HashSet<Bitmap> toRecycle = new HashSet<>();
-
-                  for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
-                    if (s == null) {
-                      bitmaps.add(null);
-                      perPage.add(null);
-                      continue;
-                    }
-                    Bitmap pageBmp = s.inMemoryBitmap();
-                    boolean loadedFromFile = false;
-                    if (pageBmp == null) {
-                      String p = s.filePath();
-                      if (p != null) {
-                        // Decode full-res without implicit EXIF rotation; baked files are visually
-                        // upright
-                        pageBmp = ImageDecodeUtils.decodeFull(p);
-                        loadedFromFile = (pageBmp != null);
-                        if (loadedFromFile) toRecycle.add(pageBmp);
-                      }
-                    }
-                    if (pageBmp == null) {
-                      bitmaps.add(null);
-                      perPage.add(null);
-                      continue;
-                    }
-                    int deg = s.rotationDeg();
-                    String mode = s.orientationMode();
-                    boolean shouldRotate =
-                        RotationPolicy.shouldRotateForExport(loadedFromFile, mode, deg);
-                    if (shouldRotate) {
-                      android.graphics.Matrix m = new android.graphics.Matrix();
-                      m.postRotate(((deg % 360) + 360) % 360);
-                      Bitmap rotated =
-                          android.graphics.Bitmap.createBitmap(
-                              pageBmp, 0, 0, pageBmp.getWidth(), pageBmp.getHeight(), m, true);
-                      if (rotated != pageBmp) {
-                        if (loadedFromFile) {
-                          if (pageBmp != null && !pageBmp.isRecycled()) {
-                            pageBmp.recycle();
-                          }
-                          toRecycle.remove(pageBmp);
-                        }
-                        pageBmp = rotated;
-                        toRecycle.add(pageBmp);
-                      }
-                    }
-                    bitmaps.add(pageBmp);
-
-                    // Prefer edited per-page words from ocr.json if available when feature enabled;
-                    // otherwise or if not found, use registry words_json; finally fall back to
-                    // in-memory words for current page.
-                    List<RecognizedWord> pageWords = null;
-                    if (FeatureFlags.isOcrReviewEnabled()) {
-                      // 1) Try our editable OCR JSON sidecar under
-                      // filesDir/scans/<id)/page.ocr.json
-                      if (s.id() != null) {
-                        Context c = getContext();
-                        if (c != null) {
-                          File dir = new File(c.getFilesDir(), "scans/" + s.id());
-                          File ocrFile = new File(dir, "page.ocr.json");
-                          List<RecognizedWord> fromJson = OcrJsonWords.parseFile(ocrFile);
-                          if (fromJson != null && !fromJson.isEmpty()) pageWords = fromJson;
-                        }
-                      }
-                      // 2) If not found, try registry-backed words_json
-                      if (pageWords == null) {
-                        String fmt = s.ocrFormat();
-                        String path = s.ocrTextPath();
-                        if ("words_json".equalsIgnoreCase(fmt) && path != null) {
-                          File f = new File(path);
-                          if (f.exists() && f.isFile()) {
-                            pageWords = WordsJson.parseFile(f);
-                            if (pageWords != null && pageWords.isEmpty()) pageWords = null;
-                          }
-                        }
-                      }
-                    } else {
-                      String fmt = s.ocrFormat();
-                      String path = s.ocrTextPath();
-                      if ("words_json".equalsIgnoreCase(fmt) && path != null) {
-                        File f = new File(path);
-                        if (f.exists() && f.isFile()) {
-                          pageWords = WordsJson.parseFile(f);
-                          if (pageWords != null && pageWords.isEmpty()) pageWords = null;
-                        }
-                      }
-                    }
-                    if (pageWords == null
-                        && s.inMemoryBitmap() == current
-                        && recognizedWords != null
-                        && !recognizedWords.isEmpty()) {
-                      pageWords = recognizedWords;
-                    }
-                    perPage.add(pageWords);
-                  }
-                  // Setup progress for multi-page export
-                  final int totalPages = (bitmaps == null) ? 0 : bitmaps.size();
+                  final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pageSnapshot =
+                      new ArrayList<>(pages);
+                  final int totalPages = pageSnapshot.size();
                   postToUiSafe(
                       () -> {
                         exportViewModel.setExportProgressMax(totalPages);
                         exportViewModel.setExportProgress(0);
                       });
+                  final PdfCreator.PageSource pageSource =
+                      new PdfCreator.PageSource() {
+                        // Tracks whether the bitmap handed out for the current page is owned by
+                        // this source (decoded/rotated here) or shared (session in-memory bitmap).
+                        // Only owned bitmaps are recycled in releasePage(). Access is safe because
+                        // PdfCreator consumes pages strictly sequentially.
+                        private boolean currentPageOwned = false;
+
+                        @Override
+                        public int getPageCount() {
+                          return totalPages;
+                        }
+
+                        @Override
+                        public Bitmap loadBitmap(int index) {
+                          de.schliweb.makeacopy.ui.export.session.CompletedScan s =
+                              pageSnapshot.get(index);
+                          currentPageOwned = false;
+                          if (s == null) return null;
+                          Bitmap pageBmp = s.inMemoryBitmap();
+                          boolean loadedFromFile = false;
+                          if (pageBmp == null) {
+                            String p = s.filePath();
+                            if (p != null) {
+                              // Decode full-res without implicit EXIF rotation; baked files are
+                              // visually upright
+                              pageBmp = ImageDecodeUtils.decodeFull(p);
+                              loadedFromFile = (pageBmp != null);
+                              currentPageOwned = loadedFromFile;
+                            }
+                          }
+                          if (pageBmp == null) return null;
+                          int deg = s.rotationDeg();
+                          String mode = s.orientationMode();
+                          boolean shouldRotate =
+                              RotationPolicy.shouldRotateForExport(loadedFromFile, mode, deg);
+                          if (shouldRotate) {
+                            android.graphics.Matrix m = new android.graphics.Matrix();
+                            m.postRotate(((deg % 360) + 360) % 360);
+                            Bitmap rotated =
+                                android.graphics.Bitmap.createBitmap(
+                                    pageBmp,
+                                    0,
+                                    0,
+                                    pageBmp.getWidth(),
+                                    pageBmp.getHeight(),
+                                    m,
+                                    true);
+                            if (rotated != pageBmp) {
+                              if (loadedFromFile && !pageBmp.isRecycled()) {
+                                pageBmp.recycle();
+                              }
+                              pageBmp = rotated;
+                              currentPageOwned = true;
+                            }
+                          }
+                          return pageBmp;
+                        }
+
+                        @Override
+                        public List<RecognizedWord> loadWords(int index) {
+                          de.schliweb.makeacopy.ui.export.session.CompletedScan s =
+                              pageSnapshot.get(index);
+                          if (s == null) return null;
+                          List<RecognizedWord> pageWords = loadWordsForSessionPage(s);
+                          if (pageWords == null
+                              && s.inMemoryBitmap() == current
+                              && recognizedWords != null
+                              && !recognizedWords.isEmpty()) {
+                            pageWords = recognizedWords;
+                          }
+                          return pageWords;
+                        }
+
+                        @Override
+                        public void releasePage(int index, Bitmap bitmap) {
+                          // Ownership contract: only recycle bitmaps this source created; the
+                          // session's in-memory bitmaps stay alive for the UI.
+                          if (currentPageOwned && bitmap != null && !bitmap.isRecycled()) {
+                            bitmap.recycle();
+                          }
+                          currentPageOwned = false;
+                        }
+                      };
                   exportUri =
                       PdfCreator.createSearchablePdf(
                           appContext,
-                          bitmaps,
-                          perPage,
+                          pageSource,
                           selectedLocation,
                           jpegQuality,
                           convertGrayEffective,
@@ -1727,18 +1733,6 @@ public class ExportFragment extends Fragment {
                           cleanupMode,
                           textLayerMode,
                           MultiColumnOcrPrefs.isEnabled(appContext));
-                  // Recycle any temporary bitmaps we created (those not part of the session's
-                  // in-memory references)
-                  final HashSet<Bitmap> sessionBitmaps = new HashSet<>();
-                  for (de.schliweb.makeacopy.ui.export.session.CompletedScan s2 : pages) {
-                    if (s2 != null && s2.inMemoryBitmap() != null)
-                      sessionBitmaps.add(s2.inMemoryBitmap());
-                  }
-                  for (Bitmap b : bitmaps) {
-                    if (b != null && !sessionBitmaps.contains(b) && !b.isRecycled()) {
-                      b.recycle();
-                    }
-                  }
 
                 } else {
                   Log.d(TAG, "performExport: Creating PDF for single page session");
@@ -1842,6 +1836,48 @@ public class ExportFragment extends Fragment {
               }
             })
         .start();
+  }
+
+  /**
+   * Loads the OCR words for a single session page from disk. Prefers the edited OCR JSON sidecar
+   * (when the OCR Review feature is enabled), then falls back to the registry-backed words_json
+   * payload. Returns {@code null} when no usable OCR words exist (image-only page).
+   */
+  private List<RecognizedWord> loadWordsForSessionPage(
+      de.schliweb.makeacopy.ui.export.session.CompletedScan s) {
+    if (s == null) return null;
+    List<RecognizedWord> pageWords = null;
+    if (FeatureFlags.isOcrReviewEnabled()) {
+      // 1) Try our editable OCR JSON sidecar under filesDir/scans/<id>/page.ocr.json
+      if (s.id() != null) {
+        Context c = getContext();
+        if (c != null) {
+          File dir = new File(c.getFilesDir(), "scans/" + s.id());
+          File ocrFile = new File(dir, "page.ocr.json");
+          List<RecognizedWord> fromJson = OcrJsonWords.parseFile(ocrFile);
+          if (fromJson != null && !fromJson.isEmpty()) pageWords = fromJson;
+        }
+      }
+    }
+    // 2) If not found (or feature disabled), try registry-backed words_json
+    if (pageWords == null) {
+      String fmt = s.ocrFormat();
+      String path = s.ocrTextPath();
+      if ("words_json".equalsIgnoreCase(fmt) && path != null) {
+        File f = new File(path);
+        if (f.exists() && f.isFile()) {
+          try {
+            pageWords = WordsJson.parseFile(f);
+          } catch (Exception e) {
+            // Broken OCR JSON on a single page must not abort the export (image-only fallback)
+            Log.w(TAG, "Failed to parse OCR words for page " + s.id(), e);
+            pageWords = null;
+          }
+          if (pageWords != null && pageWords.isEmpty()) pageWords = null;
+        }
+      }
+    }
+    return pageWords;
   }
 
   /**
@@ -2416,14 +2452,439 @@ public class ExportFragment extends Fragment {
     // completion.
     UIUtils.showToast(
         requireContext(), getString(R.string.ocr_processing_started), Toast.LENGTH_SHORT);
+    de.schliweb.makeacopy.jobs.OcrBackgroundJobs.enqueueReprocess(
+        requireContext().getApplicationContext(),
+        s.id(),
+        resolveOcrLanguage(),
+        () -> ocrHelperProvider.get());
+  }
+
+  /** SharedPreferences file shared with the OCR screen's language selection. */
+  private static final String OCR_PREFS_NAME = "export_options";
+
+  /** Preference key for the persisted OCR language spec (kept in sync with OCRFragment). */
+  private static final String PREF_KEY_OCR_LANG = "ocr_language";
+
+  /** Maximum number of languages selectable for multi-language OCR (Tesseract flavor). */
+  private static final int MAX_OCR_LANGUAGES = 2;
+
+  /**
+   * Resolves the OCR language used for inline/batch OCR: ViewModel state first, then the persisted
+   * preference from the OCR screen, finally a sensible system-based default.
+   */
+  private String resolveOcrLanguage() {
     de.schliweb.makeacopy.ui.ocr.OCRViewModel.OcrUiState st = ocrViewModel.getState().getValue();
     String lang = (st != null && st.language() != null) ? st.language() : null;
-    // If user hasn't visited the OCR screen, fall back to a sensible system-based default
+    if (lang == null || lang.trim().isEmpty()) {
+      try {
+        lang =
+            requireContext()
+                .getSharedPreferences(OCR_PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(PREF_KEY_OCR_LANG, null);
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+    }
     if (lang == null || lang.trim().isEmpty()) {
       lang = OCRUtils.resolveEffectiveLanguage(lang);
     }
-    de.schliweb.makeacopy.jobs.OcrBackgroundJobs.enqueueReprocess(
-        requireContext().getApplicationContext(), s.id(), lang, () -> ocrHelperProvider.get());
+    return lang;
+  }
+
+  /**
+   * Persists the given OCR language spec (preference + ViewModel) so that subsequent inline/batch
+   * OCR runs use it, then re-opens the OCR batch options for the given page.
+   */
+  private void applyOcrLanguage(String langSpec, int position) {
+    if (langSpec == null || langSpec.trim().isEmpty()) return;
+    ocrViewModel.setLanguage(langSpec);
+    try {
+      requireContext()
+          .getSharedPreferences(OCR_PREFS_NAME, Context.MODE_PRIVATE)
+          .edit()
+          .putString(PREF_KEY_OCR_LANG, langSpec)
+          .apply();
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    showOcrBatchOptions(position);
+  }
+
+  /**
+   * Lets the user change the OCR language directly from the export screen (multi-page sessions have
+   * no other way to reach the OCR screen's language selection). Mirrors OCRFragment: a
+   * single-choice dialog for the PaddleOCR flavor, a multi-choice dialog (max. {@link
+   * #MAX_OCR_LANGUAGES}) for the Tesseract flavor.
+   */
+  private void showOcrLanguagePicker(int position) {
+    String[] resolvedCodes = null;
+    try {
+      resolvedCodes = OcrModelManager.getAvailableLanguageCodes(requireContext());
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    final String[] codes =
+        (resolvedCodes != null && resolvedCodes.length > 0)
+            ? resolvedCodes
+            : OCRUtils.getLanguages();
+    final String[] displayNames = new String[codes.length];
+    for (int i = 0; i < codes.length; i++) {
+      displayNames[i] = OCRUtils.codeToDisplayName(requireContext(), codes[i]);
+    }
+    final List<String> selected = new ArrayList<>();
+    String current = resolveOcrLanguage();
+    if (current != null) {
+      for (String part : current.split("\\+", -1)) {
+        String trimmed = part.trim();
+        if (!trimmed.isEmpty() && !selected.contains(trimmed)) selected.add(trimmed);
+      }
+    }
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR) {
+      int checkedItem = -1;
+      if (!selected.isEmpty()) {
+        for (int i = 0; i < codes.length; i++) {
+          if (codes[i].equals(selected.get(0))) {
+            checkedItem = i;
+            break;
+          }
+        }
+      }
+      new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+          .setTitle(R.string.select_ocr_languages)
+          .setSingleChoiceItems(
+              displayNames,
+              checkedItem,
+              (dlg, which) -> {
+                dlg.dismiss();
+                applyOcrLanguage(codes[which], position);
+              })
+          .setNegativeButton(android.R.string.cancel, null)
+          .show();
+    } else {
+      final boolean[] checked = new boolean[codes.length];
+      for (int i = 0; i < codes.length; i++) {
+        checked[i] = selected.contains(codes[i]);
+      }
+      new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+          .setTitle(R.string.select_ocr_languages)
+          .setMultiChoiceItems(
+              displayNames,
+              checked,
+              (dlg, which, isChecked) -> {
+                if (isChecked) {
+                  int count = 0;
+                  for (boolean b : checked) if (b) count++;
+                  if (count > MAX_OCR_LANGUAGES) {
+                    ((androidx.appcompat.app.AlertDialog) dlg)
+                        .getListView()
+                        .setItemChecked(which, false);
+                    checked[which] = false;
+                    UIUtils.showToast(
+                        requireContext(),
+                        getString(R.string.ocr_max_languages_warning),
+                        Toast.LENGTH_SHORT);
+                  }
+                }
+              })
+          .setPositiveButton(
+              android.R.string.ok,
+              (dlg, w) -> {
+                List<String> chosen = new ArrayList<>();
+                for (int i = 0; i < codes.length; i++) {
+                  if (checked[i]) chosen.add(codes[i]);
+                }
+                if (chosen.isEmpty()) {
+                  UIUtils.showToast(
+                      requireContext(),
+                      getString(R.string.ocr_no_language_selected),
+                      Toast.LENGTH_SHORT);
+                  return;
+                }
+                applyOcrLanguage(String.join("+", chosen), position);
+              })
+          .setNegativeButton(android.R.string.cancel, null)
+          .show();
+    }
+  }
+
+  /**
+   * Entry point for the per-page OCR badge. For single-page sessions this behaves like before
+   * (inline OCR for the tapped page). For multi-page sessions the user can choose between OCR for
+   * the current page, a page selection, all pages ("OCR all" skips pages that already have a
+   * complete OCR result), or changing the OCR language used for these runs.
+   */
+  private void showOcrBatchOptions(int position) {
+    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
+        exportSessionViewModel.getPages().getValue();
+    if (cur == null || cur.size() <= 1) {
+      runInlineOcrForPage(position);
+      return;
+    }
+    if (ocrBatchController != null && ocrBatchController.isRunning()) {
+      UIUtils.showToast(
+          requireContext(), getString(R.string.ocr_batch_already_running), Toast.LENGTH_SHORT);
+      return;
+    }
+    String[] options =
+        new String[] {
+          getString(R.string.ocr_batch_option_current),
+          getString(R.string.ocr_batch_option_selected),
+          getString(R.string.ocr_batch_option_all),
+          getString(R.string.ocr_batch_option_language, resolveOcrLanguage())
+        };
+    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.ocr_batch_title)
+        .setItems(
+            options,
+            (dlg, which) -> {
+              if (which == 0) {
+                runInlineOcrForPage(position);
+              } else if (which == 1) {
+                showOcrPagePicker(position);
+              } else if (which == 2) {
+                startOcrAll();
+              } else {
+                showOcrLanguagePicker(position);
+              }
+            })
+        .setNegativeButton(android.R.string.cancel, null)
+        .show();
+  }
+
+  /** Multi-choice page picker for "OCR selected pages" (reuses the picker UX pattern). */
+  private void showOcrPagePicker(int preselectedPosition) {
+    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
+        exportSessionViewModel.getPages().getValue();
+    if (cur == null || cur.isEmpty()) return;
+    final int n = cur.size();
+    final String[] labels = new String[n];
+    final boolean[] checked = new boolean[n];
+    for (int i = 0; i < n; i++) {
+      labels[i] = getString(R.string.page_n_of_m, i + 1, n);
+      checked[i] = (i == preselectedPosition);
+    }
+    final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> snapshot =
+        new ArrayList<>(cur);
+    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.ocr_batch_select_pages)
+        .setMultiChoiceItems(labels, checked, (dlg, which, isChecked) -> checked[which] = isChecked)
+        .setPositiveButton(
+            R.string.ocr_batch_title,
+            (dlg, w) -> {
+              List<String> ids = new ArrayList<>();
+              for (int i = 0; i < n; i++) {
+                de.schliweb.makeacopy.ui.export.session.CompletedScan s = snapshot.get(i);
+                if (checked[i] && s != null && s.id() != null) ids.add(s.id());
+              }
+              if (!ids.isEmpty()) startOcrBatch(ids);
+            })
+        .setNegativeButton(android.R.string.cancel, null)
+        .show();
+  }
+
+  /**
+   * Starts "OCR all": processes every session page that does not yet have a complete OCR result.
+   * Pages with {@code OCR_COMPLETE} status are skipped by design (re-OCR remains available via the
+   * explicit per-page/selected actions).
+   */
+  private void startOcrAll() {
+    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
+        exportSessionViewModel.getPages().getValue();
+    if (cur == null || cur.isEmpty()) return;
+    List<String> ids = new ArrayList<>();
+    for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : cur) {
+      if (s == null || s.id() == null) continue;
+      if (de.schliweb.makeacopy.ui.export.session.CompletedScan.STATUS_OCR_COMPLETE.equals(
+          s.pageStatus())) {
+        continue; // already has OCR → skip by default
+      }
+      ids.add(s.id());
+    }
+    if (ids.isEmpty()) {
+      UIUtils.showToast(
+          requireContext(), getString(R.string.ocr_batch_nothing_to_do), Toast.LENGTH_SHORT);
+      return;
+    }
+    startOcrBatch(ids);
+  }
+
+  /** Starts a sequential OCR batch over the given stable page ids. */
+  private void startOcrBatch(List<String> pageIds) {
+    if (pageIds == null || pageIds.isEmpty()) return;
+    if (ocrBatchController != null && ocrBatchController.isRunning()) {
+      UIUtils.showToast(
+          requireContext(), getString(R.string.ocr_batch_already_running), Toast.LENGTH_SHORT);
+      return;
+    }
+    final Context appContext = requireContext().getApplicationContext();
+    final String lang = resolveOcrLanguage();
+
+    ocrBatchController =
+        new de.schliweb.makeacopy.jobs.OcrBatchController(
+            new de.schliweb.makeacopy.jobs.OcrBatchController.JobStarter() {
+              @Override
+              public void startOcr(String pageId) {
+                de.schliweb.makeacopy.jobs.OcrBackgroundJobs.enqueueReprocess(
+                    appContext, pageId, lang, () -> ocrHelperProvider.get());
+              }
+
+              @Override
+              public void cancelOcr(String pageId) {
+                de.schliweb.makeacopy.jobs.OcrBackgroundJobs.cancel(pageId);
+              }
+            },
+            pageId -> {
+              // Deleted pages are skipped: the batch works with stable ids, not positions.
+              List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+                  exportSessionViewModel.getPages().getValue();
+              if (pages == null) return false;
+              for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
+                if (s != null && pageId.equals(s.id())) return true;
+              }
+              return false;
+            },
+            new de.schliweb.makeacopy.jobs.OcrBatchController.Listener() {
+              @Override
+              public void onPageStarted(String pageId, int pos, int total) {
+                postToUiSafe(() -> updateOcrBatchProgress(pos, total));
+              }
+
+              @Override
+              public void onPageFinished(String pageId, boolean success, int finished, int total) {
+                if (!success) {
+                  postToUiSafe(() -> markSessionPageOcrFailed(pageId));
+                }
+              }
+
+              @Override
+              public void onBatchFinished(
+                  de.schliweb.makeacopy.jobs.OcrBatchController.Summary summary) {
+                postToUiSafe(() -> onOcrBatchFinished(summary));
+              }
+            });
+    showOcrBatchProgressDialog(pageIds.size());
+    ocrBatchController.start(pageIds);
+  }
+
+  /** Reflects a persisted OCR failure in the in-memory session entry (badge/status). */
+  private void markSessionPageOcrFailed(String pageId) {
+    if (exportSessionViewModel == null || pageId == null) return;
+    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
+        exportSessionViewModel.getPages().getValue();
+    if (cur == null) return;
+    for (int i = 0; i < cur.size(); i++) {
+      de.schliweb.makeacopy.ui.export.session.CompletedScan it = cur.get(i);
+      if (it != null && pageId.equals(it.id())) {
+        exportSessionViewModel.updateAt(
+            i,
+            new de.schliweb.makeacopy.ui.export.session.CompletedScan(
+                it.id(),
+                it.filePath(),
+                it.rotationDeg(),
+                it.ocrTextPath(),
+                it.ocrFormat(),
+                it.thumbPath(),
+                it.createdAt(),
+                it.widthPx(),
+                it.heightPx(),
+                it.inMemoryBitmap(),
+                it.schemaVersion(),
+                it.orientationMode(),
+                it.sourceType(),
+                it.pdfPageIndex(),
+                de.schliweb.makeacopy.ui.export.session.CompletedScan.STATUS_OCR_FAILED));
+        break;
+      }
+    }
+  }
+
+  private void showOcrBatchProgressDialog(int total) {
+    dismissOcrBatchProgressDialog();
+    View v =
+        LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_pdf_import_progress, null, false);
+    android.widget.TextView title = v.findViewById(R.id.import_progress_title);
+    title.setText(R.string.ocr_batch_running_title);
+    ocrBatchProgressBar = v.findViewById(R.id.import_progress_bar);
+    ocrBatchProgressBar.setMax(total);
+    ocrBatchProgressBar.setProgress(0);
+    ocrBatchProgressLabel = v.findViewById(R.id.import_progress_label);
+    ocrBatchProgressLabel.setText(getString(R.string.page_n_of_m, 1, total));
+    ocrBatchProgressDialog =
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(v)
+            .setCancelable(false)
+            .setNegativeButton(
+                android.R.string.cancel,
+                (dlg, w) -> {
+                  if (ocrBatchController != null) ocrBatchController.cancel();
+                })
+            .create();
+    ocrBatchProgressDialog.setOnShowListener(
+        dlg ->
+            DialogUtils.improveAlertDialogButtonContrastForNight(
+                ocrBatchProgressDialog, requireContext()));
+    ocrBatchProgressDialog.show();
+  }
+
+  private void updateOcrBatchProgress(int pos, int total) {
+    if (ocrBatchProgressBar != null) {
+      ocrBatchProgressBar.setMax(total);
+      ocrBatchProgressBar.setProgress(Math.max(0, pos - 1));
+    }
+    if (ocrBatchProgressLabel != null) {
+      ocrBatchProgressLabel.setText(getString(R.string.page_n_of_m, pos, total));
+    }
+  }
+
+  private void dismissOcrBatchProgressDialog() {
+    if (ocrBatchProgressDialog != null) {
+      try {
+        ocrBatchProgressDialog.dismiss();
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+      ocrBatchProgressDialog = null;
+    }
+    ocrBatchProgressBar = null;
+    ocrBatchProgressLabel = null;
+  }
+
+  /** Shows the batch summary and offers "Retry failed" when applicable. */
+  private void onOcrBatchFinished(de.schliweb.makeacopy.jobs.OcrBatchController.Summary summary) {
+    dismissOcrBatchProgressDialog();
+    if (!isAdded()) return;
+    if (summary.cancelled) {
+      UIUtils.showToast(
+          requireContext(), getString(R.string.ocr_batch_cancelled), Toast.LENGTH_SHORT);
+      return;
+    }
+    String msg = getString(R.string.ocr_batch_summary, summary.succeeded, summary.failed);
+    if (summary.skipped > 0) {
+      msg += "\n" + getString(R.string.ocr_batch_summary_skipped, summary.skipped);
+    }
+    com.google.android.material.dialog.MaterialAlertDialogBuilder b =
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.ocr_batch_finished_title)
+            .setMessage(msg)
+            .setPositiveButton(android.R.string.ok, null);
+    if (summary.failed > 0) {
+      b.setNeutralButton(
+          R.string.ocr_batch_retry_failed,
+          (dlg, w) -> {
+            if (ocrBatchController != null) {
+              List<String> failedIds = ocrBatchController.getLastFailedPageIds();
+              if (!failedIds.isEmpty()) {
+                showOcrBatchProgressDialog(failedIds.size());
+                ocrBatchController.retryFailed();
+              }
+            }
+          });
+    }
+    androidx.appcompat.app.AlertDialog dialog = b.create();
+    dialog.setOnShowListener(
+        dlg -> DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext()));
+    dialog.show();
   }
 
   /**

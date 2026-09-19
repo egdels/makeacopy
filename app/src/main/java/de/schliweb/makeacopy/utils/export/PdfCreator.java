@@ -1451,6 +1451,186 @@ public class PdfCreator {
       TextLayerMode textLayerMode,
       boolean multiColumn) {
     if (bitmaps == null || bitmaps.isEmpty() || outputUri == null) return null;
+    // Legacy eager path: wrap the pre-loaded lists into a PageSource. The caller keeps
+    // ownership of the bitmaps (they are NOT recycled here), and null entries are skipped
+    // defensively — both preserving the historical List<Bitmap> contract.
+    PageSource source =
+        new PageSource() {
+          @Override
+          public int getPageCount() {
+            return bitmaps.size();
+          }
+
+          @Override
+          public Bitmap loadBitmap(int index) {
+            return bitmaps.get(index);
+          }
+
+          @Override
+          public List<RecognizedWord> loadWords(int index) {
+            return (perPageWords != null && index < perPageWords.size())
+                ? perPageWords.get(index)
+                : null;
+          }
+
+          @Override
+          public void releasePage(int index, Bitmap bitmap) {
+            // Caller owns the bitmaps in the legacy List-based API; do not recycle.
+          }
+        };
+    return createSearchablePdfStreaming(
+        context,
+        source,
+        outputUri,
+        jpegQuality,
+        convertToGrayscale,
+        convertToBlackWhite,
+        targetDpi,
+        listener,
+        bwMode,
+        pageFormat,
+        cleanupMode,
+        textLayerMode,
+        /* skipNullBitmaps= */ true,
+        multiColumn);
+  }
+
+  /**
+   * A lazy, page-wise provider for multi-page PDF creation. Implementations load exactly one page
+   * bitmap (and its OCR words) at a time so that peak memory depends on a single page instead of
+   * the document page count.
+   *
+   * <p><b>Bitmap ownership contract:</b> {@link PdfCreator} borrows the bitmap returned by {@link
+   * #loadBitmap(int)} for the duration of one page render and then calls {@link #releasePage(int,
+   * Bitmap)} exactly once for that page (also when rendering fails). {@code PdfCreator} itself
+   * never recycles a source bitmap. The default {@code releasePage} implementation recycles the
+   * bitmap; implementations that hand out shared/cached bitmaps must override it to a no-op for
+   * those bitmaps to avoid double-recycle.
+   */
+  public interface PageSource {
+    /** Total number of pages to export. */
+    int getPageCount();
+
+    /**
+     * Loads the full-resolution, upright bitmap for the given page index. Called lazily and
+     * strictly sequentially (page {@code n+1} is only requested after page {@code n} has been
+     * rendered and released). Returning {@code null} or throwing aborts the export.
+     */
+    Bitmap loadBitmap(int index) throws Exception;
+
+    /** Loads the OCR words for the given page, or {@code null}/empty for an image-only page. */
+    List<RecognizedWord> loadWords(int index);
+
+    /**
+     * Called exactly once after the page has been consumed (or rendering failed). Default
+     * implementation recycles the bitmap.
+     */
+    default void releasePage(int index, Bitmap bitmap) {
+      if (bitmap != null && !bitmap.isRecycled()) {
+        try {
+          bitmap.recycle();
+        } catch (Throwable ignore) {
+          // Best-effort; failure is non-critical
+        }
+      }
+    }
+  }
+
+  /**
+   * Creates a searchable multi-page PDF by streaming pages from a {@link PageSource}: each page
+   * bitmap is loaded, rendered into the document, and released before the next page is requested.
+   * Peak memory therefore depends on a single page, not on the document page count.
+   *
+   * <p>The export is atomic with respect to page errors: if any page fails to load or render, no
+   * output is written to {@code outputUri} and {@code null} is returned (the output stream is only
+   * opened after all pages rendered successfully).
+   *
+   * @return the URI of the generated PDF file, or {@code null} if an error occurred
+   */
+  public static Uri createSearchablePdf(
+      Context context,
+      PageSource source,
+      Uri outputUri,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      ProgressListener listener,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode) {
+    return createSearchablePdfStreaming(
+        context,
+        source,
+        outputUri,
+        jpegQuality,
+        convertToGrayscale,
+        convertToBlackWhite,
+        targetDpi,
+        listener,
+        bwMode,
+        pageFormat,
+        cleanupMode,
+        textLayerMode,
+        /* skipNullBitmaps= */ false,
+        /* multiColumn= */ false);
+  }
+
+  /**
+   * Variant of {@link #createSearchablePdf(Context, PageSource, Uri, int, boolean, boolean, int,
+   * ProgressListener, BwMode, PageFormat, DocumentCleanupMode, TextLayerMode)} with optional
+   * multi-column layout reconstruction (see {@link MultiColumnLayoutPolicy}).
+   *
+   * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
+   */
+  public static Uri createSearchablePdf(
+      Context context,
+      PageSource source,
+      Uri outputUri,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      ProgressListener listener,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode,
+      boolean multiColumn) {
+    return createSearchablePdfStreaming(
+        context,
+        source,
+        outputUri,
+        jpegQuality,
+        convertToGrayscale,
+        convertToBlackWhite,
+        targetDpi,
+        listener,
+        bwMode,
+        pageFormat,
+        cleanupMode,
+        textLayerMode,
+        /* skipNullBitmaps= */ false,
+        multiColumn);
+  }
+
+  private static Uri createSearchablePdfStreaming(
+      Context context,
+      PageSource source,
+      Uri outputUri,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      ProgressListener listener,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode,
+      boolean skipNullBitmaps,
+      boolean multiColumn) {
+    if (source == null || source.getPageCount() <= 0 || outputUri == null) return null;
     if (pageFormat == null) pageFormat = PageFormat.A4;
     if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
     try {
@@ -1476,133 +1656,72 @@ public class PdfCreator {
       // Load fonts once (file-based; subset-embedded)
       List<PDFont> fonts = loadFontsWithFallbacks(document, context);
 
-      int total = bitmaps.size();
-      for (int i = 0; i < bitmaps.size(); i++) {
-        Bitmap src = bitmaps.get(i);
-        if (src == null) {
-          if (listener != null)
-            try {
-              listener.onPageProcessed(i + 1, total);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          continue; // skip nulls defensively
-        }
-        Bitmap prepared = null;
+      int total = source.getPageCount();
+      for (int i = 0; i < total; i++) {
+        Bitmap src;
         try {
-          // Detect if text contains RTL scripts for gentle B/W processing
-          List<RecognizedWord> pageWords =
-              (perPageWords != null && i < perPageWords.size()) ? perPageWords.get(i) : null;
-          boolean useGentleMode = convertToBlackWhite && containsRtlText(pageWords);
-          prepared =
-              processImageForPdf(
+          src = source.loadBitmap(i);
+        } catch (Throwable t) {
+          Log.e(TAG, "Failed to load bitmap for page " + (i + 1), t);
+          return null;
+        }
+        if (src == null) {
+          if (skipNullBitmaps) {
+            // Legacy List<Bitmap> semantics: skip null entries defensively.
+            if (listener != null)
+              try {
+                listener.onPageProcessed(i + 1, total);
+              } catch (Throwable ignore) {
+                // Best-effort; failure is non-critical
+              }
+            continue;
+          }
+          Log.e(TAG, "PageSource returned null bitmap for page " + (i + 1));
+          return null;
+        }
+        boolean rendered;
+        try {
+          List<RecognizedWord> pageWords;
+          try {
+            pageWords = source.loadWords(i);
+          } catch (Throwable t) {
+            // A broken/missing OCR payload must not abort the export; fall back to image-only.
+            Log.w(
+                TAG, "Failed to load OCR words for page " + (i + 1) + "; exporting image only", t);
+            pageWords = null;
+          }
+          rendered =
+              renderPageIntoDocument(
+                  document,
+                  fonts,
                   src,
+                  pageWords,
+                  i,
+                  jpegQuality,
                   convertToGrayscale,
                   convertToBlackWhite,
                   targetDpi,
                   bwMode,
-                  useGentleMode,
                   pageFormat,
-                  cleanupMode);
-          if (prepared == null) {
-            Log.e(TAG, "Image preparation via OpenCV failed for page " + (i + 1));
-            return null;
-          }
-
-          PDRectangle pageSize =
-              pageFormat.toPageRectangle(prepared.getWidth(), prepared.getHeight());
-          float pageW = pageSize.getWidth();
-          float pageH = pageSize.getHeight();
-
-          PDPage page = new PDPage(pageSize);
-          // Harmonize page boxes to avoid viewer-specific cropping/offset interpretations
+                  cleanupMode,
+                  textLayerMode,
+                  multiColumn);
+        } finally {
+          // Ownership contract: the source releases the bitmap exactly once per page.
           try {
-            page.setMediaBox(pageSize);
-            page.setCropBox(pageSize);
-            page.setBleedBox(pageSize);
-            page.setTrimBox(pageSize);
-            page.setArtBox(pageSize);
+            source.releasePage(i, src);
           } catch (Throwable ignore) {
             // Best-effort; failure is non-critical
           }
-          document.addPage(page);
-
-          float scale = calculateScale(prepared.getWidth(), prepared.getHeight(), pageW, pageH);
-          float drawW = prepared.getWidth() * scale;
-          float drawH = prepared.getHeight() * scale;
-          float offsetX = (pageW - drawW) / 2f;
-          float offsetY = (pageH - drawH) / 2f;
-
-          float q = Math.max(0f, Math.min(1f, jpegQuality / 100f));
-          // Remove alpha channel before JPEG encoding to avoid OOM in
-          // JPEGFactory.createAlphaFromARGBImage.
-          Bitmap opaqueForJpeg = (jpegQuality < 100) ? removeAlphaChannel(prepared) : null;
-          PDImageXObject pdImg;
-          try {
-            pdImg =
-                (jpegQuality < 100)
-                    ? JPEGFactory.createFromImage(document, opaqueForJpeg, q)
-                    : LosslessFactory.createFromImage(document, prepared);
-          } finally {
-            if (opaqueForJpeg != null && opaqueForJpeg != prepared) {
-              try {
-                opaqueForJpeg.recycle();
-              } catch (Throwable t) {
-                Log.w(TAG, "Failed to recycle opaque bitmap", t);
-              }
-            }
-          }
-
-          try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-            cs.drawImage(pdImg, offsetX, offsetY, drawW, drawH);
-            List<RecognizedWord> words =
-                (perPageWords != null && i < perPageWords.size()) ? perPageWords.get(i) : null;
-            if (words != null && !words.isEmpty()) {
-              cs.saveGraphicsState();
-              cs.transform(new Matrix(scale, 0, 0, scale, offsetX, offsetY));
-              // Normalize OCR boxes from source bitmap space to prepared bitmap space if needed
-              List<RecognizedWord> normWords;
-              if (src.getWidth() != prepared.getWidth()
-                  || src.getHeight() != prepared.getHeight()) {
-                float sxImg = (float) prepared.getWidth() / (float) src.getWidth();
-                float syImg = (float) prepared.getHeight() / (float) src.getHeight();
-                normWords = new ArrayList<>(words.size());
-                for (RecognizedWord w : words) {
-                  normWords.add(
-                      w.transform(sxImg, syImg, 0f, 0f)
-                          .clipTo(prepared.getWidth(), prepared.getHeight()));
-                }
-              } else {
-                normWords = words;
-              }
-              addTextLayerImageSpace(
-                  cs,
-                  normWords,
-                  fonts,
-                  prepared.getWidth(),
-                  prepared.getHeight(),
-                  textLayerMode,
-                  multiColumn);
-              cs.restoreGraphicsState();
-            }
-          }
-          if (listener != null) {
-            try {
-              listener.onPageProcessed(i + 1, total);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          }
-        } catch (Exception e) {
-          Log.e(TAG, "Error rendering page " + (i + 1), e);
+        }
+        if (!rendered) {
           return null;
-        } finally {
-          if (prepared != null && prepared != src) {
-            try {
-              prepared.recycle();
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
+        }
+        if (listener != null) {
+          try {
+            listener.onPageProcessed(i + 1, total);
+          } catch (Throwable ignore) {
+            // Best-effort; failure is non-critical
           }
         }
       }
@@ -1618,6 +1737,129 @@ public class PdfCreator {
     } catch (Exception e) {
       Log.e(TAG, "Error creating multi-page PDF", e);
       return null;
+    }
+  }
+
+  /**
+   * Renders a single page (image + optional OCR text layer) into the given document. Does not
+   * recycle {@code src}; intermediate prepared bitmaps are recycled internally.
+   *
+   * @return {@code true} on success, {@code false} on failure
+   */
+  private static boolean renderPageIntoDocument(
+      PDDocument document,
+      List<PDFont> fonts,
+      Bitmap src,
+      List<RecognizedWord> pageWords,
+      int pageIndex,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode,
+      boolean multiColumn) {
+    Bitmap prepared = null;
+    try {
+      // Detect if text contains RTL scripts for gentle B/W processing
+      boolean useGentleMode = convertToBlackWhite && containsRtlText(pageWords);
+      prepared =
+          processImageForPdf(
+              src,
+              convertToGrayscale,
+              convertToBlackWhite,
+              targetDpi,
+              bwMode,
+              useGentleMode,
+              pageFormat,
+              cleanupMode);
+      if (prepared == null) {
+        Log.e(TAG, "Image preparation via OpenCV failed for page " + (pageIndex + 1));
+        return false;
+      }
+
+      PDRectangle pageSize = pageFormat.toPageRectangle(prepared.getWidth(), prepared.getHeight());
+      float pageW = pageSize.getWidth();
+      float pageH = pageSize.getHeight();
+
+      PDPage page = new PDPage(pageSize);
+      // Harmonize page boxes to avoid viewer-specific cropping/offset interpretations
+      try {
+        page.setMediaBox(pageSize);
+        page.setCropBox(pageSize);
+        page.setBleedBox(pageSize);
+        page.setTrimBox(pageSize);
+        page.setArtBox(pageSize);
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+      document.addPage(page);
+
+      float scale = calculateScale(prepared.getWidth(), prepared.getHeight(), pageW, pageH);
+      float drawW = prepared.getWidth() * scale;
+      float drawH = prepared.getHeight() * scale;
+      float offsetX = (pageW - drawW) / 2f;
+      float offsetY = (pageH - drawH) / 2f;
+
+      float q = Math.max(0f, Math.min(1f, jpegQuality / 100f));
+      // Remove alpha channel before JPEG encoding to avoid OOM in
+      // JPEGFactory.createAlphaFromARGBImage.
+      Bitmap opaqueForJpeg = (jpegQuality < 100) ? removeAlphaChannel(prepared) : null;
+      PDImageXObject pdImg;
+      try {
+        pdImg =
+            (jpegQuality < 100)
+                ? JPEGFactory.createFromImage(document, opaqueForJpeg, q)
+                : LosslessFactory.createFromImage(document, prepared);
+      } finally {
+        if (opaqueForJpeg != null && opaqueForJpeg != prepared) {
+          try {
+            opaqueForJpeg.recycle();
+          } catch (Throwable t) {
+            Log.w(TAG, "Failed to recycle opaque bitmap", t);
+          }
+        }
+      }
+
+      try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+        cs.drawImage(pdImg, offsetX, offsetY, drawW, drawH);
+        if (pageWords != null && !pageWords.isEmpty()) {
+          cs.saveGraphicsState();
+          cs.transform(new Matrix(scale, 0, 0, scale, offsetX, offsetY));
+          // Normalize OCR boxes from source bitmap space to prepared bitmap space if needed
+          List<RecognizedWord> normWords;
+          if (src.getWidth() != prepared.getWidth() || src.getHeight() != prepared.getHeight()) {
+            float sxImg = (float) prepared.getWidth() / (float) src.getWidth();
+            float syImg = (float) prepared.getHeight() / (float) src.getHeight();
+            normWords = new ArrayList<>(pageWords.size());
+            for (RecognizedWord w : pageWords) {
+              normWords.add(
+                  w.transform(sxImg, syImg, 0f, 0f)
+                      .clipTo(prepared.getWidth(), prepared.getHeight()));
+            }
+          } else {
+            normWords = pageWords;
+          }
+          addTextLayerImageSpace(
+              cs, normWords, fonts, prepared.getWidth(), prepared.getHeight(), textLayerMode,
+              multiColumn);
+          cs.restoreGraphicsState();
+        }
+      }
+      return true;
+    } catch (Exception e) {
+      Log.e(TAG, "Error rendering page " + (pageIndex + 1), e);
+      return false;
+    } finally {
+      if (prepared != null && prepared != src) {
+        try {
+          prepared.recycle();
+        } catch (Throwable ignore) {
+          // Best-effort; failure is non-critical
+        }
+      }
     }
   }
 

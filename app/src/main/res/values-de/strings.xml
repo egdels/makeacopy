@@ -429,6 +429,21 @@
     <string name="pdf_import_cancelled">Import abgebrochen</string>
     <string name="pdf_import_nothing_imported">Es konnten keine Seiten importiert werden</string>
     <string name="error_insufficient_storage">Nicht genügend freier Speicher für diesen Import</string>
+    <!-- Batch OCR (mehrseitige Dokumente) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Aktuelle Seite</string>
+    <string name="ocr_batch_option_selected">Ausgewählte Seiten…</string>
+    <string name="ocr_batch_option_all">Alle Seiten</string>
+    <string name="ocr_batch_option_language">OCR-Sprache (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Seiten für OCR auswählen</string>
+    <string name="ocr_batch_running_title">OCR läuft</string>
+    <string name="ocr_batch_already_running">OCR läuft bereits</string>
+    <string name="ocr_batch_nothing_to_do">Alle Seiten haben bereits OCR</string>
+    <string name="ocr_batch_finished_title">OCR abgeschlossen</string>
+    <string name="ocr_batch_summary">%1$d erfolgreich, %2$d fehlgeschlagen</string>
+    <string name="ocr_batch_summary_skipped">%1$d übersprungen</string>
+    <string name="ocr_batch_retry_failed">Fehlgeschlagene wiederholen</string>
+    <string name="ocr_batch_cancelled">OCR abgebrochen</string>
 
     <!-- Mehrsprachige OCR-Auswahl -->
     <string name="select_ocr_languages">OCR-Sprachen auswählen</string>
