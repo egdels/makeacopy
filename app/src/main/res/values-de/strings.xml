@@ -571,19 +571,4 @@
     <string name="resume_document_message">Es existiert ein unfertiges Dokument mit %1$d Seite(n). Möchten Sie es fortsetzen?</string>
     <string name="resume_document_resume">Fortsetzen</string>
     <string name="resume_document_start_new">Neu beginnen</string>
-    <!-- Session 4: Dokument-Lebenszyklus / gespeicherte Dokumente -->
-    <string name="saved_documents_title">Gespeicherte Dokumente</string>
-    <string name="saved_documents_empty">Keine gespeicherten Dokumente</string>
-    <string name="saved_documents_active_badge">Aktiv</string>
-    <string name="saved_documents_default_title">Dokument</string>
-    <string name="saved_documents_page_count">%1$d Seite(n)</string>
-    <string name="saved_documents_open_failed">Dokument konnte nicht geöffnet werden</string>
-    <string name="saved_documents_discard_title">Dokument verwerfen?</string>
-    <string name="saved_documents_discard_message">Das Dokument wird aus den gespeicherten Dokumenten entfernt. Die gescannten Seiten selbst bleiben erhalten und folgen der bestehenden Aufräum-Richtlinie.</string>
-    <string name="saved_documents_discarded_toast">Dokument verworfen</string>
-    <string name="doc_action_saved_documents">Gespeichertes Dokument öffnen</string>
-    <string name="doc_action_new_document">Neues Dokument</string>
-    <string name="doc_action_close_document">Dokument schließen</string>
-    <string name="doc_actions_title">Dokument</string>
-    <string name="doc_closed_toast">Dokument geschlossen</string>
 </resources>
