@@ -213,10 +213,14 @@ public final class OpenCVUtils {
    *     be transformed. Must not be null and must contain exactly four points.
    * @param targetSize The target size for the output image, represented as a {@code Size} object.
    *     Specifies the dimensions (width and height) of the transformed image.
+   * @param borderMode OpenCV border mode for pixels sampled from outside {@code input} (e.g. {@link
+   *     Core#BORDER_CONSTANT} to fill with black, {@link Core#BORDER_REPLICATE} to extend the edge
+   *     pixels). Only matters when {@code srcPoints} extends beyond {@code input}'s bounds.
    * @return A new {@code Mat} object containing the transformed (warped) image. If an error occurs
    *     or invalid input is provided, the original input image is returned.
    */
-  private static Mat warpPerspectiveSafe(Mat input, Point[] srcPoints, Size targetSize) {
+  private static Mat warpPerspectiveSafe(
+      Mat input, Point[] srcPoints, Size targetSize, int borderMode) {
     if (input == null || input.empty() || srcPoints == null || srcPoints.length != 4) {
       Log.e(TAG, "Invalid input or source points");
       return input;
@@ -241,7 +245,8 @@ public final class OpenCVUtils {
       }
 
       transform = Imgproc.getPerspectiveTransform(srcMat, dstMat);
-      Imgproc.warpPerspective(input, output, transform, targetSize);
+      Imgproc.warpPerspective(
+          input, output, transform, targetSize, Imgproc.INTER_LINEAR, borderMode);
       return output;
     } catch (Throwable t) {
       Log.e(TAG, "warpPerspective failed", t);
@@ -356,7 +361,7 @@ public final class OpenCVUtils {
       }
       if (!isSafeMode()) {
         Log.d(TAG, "Using OpenCV warpPerspective");
-        Mat warped = warpPerspectiveSafe(mat, corners, targetSize);
+        Mat warped = warpPerspectiveSafe(mat, corners, targetSize, Core.BORDER_CONSTANT);
         try {
           Bitmap output =
               Bitmap.createBitmap(
@@ -717,7 +722,11 @@ public final class OpenCVUtils {
       expanded[1] = new Point(corners[1].x - dRx * exR, corners[1].y - dRy * exR);
       expanded[2] = new Point(corners[2].x + dRx * exR, corners[2].y + dRy * exR);
       expanded[3] = new Point(corners[3].x + dLx * exL, corners[3].y + dLy * exL);
-      rectified = warpPerspectiveSafe(src, expanded, new Size(rw, rhx));
+      // The expanded band deliberately reaches beyond the selection quad (and often beyond the
+      // source bitmap itself, see class javadoc on DEWARP_ESTIMATE_EXPAND_FRAC). Replicate the
+      // edge pixels there instead of the default black fill, so a page that fills (most of) the
+      // photo doesn't create a false paper/background edge at the out-of-bounds band boundary.
+      rectified = warpPerspectiveSafe(src, expanded, new Size(rw, rhx), Core.BORDER_REPLICATE);
       if (rectified == null || rectified.empty() || rectified == src) return null;
 
       // Grayscale + blur; the Otsu threshold VALUE separates paper (bright) from background.

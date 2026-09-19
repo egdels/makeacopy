@@ -84,27 +84,58 @@ public class DewarpInstrumentedTest {
   }
 
   /**
-   * Zeichnet {@code lines} gekrümmte "Textzeilen" (quadratische Beziers mit gegebener Sagitta nach
-   * unten) auf weißem Grund — Eingabe für die automatische Kurvenschätzung (Phase 2).
+   * Simulates a photographed page with a real paper/background contrast: a dark "table" background
+   * fills the whole bitmap, and a white page — with straight left/right edges but top and bottom
+   * edges bowed by {@code sagittaPx} at their midpoint, like a cylindrically bent book page — is
+   * filled on top of it. {@code lines} curved black "text" strokes are drawn inside the page purely
+   * for visual realism; the actual signal {@link OpenCVUtils#estimateDewarpCurveOffsets} traces is
+   * the curved paper/background edge itself (Otsu threshold crossing), not the text.
+   *
+   * @return the bitmap plus the straight-chord corners (TL, TR, BR, BL) of the page, i.e. the quad
+   *     a user would select by tapping the (visually slightly curved) page corners
    */
-  private static Bitmap createCurvedTextPageBitmap(int w, int h, int lines, float sagittaPx) {
-    Bitmap bmp = createSolidBitmap(w, h, Color.WHITE);
+  private static Object[] createCurvedPageWithTextBitmap(
+      int w, int h, int pageLeft, int pageTop, int pageRight, int pageBottom, int lines,
+      float sagittaPx) {
+    Bitmap bmp = createSolidBitmap(w, h, Color.DKGRAY);
     Canvas c = new Canvas(bmp);
-    Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-    p.setStyle(Paint.Style.STROKE);
-    p.setStrokeWidth(8f);
-    p.setColor(Color.BLACK);
-    float x0 = w * 0.08f;
-    float x1 = w * 0.92f;
+
+    Point tl = new Point(pageLeft, pageTop);
+    Point tr = new Point(pageRight, pageTop);
+    Point br = new Point(pageRight, pageBottom);
+    Point bl = new Point(pageLeft, pageBottom);
+
+    // The white page itself: straight side edges, top/bottom edges bowed downward by sagittaPx at
+    // their midpoint (same sign convention as OpenCVUtils#estimateDewarpEdgeProfiles: positive =
+    // displaced in chord-normal direction, i.e. downward for a left-to-right top/bottom chord).
+    Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    fill.setStyle(Paint.Style.FILL);
+    fill.setColor(Color.WHITE);
+    android.graphics.Path page = new android.graphics.Path();
+    page.moveTo((float) tl.x, (float) tl.y);
+    page.quadTo(
+        0.5f * (float) (tl.x + tr.x), (float) tl.y + 2f * sagittaPx, (float) tr.x, (float) tr.y);
+    page.lineTo((float) br.x, (float) br.y);
+    page.quadTo(
+        0.5f * (float) (bl.x + br.x), (float) br.y + 2f * sagittaPx, (float) bl.x, (float) bl.y);
+    page.close();
+    c.drawPath(page, fill);
+
+    // Decorative curved "text lines" inside the page (do not drive the estimate).
+    Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    stroke.setStyle(Paint.Style.STROKE);
+    stroke.setStrokeWidth(8f);
+    stroke.setColor(Color.BLACK);
+    float x0 = pageLeft + 0.1f * (pageRight - pageLeft);
+    float x1 = pageRight - 0.1f * (pageRight - pageLeft);
     for (int i = 0; i < lines; i++) {
-      float y = h * (0.15f + 0.7f * i / (float) (lines - 1));
+      float y = pageTop + (pageBottom - pageTop) * (0.2f + 0.6f * i / (float) (lines - 1));
       android.graphics.Path path = new android.graphics.Path();
       path.moveTo(x0, y);
-      // Kontrollpunkt so, dass die Kurve bei t=0.5 genau sagittaPx unter der Sehne liegt
       path.quadTo(0.5f * (x0 + x1), y + 2f * sagittaPx, x1, y);
-      c.drawPath(path, p);
+      c.drawPath(path, stroke);
     }
-    return bmp;
+    return new Object[] {bmp, new Point[] {tl, tr, br, bl}};
   }
 
   // ---------- Tests ----------
@@ -222,16 +253,22 @@ public class DewarpInstrumentedTest {
   @Test
   public void estimateDewarpCurveOffsets_curvedTextLines_returnsExpectedOffsets() {
     assumeOpenCvInitialized();
-    int w = 600, h = 400;
-    float sagitta = 25f; // Zeilen wölben sich 25 px nach unten
-    Bitmap src = createCurvedTextPageBitmap(w, h, 8, sagitta);
-    Point[] corners =
-        new Point[] {new Point(10, 10), new Point(590, 10), new Point(590, 390), new Point(10, 390)};
+    // Real paper/background contrast: a dark background fills the whole bitmap, the white page
+    // is inset from the bitmap border (leaves room for the algorithm's vertical expansion band,
+    // see DEWARP_ESTIMATE_EXPAND_FRAC) and its top/bottom edges bow by `sagitta` px, like a
+    // cylindrically bent book page. Text lines inside the page are purely decorative.
+    int w = 600, h = 600;
+    int pageLeft = 60, pageTop = 100, pageRight = 540, pageBottom = 500;
+    float sagitta = 25f; // page edges bow 25 px downward at their midpoint
+    Object[] fixture =
+        createCurvedPageWithTextBitmap(w, h, pageLeft, pageTop, pageRight, pageBottom, 8, sagitta);
+    Bitmap src = (Bitmap) fixture[0];
+    Point[] corners = (Point[]) fixture[1];
     double[] offsets = OpenCVUtils.estimateDewarpCurveOffsets(src, corners);
-    assertNotNull("Bei klaren Textzeilen muss eine Schätzung geliefert werden", offsets);
+    assertNotNull("Bei einer echten Papierkante muss eine Schätzung geliefert werden", offsets);
     assertEquals(2, offsets.length);
-    // Erwarteter Offset: Sagitta / Sehnenlänge ≈ 25 / 580 ≈ 0.043; positiv = nach unten
-    double expected = sagitta / 580.0;
+    // Erwarteter Offset: Sagitta / Sehnenlänge ≈ 25 / 480 ≈ 0.052; positiv = nach unten
+    double expected = sagitta / (double) (pageRight - pageLeft);
     assertEquals("topOffsetFrac", expected, offsets[0], 0.02);
     assertEquals("bottomOffsetFrac", expected, offsets[1], 0.02);
     assertThat("Wölbung nach unten muss positives Vorzeichen haben", offsets[0], greaterThan(0.0));
