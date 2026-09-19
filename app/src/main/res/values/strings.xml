@@ -75,11 +75,9 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Grayscale</string>
-    <string name="export_as_jpeg">Export as JPEG</string>
     <string name="export_format_label">Export format</string>
     <string name="export_format_pdf" translatable="false">PDF</string>
     <string name="export_format_jpeg" translatable="false">JPEG</string>
-    <string name="export_as_pdf">Export as PDF (default)</string>
     <string name="document_cleanup_title">Document cleanup</string>
     <string name="document_cleanup_original">Original</string>
     <string name="document_cleanup_natural">Natural</string>
@@ -107,7 +105,6 @@
     <string name="focus_quality_option">Focus quality indicator</string>
     <string name="tap_to_focus_started">Focusing…</string>
     <string name="tap_to_focus_done">Focus adjusted</string>
-    <string name="tap_to_focus_requested">Focus requested</string>
     <string name="tap_to_focus_not_locked">Focus could not lock here</string>
     <string name="tap_to_focus_not_supported">Tap focus is not supported here</string>
     <string name="tap_to_focus_failed">Could not focus here</string>
@@ -122,16 +119,9 @@
     <string name="jpeg_mode_none">Color</string>
     <string name="jpeg_mode_auto">Grayscale</string>
     <string name="jpeg_mode_bw_text">Black &amp; White</string>
-    <string name="jpeg_mode_bw_robust">Black &amp; White (robust) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">OCR robust preprocessing (JPEG)</string>
-    <string name="jpeg_mode_gray_clean">Grayscale clean (high-pass) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Color clean (high-pass) (JPEG)</string>
     <string name="pdf_bw_mode_none">Color</string>
     <string name="pdf_bw_mode_robust">Black &amp; White</string>
     <string name="pdf_bw_mode_classic">B&amp;W (classic)</string>
-    <string name="pdf_bw_mode_ocr_robust">OCR robust preprocessing (PDF)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Grayscale clean (high-pass)</string>
-    <string name="pdf_bw_mode_color_clean">Color clean (high-pass)</string>
     <string name="output_color_title" translatable="false">Output color</string>
     <string name="skip_ocr_export_only">Skip OCR (export only)</string>
     <string name="preview_corner_detection">Preview corner detection</string>
@@ -194,7 +184,6 @@
     <string name="remove">Remove</string>
     <string name="removed_from_registry_toast">Entry removed</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">PDF quality / size</string>
     <string name="dpi_settings_label">DPI settings</string>
     <string name="pdf_preset_high">High (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
@@ -210,7 +199,6 @@
     <string name="page_format_a4">A4</string>
     <string name="page_format_letter">US Letter</string>
     <string name="page_format_legal">Legal</string>
-    <string name="jpeg_enhancement_title">JPEG output color</string>
     <string name="btn_options">Options</string>
     <string name="btn_save">Save</string>
     <string name="btn_new">New scan</string>
@@ -526,7 +514,6 @@
     <!-- Universal separator displayed between width and height in the custom aspect ratio dialog (e.g. "16 : 9"); not translatable. -->
     <string name="crop_aspect_ratio_separator" translatable="false">:</string>
     <string name="crop_aspect_custom_invalid">Please enter positive numbers within 1:1 to 1:20.</string>
-    <string name="crop_aspect_output_size_hint" tools:ignore="UnusedResources">Output: %1$d × %2$d px</string>
     <!-- Crop: Edge dragging & off-screen corners (see docs/edge_drag_pan_zoom_concept.md) -->
     <string name="crop_hint_corner_off_image">Corner outside image — warped output may contain black borders</string>
     <string name="crop_edge_dragged">Edge selected. Drag to move the edge.</string>

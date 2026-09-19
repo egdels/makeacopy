@@ -66,9 +66,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">ग्रेस्केल</string>
-    <string name="export_as_jpeg">JPEG के रूप में निर्यात करें</string>
     <string name="export_format_label">निर्यात प्रारूप</string>
-    <string name="export_as_pdf">PDF के रूप में निर्यात करें (डिफ़ॉल्ट)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">फ्लैशलाइट टॉगल करें</string>
@@ -91,7 +89,6 @@
     <string name="focus_quality_option">फ़ोकस गुणवत्ता संकेतक</string>
     <string name="tap_to_focus_started">फ़ोकस कर रहा है…</string>
     <string name="tap_to_focus_done">फ़ोकस समायोजित किया गया</string>
-    <string name="tap_to_focus_requested">फ़ोकस का अनुरोध किया गया</string>
     <string name="tap_to_focus_not_locked">यहाँ फ़ोकस लॉक नहीं हो सका</string>
     <string name="tap_to_focus_not_supported">यहाँ टैप फ़ोकस समर्थित नहीं है</string>
     <string name="tap_to_focus_failed">यहाँ फ़ोकस नहीं हो सका</string>
@@ -106,17 +103,10 @@
     <string name="jpeg_mode_none">रंगीन</string>
     <string name="jpeg_mode_auto">ग्रेस्केल</string>
     <string name="jpeg_mode_bw_text">श्वेत-श्याम</string>
-    <string name="jpeg_mode_bw_robust">श्वेत-श्याम (रोबस्ट) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">OCR रोबस्ट प्रीप्रोसेसिंग (JPEG)</string>
 
     <string name="pdf_bw_mode_none">रंगीन</string>
     <string name="pdf_bw_mode_robust">श्वेत-श्याम</string>
     <string name="pdf_bw_mode_classic">श्वेत-श्याम (क्लासिक)</string>
-    <string name="pdf_bw_mode_ocr_robust">OCR रोबस्ट प्रीप्रोसेसिंग (PDF)</string>
-    <string name="jpeg_mode_gray_clean">साफ़ ग्रेस्केल (हाई-पास फ़िल्टर) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">साफ़ रंग (हाई-पास फ़िल्टर) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">ग्रेस्केल साफ़ (हाई-पास)</string>
-    <string name="pdf_bw_mode_color_clean">रंग साफ़ (हाई-पास)</string>
     <string name="skip_ocr_export_only">OCR छोड़ें (केवल निर्यात)</string>
     <string name="skip_cropping">क्रॉपिंग छोड़ें</string>
     <string name="skip_edge_detection">किनारा पहचान छोड़ें</string>
@@ -171,7 +161,6 @@
     <string name="remove">हटाएँ</string>
     <string name="removed_from_registry_toast">प्रविष्टि हटाई गई</string>
     <!-- PDF quality presets -->
-    <string name="pdf_quality_title">PDF गुणवत्ता / आकार</string>
     <string name="dpi_settings_label">DPI सेटिंग्स</string>
     <string name="pdf_preset_high">उच्च (300 dpi, q85)</string>
     <string name="pdf_preset_standard">मानक (200 dpi, q72)</string>
@@ -187,7 +176,6 @@
     <string name="page_format_a4">A4</string>
     <string name="page_format_letter">US Letter</string>
     <string name="page_format_legal">Legal</string>
-    <string name="jpeg_enhancement_title">JPEG आउटपुट रंग</string>
     <string name="btn_options">विकल्प</string>
     <string name="btn_save">सहेजें</string>
     <string name="btn_new">नया स्कैन</string>
@@ -463,7 +451,6 @@
     <string name="crop_aspect_custom_width_hint">चौड़ाई</string>
     <string name="crop_aspect_custom_height_hint">ऊँचाई</string>
     <string name="crop_aspect_custom_invalid">1:1 से 1:20 के बीच धनात्मक संख्याएँ दर्ज करें.</string>
-    <string name="crop_aspect_output_size_hint">आउटपुट: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">कोना छवि के बाहर — आउटपुट में काले बॉर्डर हो सकते हैं</string>
     <string name="crop_edge_dragged">किनारा चयनित. किनारा हिलाने के लिए खींचें.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

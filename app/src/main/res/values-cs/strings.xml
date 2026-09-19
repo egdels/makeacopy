@@ -75,9 +75,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Odstíny šedi</string>
-    <string name="export_as_jpeg">Exportovat jako JPEG</string>
     <string name="export_format_label">Formát exportu</string>
-    <string name="export_as_pdf">Exportovat jako PDF (výchozí)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Přepnout svítilnu</string>
@@ -100,7 +98,6 @@
     <string name="focus_quality_option">Indikátor kvality ostření</string>
     <string name="tap_to_focus_started">Zaostřování…</string>
     <string name="tap_to_focus_done">Ostření upraveno</string>
-    <string name="tap_to_focus_requested">Ostření vyžádáno</string>
     <string name="tap_to_focus_not_locked">Zde se nepodařilo zaostření uzamknout</string>
     <string name="tap_to_focus_not_supported">Ostření klepnutím zde není podporováno</string>
     <string name="tap_to_focus_failed">Zde se nepodařilo zaostřit</string>
@@ -116,15 +113,8 @@
     <string name="jpeg_mode_none">Barva</string>
     <string name="jpeg_mode_auto">Odstíny šedi</string>
     <string name="jpeg_mode_bw_text">Černobílý</string>
-    <string name="jpeg_mode_bw_robust">Černobílý (robustní) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Odolné předzpracování OCR (JPEG)</string>
     <string name="pdf_bw_mode_robust">Černobílý</string>
     <string name="pdf_bw_mode_classic">Č/B (klasický)</string>
-    <string name="pdf_bw_mode_ocr_robust">Odolné předzpracování OCR (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Vyčištěné stupně šedi (horní propust) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Vyčištěné barvy (horní propust) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Odstíny šedi – vyčištěné (high-pass)</string>
-    <string name="pdf_bw_mode_color_clean">Barvy – vyčištěné (high-pass)</string>
     <string name="skip_ocr_export_only">Přeskočit OCR (pouze export)</string>
     <string name="skip_cropping">Přeskočit oříznutí</string>
     <string name="skip_edge_detection">Přeskočit detekci okrajů</string>
@@ -181,7 +171,6 @@
     <string name="removed_from_registry_toast">Položka odstraněna</string>
 
     <!-- PDF quality presets -->
-    <string name="pdf_quality_title">Kvalita / velikost PDF</string>
     <string name="pdf_preset_high">Vysoká (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standardní (200 dpi, q72)</string>
     <string name="pdf_preset_small">Malá (150 dpi, q62)</string>
@@ -190,7 +179,6 @@
     <string name="pdf_text_layer_mode_line_based">Po řádcích (doporučeno)</string>
     <string name="pdf_text_layer_mode_word_positioned">Podle pozic slov (kompatibilita)</string>
     <string name="export_options_title">Možnosti exportu</string>
-    <string name="jpeg_enhancement_title">Výstupní barva JPEG</string>
     <string name="btn_options">Možnosti</string>
     <string name="btn_save">Uložit</string>
     <string name="btn_new">Nové skenování</string>
@@ -489,7 +477,6 @@
     <string name="crop_aspect_custom_width_hint">Šířka</string>
     <string name="crop_aspect_custom_height_hint">Výška</string>
     <string name="crop_aspect_custom_invalid">Zadejte kladná čísla v rozmezí 1:1 až 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Výstup: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Roh mimo obrázek — výstup může obsahovat černé okraje</string>
     <string name="crop_edge_dragged">Hrana vybrána. Tažením přesuňte hranu.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

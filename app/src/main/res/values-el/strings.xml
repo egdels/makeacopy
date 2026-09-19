@@ -62,9 +62,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Κλίμακα του γκρι</string>
-    <string name="export_as_jpeg">Εξαγωγή ως JPEG</string>
     <string name="export_format_label">Μορφή εξαγωγής</string>
-    <string name="export_as_pdf">Εξαγωγή ως PDF (προεπιλογή)</string>
     <string name="document_cleanup_title">Καθαρισμός εγγράφου</string>
     <string name="document_cleanup_original">Αρχικό</string>
     <string name="document_cleanup_natural">Φυσικό</string>
@@ -92,7 +90,6 @@
     <string name="focus_quality_option">Ένδειξη ποιότητας εστίασης</string>
     <string name="tap_to_focus_started">Εστίαση…</string>
     <string name="tap_to_focus_done">Η εστίαση προσαρμόστηκε</string>
-    <string name="tap_to_focus_requested">Ζητήθηκε εστίαση</string>
     <string name="tap_to_focus_not_locked">Δεν ήταν δυνατό το κλείδωμα εστίασης εδώ</string>
     <string name="tap_to_focus_not_supported">Η εστίαση με πάτημα δεν υποστηρίζεται εδώ</string>
     <string name="tap_to_focus_failed">Δεν ήταν δυνατή η εστίαση εδώ</string>
@@ -107,16 +104,9 @@
     <string name="jpeg_mode_none">Χρώμα</string>
     <string name="jpeg_mode_auto">Κλίμακα του γκρι</string>
     <string name="jpeg_mode_bw_text">Ασπρόμαυρο</string>
-    <string name="jpeg_mode_bw_robust">Ασπρόμαυρο (ανθεκτικό) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Ανθεκτική προεπεξεργασία OCR (JPEG)</string>
-    <string name="jpeg_mode_gray_clean">Καθαρή κλίμακα του γκρι (high-pass) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Καθαρό χρώμα (high-pass) (JPEG)</string>
     <string name="pdf_bw_mode_none">Χρώμα</string>
     <string name="pdf_bw_mode_robust">Ασπρόμαυρο</string>
     <string name="pdf_bw_mode_classic">Α/Μ (κλασικό)</string>
-    <string name="pdf_bw_mode_ocr_robust">Ανθεκτική προεπεξεργασία OCR (PDF)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Καθαρή κλίμακα του γκρι (high-pass)</string>
-    <string name="pdf_bw_mode_color_clean">Καθαρό χρώμα (high-pass)</string>
     <string name="output_color_title" translatable="false">Χρώμα εξόδου</string>
     <string name="skip_ocr_export_only">Παράλειψη OCR (μόνο εξαγωγή)</string>
     <string name="preview_corner_detection">Προεπισκόπηση ανίχνευσης γωνιών</string>
@@ -177,7 +167,6 @@
     <string name="remove">Αφαίρεση</string>
     <string name="removed_from_registry_toast">Η καταχώριση αφαιρέθηκε</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">Ποιότητα / μέγεθος PDF</string>
     <string name="dpi_settings_label">Ρυθμίσεις DPI</string>
     <string name="pdf_preset_high">Υψηλή (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Τυπική (200 dpi, q72)</string>
@@ -193,7 +182,6 @@
     <string name="page_format_a4">A4</string>
     <string name="page_format_letter">US Letter</string>
     <string name="page_format_legal">Legal</string>
-    <string name="jpeg_enhancement_title">Χρώμα εξόδου JPEG</string>
     <string name="btn_options">Επιλογές</string>
     <string name="btn_save">Αποθήκευση</string>
     <string name="btn_new">Νέα σάρωση</string>
@@ -464,7 +452,6 @@
     <!-- Universal separator displayed between width and height in the custom aspect ratio dialog (e.g. "16 : 9"); not translatable. -->
     <string name="crop_aspect_ratio_separator" translatable="false">:</string>
     <string name="crop_aspect_custom_invalid">Παρακαλώ εισαγάγετε θετικούς αριθμούς από 1:1 έως 1:20.</string>
-    <string name="crop_aspect_output_size_hint" tools:ignore="UnusedResources">Έξοδος: %1$d × %2$d px</string>
     <!-- Crop: Edge dragging & off-screen corners (see docs/edge_drag_pan_zoom_concept.md) -->
     <string name="crop_hint_corner_off_image">Η γωνία βρίσκεται έξω από την εικόνα — το παραμορφωμένο αποτέλεσμα μπορεί να περιέχει μαύρα περιθώρια</string>
     <string name="crop_edge_dragged">Επιλέχθηκε ακμή. Σύρετε για να μετακινήσετε την ακμή.</string>

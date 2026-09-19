@@ -71,9 +71,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">ระดับเทา</string>
-    <string name="export_as_jpeg">ส่งออกเป็น JPEG</string>
     <string name="export_format_label">รูปแบบการส่งออก</string>
-    <string name="export_as_pdf">ส่งออกเป็น PDF (ค่าเริ่มต้น)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">เปิด/ปิดไฟฉาย</string>
@@ -96,7 +94,6 @@
     <string name="focus_quality_option">ตัวบ่งชี้คุณภาพโฟกัส</string>
     <string name="tap_to_focus_started">กำลังโฟกัส…</string>
     <string name="tap_to_focus_done">ปรับโฟกัสแล้ว</string>
-    <string name="tap_to_focus_requested">ส่งคำขอโฟกัสแล้ว</string>
     <string name="tap_to_focus_not_locked">ไม่สามารถล็อกโฟกัสที่นี่ได้</string>
     <string name="tap_to_focus_not_supported">ไม่รองรับการแตะเพื่อโฟกัสที่นี่</string>
     <string name="tap_to_focus_failed">ไม่สามารถโฟกัสที่นี่ได้</string>
@@ -112,16 +109,9 @@
     <string name="jpeg_mode_none">สี</string>
     <string name="jpeg_mode_auto">ระดับเทา</string>
     <string name="jpeg_mode_bw_text">ขาวดำ</string>
-    <string name="jpeg_mode_bw_robust">ขาวดำ (ทนทาน) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">การประมวลผลล่วงหน้า OCR แบบทนทาน (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">ขาวดำ</string>
     <string name="pdf_bw_mode_classic">ขาวดำ (คลาสสิก)</string>
-    <string name="pdf_bw_mode_ocr_robust">การประมวลผลล่วงหน้า OCR แบบทนทาน (PDF)</string>
-    <string name="jpeg_mode_gray_clean">ขาวดำแบบปรับให้สะอาด (ฟิลเตอร์ความถี่สูง) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">สีแบบปรับให้สะอาด (ฟิลเตอร์ความถี่สูง) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">โทนสีเทาแบบปรับให้สะอาด (ฟิลเตอร์ผ่านความถี่สูง)</string>
-    <string name="pdf_bw_mode_color_clean">สีแบบปรับให้สะอาด (ฟิลเตอร์ผ่านความถี่สูง)</string>
     <string name="skip_ocr_export_only">ข้าม OCR (ส่งออกเท่านั้น)</string>
     <string name="skip_cropping">ข้ามการครอบตัด</string>
     <string name="skip_edge_detection">ข้ามการตรวจจับขอบ</string>
@@ -178,7 +168,6 @@
     <string name="removed_from_registry_toast">ลบเรียบร้อยแล้ว</string>
 
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">คุณภาพ/ขนาด PDF</string>
     <string name="pdf_preset_high">สูง (300 dpi, q85)</string>
     <string name="pdf_preset_standard">มาตรฐาน (200 dpi, q72)</string>
     <string name="pdf_preset_small">เล็ก (150 dpi, q62)</string>
@@ -187,7 +176,6 @@
     <string name="pdf_text_layer_mode_line_based">ตามบรรทัด (แนะนำ)</string>
     <string name="pdf_text_layer_mode_word_positioned">วางตำแหน่งตามคำ (ความเข้ากันได้)</string>
     <string name="export_options_title">ตัวเลือกการส่งออก</string>
-    <string name="jpeg_enhancement_title">สีผลลัพธ์ JPEG</string>
     <string name="btn_options">ตัวเลือก</string>
     <string name="btn_save">บันทึก</string>
     <string name="btn_new">สแกนใหม่</string>
@@ -481,7 +469,6 @@
     <string name="crop_aspect_custom_width_hint">ความกว้าง</string>
     <string name="crop_aspect_custom_height_hint">ความสูง</string>
     <string name="crop_aspect_custom_invalid">กรุณาใส่ตัวเลขบวกระหว่าง 1:1 ถึง 1:20</string>
-    <string name="crop_aspect_output_size_hint">ผลลัพธ์: %1$d × %2$d พิกเซล</string>
     <string name="crop_hint_corner_off_image">มุมอยู่นอกภาพ — ผลลัพธ์อาจมีขอบสีดำ</string>
     <string name="crop_edge_dragged">เลือกขอบแล้ว ลากเพื่อย้ายขอบ</string>
     <!-- FR #72: Re-Edit shape from export preview -->

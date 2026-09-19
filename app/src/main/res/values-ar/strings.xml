@@ -71,9 +71,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">تدرج الرمادي</string>
-    <string name="export_as_jpeg">تصدير كـ JPEG</string>
     <string name="export_format_label">تنسيق التصدير</string>
-    <string name="export_as_pdf">تصدير كـ PDF (افتراضي)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">تبديل الفلاش</string>
@@ -96,7 +94,6 @@
     <string name="focus_quality_option">مؤشر جودة التركيز</string>
     <string name="tap_to_focus_started">جارٍ التركيز…</string>
     <string name="tap_to_focus_done">تم ضبط التركيز</string>
-    <string name="tap_to_focus_requested">تم طلب التركيز</string>
     <string name="tap_to_focus_not_locked">تعذر تثبيت التركيز هنا</string>
     <string name="tap_to_focus_not_supported">التركيز باللمس غير مدعوم هنا</string>
     <string name="tap_to_focus_failed">تعذر التركيز هنا</string>
@@ -112,15 +109,8 @@
     <string name="jpeg_mode_none">ملون</string>
     <string name="jpeg_mode_auto">تدرج الرمادي</string>
     <string name="jpeg_mode_bw_text">أبيض وأسود</string>
-    <string name="jpeg_mode_bw_robust">أبيض &amp; أسود (محسّن) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">معالجة OCR محسّنة (JPEG)</string>
     <string name="pdf_bw_mode_robust">أبيض وأسود</string>
     <string name="pdf_bw_mode_classic">أ&amp;س (كلاسيكي)</string>
-    <string name="pdf_bw_mode_ocr_robust">معالجة OCR محسّنة (PDF)</string>
-    <string name="jpeg_mode_gray_clean">تدرج رمادي نظيف (مرشح تمرير عالي) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">ألوان نظيفة (مرشح تمرير عالي) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">تدرج رمادي مُنقّى (تمرير عالي)</string>
-    <string name="pdf_bw_mode_color_clean">ألوان مُنقّاة (تمرير عالي)</string>
     <string name="skip_ocr_export_only">تخطي OCR (تصدير فقط)</string>
     <string name="preview_corner_detection">معاينة اكتشاف الزوايا</string>
     <string name="skip_cropping">تخطي الاقتصاص</string>
@@ -175,7 +165,6 @@
     <string name="remove">إزالة</string>
     <string name="removed_from_registry_toast">تمت إزالة الإدخال</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">جودة / حجم PDF</string>
     <string name="pdf_preset_high">عالية (300 dpi، q85)</string>
     <string name="pdf_preset_standard">قياسية (200 dpi، q72)</string>
     <string name="pdf_preset_small">صغيرة (150 dpi، q62)</string>
@@ -184,7 +173,6 @@
     <string name="pdf_text_layer_mode_line_based">مستندة إلى الأسطر (موصى بها)</string>
     <string name="pdf_text_layer_mode_word_positioned">موضوعة حسب الكلمات (للتوافق)</string>
     <string name="export_options_title">خيارات التصدير</string>
-    <string name="jpeg_enhancement_title">لون إخراج JPEG</string>
     <string name="btn_options">خيارات</string>
     <string name="btn_save">حفظ</string>
     <string name="btn_new">مسح جديد</string>
@@ -480,7 +468,6 @@
     <string name="crop_aspect_custom_width_hint">العرض</string>
     <string name="crop_aspect_custom_height_hint">الارتفاع</string>
     <string name="crop_aspect_custom_invalid">يرجى إدخال أرقام موجبة بين 1:1 و1:20.</string>
-    <string name="crop_aspect_output_size_hint">الإخراج: %1$d × %2$d بكسل</string>
     <string name="crop_hint_corner_off_image">الزاوية خارج الصورة — قد يحتوي الإخراج المعدّل على حدود سوداء</string>
     <string name="crop_edge_dragged">تم تحديد الحافة. اسحب لتحريك الحافة.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

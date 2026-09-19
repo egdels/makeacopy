@@ -75,9 +75,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Grijstinten</string>
-    <string name="export_as_jpeg">Exporteren als JPEG</string>
     <string name="export_format_label">Exportformaat</string>
-    <string name="export_as_pdf">Exporteren als PDF (standaard)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Zaklamp schakelen</string>
@@ -100,7 +98,6 @@
     <string name="focus_quality_option">Indicator voor scherpstelkwaliteit</string>
     <string name="tap_to_focus_started">Scherpstellen…</string>
     <string name="tap_to_focus_done">Focus aangepast</string>
-    <string name="tap_to_focus_requested">Focus aangevraagd</string>
     <string name="tap_to_focus_not_locked">Focus kon hier niet worden vergrendeld</string>
     <string name="tap_to_focus_not_supported">Tikfocus wordt hier niet ondersteund</string>
     <string name="tap_to_focus_failed">Kon hier niet scherpstellen</string>
@@ -116,16 +113,9 @@
     <string name="jpeg_mode_none">Kleur</string>
     <string name="jpeg_mode_auto">Grijstinten</string>
     <string name="jpeg_mode_bw_text">Zwart-wit</string>
-    <string name="jpeg_mode_bw_robust">Zwart-wit (robuust) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Robuuste OCR-voorverwerking (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Zwart-wit</string>
     <string name="pdf_bw_mode_classic">Z/W (klassiek)</string>
-    <string name="pdf_bw_mode_ocr_robust">Robuuste OCR-voorverwerking (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Opgeschoonde grijswaarden (hoogdoorlaatfilter) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Opgeschoonde kleuren (hoogdoorlaatfilter) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Grijswaarden – opgeschoond (hoogdoorlaat)</string>
-    <string name="pdf_bw_mode_color_clean">Kleur – opgeschoond (hoogdoorlaat)</string>
     <string name="skip_ocr_export_only">OCR overslaan (alleen exporteren)</string>
     <string name="skip_cropping">Bijsnijden overslaan</string>
     <string name="skip_edge_detection">Randdetectie overslaan</string>
@@ -183,7 +173,6 @@
     <string name="removed_from_registry_toast">Item verwijderd</string>
 
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">PDF‑kwaliteit / -grootte</string>
     <string name="pdf_preset_high">Hoog (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standaard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Klein (150 dpi, q62)</string>
@@ -192,7 +181,6 @@
     <string name="pdf_text_layer_mode_line_based">Regelgebaseerd (aanbevolen)</string>
     <string name="pdf_text_layer_mode_word_positioned">Woordgepositioneerd (compatibiliteit)</string>
     <string name="export_options_title">Exportopties</string>
-    <string name="jpeg_enhancement_title">JPEG‑uitvoerkleur</string>
     <string name="btn_options">Opties</string>
     <string name="btn_save">Opslaan</string>
     <string name="btn_new">Nieuwe scan</string>
@@ -490,7 +478,6 @@
     <string name="crop_aspect_custom_width_hint">Breedte</string>
     <string name="crop_aspect_custom_height_hint">Hoogte</string>
     <string name="crop_aspect_custom_invalid">Voer positieve getallen in tussen 1:1 en 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Uitvoer: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hoek buiten afbeelding — uitvoer kan zwarte randen bevatten</string>
     <string name="crop_edge_dragged">Rand geselecteerd. Sleep om de rand te verplaatsen.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

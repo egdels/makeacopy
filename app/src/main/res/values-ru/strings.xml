@@ -75,9 +75,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Оттенки серого</string>
-    <string name="export_as_jpeg">Экспорт как JPEG</string>
     <string name="export_format_label">Формат экспорта</string>
-    <string name="export_as_pdf">Экспорт как PDF (по умолчанию)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Переключить фонарик</string>
@@ -100,7 +98,6 @@
     <string name="focus_quality_option">Индикатор качества фокусировки</string>
     <string name="tap_to_focus_started">Фокусировка…</string>
     <string name="tap_to_focus_done">Фокус настроен</string>
-    <string name="tap_to_focus_requested">Фокусировка запрошена</string>
     <string name="tap_to_focus_not_locked">Не удалось зафиксировать фокус здесь</string>
     <string name="tap_to_focus_not_supported">Фокусировка касанием здесь не поддерживается</string>
     <string name="tap_to_focus_failed">Не удалось сфокусироваться здесь</string>
@@ -116,17 +113,10 @@
     <string name="jpeg_mode_none">Цвет</string>
     <string name="jpeg_mode_auto">Оттенки серого</string>
     <string name="jpeg_mode_bw_text">Чёрно-белый</string>
-    <string name="jpeg_mode_bw_robust">Чёрно-белый (устойчивый) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Надёжная предварительная обработка OCR (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Чёрно-белый</string>
     <string name="pdf_bw_mode_classic">Ч/Б (классический)</string>
-    <string name="pdf_bw_mode_ocr_robust">Надёжная предварительная обработка OCR (PDF)</string>
 
-    <string name="jpeg_mode_gray_clean">Очищенные оттенки серого (высокочастотный фильтр) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Очищенные цвета (высокочастотный фильтр) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Оттенки серого — очищенные (высокочастотный фильтр)</string>
-    <string name="pdf_bw_mode_color_clean">Цвет — очищенный (высокочастотный фильтр)</string>
     <string name="skip_ocr_export_only">Пропустить OCR (только экспорт)</string>
     <string name="skip_cropping">Пропустить обрезку</string>
     <string name="skip_edge_detection">Пропустить определение краёв</string>
@@ -184,7 +174,6 @@
     <string name="removed_from_registry_toast">Запись удалена</string>
 
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">Качество/размер PDF</string>
     <string name="pdf_preset_high">Высокое (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Стандартное (200 dpi, q72)</string>
     <string name="pdf_preset_small">Небольшое (150 dpi, q62)</string>
@@ -193,7 +182,6 @@
     <string name="pdf_text_layer_mode_line_based">По строкам (рекомендуется)</string>
     <string name="pdf_text_layer_mode_word_positioned">По позициям слов (совместимость)</string>
     <string name="export_options_title">Параметры экспорта</string>
-    <string name="jpeg_enhancement_title">Цвет вывода JPEG</string>
     <string name="btn_options">Параметры</string>
     <string name="btn_save">Сохранить</string>
     <string name="btn_new">Новое сканирование</string>
@@ -490,7 +478,6 @@
     <string name="crop_aspect_custom_width_hint">Ширина</string>
     <string name="crop_aspect_custom_height_hint">Высота</string>
     <string name="crop_aspect_custom_invalid">Введите положительные числа от 1:1 до 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Вывод: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Угол вне изображения — на выходе возможны чёрные поля</string>
     <string name="crop_edge_dragged">Край выбран. Перетащите, чтобы переместить край.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

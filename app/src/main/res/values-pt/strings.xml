@@ -76,9 +76,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Tons de cinza</string>
-    <string name="export_as_jpeg">Exportar como JPEG</string>
     <string name="export_format_label">Formato de exportação</string>
-    <string name="export_as_pdf">Exportar como PDF (padrão)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Alternar lanterna</string>
@@ -101,7 +99,6 @@
     <string name="focus_quality_option">Indicador de qualidade do foco</string>
     <string name="tap_to_focus_started">Focando…</string>
     <string name="tap_to_focus_done">Foco ajustado</string>
-    <string name="tap_to_focus_requested">Foco solicitado</string>
     <string name="tap_to_focus_not_locked">Não foi possível bloquear o foco aqui</string>
     <string name="tap_to_focus_not_supported">Foco por toque não é suportado aqui</string>
     <string name="tap_to_focus_failed">Não foi possível focar aqui</string>
@@ -117,17 +114,10 @@
     <string name="jpeg_mode_none">Cor</string>
     <string name="jpeg_mode_auto">Tons de cinza</string>
     <string name="jpeg_mode_bw_text">Preto e branco</string>
-    <string name="jpeg_mode_bw_robust">Preto e Branco (robusto) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Pré-processamento OCR robusto (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Preto e branco</string>
     <string name="pdf_bw_mode_classic">P/B (clássico)</string>
-    <string name="pdf_bw_mode_ocr_robust">Pré-processamento OCR robusto (PDF)</string>
 
-    <string name="jpeg_mode_gray_clean">Escala de cinza limpa (filtro passa-alta) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Cores limpas (filtro passa-alta) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Escala de cinza limpa (passa-alta)</string>
-    <string name="pdf_bw_mode_color_clean">Cor limpa (passa-alta)</string>
     <string name="skip_ocr_export_only">Pular OCR (apenas exportar)</string>
     <string name="skip_cropping">Pular corte</string>
     <string name="skip_edge_detection">Ignorar detecção de bordas</string>
@@ -184,7 +174,6 @@
     <string name="removed_from_registry_toast">Entrada removida</string>
 
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">Qualidade / tamanho do PDF</string>
     <string name="pdf_preset_high">Alto (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Padrão (200 dpi, q72)</string>
     <string name="pdf_preset_small">Pequeno (150 dpi, q62)</string>
@@ -193,7 +182,6 @@
     <string name="pdf_text_layer_mode_line_based">Baseada em linhas (recomendado)</string>
     <string name="pdf_text_layer_mode_word_positioned">Posicionada por palavra (compatibilidade)</string>
     <string name="export_options_title">Opções de exportação</string>
-    <string name="jpeg_enhancement_title">Cor de saída JPEG</string>
     <string name="btn_options">Opções</string>
     <string name="btn_save">Salvar</string>
     <string name="btn_new">Nova digitalização</string>
@@ -490,7 +478,6 @@
     <string name="crop_aspect_custom_width_hint">Largura</string>
     <string name="crop_aspect_custom_height_hint">Altura</string>
     <string name="crop_aspect_custom_invalid">Insira números positivos entre 1:1 e 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Saída: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Canto fora da imagem — a saída pode ter bordas pretas</string>
     <string name="crop_edge_dragged">Borda selecionada. Arraste para mover a borda.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

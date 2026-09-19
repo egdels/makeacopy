@@ -75,9 +75,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Graustufen</string>
-    <string name="export_as_jpeg">Als JPEG exportieren</string>
     <string name="export_format_label">Exportformat</string>
-    <string name="export_as_pdf">Als PDF exportieren (Standard)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Taschenlampe umschalten</string>
@@ -100,7 +98,6 @@
     <string name="focus_quality_option">Fokusqualitäts-Anzeige</string>
     <string name="tap_to_focus_started">Fokussiere…</string>
     <string name="tap_to_focus_done">Fokus angepasst</string>
-    <string name="tap_to_focus_requested">Fokus angefordert</string>
     <string name="tap_to_focus_not_locked">Fokus konnte hier nicht fixiert werden</string>
     <string name="tap_to_focus_not_supported">Fokussieren per Tippen wird hier nicht unterstützt</string>
     <string name="tap_to_focus_failed">Hier konnte nicht fokussiert werden</string>
@@ -115,16 +112,9 @@
     <string name="jpeg_mode_none">Farbe</string>
     <string name="jpeg_mode_auto">Graustufen</string>
     <string name="jpeg_mode_bw_text">Schwarz-Weiß</string>
-    <string name="jpeg_mode_bw_robust">S/W (robust) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Robuste OCR-Vorverarbeitung (JPEG)</string>
-    <string name="jpeg_mode_gray_clean">Graustufen „clean“ (High-Pass) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Farbe „clean“ (High-Pass) (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Schwarz-Weiß</string>
     <string name="pdf_bw_mode_classic">S/W (klassisch)</string>
-    <string name="pdf_bw_mode_ocr_robust">Robuste OCR-Vorverarbeitung (PDF)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Graustufen „clean“ (High-Pass)</string>
-    <string name="pdf_bw_mode_color_clean">Farbe „clean“ (High-Pass)</string>
     <string name="output_color_title">Ausgabefarbe</string>
 
     <string name="skip_ocr_export_only">OCR überspringen (nur Export)</string>
@@ -187,7 +177,6 @@
     <string name="remove">Entfernen</string>
     <string name="removed_from_registry_toast">Eintrag entfernt</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">PDF-Qualität / Größe</string>
     <string name="pdf_preset_high">Hoch (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Klein (150 dpi, q62)</string>
@@ -196,7 +185,6 @@
     <string name="pdf_text_layer_mode_line_based">Zeilenbasiert (empfohlen)</string>
     <string name="pdf_text_layer_mode_word_positioned">Wortpositioniert (Kompatibilität)</string>
     <string name="export_options_title">Export-Optionen</string>
-    <string name="jpeg_enhancement_title">JPEG-Ausgabefarbe</string>
     <string name="btn_options">Optionen</string>
     <string name="btn_save">Speichern</string>
     <string name="btn_new">Neuer Scan</string>
@@ -528,7 +516,6 @@
     <string name="crop_aspect_custom_width_hint">Breite</string>
     <string name="crop_aspect_custom_height_hint">Höhe</string>
     <string name="crop_aspect_custom_invalid">Bitte positive Werte zwischen 1:1 und 1:20 eingeben.</string>
-    <string name="crop_aspect_output_size_hint">Ausgabe: %1$d × %2$d px</string>
     <!-- Crop: Kantenbearbeitung & Off-Screen-Ecken (siehe docs/edge_drag_pan_zoom_concept.md) -->
     <string name="crop_hint_corner_off_image">Ecke außerhalb des Bildes — das Crop-Ergebnis kann schwarze Ränder enthalten</string>
     <string name="crop_edge_dragged">Kante ausgewählt. Ziehen, um die Kante zu verschieben.</string>

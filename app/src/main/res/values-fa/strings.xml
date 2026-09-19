@@ -74,9 +74,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">خاکستری</string>
-    <string name="export_as_jpeg">خروجی به صورت JPEG</string>
     <string name="export_format_label">قالب خروجی</string>
-    <string name="export_as_pdf">خروجی به صورت PDF (پیش‌فرض)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">تغییر وضعیت چراغ‌قوه</string>
@@ -99,7 +97,6 @@
     <string name="focus_quality_option">نشانگر کیفیت فوکوس</string>
     <string name="tap_to_focus_started">در حال فوکوس…</string>
     <string name="tap_to_focus_done">فوکوس تنظیم شد</string>
-    <string name="tap_to_focus_requested">درخواست فوکوس ثبت شد</string>
     <string name="tap_to_focus_not_locked">فوکوس در اینجا قفل نشد</string>
     <string name="tap_to_focus_not_supported">فوکوس با لمس در اینجا پشتیبانی نمی‌شود</string>
     <string name="tap_to_focus_failed">امکان فوکوس در اینجا نبود</string>
@@ -114,15 +111,8 @@
     <string name="jpeg_mode_none">رنگی</string>
     <string name="jpeg_mode_auto">خاکستری</string>
     <string name="jpeg_mode_bw_text">سیاه و سفید</string>
-    <string name="jpeg_mode_bw_robust">سیاه &amp; سفید (مقاوم) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">پیش‌پردازش مقاوم برای OCR (JPEG)</string>
     <string name="pdf_bw_mode_robust">سیاه و سفید</string>
     <string name="pdf_bw_mode_classic">سیاه‌وسفید (کلاسیک)</string>
-    <string name="pdf_bw_mode_ocr_robust">پیش‌پردازش مقاوم برای OCR (PDF)</string>
-    <string name="jpeg_mode_gray_clean">خاکستری تمیز (فیلتر گذر بالا) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">رنگ تمیز (فیلتر گذر بالا) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">خاکستریِ تمیز (فیلتر بالاگذر)</string>
-    <string name="pdf_bw_mode_color_clean">رنگیِ تمیز (فیلتر بالاگذر)</string>
     <string name="skip_ocr_export_only">رد کردن OCR (فقط خروجی)</string>
     <string name="preview_corner_detection">پیش‌نمایش تشخیص گوشه‌ها</string>
     <string name="skip_cropping">رد کردن برش</string>
@@ -179,7 +169,6 @@
     <string name="remove">حذف</string>
     <string name="removed_from_registry_toast">مورد حذف شد</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">کیفیت / حجم PDF</string>
     <string name="pdf_preset_high">بالا (300 dpi، q85)</string>
     <string name="pdf_preset_standard">استاندارد (200 dpi، q72)</string>
     <string name="pdf_preset_small">کوچک (150 dpi، q62)</string>
@@ -188,7 +177,6 @@
     <string name="pdf_text_layer_mode_line_based">مبتنی بر خط (توصیه‌شده)</string>
     <string name="pdf_text_layer_mode_word_positioned">موقعیت‌دهی بر اساس واژه (سازگاری)</string>
     <string name="export_options_title">گزینه‌های خروجی</string>
-    <string name="jpeg_enhancement_title">رنگ خروجی JPEG</string>
     <string name="btn_options">گزینه‌ها</string>
     <string name="btn_save">ذخیره</string>
     <string name="btn_new">اسکن جدید</string>
@@ -483,7 +471,6 @@
     <string name="crop_aspect_custom_width_hint">عرض</string>
     <string name="crop_aspect_custom_height_hint">ارتفاع</string>
     <string name="crop_aspect_custom_invalid">اعداد مثبت بین 1:1 تا 1:20 وارد کنید.</string>
-    <string name="crop_aspect_output_size_hint">خروجی: %1$d × %2$d پیکسل</string>
     <string name="crop_hint_corner_off_image">گوشه خارج از تصویر — خروجی ممکن است حاشیه‌های سیاه داشته باشد</string>
     <string name="crop_edge_dragged">لبه انتخاب شد. برای جابجایی لبه بکشید.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

@@ -76,9 +76,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Niveaux de gris</string>
-    <string name="export_as_jpeg">Exporter en JPEG</string>
     <string name="export_format_label">Format d\'exportation</string>
-    <string name="export_as_pdf">Exporter en PDF (par défaut)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Activer/désactiver la lampe</string>
@@ -101,7 +99,6 @@
     <string name="focus_quality_option">Indicateur de qualité de mise au point</string>
     <string name="tap_to_focus_started">Mise au point…</string>
     <string name="tap_to_focus_done">Mise au point ajustée</string>
-    <string name="tap_to_focus_requested">Mise au point demandée</string>
     <string name="tap_to_focus_not_locked">Impossible de verrouiller la mise au point ici</string>
     <string name="tap_to_focus_not_supported">La mise au point tactile n’est pas prise en charge ici</string>
     <string name="tap_to_focus_failed">Impossible de faire la mise au point ici</string>
@@ -116,16 +113,9 @@
     <string name="jpeg_mode_none">Couleur</string>
     <string name="jpeg_mode_auto">Niveaux de gris</string>
     <string name="jpeg_mode_bw_text">Noir et blanc</string>
-    <string name="jpeg_mode_bw_robust">Noir et blanc (robuste) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Prétraitement OCR robuste (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Noir et blanc</string>
     <string name="pdf_bw_mode_classic">N&amp;B (classique)</string>
-    <string name="pdf_bw_mode_ocr_robust">Prétraitement OCR robuste (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Niveaux de gris nettoyés (filtre passe-haut) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Couleurs nettoyées (filtre passe-haut) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Niveaux de gris nettoyés (passe-haut)</string>
-    <string name="pdf_bw_mode_color_clean">Couleurs nettoyées (passe-haut)</string>
     <string name="skip_ocr_export_only">Ignorer l’OCR (export seulement)</string>
     <string name="skip_cropping">Ignorer le recadrage</string>
     <string name="skip_edge_detection">Ignorer la détection des bords</string>
@@ -182,7 +172,6 @@
     <string name="remove">Supprimer</string>
     <string name="removed_from_registry_toast">Entrée supprimée</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">Qualité/taille PDF</string>
     <string name="pdf_preset_high">Élevée (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Petite (150 dpi, q62)</string>
@@ -191,7 +180,6 @@
     <string name="pdf_text_layer_mode_line_based">Basé sur les lignes (recommandé)</string>
     <string name="pdf_text_layer_mode_word_positioned">Positionné par mot (compatibilité)</string>
     <string name="export_options_title">Options d’export</string>
-    <string name="jpeg_enhancement_title">Couleur de sortie JPEG</string>
     <string name="btn_options">Options</string>
     <string name="btn_save">Enregistrer</string>
     <string name="btn_new">Nouveau scan</string>
@@ -490,7 +478,6 @@
     <string name="crop_aspect_custom_width_hint">Largeur</string>
     <string name="crop_aspect_custom_height_hint">Hauteur</string>
     <string name="crop_aspect_custom_invalid">Saisissez des nombres positifs entre 1:1 et 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Sortie : %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Coin hors de l’image — la sortie peut contenir des bords noirs</string>
     <string name="crop_edge_dragged">Bord sélectionné. Faites glisser pour déplacer le bord.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

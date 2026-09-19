@@ -75,9 +75,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Tonuri de gri</string>
-    <string name="export_as_jpeg">Exportă ca JPEG</string>
     <string name="export_format_label">Format de export</string>
-    <string name="export_as_pdf">Exportă ca PDF (implicit)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Comută lanterna</string>
@@ -100,7 +98,6 @@
     <string name="focus_quality_option">Indicator de calitate a focalizării</string>
     <string name="tap_to_focus_started">Se focalizează…</string>
     <string name="tap_to_focus_done">Focalizare ajustată</string>
-    <string name="tap_to_focus_requested">Focalizare solicitată</string>
     <string name="tap_to_focus_not_locked">Focalizarea nu a putut fi blocată aici</string>
     <string name="tap_to_focus_not_supported">Focalizarea prin atingere nu este acceptată aici</string>
     <string name="tap_to_focus_failed">Nu s-a putut focaliza aici</string>
@@ -116,16 +113,9 @@
     <string name="jpeg_mode_none">Culoare</string>
     <string name="jpeg_mode_auto">Tonuri de gri</string>
     <string name="jpeg_mode_bw_text">Alb-negru</string>
-    <string name="jpeg_mode_bw_robust">Alb-negru (robust) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Preprocesare OCR robustă (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Alb-negru</string>
     <string name="pdf_bw_mode_classic">A/N (clasic)</string>
-    <string name="pdf_bw_mode_ocr_robust">Preprocesare OCR robustă (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Nuanțe de gri curățate (filtru trece-sus) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Culori curățate (filtru trece-sus) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Tonuri de gri – curățate (trece-sus)</string>
-    <string name="pdf_bw_mode_color_clean">Culoare – curățată (trece-sus)</string>
     <string name="skip_ocr_export_only">Omite OCR (doar export)</string>
     <string name="skip_cropping">Omite decuparea</string>
     <string name="skip_edge_detection">Omite detectarea marginilor</string>
@@ -184,7 +174,6 @@
     <string name="removed_from_registry_toast">Înregistrare eliminată</string>
 
     <!-- PDF quality presets -->
-    <string name="pdf_quality_title">Calitate / dimensiune PDF</string>
     <string name="pdf_preset_high">Înaltă (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Mică (150 dpi, q62)</string>
@@ -193,7 +182,6 @@
     <string name="pdf_text_layer_mode_line_based">Bazat pe linii (recomandat)</string>
     <string name="pdf_text_layer_mode_word_positioned">Poziționat pe cuvinte (compatibilitate)</string>
     <string name="export_options_title">Opțiuni de export</string>
-    <string name="jpeg_enhancement_title">Culoare de ieșire JPEG</string>
     <string name="btn_options">Opțiuni</string>
     <string name="btn_save">Salvează</string>
     <string name="btn_new">Scanare nouă</string>
@@ -496,7 +484,6 @@
     <string name="crop_aspect_custom_width_hint">Lățime</string>
     <string name="crop_aspect_custom_height_hint">Înălțime</string>
     <string name="crop_aspect_custom_invalid">Introduceți numere pozitive între 1:1 și 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Ieșire: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Colț în afara imaginii — ieșirea poate avea margini negre</string>
     <string name="crop_edge_dragged">Margine selectată. Trageți pentru a muta marginea.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

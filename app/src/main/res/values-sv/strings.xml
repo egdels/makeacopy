@@ -73,9 +73,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Gråskala</string>
-    <string name="export_as_jpeg">Exportera som JPEG</string>
     <string name="export_format_label">Exportformat</string>
-    <string name="export_as_pdf">Exportera som PDF (standard)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Växla ficklampa</string>
@@ -98,7 +96,6 @@
     <string name="focus_quality_option">Indikator för fokuskvalitet</string>
     <string name="tap_to_focus_started">Fokuserar…</string>
     <string name="tap_to_focus_done">Fokus justerad</string>
-    <string name="tap_to_focus_requested">Fokus begärd</string>
     <string name="tap_to_focus_not_locked">Fokus kunde inte låsas här</string>
     <string name="tap_to_focus_not_supported">Tryckfokus stöds inte här</string>
     <string name="tap_to_focus_failed">Kunde inte fokusera här</string>
@@ -114,16 +111,9 @@
     <string name="jpeg_mode_none">Färg</string>
     <string name="jpeg_mode_auto">Gråskala</string>
     <string name="jpeg_mode_bw_text">Svartvitt</string>
-    <string name="jpeg_mode_bw_robust">Svartvitt (robust) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Robust förbehandling för OCR (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Svartvitt</string>
     <string name="pdf_bw_mode_classic">S/V (klassiskt)</string>
-    <string name="pdf_bw_mode_ocr_robust">Robust förbehandling för OCR (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Rensad gråskala (högpassfilter) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Rensade färger (högpassfilter) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Gråskala – rensad (högpassfilter)</string>
-    <string name="pdf_bw_mode_color_clean">Färg – rensad (högpassfilter)</string>
     <string name="skip_ocr_export_only">Hoppa över OCR (endast export)</string>
     <string name="skip_cropping">Hoppa över beskärning</string>
     <string name="skip_edge_detection">Hoppa över kantdetektering</string>
@@ -181,7 +171,6 @@
     <string name="removed_from_registry_toast">Post borttagen</string>
 
     <!-- PDF quality presets -->
-    <string name="pdf_quality_title">PDF-kvalitet / storlek</string>
     <string name="pdf_preset_high">Hög (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Liten (150 dpi, q62)</string>
@@ -190,7 +179,6 @@
     <string name="pdf_text_layer_mode_line_based">Radbaserat (rekommenderas)</string>
     <string name="pdf_text_layer_mode_word_positioned">Ordplacerat (kompatibilitet)</string>
     <string name="export_options_title">Exportalternativ</string>
-    <string name="jpeg_enhancement_title">JPEG-utskriftsfärg</string>
     <string name="btn_options">Alternativ</string>
     <string name="btn_save">Spara</string>
     <string name="btn_new">Ny skanning</string>
@@ -484,7 +472,6 @@
     <string name="crop_aspect_custom_width_hint">Bredd</string>
     <string name="crop_aspect_custom_height_hint">Höjd</string>
     <string name="crop_aspect_custom_invalid">Ange positiva tal mellan 1:1 och 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Utdata: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hörn utanför bilden — utdata kan ha svarta kanter</string>
     <string name="crop_edge_dragged">Kant vald. Dra för att flytta kanten.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

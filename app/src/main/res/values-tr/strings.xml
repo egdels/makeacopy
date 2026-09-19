@@ -74,9 +74,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Gri tonlamalı</string>
-    <string name="export_as_jpeg">JPEG olarak dışa aktar</string>
     <string name="export_format_label">Dışa aktarma biçimi</string>
-    <string name="export_as_pdf">PDF olarak dışa aktar (varsayılan)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Feneri aç/kapat</string>
@@ -99,7 +97,6 @@
     <string name="focus_quality_option">Odak kalitesi göstergesi</string>
     <string name="tap_to_focus_started">Odaklanıyor…</string>
     <string name="tap_to_focus_done">Odak ayarlandı</string>
-    <string name="tap_to_focus_requested">Odak istendi</string>
     <string name="tap_to_focus_not_locked">Odak burada kilitlenemedi</string>
     <string name="tap_to_focus_not_supported">Dokunarak odaklama burada desteklenmiyor</string>
     <string name="tap_to_focus_failed">Burada odaklanılamadı</string>
@@ -114,16 +111,9 @@
     <string name="jpeg_mode_none">Renkli</string>
     <string name="jpeg_mode_auto">Gri tonlamalı</string>
     <string name="jpeg_mode_bw_text">Siyah Beyaz</string>
-    <string name="jpeg_mode_bw_robust">Siyah Beyaz (güçlü) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">OCR güçlü ön işleme (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Siyah Beyaz</string>
     <string name="pdf_bw_mode_classic">S&amp;B (klasik)</string>
-    <string name="pdf_bw_mode_ocr_robust">OCR güçlü ön işleme (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Temizlenmiş gri tonlama (yüksek geçiren filtre) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Temizlenmiş renkler (yüksek geçiren filtre) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Gri tonlama – temizlenmiş (yüksek geçiren filtre)</string>
-    <string name="pdf_bw_mode_color_clean">Renk – temizlenmiş (yüksek geçiren filtre)</string>
     <string name="skip_ocr_export_only">OCR\'yi atla (yalnızca dışa aktar)</string>
     <string name="skip_cropping">Kırpmayı atla</string>
     <string name="skip_edge_detection">Kenar algılamayı atla</string>
@@ -180,7 +170,6 @@
     <string name="remove">Kaldır</string>
     <string name="removed_from_registry_toast">Kayıt kaldırıldı</string>
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">PDF kalitesi / boyutu</string>
     <string name="pdf_preset_high">Yüksek (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standart (200 dpi, q72)</string>
     <string name="pdf_preset_small">Küçük (150 dpi, q62)</string>
@@ -189,7 +178,6 @@
     <string name="pdf_text_layer_mode_line_based">Satır tabanlı (önerilir)</string>
     <string name="pdf_text_layer_mode_word_positioned">Kelime konumlu (uyumluluk)</string>
     <string name="export_options_title">Dışa aktarım seçenekleri</string>
-    <string name="jpeg_enhancement_title">JPEG çıkış rengi</string>
     <string name="btn_options">Seçenekler</string>
     <string name="btn_save">Kaydet</string>
     <string name="btn_new">Yeni tarama</string>
@@ -485,7 +473,6 @@
     <string name="crop_aspect_custom_width_hint">Genişlik</string>
     <string name="crop_aspect_custom_height_hint">Yükseklik</string>
     <string name="crop_aspect_custom_invalid">Lütfen 1:1 ile 1:20 arasında pozitif sayılar girin.</string>
-    <string name="crop_aspect_output_size_hint">Çıktı: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Köşe görüntü dışında — çıktıda siyah kenarlar olabilir</string>
     <string name="crop_edge_dragged">Kenar seçildi. Kenarı taşımak için sürükleyin.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

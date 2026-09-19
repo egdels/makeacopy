@@ -73,9 +73,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">Gråtoner</string>
-    <string name="export_as_jpeg">Eksporter som JPEG</string>
     <string name="export_format_label">Eksportformat</string>
-    <string name="export_as_pdf">Eksporter som PDF (standard)</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Tænd/sluk lommelygte</string>
@@ -98,7 +96,6 @@
     <string name="focus_quality_option">Indikator for fokuskvalitet</string>
     <string name="tap_to_focus_started">Fokuserer…</string>
     <string name="tap_to_focus_done">Fokus justeret</string>
-    <string name="tap_to_focus_requested">Fokus anmodet</string>
     <string name="tap_to_focus_not_locked">Fokus kunne ikke låses her</string>
     <string name="tap_to_focus_not_supported">Tryk for fokus understøttes ikke her</string>
     <string name="tap_to_focus_failed">Kunne ikke fokusere her</string>
@@ -114,16 +111,9 @@
     <string name="jpeg_mode_none">Farve</string>
     <string name="jpeg_mode_auto">Gråtoner</string>
     <string name="jpeg_mode_bw_text">Sort/hvid</string>
-    <string name="jpeg_mode_bw_robust">Sort/hvid (robust) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Robust OCR-forbehandling (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Sort/hvid</string>
     <string name="pdf_bw_mode_classic">S/H (klassisk)</string>
-    <string name="pdf_bw_mode_ocr_robust">Robust OCR-forbehandling (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Renset gråtoner (højpasfilter) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Rensede farver (højpasfilter) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Gråtoner – renset (high-pass)</string>
-    <string name="pdf_bw_mode_color_clean">Farver – renset (high-pass)</string>
     <string name="skip_ocr_export_only">Spring OCR over (kun eksport)</string>
     <string name="skip_cropping">Spring beskæring over</string>
     <string name="skip_edge_detection">Spring kantdetektering over</string>
@@ -180,7 +170,6 @@
     <string name="removed_from_registry_toast">Post fjernet</string>
 
     <!-- PDF quality presets -->
-    <string name="pdf_quality_title">PDF-kvalitet / størrelse</string>
     <string name="pdf_preset_high">Høj (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Lille (150 dpi, q62)</string>
@@ -189,7 +178,6 @@
     <string name="pdf_text_layer_mode_line_based">Linjebaseret (anbefalet)</string>
     <string name="pdf_text_layer_mode_word_positioned">Ordplaceret (kompatibilitet)</string>
     <string name="export_options_title">Eksportindstillinger</string>
-    <string name="jpeg_enhancement_title">JPEG-udskriftsfarve</string>
     <string name="btn_options">Indstillinger</string>
     <string name="btn_save">Gem</string>
     <string name="btn_new">Ny scanning</string>
@@ -484,7 +472,6 @@
     <string name="crop_aspect_custom_width_hint">Bredde</string>
     <string name="crop_aspect_custom_height_hint">Højde</string>
     <string name="crop_aspect_custom_invalid">Indtast positive tal mellem 1:1 og 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Output: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hjørne uden for billedet — output kan have sorte kanter</string>
     <string name="crop_edge_dragged">Kant valgt. Træk for at flytte kanten.</string>
     <!-- FR #72: Re-Edit shape from export preview -->

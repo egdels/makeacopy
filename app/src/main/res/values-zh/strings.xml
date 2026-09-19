@@ -67,9 +67,7 @@
 
     <!-- Export options -->
     <string name="convert_to_grayscale">灰度</string>
-    <string name="export_as_jpeg">导出为 JPEG</string>
     <string name="export_format_label">导出格式</string>
-    <string name="export_as_pdf">导出为 PDF（默认）</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">切换闪光灯</string>
@@ -92,7 +90,6 @@
     <string name="focus_quality_option">对焦质量指示器</string>
     <string name="tap_to_focus_started">正在对焦…</string>
     <string name="tap_to_focus_done">对焦已调整</string>
-    <string name="tap_to_focus_requested">已请求对焦</string>
     <string name="tap_to_focus_not_locked">无法在此处锁定对焦</string>
     <string name="tap_to_focus_not_supported">此处不支持点按对焦</string>
     <string name="tap_to_focus_failed">无法在此处对焦</string>
@@ -108,16 +105,9 @@
     <string name="jpeg_mode_none">彩色</string>
     <string name="jpeg_mode_auto">灰度</string>
     <string name="jpeg_mode_bw_text">黑白</string>
-    <string name="jpeg_mode_bw_robust">黑白（稳健）（JPEG）</string>
-    <string name="jpeg_mode_ocr_robust">稳健的 OCR 预处理 (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">黑白</string>
     <string name="pdf_bw_mode_classic">黑白（经典）</string>
-    <string name="pdf_bw_mode_ocr_robust">稳健的 OCR 预处理 (PDF)</string>
-    <string name="jpeg_mode_gray_clean">清理后的灰度（高通滤波）(JPEG)</string>
-    <string name="jpeg_mode_color_clean">清理后的颜色（高通滤波）(JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">灰度清理（高通滤波）</string>
-    <string name="pdf_bw_mode_color_clean">彩色清理（高通滤波）</string>
     <string name="skip_ocr_export_only">跳过 OCR（仅导出）</string>
     <string name="skip_cropping">跳过裁剪</string>
     <string name="skip_edge_detection">跳过边缘检测</string>
@@ -175,7 +165,6 @@
     <string name="removed_from_registry_toast">条目已移除</string>
 
     <!-- PDF quality presets (Phase 1) -->
-    <string name="pdf_quality_title">PDF 质量 / 大小</string>
     <string name="pdf_preset_high">高（300 dpi，q85）</string>
     <string name="pdf_preset_standard">标准（200 dpi，q72）</string>
     <string name="pdf_preset_small">小（150 dpi，q62）</string>
@@ -184,7 +173,6 @@
     <string name="pdf_text_layer_mode_line_based">基于行（推荐）</string>
     <string name="pdf_text_layer_mode_word_positioned">按词定位（兼容性）</string>
     <string name="export_options_title">导出选项</string>
-    <string name="jpeg_enhancement_title">JPEG 输出颜色</string>
     <string name="btn_options">选项</string>
     <string name="btn_save">保存</string>
     <string name="btn_new">新扫描</string>
@@ -465,7 +453,6 @@
     <string name="crop_aspect_custom_width_hint">宽度</string>
     <string name="crop_aspect_custom_height_hint">高度</string>
     <string name="crop_aspect_custom_invalid">请输入 1:1 至 1:20 之间的正数。</string>
-    <string name="crop_aspect_output_size_hint">输出：%1$d × %2$d 像素</string>
     <string name="crop_hint_corner_off_image">角点位于图像外 — 输出可能含有黑边</string>
     <string name="crop_edge_dragged">已选择边。拖动以移动边。</string>
     <!-- FR #72: Re-Edit shape from export preview -->

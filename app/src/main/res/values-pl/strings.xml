@@ -74,9 +74,7 @@
 
     <!-- Opcje eksportu -->
     <string name="convert_to_grayscale">Skala szarości</string>
-    <string name="export_as_jpeg">Eksportuj jako JPEG</string>
     <string name="export_format_label">Format eksportu</string>
-    <string name="export_as_pdf">Eksportuj jako PDF (domyślnie)</string>
 
     <!-- Latarka -->
     <string name="toggle_flashlight">Włącz/Wyłącz latarkę</string>
@@ -99,7 +97,6 @@
     <string name="focus_quality_option">Wskaźnik jakości ostrości</string>
     <string name="tap_to_focus_started">Ustawianie ostrości…</string>
     <string name="tap_to_focus_done">Ostrość dostosowana</string>
-    <string name="tap_to_focus_requested">Zażądano ustawienia ostrości</string>
     <string name="tap_to_focus_not_locked">Nie udało się zablokować ostrości tutaj</string>
     <string name="tap_to_focus_not_supported">Ustawianie ostrości dotknięciem nie jest tutaj obsługiwane</string>
     <string name="tap_to_focus_failed">Nie udało się ustawić ostrości tutaj</string>
@@ -115,16 +112,9 @@
     <string name="jpeg_mode_none">Kolor</string>
     <string name="jpeg_mode_auto">Skala szarości</string>
     <string name="jpeg_mode_bw_text">Czarno-biały</string>
-    <string name="jpeg_mode_bw_robust">Czarno-biały (zaawansowany) (JPEG)</string>
-    <string name="jpeg_mode_ocr_robust">Solidne wstępne przetwarzanie OCR (JPEG)</string>
 
     <string name="pdf_bw_mode_robust">Czarno-biały</string>
     <string name="pdf_bw_mode_classic">Cz.-b. (klas.)</string>
-    <string name="pdf_bw_mode_ocr_robust">Solidne wstępne przetwarzanie OCR (PDF)</string>
-    <string name="jpeg_mode_gray_clean">Oczyszczona skala szarości (filtr górnoprzepustowy) (JPEG)</string>
-    <string name="jpeg_mode_color_clean">Oczyszczone kolory (filtr górnoprzepustowy) (JPEG)</string>
-    <string name="pdf_bw_mode_grayscale_clean">Skala szarości – oczyszczona (górnoprzepustowy)</string>
-    <string name="pdf_bw_mode_color_clean">Kolor – oczyszczony (górnoprzepustowy)</string>
     <string name="skip_ocr_export_only">Pomiń OCR (tylko eksport)</string>
     <string name="skip_cropping">Pomiń przycinanie</string>
     <string name="skip_edge_detection">Pomiń wykrywanie krawędzi</string>
@@ -180,7 +170,6 @@
     <string name="removed_from_registry_toast">Wpis usunięty</string>
 
     <!-- Jakość PDF -->
-    <string name="pdf_quality_title">Jakość / rozmiar PDF</string>
     <string name="pdf_preset_high">Wysoka (300 dpi, q85)</string>
     <string name="pdf_preset_standard">Standardowa (200 dpi, q72)</string>
     <string name="pdf_preset_small">Mała (150 dpi, q62)</string>
@@ -189,7 +178,6 @@
     <string name="pdf_text_layer_mode_line_based">Oparta na wierszach (zalecane)</string>
     <string name="pdf_text_layer_mode_word_positioned">Pozycjonowana według słów (zgodność)</string>
     <string name="export_options_title">Opcje eksportu</string>
-    <string name="jpeg_enhancement_title">Kolor wyjścia JPEG</string>
     <string name="btn_options">Opcje</string>
     <string name="btn_save">Zapisz</string>
     <string name="btn_new">Nowe skanowanie</string>
@@ -490,7 +478,6 @@
     <string name="crop_aspect_custom_width_hint">Szerokość</string>
     <string name="crop_aspect_custom_height_hint">Wysokość</string>
     <string name="crop_aspect_custom_invalid">Wprowadź liczby dodatnie z zakresu 1:1 do 1:20.</string>
-    <string name="crop_aspect_output_size_hint">Wyjście: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Róg poza obrazem — wynik może mieć czarne obramowania</string>
     <string name="crop_edge_dragged">Krawędź wybrana. Przeciągnij, aby przesunąć krawędź.</string>
     <!-- FR #72: Re-Edit shape from export preview -->
