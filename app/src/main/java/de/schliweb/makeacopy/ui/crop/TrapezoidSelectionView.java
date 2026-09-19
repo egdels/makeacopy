@@ -373,6 +373,21 @@ public class TrapezoidSelectionView extends View {
     return viewTransform.isIdentity();
   }
 
+  /**
+   * Resets the Pan/Zoom transform to identity, e.g. before showing a full-image live preview
+   * (Issue #91, Phase 4 perspective-depth slider) that must not be mapped through a stale zoom
+   * matrix sized for a differently-shaped bitmap. No-op if already at identity. Publishes the
+   * change via {@link #setOnViewTransformChangedListener} like every other Pan/Zoom mutation, so
+   * the underlying {@code ImageView}'s render matrix is kept in sync.
+   */
+  public void resetViewTransform() {
+    if (viewTransform.isIdentity()) return;
+    viewTransform.reset();
+    syncViewMatrixFromTransform();
+    notifyViewTransformChanged();
+    invalidate();
+  }
+
   private void notifyViewTransformChanged() {
     if (viewTransformChangedListener == null) return;
     try {

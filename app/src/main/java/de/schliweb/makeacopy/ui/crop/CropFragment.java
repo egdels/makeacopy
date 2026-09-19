@@ -1343,6 +1343,10 @@ public class CropFragment extends Fragment {
 
           @Override
           public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
+            // Reset any active Pan/Zoom first: the live preview swaps in a bitmap of a
+            // different size/shape than the one the current zoom matrix was computed for, so a
+            // stale zoom would render it distorted or cut off. See resetViewTransform() javadoc.
+            if (binding != null) binding.trapezoidSelection.resetViewTransform();
             // Hide the corner/curve overlay for the duration of the drag; it is about to be
             // replaced by a real dewarped render of the image underneath.
             if (binding != null) binding.trapezoidSelection.setVisibility(View.INVISIBLE);
