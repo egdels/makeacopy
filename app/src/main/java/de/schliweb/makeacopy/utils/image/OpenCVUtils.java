@@ -385,10 +385,10 @@ public final class OpenCVUtils {
   private static final int DEWARP_GRID_SIZE = 33;
 
   /**
-   * Fraction of the ruled surface that is cropped away on each side of the dewarp result. Even
-   * with well-traced edge profiles, thin slivers of the (anti-aliased) paper edge or of the dark
-   * background remain directly at the model boundary; sampling only the inner {@code [inset,
-   * 1 - inset]} range of the surface removes these strips at the cost of a barely visible content
+   * Fraction of the ruled surface that is cropped away on each side of the dewarp result. Even with
+   * well-traced edge profiles, thin slivers of the (anti-aliased) paper edge or of the dark
+   * background remain directly at the model boundary; sampling only the inner {@code [inset, 1 -
+   * inset]} range of the surface removes these strips at the cost of a barely visible content
    * margin. Applied to both the {@code u} (horizontal) and {@code v} (vertical) parameters.
    */
   private static final double DEWARP_EDGE_INSET_FRAC = 0.012;
@@ -615,8 +615,8 @@ public final class OpenCVUtils {
 
   /**
    * Maximum fraction of column bins whose traced edge may sit at the expanded-band boundary
-   * (saturated = page continues beyond the band, i.e. no visible edge) before the estimate for
-   * that edge is considered unreliable and reset to {@code 0} (straight).
+   * (saturated = page continues beyond the band, i.e. no visible edge) before the estimate for that
+   * edge is considered unreliable and reset to {@code 0} (straight).
    */
   private static final double DEWARP_ESTIMATE_MAX_SATURATED_FRAC = 0.3;
 
@@ -634,8 +634,8 @@ public final class OpenCVUtils {
    *
    * @param bitmap source bitmap (typically the displayed bitmap of the crop screen)
    * @param corners selection quad in {@code bitmap} image coordinates (TL, TR, BR, BL)
-   * @return {@code double[2]} with {@code {topOffsetFrac, bottomOffsetFrac}} ({@code 0} for an
-   *     edge without visible curvature), or {@code null} when no reliable estimate is possible
+   * @return {@code double[2]} with {@code {topOffsetFrac, bottomOffsetFrac}} ({@code 0} for an edge
+   *     without visible curvature), or {@code null} when no reliable estimate is possible
    */
   public static double[] estimateDewarpCurveOffsets(Bitmap bitmap, Point[] corners) {
     double[][] profiles = estimateDewarpEdgeProfiles(bitmap, corners);
@@ -723,7 +723,8 @@ public final class OpenCVUtils {
       // Grayscale + blur; the Otsu threshold VALUE separates paper (bright) from background.
       Imgproc.cvtColor(rectified, gray, Imgproc.COLOR_RGBA2GRAY);
       Imgproc.GaussianBlur(gray, gray, new Size(3, 3), 0);
-      double thr = Imgproc.threshold(gray, paper, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+      double thr =
+          Imgproc.threshold(gray, paper, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 
       byte[] grayPx = new byte[rw * rhx];
       gray.get(0, 0, grayPx);
@@ -795,9 +796,7 @@ public final class OpenCVUtils {
       double[] topProfile =
           topSaturated > maxSaturated ? null : fitEdgeProfile(topImg, corners[0], corners[1]);
       double[] bottomProfile =
-          bottomSaturated > maxSaturated
-              ? null
-              : fitEdgeProfile(bottomImg, corners[3], corners[2]);
+          bottomSaturated > maxSaturated ? null : fitEdgeProfile(bottomImg, corners[3], corners[2]);
       if (topProfile == null && bottomProfile == null) {
         Log.d(TAG, "estimateDewarpEdgeProfiles: both edges saturated/invisible; no estimate");
         return null;
@@ -859,8 +858,8 @@ public final class OpenCVUtils {
   }
 
   /**
-   * Fits an edge offset profile to traced envelope points in IMAGE space and samples it into
-   * {@link #DEWARP_PROFILE_SAMPLES} uniform chord-normalized offsets.
+   * Fits an edge offset profile to traced envelope points in IMAGE space and samples it into {@link
+   * #DEWARP_PROFILE_SAMPLES} uniform chord-normalized offsets.
    *
    * <p>Each point is projected onto the edge chord {@code p0 → p2}: {@code u} = normalized chord
    * parameter, {@code off} = signed distance along the +90° chord normal, normalized by the chord
@@ -905,7 +904,9 @@ public final class OpenCVUtils {
       b3 += f3 * offs[i];
     }
     double det =
-        s11 * (s22 * s33 - s23 * s23) - s12 * (s12 * s33 - s23 * s13) + s13 * (s12 * s23 - s22 * s13);
+        s11 * (s22 * s33 - s23 * s23)
+            - s12 * (s12 * s33 - s23 * s13)
+            + s13 * (s12 * s23 - s22 * s13);
     if (!Double.isFinite(det) || Math.abs(det) < 1e-12) return null;
     double c0 =
         (b1 * (s22 * s33 - s23 * s23) - s12 * (b2 * s33 - b3 * s23) + s13 * (b2 * s23 - b3 * s22))
@@ -922,8 +923,7 @@ public final class OpenCVUtils {
     for (int i = 0; i < n; i++) {
       double u = i / (double) (n - 1);
       double v = u * (1 - u) * (c0 + c1 * u + c2 * u * u);
-      profile[i] =
-          clamp(v, -DEWARP_ESTIMATE_MAX_OFFSET_FRAC, DEWARP_ESTIMATE_MAX_OFFSET_FRAC);
+      profile[i] = clamp(v, -DEWARP_ESTIMATE_MAX_OFFSET_FRAC, DEWARP_ESTIMATE_MAX_OFFSET_FRAC);
     }
     return profile;
   }

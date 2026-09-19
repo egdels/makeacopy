@@ -481,7 +481,8 @@ public class CacheCleanupService extends Service {
       int removed = 0;
       List<de.schliweb.makeacopy.data.library.ScanEntity> allScans = scansRepo.getAllScans(this);
       if (allScans != null) {
-        for (String id : CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds)) {
+        for (String id :
+            CompletedScansCleanupPolicy.idsToRemoveFromLibrary(allScans, registryIds)) {
           scansRepo.deleteScan(this, id);
           removed++;
         }

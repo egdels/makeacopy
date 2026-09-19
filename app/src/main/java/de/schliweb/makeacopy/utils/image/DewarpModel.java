@@ -25,9 +25,9 @@ import org.opencv.core.Point;
  * positive along the chord direction rotated by +90° in image coordinates), sampled uniformly in
  * the chord parameter {@code t}. When present, {@link #topAt}/{@link #bottomAt} evaluate
  * chord-point + normal·chordLen·profile(t) instead of the quadratic Bezier, which captures edge
- * shapes the single-curvature Bezier cannot (e.g. sine-like bends whose corner slope differs from
- * a parabola's). Profiles are rescaled so their midpoint matches the Bezier sagitta, so dragging
- * the on-curve midpoint handle in the UI still adjusts the overall curve strength.
+ * shapes the single-curvature Bezier cannot (e.g. sine-like bends whose corner slope differs from a
+ * parabola's). Profiles are rescaled so their midpoint matches the Bezier sagitta, so dragging the
+ * on-curve midpoint handle in the UI still adjusts the overall curve strength.
  *
  * <p>All points are expected to be in the same coordinate space (typically full-resolution image
  * pixels). Instances are immutable value holders; the actual dewarping is performed by {@link
@@ -216,7 +216,9 @@ public final class DewarpModel {
     return quadBezier(corners[3], bottomControl, corners[2], t);
   }
 
-  /** Evaluates a profiled edge: chord point at {@code t} plus profile offset along the +90° normal. */
+  /**
+   * Evaluates a profiled edge: chord point at {@code t} plus profile offset along the +90° normal.
+   */
   private static Point profileAt(Point p0, Point p2, double[] profile, double t) {
     double dx = p2.x - p0.x, dy = p2.y - p0.y;
     double len = Math.hypot(dx, dy);

@@ -59,8 +59,8 @@ public interface ScansRepository {
 
   /**
    * Deletes multiple scan records (and their backing files, best-effort) by id. Equivalent to
-   * calling {@link #deleteScan(Context, String)} for each id, but as a single call for callers
-   * that need to delete a batch (e.g., multi-select in the Scans Library).
+   * calling {@link #deleteScan(Context, String)} for each id, but as a single call for callers that
+   * need to delete a batch (e.g., multi-select in the Scans Library).
    */
   void deleteScans(Context context, List<String> ids);
 

@@ -381,11 +381,11 @@ public class TrapezoidSelectionView extends View {
   }
 
   /**
-   * Resets the Pan/Zoom transform to identity, e.g. before showing a full-image live preview
-   * (Issue #91, Phase 4 perspective-depth slider) that must not be mapped through a stale zoom
-   * matrix sized for a differently-shaped bitmap. No-op if already at identity. Publishes the
-   * change via {@link #setOnViewTransformChangedListener} like every other Pan/Zoom mutation, so
-   * the underlying {@code ImageView}'s render matrix is kept in sync.
+   * Resets the Pan/Zoom transform to identity, e.g. before showing a full-image live preview (Issue
+   * #91, Phase 4 perspective-depth slider) that must not be mapped through a stale zoom matrix
+   * sized for a differently-shaped bitmap. No-op if already at identity. Publishes the change via
+   * {@link #setOnViewTransformChangedListener} like every other Pan/Zoom mutation, so the
+   * underlying {@code ImageView}'s render matrix is kept in sync.
    */
   public void resetViewTransform() {
     if (viewTransform.isIdentity()) return;
@@ -2650,10 +2650,10 @@ public class TrapezoidSelectionView extends View {
 
   /**
    * Draws a short hint describing the corner/edge currently being dragged (e.g. "Drag to move top
-   * edge"), positioned opposite the active handle so the finger does not cover it. Shown only
-   * while a drag is in progress — there is deliberately no hint in the idle state, since
-   * {@code binding.textCrop} already gives a persistent, localized instruction and a canvas-drawn
-   * "start" hint here was found visually distracting.
+   * edge"), positioned opposite the active handle so the finger does not cover it. Shown only while
+   * a drag is in progress — there is deliberately no hint in the idle state, since {@code
+   * binding.textCrop} already gives a persistent, localized instruction and a canvas-drawn "start"
+   * hint here was found visually distracting.
    */
   private void drawUserGuidance(Canvas canvas) {
     int width = getWidth();
@@ -3436,11 +3436,11 @@ public class TrapezoidSelectionView extends View {
   }
 
   /**
-   * Computes the current on-curve handle position of the top ({@code which == 0}) or bottom
-   * ({@code which == 1}) edge. The position is derived from the corners on every call: chord
-   * midpoint plus {@link #curveOffsetFrac} times the chord length along the chord's unit normal,
-   * plus {@link #curveTangentFrac} times the chord length along the chord's unit tangent (the
-   * on-curve parameter is {@code t = 0.5} only while the tangential offset is zero).
+   * Computes the current on-curve handle position of the top ({@code which == 0}) or bottom ({@code
+   * which == 1}) edge. The position is derived from the corners on every call: chord midpoint plus
+   * {@link #curveOffsetFrac} times the chord length along the chord's unit normal, plus {@link
+   * #curveTangentFrac} times the chord length along the chord's unit tangent (the on-curve
+   * parameter is {@code t = 0.5} only while the tangential offset is zero).
    *
    * @param which 0 for the top edge (corners 0→1), 1 for the bottom edge (corners 3→2)
    * @return the handle position in local (unscaled) view coordinates
@@ -3488,8 +3488,8 @@ public class TrapezoidSelectionView extends View {
    * onto the chord's normal AND tangent through the chord midpoint. The normal component (curve
    * strength) is clamped to {@link #CURVE_MAX_OFFSET_FRAC} and the tangent component (peak
    * off-center shift) to {@link #CURVE_MAX_TANGENT_FRAC} of the chord length; the resulting handle
-   * position is then clamped to the view bounds (re-deriving both components from the clamped
-   * point so the stored fractions always match what gets drawn).
+   * position is then clamped to the view bounds (re-deriving both components from the clamped point
+   * so the stored fractions always match what gets drawn).
    *
    * @param which 0 for the top edge, 1 for the bottom edge
    * @param x local touch X

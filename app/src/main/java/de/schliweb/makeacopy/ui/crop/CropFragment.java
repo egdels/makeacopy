@@ -1322,8 +1322,8 @@ public class CropFragment extends Fragment {
    * <p>Issue #91 (Phase 4): while the user drags the thumb, {@code image_to_crop} is temporarily
    * replaced by a live low-cost dewarp render of the currently displayed (not full-res) bitmap, so
    * the user can see the actual effect instead of only the abstract grid overlay. The trapezoid
-   * overlay is hidden for the duration of the drag (its corner handles are meaningless on top of
-   * an already-warped image) and restored, together with the original bitmap, on release.
+   * overlay is hidden for the duration of the drag (its corner handles are meaningless on top of an
+   * already-warped image) and restored, together with the original bitmap, on release.
    */
   private void setupDepthSlider() {
     if (binding == null) return;
@@ -1509,10 +1509,10 @@ public class CropFragment extends Fragment {
 
   /**
    * Shows or hides the depth slider (Issue #91, Phase 3). The layout keeps the slider outside the
-   * image area (the preview's bottom is constrained to the slider's top), so the
-   * {@link TrapezoidSelectionView} overlay never overlaps it and cannot consume its touch events
-   * (which would pan the preview instead of moving the slider thumb). Raising elevation/Z here is
-   * kept as an additional safety net.
+   * image area (the preview's bottom is constrained to the slider's top), so the {@link
+   * TrapezoidSelectionView} overlay never overlaps it and cannot consume its touch events (which
+   * would pan the preview instead of moving the slider thumb). Raising elevation/Z here is kept as
+   * an additional safety net.
    *
    * @param visible whether the slider should be visible
    */

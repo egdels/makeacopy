@@ -482,8 +482,8 @@ public class ScansLibraryFragment extends Fragment {
 
   /**
    * Toggles multi-select mode on the adapter and swaps the bottom toolbar/icon row between the
-   * normal actions (Back / Open collections / cleanup icons) and the selection actions (select
-   * all, count, exit, delete selected).
+   * normal actions (Back / Open collections / cleanup icons) and the selection actions (select all,
+   * count, exit, delete selected).
    */
   private void setSelectionModeActive(boolean active) {
     adapter.setSelectionMode(active);

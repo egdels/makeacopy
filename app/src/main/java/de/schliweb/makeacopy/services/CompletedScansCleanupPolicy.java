@@ -96,8 +96,8 @@ public final class CompletedScansCleanupPolicy {
    * page items indexed by {@code ExistingScansIndexer}, marked via {@code sourceMetaJson}
    * containing {@code "CompletedScanEntry"}) and are no longer present in the registry are
    * eligible. Real exported library documents are indexed separately at export time (see {@code
-   * ScanLibraryIndexer}) with a freshly generated id that is never present in the registry, so
-   * they must never be removed here just because their id isn't a registry id.
+   * ScanLibraryIndexer}) with a freshly generated id that is never present in the registry, so they
+   * must never be removed here just because their id isn't a registry id.
    *
    * @param allScans all current Room scan-library entries
    * @param registryIds ids currently present in the CompletedScansRegistry
