@@ -1319,6 +1319,12 @@ public class CropFragment extends Fragment {
    * Wires up the perspective-depth slider (Issue #91, Phase 3). The slider maps its progress range
    * {@code [0, 200]} linearly to a depth value in {@code [-1, 1]} (center = neutral). It is only
    * visible while curved mode is active; the value is consumed in {@link #performCrop()}.
+   *
+   * <p>Issue #91 (Phase 4): while the user drags the thumb, {@code image_to_crop} is temporarily
+   * replaced by a live low-cost dewarp render of the currently displayed (not full-res) bitmap, so
+   * the user can see the actual effect instead of only the abstract grid overlay. The trapezoid
+   * overlay is hidden for the duration of the drag (its corner handles are meaningless on top of
+   * an already-warped image) and restored, together with the original bitmap, on release.
    */
   private void setupDepthSlider() {
     if (binding == null) return;
@@ -1332,18 +1338,177 @@ public class CropFragment extends Fragment {
             // Live preview: mirror the depth into the overlay so its grid lines shift
             // towards the top/bottom curve while the slider is dragged.
             if (binding != null) binding.trapezoidSelection.setDepthPreview(dewarpDepth);
+            if (fromUser) scheduleDepthPreviewRender();
           }
 
           @Override
           public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
-            // No-op
+            // Hide the corner/curve overlay for the duration of the drag; it is about to be
+            // replaced by a real dewarped render of the image underneath.
+            if (binding != null) binding.trapezoidSelection.setVisibility(View.INVISIBLE);
           }
 
           @Override
           public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
             android.util.Log.d(TAG, "setupDepthSlider: depth=" + dewarpDepth);
+            restoreDepthPreviewImage();
+            if (binding != null) {
+              binding.trapezoidSelection.setVisibility(View.VISIBLE);
+              binding.trapezoidSelection.setDepthPreview(dewarpDepth);
+              binding.trapezoidSelection.invalidate();
+            }
           }
         });
+  }
+
+  /** Debounce interval for {@link #scheduleDepthPreviewRender()} (Issue #91, Phase 4). */
+  private static final long DEPTH_PREVIEW_DEBOUNCE_MS = 80;
+
+  /**
+   * Generation counter guarding the live depth-preview renders (Issue #91, Phase 4). Incremented
+   * whenever a new render is scheduled or the drag ends, so a slow background render that finishes
+   * after a newer one (or after the user released the slider) is discarded instead of overwriting
+   * fresher state.
+   */
+  private final java.util.concurrent.atomic.AtomicInteger depthPreviewRenderGeneration =
+      new java.util.concurrent.atomic.AtomicInteger(0);
+
+  /** Pending debounced depth-preview render callback, or {@code null} if none is scheduled. */
+  private Runnable pendingDepthPreviewRender;
+
+  /**
+   * Bitmap currently shown in {@code image_to_crop} as a live depth-preview render (Issue #91,
+   * Phase 4), or {@code null} while the normal (un-warped) displayed bitmap is shown. Tracked so it
+   * can be recycled once superseded by a newer render or once the drag ends.
+   */
+  private Bitmap activeDepthPreviewBitmap;
+
+  /**
+   * Debounces {@link #renderDepthPreview()} calls while the depth slider is being dragged (Issue
+   * #91, Phase 4), so a fast finger swipe does not spawn a render thread per pixel of movement.
+   */
+  private void scheduleDepthPreviewRender() {
+    if (binding == null) return;
+    if (pendingDepthPreviewRender != null) {
+      binding.trapezoidSelection.removeCallbacks(pendingDepthPreviewRender);
+    }
+    pendingDepthPreviewRender = this::renderDepthPreview;
+    binding.trapezoidSelection.postDelayed(pendingDepthPreviewRender, DEPTH_PREVIEW_DEBOUNCE_MS);
+  }
+
+  /**
+   * Renders a live preview of the current depth adjustment (Issue #91, Phase 4) by applying {@link
+   * de.schliweb.makeacopy.utils.image.OpenCVUtils#applyDewarp} to the currently displayed
+   * (screen-resolution, not full-res) bitmap on a background thread, then swaps it into {@code
+   * image_to_crop} on the main thread. Mirrors the corner/midpoint transform used by {@link
+   * #performCrop()}, but skips the full-res scaling step since the source here already is the
+   * displayed bitmap. Silently does nothing if curved mode is off, the corners/midpoints are
+   * invalid, or the render turns out stale by the time it completes.
+   */
+  private void renderDepthPreview() {
+    pendingDepthPreviewRender = null;
+    if (binding == null || !binding.trapezoidSelection.isCurvedMode()) return;
+    final Bitmap displayedBitmap = cropViewModel.getImageBitmap().getValue();
+    if (displayedBitmap == null || displayedBitmap.isRecycled()) return;
+
+    final org.opencv.core.Point[] imgCorners;
+    final org.opencv.core.Point[] midsDisplay;
+    try {
+      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
+      imgCorners =
+          CoordinateTransformUtils.transformViewToImageCoordinates(
+              viewCorners, displayedBitmap, binding.imageToCrop);
+      org.opencv.core.Point[] midsView = binding.trapezoidSelection.getCurveMidpointsViewCoords();
+      midsDisplay =
+          CoordinateTransformUtils.transformViewToImageCoordinates(
+              midsView, displayedBitmap, binding.imageToCrop);
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, "renderDepthPreview: corner transform failed: " + t);
+      return;
+    }
+    if (!TrapezoidSelectionView.isValidImageQuad(
+            imgCorners, displayedBitmap.getWidth(), displayedBitmap.getHeight())
+        || midsDisplay == null
+        || midsDisplay.length != 2
+        || midsDisplay[0] == null
+        || midsDisplay[1] == null) {
+      android.util.Log.d(TAG, "renderDepthPreview: invalid corners/midpoints; skipping");
+      return;
+    }
+
+    final org.opencv.core.Point topMid = midsDisplay[0];
+    final org.opencv.core.Point bottomMid = midsDisplay[1];
+    final double depth = dewarpDepth;
+    final double[] topProfile = estimatedTopEdgeProfile;
+    final double[] bottomProfile = estimatedBottomEdgeProfile;
+    final int generation = depthPreviewRenderGeneration.incrementAndGet();
+    final View postTarget = binding.trapezoidSelection;
+
+    new Thread(
+            () -> {
+              Bitmap preview = null;
+              try {
+                if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(requireContext());
+                de.schliweb.makeacopy.utils.image.DewarpModel model =
+                    de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
+                        imgCorners, topMid, bottomMid);
+                if (model != null) {
+                  if (topProfile != null || bottomProfile != null) {
+                    model = model.withEdgeProfiles(topProfile, bottomProfile);
+                  }
+                  model = model.withDepth(depth);
+                  preview =
+                      OpenCVUtils.applyDewarp(
+                          displayedBitmap, model, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+                }
+              } catch (Throwable t) {
+                android.util.Log.w(TAG, "renderDepthPreview: render failed: " + t);
+              }
+              final Bitmap result = preview;
+              postTarget.post(() -> applyDepthPreviewResult(generation, result, displayedBitmap));
+            },
+            "DepthPreviewRender")
+        .start();
+  }
+
+  /**
+   * Applies (or discards) the result of a background {@link #renderDepthPreview()} run (Issue #91,
+   * Phase 4). Discards results from a stale generation (a newer render was scheduled, or the drag
+   * already ended) as well as a {@code null}/unchanged result, recycling any bitmap that will not
+   * end up on screen.
+   */
+  private void applyDepthPreviewResult(int generation, Bitmap result, Bitmap displayedBitmap) {
+    if (binding == null || generation != depthPreviewRenderGeneration.get()) {
+      if (result != null && result != displayedBitmap && !result.isRecycled()) result.recycle();
+      return;
+    }
+    if (result == null || result == displayedBitmap) return;
+    binding.imageToCrop.setImageBitmap(result);
+    Bitmap previous = activeDepthPreviewBitmap;
+    activeDepthPreviewBitmap = result;
+    if (previous != null && previous != displayedBitmap && !previous.isRecycled()) {
+      previous.recycle();
+    }
+  }
+
+  /**
+   * Restores {@code image_to_crop} to the normal displayed bitmap and cancels/invalidates any
+   * in-flight depth-preview render (Issue #91, Phase 4). Called when the depth-slider drag ends.
+   */
+  private void restoreDepthPreviewImage() {
+    if (binding == null) return;
+    depthPreviewRenderGeneration.incrementAndGet();
+    if (pendingDepthPreviewRender != null) {
+      binding.trapezoidSelection.removeCallbacks(pendingDepthPreviewRender);
+      pendingDepthPreviewRender = null;
+    }
+    Bitmap displayedBitmap = cropViewModel.getImageBitmap().getValue();
+    if (displayedBitmap != null) binding.imageToCrop.setImageBitmap(displayedBitmap);
+    if (activeDepthPreviewBitmap != null) {
+      Bitmap previous = activeDepthPreviewBitmap;
+      activeDepthPreviewBitmap = null;
+      if (previous != displayedBitmap && !previous.isRecycled()) previous.recycle();
+    }
   }
 
   /**
@@ -1742,6 +1907,21 @@ public class CropFragment extends Fragment {
       if (binding != null && binding.cropDevOverlay != null) {
         binding.cropDevOverlay.setModelRect(null);
         binding.cropDevOverlay.setDebugText(null);
+      }
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    try {
+      // Issue #91 (Phase 4): invalidate any in-flight depth-preview render and release its
+      // bitmap; the view it would post back to is about to be destroyed anyway.
+      depthPreviewRenderGeneration.incrementAndGet();
+      if (pendingDepthPreviewRender != null && binding != null) {
+        binding.trapezoidSelection.removeCallbacks(pendingDepthPreviewRender);
+      }
+      pendingDepthPreviewRender = null;
+      if (activeDepthPreviewBitmap != null) {
+        if (!activeDepthPreviewBitmap.isRecycled()) activeDepthPreviewBitmap.recycle();
+        activeDepthPreviewBitmap = null;
       }
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
