@@ -468,6 +468,24 @@
     <string name="crop_aspect_output_size_hint">输出：%1$d × %2$d 像素</string>
     <string name="crop_hint_corner_off_image">角点位于图像外 — 输出可能含有黑边</string>
     <string name="crop_edge_dragged">已选择边。拖动以移动边。</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">弯曲边缘</string>
+    <string name="crop_curved_mode_cd">切换书页的弯曲边缘</string>
+    <string name="crop_curved_mode_on">弯曲边缘已开启</string>
+    <string name="crop_curved_mode_off">弯曲边缘已关闭</string>
+    <string name="crop_depth_slider_cd">调整透视深度</string>
+    <string name="crop_hint_drag_edge_top">拖动以移动上边</string>
+    <string name="crop_hint_drag_edge_right">拖动以移动右边</string>
+    <string name="crop_hint_drag_edge_bottom">拖动以移动下边</string>
+    <string name="crop_hint_drag_edge_left">拖动以移动左边</string>
+    <string name="crop_hint_drag_edge_generic">拖动边线以调整文档选区</string>
+    <string name="crop_hint_drag_corner_top_left">拖动以调整左上角</string>
+    <string name="crop_hint_drag_corner_top_right">拖动以调整右上角</string>
+    <string name="crop_hint_drag_corner_bottom_right">拖动以调整右下角</string>
+    <string name="crop_hint_drag_corner_bottom_left">拖动以调整左下角</string>
+    <string name="crop_hint_drag_corner_generic">拖动角点以调整文档选区</string>
+    <string name="crop_hint_drag_curve_top">拖动以调整上方曲线的形状</string>
+    <string name="crop_hint_drag_curve_bottom">拖动以调整下方曲线的形状</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">文档清理</string>
     <string name="document_cleanup_original">原始</string>

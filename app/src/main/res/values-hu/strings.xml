@@ -490,6 +490,24 @@
     <string name="crop_aspect_output_size_hint">Kimenet: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">A sarok a képen kívül — a kimenet fekete keretet tartalmazhat</string>
     <string name="crop_edge_dragged">Él kiválasztva. Húzza az él mozgatásához.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Ívelt szélek</string>
+    <string name="crop_curved_mode_cd">Ívelt szélek be- és kikapcsolása könyvoldalakhoz</string>
+    <string name="crop_curved_mode_on">Ívelt szélek bekapcsolva</string>
+    <string name="crop_curved_mode_off">Ívelt szélek kikapcsolva</string>
+    <string name="crop_depth_slider_cd">Perspektívamélység beállítása</string>
+    <string name="crop_hint_drag_edge_top">Húzza a felső élt a mozgatáshoz</string>
+    <string name="crop_hint_drag_edge_right">Húzza a jobb élt a mozgatáshoz</string>
+    <string name="crop_hint_drag_edge_bottom">Húzza az alsó élt a mozgatáshoz</string>
+    <string name="crop_hint_drag_edge_left">Húzza a bal élt a mozgatáshoz</string>
+    <string name="crop_hint_drag_edge_generic">Húzza az éleket a dokumentum kijelölésének módosításához</string>
+    <string name="crop_hint_drag_corner_top_left">Húzza a bal felső sarkot a módosításhoz</string>
+    <string name="crop_hint_drag_corner_top_right">Húzza a jobb felső sarkot a módosításhoz</string>
+    <string name="crop_hint_drag_corner_bottom_right">Húzza a jobb alsó sarkot a módosításhoz</string>
+    <string name="crop_hint_drag_corner_bottom_left">Húzza a bal alsó sarkot a módosításhoz</string>
+    <string name="crop_hint_drag_corner_generic">Húzza a sarkokat a dokumentum kijelölésének módosításához</string>
+    <string name="crop_hint_drag_curve_top">Húzza a felső ív formázásához</string>
+    <string name="crop_hint_drag_curve_bottom">Húzza az alsó ív formázásához</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentum tisztítása</string>
     <string name="document_cleanup_original">Eredeti</string>

@@ -476,6 +476,24 @@
     <string name="crop_snap_toggle_cd" tools:ignore="MissingTranslation">Εναλλαγή προσκόλλησης σε ορθή γωνία</string>
     <string name="crop_snap_toggle_on" tools:ignore="MissingTranslation">Η προσκόλληση σε ορθή γωνία είναι ενεργή</string>
     <string name="crop_snap_toggle_off" tools:ignore="MissingTranslation">Η προσκόλληση σε ορθή γωνία είναι ανενεργή</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Καμπύλες άκρες</string>
+    <string name="crop_curved_mode_cd">Εναλλαγή καμπύλων άκρων για σελίδες βιβλίου</string>
+    <string name="crop_curved_mode_on">Οι καμπύλες άκρες είναι ενεργές</string>
+    <string name="crop_curved_mode_off">Οι καμπύλες άκρες είναι ανενεργές</string>
+    <string name="crop_depth_slider_cd">Προσαρμογή βάθους προοπτικής</string>
+    <string name="crop_hint_drag_edge_top">Σύρετε για να μετακινήσετε την επάνω ακμή</string>
+    <string name="crop_hint_drag_edge_right">Σύρετε για να μετακινήσετε τη δεξιά ακμή</string>
+    <string name="crop_hint_drag_edge_bottom">Σύρετε για να μετακινήσετε την κάτω ακμή</string>
+    <string name="crop_hint_drag_edge_left">Σύρετε για να μετακινήσετε την αριστερή ακμή</string>
+    <string name="crop_hint_drag_edge_generic">Σύρετε τις ακμές για να προσαρμόσετε την επιλογή του εγγράφου</string>
+    <string name="crop_hint_drag_corner_top_left">Σύρετε για να προσαρμόσετε την επάνω αριστερή γωνία</string>
+    <string name="crop_hint_drag_corner_top_right">Σύρετε για να προσαρμόσετε την επάνω δεξιά γωνία</string>
+    <string name="crop_hint_drag_corner_bottom_right">Σύρετε για να προσαρμόσετε την κάτω δεξιά γωνία</string>
+    <string name="crop_hint_drag_corner_bottom_left">Σύρετε για να προσαρμόσετε την κάτω αριστερή γωνία</string>
+    <string name="crop_hint_drag_corner_generic">Σύρετε τις γωνίες για να προσαρμόσετε την επιλογή του εγγράφου</string>
+    <string name="crop_hint_drag_curve_top">Σύρετε για να διαμορφώσετε την επάνω καμπύλη</string>
+    <string name="crop_hint_drag_curve_bottom">Σύρετε για να διαμορφώσετε την κάτω καμπύλη</string>
     <string name="workflow_step_description">Βήμα %1$d από %2$d: %3$s</string>
     <string name="search_scans">Αναζήτηση σαρώσεων</string>
 </resources>

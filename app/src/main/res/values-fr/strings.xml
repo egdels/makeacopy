@@ -493,6 +493,24 @@
     <string name="crop_aspect_output_size_hint">Sortie : %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Coin hors de l’image — la sortie peut contenir des bords noirs</string>
     <string name="crop_edge_dragged">Bord sélectionné. Faites glisser pour déplacer le bord.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Bords courbés</string>
+    <string name="crop_curved_mode_cd">Activer/désactiver les bords courbés pour les pages de livre</string>
+    <string name="crop_curved_mode_on">Bords courbés activés</string>
+    <string name="crop_curved_mode_off">Bords courbés désactivés</string>
+    <string name="crop_depth_slider_cd">Ajuster la profondeur de perspective</string>
+    <string name="crop_hint_drag_edge_top">Faites glisser pour déplacer le bord supérieur</string>
+    <string name="crop_hint_drag_edge_right">Faites glisser pour déplacer le bord droit</string>
+    <string name="crop_hint_drag_edge_bottom">Faites glisser pour déplacer le bord inférieur</string>
+    <string name="crop_hint_drag_edge_left">Faites glisser pour déplacer le bord gauche</string>
+    <string name="crop_hint_drag_edge_generic">Faites glisser les bords pour ajuster la sélection du document</string>
+    <string name="crop_hint_drag_corner_top_left">Faites glisser pour ajuster le coin supérieur gauche</string>
+    <string name="crop_hint_drag_corner_top_right">Faites glisser pour ajuster le coin supérieur droit</string>
+    <string name="crop_hint_drag_corner_bottom_right">Faites glisser pour ajuster le coin inférieur droit</string>
+    <string name="crop_hint_drag_corner_bottom_left">Faites glisser pour ajuster le coin inférieur gauche</string>
+    <string name="crop_hint_drag_corner_generic">Faites glisser les coins pour ajuster la sélection du document</string>
+    <string name="crop_hint_drag_curve_top">Faites glisser pour façonner la courbe supérieure</string>
+    <string name="crop_hint_drag_curve_bottom">Faites glisser pour façonner la courbe inférieure</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Nettoyage du document</string>
     <string name="document_cleanup_original">Original</string>

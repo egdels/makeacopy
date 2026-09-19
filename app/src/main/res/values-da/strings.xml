@@ -487,6 +487,24 @@
     <string name="crop_aspect_output_size_hint">Output: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hjørne uden for billedet — output kan have sorte kanter</string>
     <string name="crop_edge_dragged">Kant valgt. Træk for at flytte kanten.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Buede kanter</string>
+    <string name="crop_curved_mode_cd">Skift buede kanter til bogsider</string>
+    <string name="crop_curved_mode_on">Buede kanter til</string>
+    <string name="crop_curved_mode_off">Buede kanter fra</string>
+    <string name="crop_depth_slider_cd">Juster perspektivdybde</string>
+    <string name="crop_hint_drag_edge_top">Træk for at flytte den øverste kant</string>
+    <string name="crop_hint_drag_edge_right">Træk for at flytte den højre kant</string>
+    <string name="crop_hint_drag_edge_bottom">Træk for at flytte den nederste kant</string>
+    <string name="crop_hint_drag_edge_left">Træk for at flytte den venstre kant</string>
+    <string name="crop_hint_drag_edge_generic">Træk kanterne for at justere dokumentmarkeringen</string>
+    <string name="crop_hint_drag_corner_top_left">Træk for at justere øverste venstre hjørne</string>
+    <string name="crop_hint_drag_corner_top_right">Træk for at justere øverste højre hjørne</string>
+    <string name="crop_hint_drag_corner_bottom_right">Træk for at justere nederste højre hjørne</string>
+    <string name="crop_hint_drag_corner_bottom_left">Træk for at justere nederste venstre hjørne</string>
+    <string name="crop_hint_drag_corner_generic">Træk hjørnerne for at justere dokumentmarkeringen</string>
+    <string name="crop_hint_drag_curve_top">Træk for at forme den øverste kurve</string>
+    <string name="crop_hint_drag_curve_bottom">Træk for at forme den nederste kurve</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentoprydning</string>
     <string name="document_cleanup_original">Original</string>

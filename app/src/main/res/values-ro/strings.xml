@@ -499,6 +499,24 @@
     <string name="crop_aspect_output_size_hint">Ieșire: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Colț în afara imaginii — ieșirea poate avea margini negre</string>
     <string name="crop_edge_dragged">Margine selectată. Trageți pentru a muta marginea.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Margini curbate</string>
+    <string name="crop_curved_mode_cd">Comută marginile curbate pentru paginile de carte</string>
+    <string name="crop_curved_mode_on">Margini curbate activate</string>
+    <string name="crop_curved_mode_off">Margini curbate dezactivate</string>
+    <string name="crop_depth_slider_cd">Ajustează adâncimea perspectivei</string>
+    <string name="crop_hint_drag_edge_top">Trageți pentru a muta marginea de sus</string>
+    <string name="crop_hint_drag_edge_right">Trageți pentru a muta marginea din dreapta</string>
+    <string name="crop_hint_drag_edge_bottom">Trageți pentru a muta marginea de jos</string>
+    <string name="crop_hint_drag_edge_left">Trageți pentru a muta marginea din stânga</string>
+    <string name="crop_hint_drag_edge_generic">Trageți marginile pentru a ajusta selecția documentului</string>
+    <string name="crop_hint_drag_corner_top_left">Trageți pentru a ajusta colțul din stânga sus</string>
+    <string name="crop_hint_drag_corner_top_right">Trageți pentru a ajusta colțul din dreapta sus</string>
+    <string name="crop_hint_drag_corner_bottom_right">Trageți pentru a ajusta colțul din dreapta jos</string>
+    <string name="crop_hint_drag_corner_bottom_left">Trageți pentru a ajusta colțul din stânga jos</string>
+    <string name="crop_hint_drag_corner_generic">Trageți colțurile pentru a ajusta selecția documentului</string>
+    <string name="crop_hint_drag_curve_top">Trageți pentru a modela curba de sus</string>
+    <string name="crop_hint_drag_curve_bottom">Trageți pentru a modela curba de jos</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Curățare document</string>
     <string name="document_cleanup_original">Original</string>

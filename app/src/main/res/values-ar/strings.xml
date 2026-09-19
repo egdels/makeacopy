@@ -483,6 +483,24 @@
     <string name="crop_aspect_output_size_hint">الإخراج: %1$d × %2$d بكسل</string>
     <string name="crop_hint_corner_off_image">الزاوية خارج الصورة — قد يحتوي الإخراج المعدّل على حدود سوداء</string>
     <string name="crop_edge_dragged">تم تحديد الحافة. اسحب لتحريك الحافة.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">حواف منحنية</string>
+    <string name="crop_curved_mode_cd">تبديل الحواف المنحنية لصفحات الكتب</string>
+    <string name="crop_curved_mode_on">الحواف المنحنية مفعّلة</string>
+    <string name="crop_curved_mode_off">الحواف المنحنية معطّلة</string>
+    <string name="crop_depth_slider_cd">ضبط عمق المنظور</string>
+    <string name="crop_hint_drag_edge_top">اسحب لتحريك الحافة العلوية</string>
+    <string name="crop_hint_drag_edge_right">اسحب لتحريك الحافة اليمنى</string>
+    <string name="crop_hint_drag_edge_bottom">اسحب لتحريك الحافة السفلية</string>
+    <string name="crop_hint_drag_edge_left">اسحب لتحريك الحافة اليسرى</string>
+    <string name="crop_hint_drag_edge_generic">اسحب الحواف لضبط تحديد المستند</string>
+    <string name="crop_hint_drag_corner_top_left">اسحب لضبط الزاوية العلوية اليسرى</string>
+    <string name="crop_hint_drag_corner_top_right">اسحب لضبط الزاوية العلوية اليمنى</string>
+    <string name="crop_hint_drag_corner_bottom_right">اسحب لضبط الزاوية السفلية اليمنى</string>
+    <string name="crop_hint_drag_corner_bottom_left">اسحب لضبط الزاوية السفلية اليسرى</string>
+    <string name="crop_hint_drag_corner_generic">اسحب الزوايا لضبط تحديد المستند</string>
+    <string name="crop_hint_drag_curve_top">اسحب لتشكيل المنحنى العلوي</string>
+    <string name="crop_hint_drag_curve_bottom">اسحب لتشكيل المنحنى السفلي</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">تنظيف المستند</string>
     <string name="document_cleanup_original">أصلي</string>

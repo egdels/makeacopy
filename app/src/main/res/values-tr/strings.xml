@@ -488,6 +488,24 @@
     <string name="crop_aspect_output_size_hint">Çıktı: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Köşe görüntü dışında — çıktıda siyah kenarlar olabilir</string>
     <string name="crop_edge_dragged">Kenar seçildi. Kenarı taşımak için sürükleyin.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Kavisli kenarlar</string>
+    <string name="crop_curved_mode_cd">Kitap sayfaları için kavisli kenarları aç/kapat</string>
+    <string name="crop_curved_mode_on">Kavisli kenarlar açık</string>
+    <string name="crop_curved_mode_off">Kavisli kenarlar kapalı</string>
+    <string name="crop_depth_slider_cd">Perspektif derinliğini ayarla</string>
+    <string name="crop_hint_drag_edge_top">Üst kenarı taşımak için sürükleyin</string>
+    <string name="crop_hint_drag_edge_right">Sağ kenarı taşımak için sürükleyin</string>
+    <string name="crop_hint_drag_edge_bottom">Alt kenarı taşımak için sürükleyin</string>
+    <string name="crop_hint_drag_edge_left">Sol kenarı taşımak için sürükleyin</string>
+    <string name="crop_hint_drag_edge_generic">Belge seçimini ayarlamak için kenarları sürükleyin</string>
+    <string name="crop_hint_drag_corner_top_left">Sol üst köşeyi ayarlamak için sürükleyin</string>
+    <string name="crop_hint_drag_corner_top_right">Sağ üst köşeyi ayarlamak için sürükleyin</string>
+    <string name="crop_hint_drag_corner_bottom_right">Sağ alt köşeyi ayarlamak için sürükleyin</string>
+    <string name="crop_hint_drag_corner_bottom_left">Sol alt köşeyi ayarlamak için sürükleyin</string>
+    <string name="crop_hint_drag_corner_generic">Belge seçimini ayarlamak için köşeleri sürükleyin</string>
+    <string name="crop_hint_drag_curve_top">Üst kavisi şekillendirmek için sürükleyin</string>
+    <string name="crop_hint_drag_curve_bottom">Alt kavisi şekillendirmek için sürükleyin</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Belge temizleme</string>
     <string name="document_cleanup_original">Orijinal</string>

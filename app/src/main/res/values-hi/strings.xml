@@ -466,6 +466,24 @@
     <string name="crop_aspect_output_size_hint">आउटपुट: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">कोना छवि के बाहर — आउटपुट में काले बॉर्डर हो सकते हैं</string>
     <string name="crop_edge_dragged">किनारा चयनित. किनारा हिलाने के लिए खींचें.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">घुमावदार किनारे</string>
+    <string name="crop_curved_mode_cd">किताब के पन्नों के लिए घुमावदार किनारे टॉगल करें</string>
+    <string name="crop_curved_mode_on">घुमावदार किनारे चालू</string>
+    <string name="crop_curved_mode_off">घुमावदार किनारे बंद</string>
+    <string name="crop_depth_slider_cd">परिप्रेक्ष्य गहराई समायोजित करें</string>
+    <string name="crop_hint_drag_edge_top">ऊपरी किनारा हिलाने के लिए खींचें</string>
+    <string name="crop_hint_drag_edge_right">दायाँ किनारा हिलाने के लिए खींचें</string>
+    <string name="crop_hint_drag_edge_bottom">निचला किनारा हिलाने के लिए खींचें</string>
+    <string name="crop_hint_drag_edge_left">बायाँ किनारा हिलाने के लिए खींचें</string>
+    <string name="crop_hint_drag_edge_generic">दस्तावेज़ चयन समायोजित करने के लिए किनारों को खींचें</string>
+    <string name="crop_hint_drag_corner_top_left">ऊपर-बाएँ कोने को समायोजित करने के लिए खींचें</string>
+    <string name="crop_hint_drag_corner_top_right">ऊपर-दाएँ कोने को समायोजित करने के लिए खींचें</string>
+    <string name="crop_hint_drag_corner_bottom_right">नीचे-दाएँ कोने को समायोजित करने के लिए खींचें</string>
+    <string name="crop_hint_drag_corner_bottom_left">नीचे-बाएँ कोने को समायोजित करने के लिए खींचें</string>
+    <string name="crop_hint_drag_corner_generic">दस्तावेज़ चयन समायोजित करने के लिए कोनों को खींचें</string>
+    <string name="crop_hint_drag_curve_top">ऊपरी वक्र को आकार देने के लिए खींचें</string>
+    <string name="crop_hint_drag_curve_bottom">निचले वक्र को आकार देने के लिए खींचें</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">दस्तावेज़ सफ़ाई</string>
     <string name="document_cleanup_original">मूल</string>

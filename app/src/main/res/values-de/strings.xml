@@ -513,6 +513,24 @@
     <string name="crop_snap_toggle_cd">Rechtwinkel-Einrasten umschalten</string>
     <string name="crop_snap_toggle_on">Rechtwinkel-Einrasten an</string>
     <string name="crop_snap_toggle_off">Rechtwinkel-Einrasten aus</string>
+    <!-- Issue #91: Manuelles Entzerren gekrümmter Buchseiten (gekrümmte Zuschnittkanten) -->
+    <string name="crop_curved_mode">Gekrümmte Kanten</string>
+    <string name="crop_curved_mode_cd">Gekrümmte Kanten für Buchseiten umschalten</string>
+    <string name="crop_curved_mode_on">Gekrümmte Kanten an</string>
+    <string name="crop_curved_mode_off">Gekrümmte Kanten aus</string>
+    <string name="crop_depth_slider_cd">Perspektivtiefe anpassen</string>
+    <string name="crop_hint_drag_edge_top">Ziehen, um die obere Kante zu verschieben</string>
+    <string name="crop_hint_drag_edge_right">Ziehen, um die rechte Kante zu verschieben</string>
+    <string name="crop_hint_drag_edge_bottom">Ziehen, um die untere Kante zu verschieben</string>
+    <string name="crop_hint_drag_edge_left">Ziehen, um die linke Kante zu verschieben</string>
+    <string name="crop_hint_drag_edge_generic">Kanten ziehen, um die Dokumentauswahl anzupassen</string>
+    <string name="crop_hint_drag_corner_top_left">Ziehen, um die obere linke Ecke anzupassen</string>
+    <string name="crop_hint_drag_corner_top_right">Ziehen, um die obere rechte Ecke anzupassen</string>
+    <string name="crop_hint_drag_corner_bottom_right">Ziehen, um die untere rechte Ecke anzupassen</string>
+    <string name="crop_hint_drag_corner_bottom_left">Ziehen, um die untere linke Ecke anzupassen</string>
+    <string name="crop_hint_drag_corner_generic">Ecken ziehen, um die Dokumentauswahl anzupassen</string>
+    <string name="crop_hint_drag_curve_top">Ziehen, um die obere Kurve zu formen</string>
+    <string name="crop_hint_drag_curve_bottom">Ziehen, um die untere Kurve zu formen</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentbereinigung</string>
     <string name="document_cleanup_original">Original</string>

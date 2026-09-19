@@ -2670,9 +2670,11 @@ public class TrapezoidSelectionView extends View {
       // two dimensions (see updateCurveHandleFromTouch()): perpendicular to the edge adjusts the
       // curve's strength, along the edge shifts its peak off-center.
       hint =
-          activeCurveHandleIndex == 0
-              ? "Drag to shape the top curve"
-              : "Drag to shape the bottom curve";
+          getContext()
+              .getString(
+                  activeCurveHandleIndex == 0
+                      ? R.string.crop_hint_drag_curve_top
+                      : R.string.crop_hint_drag_curve_bottom);
       // Place hint opposite to the active handle so the finger does not cover it.
       if (activeCurveHandleIndex == 0) { // top curve handle → hint near bottom
         int baseBottomOffset = Math.max(100, bottomUiInsetPx + dp(getContext(), 12));
@@ -2685,19 +2687,19 @@ public class TrapezoidSelectionView extends View {
       // Show edge-specific hint while a line/edge is being translated in parallel.
       switch (activeEdgeIndex) {
         case 0:
-          hint = "Drag to move top edge";
+          hint = getContext().getString(R.string.crop_hint_drag_edge_top);
           break;
         case 1:
-          hint = "Drag to move right edge";
+          hint = getContext().getString(R.string.crop_hint_drag_edge_right);
           break;
         case 2:
-          hint = "Drag to move bottom edge";
+          hint = getContext().getString(R.string.crop_hint_drag_edge_bottom);
           break;
         case 3:
-          hint = "Drag to move left edge";
+          hint = getContext().getString(R.string.crop_hint_drag_edge_left);
           break;
         default:
-          hint = "Drag edges to adjust document selection";
+          hint = getContext().getString(R.string.crop_hint_drag_edge_generic);
           break;
       }
       // Place hint opposite to the active edge so the finger does not cover it.
@@ -2715,19 +2717,19 @@ public class TrapezoidSelectionView extends View {
       // Show corner-specific hints when a corner is being dragged
       switch (activeCornerIndex) {
         case 0: // Top-left
-          hint = "Drag to adjust top-left corner";
+          hint = getContext().getString(R.string.crop_hint_drag_corner_top_left);
           break;
         case 1: // Top-right
-          hint = "Drag to adjust top-right corner";
+          hint = getContext().getString(R.string.crop_hint_drag_corner_top_right);
           break;
         case 2: // Bottom-right
-          hint = "Drag to adjust bottom-right corner";
+          hint = getContext().getString(R.string.crop_hint_drag_corner_bottom_right);
           break;
         case 3: // Bottom-left
-          hint = "Drag to adjust bottom-left corner";
+          hint = getContext().getString(R.string.crop_hint_drag_corner_bottom_left);
           break;
         default:
-          hint = "Drag corners to adjust document selection";
+          hint = getContext().getString(R.string.crop_hint_drag_corner_generic);
           break;
       }
 

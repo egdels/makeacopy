@@ -493,6 +493,24 @@
     <string name="crop_aspect_output_size_hint">Wyjście: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Róg poza obrazem — wynik może mieć czarne obramowania</string>
     <string name="crop_edge_dragged">Krawędź wybrana. Przeciągnij, aby przesunąć krawędź.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Zakrzywione krawędzie</string>
+    <string name="crop_curved_mode_cd">Przełącz zakrzywione krawędzie dla stron książki</string>
+    <string name="crop_curved_mode_on">Zakrzywione krawędzie włączone</string>
+    <string name="crop_curved_mode_off">Zakrzywione krawędzie wyłączone</string>
+    <string name="crop_depth_slider_cd">Dostosuj głębię perspektywy</string>
+    <string name="crop_hint_drag_edge_top">Przeciągnij, aby przesunąć górną krawędź</string>
+    <string name="crop_hint_drag_edge_right">Przeciągnij, aby przesunąć prawą krawędź</string>
+    <string name="crop_hint_drag_edge_bottom">Przeciągnij, aby przesunąć dolną krawędź</string>
+    <string name="crop_hint_drag_edge_left">Przeciągnij, aby przesunąć lewą krawędź</string>
+    <string name="crop_hint_drag_edge_generic">Przeciągnij krawędzie, aby dostosować zaznaczenie dokumentu</string>
+    <string name="crop_hint_drag_corner_top_left">Przeciągnij, aby dostosować lewy górny róg</string>
+    <string name="crop_hint_drag_corner_top_right">Przeciągnij, aby dostosować prawy górny róg</string>
+    <string name="crop_hint_drag_corner_bottom_right">Przeciągnij, aby dostosować prawy dolny róg</string>
+    <string name="crop_hint_drag_corner_bottom_left">Przeciągnij, aby dostosować lewy dolny róg</string>
+    <string name="crop_hint_drag_corner_generic">Przeciągnij narożniki, aby dostosować zaznaczenie dokumentu</string>
+    <string name="crop_hint_drag_curve_top">Przeciągnij, aby ukształtować górną krzywą</string>
+    <string name="crop_hint_drag_curve_bottom">Przeciągnij, aby ukształtować dolną krzywą</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Czyszczenie dokumentu</string>
     <string name="document_cleanup_original">Oryginał</string>

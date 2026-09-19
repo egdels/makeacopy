@@ -486,6 +486,24 @@
     <string name="crop_aspect_output_size_hint">خروجی: %1$d × %2$d پیکسل</string>
     <string name="crop_hint_corner_off_image">گوشه خارج از تصویر — خروجی ممکن است حاشیه‌های سیاه داشته باشد</string>
     <string name="crop_edge_dragged">لبه انتخاب شد. برای جابجایی لبه بکشید.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">لبه‌های منحنی</string>
+    <string name="crop_curved_mode_cd">تغییر وضعیت لبه‌های منحنی برای صفحات کتاب</string>
+    <string name="crop_curved_mode_on">لبه‌های منحنی روشن</string>
+    <string name="crop_curved_mode_off">لبه‌های منحنی خاموش</string>
+    <string name="crop_depth_slider_cd">تنظیم عمق پرسپکتیو</string>
+    <string name="crop_hint_drag_edge_top">برای جابجایی لبه بالا بکشید</string>
+    <string name="crop_hint_drag_edge_right">برای جابجایی لبه راست بکشید</string>
+    <string name="crop_hint_drag_edge_bottom">برای جابجایی لبه پایین بکشید</string>
+    <string name="crop_hint_drag_edge_left">برای جابجایی لبه چپ بکشید</string>
+    <string name="crop_hint_drag_edge_generic">لبه‌ها را بکشید تا انتخاب سند را تنظیم کنید</string>
+    <string name="crop_hint_drag_corner_top_left">برای تنظیم گوشه بالا-چپ بکشید</string>
+    <string name="crop_hint_drag_corner_top_right">برای تنظیم گوشه بالا-راست بکشید</string>
+    <string name="crop_hint_drag_corner_bottom_right">برای تنظیم گوشه پایین-راست بکشید</string>
+    <string name="crop_hint_drag_corner_bottom_left">برای تنظیم گوشه پایین-چپ بکشید</string>
+    <string name="crop_hint_drag_corner_generic">گوشه‌ها را بکشید تا انتخاب سند را تنظیم کنید</string>
+    <string name="crop_hint_drag_curve_top">برای فرم‌دهی منحنی بالا بکشید</string>
+    <string name="crop_hint_drag_curve_bottom">برای فرم‌دهی منحنی پایین بکشید</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">پاک‌سازی سند</string>
     <string name="document_cleanup_original">اصلی</string>

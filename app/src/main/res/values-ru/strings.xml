@@ -493,6 +493,24 @@
     <string name="crop_aspect_output_size_hint">Вывод: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Угол вне изображения — на выходе возможны чёрные поля</string>
     <string name="crop_edge_dragged">Край выбран. Перетащите, чтобы переместить край.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Изогнутые края</string>
+    <string name="crop_curved_mode_cd">Переключить изогнутые края для книжных страниц</string>
+    <string name="crop_curved_mode_on">Изогнутые края включены</string>
+    <string name="crop_curved_mode_off">Изогнутые края выключены</string>
+    <string name="crop_depth_slider_cd">Настроить глубину перспективы</string>
+    <string name="crop_hint_drag_edge_top">Перетащите, чтобы переместить верхний край</string>
+    <string name="crop_hint_drag_edge_right">Перетащите, чтобы переместить правый край</string>
+    <string name="crop_hint_drag_edge_bottom">Перетащите, чтобы переместить нижний край</string>
+    <string name="crop_hint_drag_edge_left">Перетащите, чтобы переместить левый край</string>
+    <string name="crop_hint_drag_edge_generic">Перетащите края, чтобы настроить выделение документа</string>
+    <string name="crop_hint_drag_corner_top_left">Перетащите, чтобы настроить левый верхний угол</string>
+    <string name="crop_hint_drag_corner_top_right">Перетащите, чтобы настроить правый верхний угол</string>
+    <string name="crop_hint_drag_corner_bottom_right">Перетащите, чтобы настроить правый нижний угол</string>
+    <string name="crop_hint_drag_corner_bottom_left">Перетащите, чтобы настроить левый нижний угол</string>
+    <string name="crop_hint_drag_corner_generic">Перетащите углы, чтобы настроить выделение документа</string>
+    <string name="crop_hint_drag_curve_top">Перетащите, чтобы изменить форму верхней кривой</string>
+    <string name="crop_hint_drag_curve_bottom">Перетащите, чтобы изменить форму нижней кривой</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Очистка документа</string>
     <string name="document_cleanup_original">Оригинал</string>

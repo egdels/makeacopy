@@ -492,6 +492,24 @@
     <string name="crop_aspect_output_size_hint">Výstup: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Roh mimo obrázek — výstup může obsahovat černé okraje</string>
     <string name="crop_edge_dragged">Hrana vybrána. Tažením přesuňte hranu.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Zakřivené hrany</string>
+    <string name="crop_curved_mode_cd">Přepnout zakřivené hrany pro knižní strany</string>
+    <string name="crop_curved_mode_on">Zakřivené hrany zapnuty</string>
+    <string name="crop_curved_mode_off">Zakřivené hrany vypnuty</string>
+    <string name="crop_depth_slider_cd">Upravit hloubku perspektivy</string>
+    <string name="crop_hint_drag_edge_top">Přetažením přesunete horní hranu</string>
+    <string name="crop_hint_drag_edge_right">Přetažením přesunete pravou hranu</string>
+    <string name="crop_hint_drag_edge_bottom">Přetažením přesunete dolní hranu</string>
+    <string name="crop_hint_drag_edge_left">Přetažením přesunete levou hranu</string>
+    <string name="crop_hint_drag_edge_generic">Přetažením hran upravte výběr dokumentu</string>
+    <string name="crop_hint_drag_corner_top_left">Přetažením upravíte levý horní roh</string>
+    <string name="crop_hint_drag_corner_top_right">Přetažením upravíte pravý horní roh</string>
+    <string name="crop_hint_drag_corner_bottom_right">Přetažením upravíte pravý dolní roh</string>
+    <string name="crop_hint_drag_corner_bottom_left">Přetažením upravíte levý dolní roh</string>
+    <string name="crop_hint_drag_corner_generic">Přetažením rohů upravte výběr dokumentu</string>
+    <string name="crop_hint_drag_curve_top">Přetažením tvarujte horní křivku</string>
+    <string name="crop_hint_drag_curve_bottom">Přetažením tvarujte dolní křivku</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Vyčištění dokumentu</string>
     <string name="document_cleanup_original">Originál</string>

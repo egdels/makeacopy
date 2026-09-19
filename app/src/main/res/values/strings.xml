@@ -512,10 +512,24 @@
     <string name="crop_snap_toggle_on" tools:ignore="MissingTranslation">Right-angle snap on</string>
     <string name="crop_snap_toggle_off" tools:ignore="MissingTranslation">Right-angle snap off</string>
     <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
-    <string name="crop_curved_mode" tools:ignore="MissingTranslation">Curved edges</string>
-    <string name="crop_curved_mode_cd" tools:ignore="MissingTranslation">Toggle curved edges for book pages</string>
-    <string name="crop_curved_mode_on" tools:ignore="MissingTranslation">Curved edges on</string>
-    <string name="crop_curved_mode_off" tools:ignore="MissingTranslation">Curved edges off</string>
-    <string name="crop_depth_slider_cd" tools:ignore="MissingTranslation">Adjust perspective depth</string>
+    <string name="crop_curved_mode">Curved edges</string>
+    <string name="crop_curved_mode_cd">Toggle curved edges for book pages</string>
+    <string name="crop_curved_mode_on">Curved edges on</string>
+    <string name="crop_curved_mode_off">Curved edges off</string>
+    <string name="crop_depth_slider_cd">Adjust perspective depth</string>
+    <!-- On-canvas drag hints shown while a corner/edge/curve handle is actively being dragged
+         (TrapezoidSelectionView.drawUserGuidance); previously hardcoded English literals. -->
+    <string name="crop_hint_drag_edge_top">Drag to move top edge</string>
+    <string name="crop_hint_drag_edge_right">Drag to move right edge</string>
+    <string name="crop_hint_drag_edge_bottom">Drag to move bottom edge</string>
+    <string name="crop_hint_drag_edge_left">Drag to move left edge</string>
+    <string name="crop_hint_drag_edge_generic">Drag edges to adjust document selection</string>
+    <string name="crop_hint_drag_corner_top_left">Drag to adjust top-left corner</string>
+    <string name="crop_hint_drag_corner_top_right">Drag to adjust top-right corner</string>
+    <string name="crop_hint_drag_corner_bottom_right">Drag to adjust bottom-right corner</string>
+    <string name="crop_hint_drag_corner_bottom_left">Drag to adjust bottom-left corner</string>
+    <string name="crop_hint_drag_corner_generic">Drag corners to adjust document selection</string>
+    <string name="crop_hint_drag_curve_top">Drag to shape the top curve</string>
+    <string name="crop_hint_drag_curve_bottom">Drag to shape the bottom curve</string>
     <string name="search_scans">Search scans</string>
 </resources>

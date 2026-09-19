@@ -493,6 +493,24 @@
     <string name="crop_aspect_output_size_hint">Uitvoer: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hoek buiten afbeelding — uitvoer kan zwarte randen bevatten</string>
     <string name="crop_edge_dragged">Rand geselecteerd. Sleep om de rand te verplaatsen.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Gebogen randen</string>
+    <string name="crop_curved_mode_cd">Gebogen randen voor boekpagina\'s in-/uitschakelen</string>
+    <string name="crop_curved_mode_on">Gebogen randen aan</string>
+    <string name="crop_curved_mode_off">Gebogen randen uit</string>
+    <string name="crop_depth_slider_cd">Perspectiefdiepte aanpassen</string>
+    <string name="crop_hint_drag_edge_top">Sleep om de bovenrand te verplaatsen</string>
+    <string name="crop_hint_drag_edge_right">Sleep om de rechterrand te verplaatsen</string>
+    <string name="crop_hint_drag_edge_bottom">Sleep om de onderrand te verplaatsen</string>
+    <string name="crop_hint_drag_edge_left">Sleep om de linkerrand te verplaatsen</string>
+    <string name="crop_hint_drag_edge_generic">Sleep randen om de documentselectie aan te passen</string>
+    <string name="crop_hint_drag_corner_top_left">Sleep om de linkerbovenhoek aan te passen</string>
+    <string name="crop_hint_drag_corner_top_right">Sleep om de rechterbovenhoek aan te passen</string>
+    <string name="crop_hint_drag_corner_bottom_right">Sleep om de rechteronderhoek aan te passen</string>
+    <string name="crop_hint_drag_corner_bottom_left">Sleep om de linkeronderhoek aan te passen</string>
+    <string name="crop_hint_drag_corner_generic">Sleep hoeken om de documentselectie aan te passen</string>
+    <string name="crop_hint_drag_curve_top">Sleep om de bovenste curve vorm te geven</string>
+    <string name="crop_hint_drag_curve_bottom">Sleep om de onderste curve vorm te geven</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Documentopschoning</string>
     <string name="document_cleanup_original">Origineel</string>

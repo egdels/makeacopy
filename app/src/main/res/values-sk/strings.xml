@@ -497,6 +497,24 @@
     <string name="crop_aspect_output_size_hint">Výstup: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Roh mimo obrázka — výstup môže obsahovať čierne okraje</string>
     <string name="crop_edge_dragged">Hrana vybraná. Potiahnutím presuňte hranu.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Zakrivené hrany</string>
+    <string name="crop_curved_mode_cd">Prepnúť zakrivené hrany pre knižné strany</string>
+    <string name="crop_curved_mode_on">Zakrivené hrany zapnuté</string>
+    <string name="crop_curved_mode_off">Zakrivené hrany vypnuté</string>
+    <string name="crop_depth_slider_cd">Upraviť hĺbku perspektívy</string>
+    <string name="crop_hint_drag_edge_top">Potiahnutím presuniete hornú hranu</string>
+    <string name="crop_hint_drag_edge_right">Potiahnutím presuniete pravú hranu</string>
+    <string name="crop_hint_drag_edge_bottom">Potiahnutím presuniete dolnú hranu</string>
+    <string name="crop_hint_drag_edge_left">Potiahnutím presuniete ľavú hranu</string>
+    <string name="crop_hint_drag_edge_generic">Potiahnutím hrán upravte výber dokumentu</string>
+    <string name="crop_hint_drag_corner_top_left">Potiahnutím upravíte ľavý horný roh</string>
+    <string name="crop_hint_drag_corner_top_right">Potiahnutím upravíte pravý horný roh</string>
+    <string name="crop_hint_drag_corner_bottom_right">Potiahnutím upravíte pravý dolný roh</string>
+    <string name="crop_hint_drag_corner_bottom_left">Potiahnutím upravíte ľavý dolný roh</string>
+    <string name="crop_hint_drag_corner_generic">Potiahnutím rohov upravte výber dokumentu</string>
+    <string name="crop_hint_drag_curve_top">Potiahnutím tvarujte hornú krivku</string>
+    <string name="crop_hint_drag_curve_bottom">Potiahnutím tvarujte dolnú krivku</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Vyčistenie dokumentu</string>
     <string name="document_cleanup_original">Originál</string>

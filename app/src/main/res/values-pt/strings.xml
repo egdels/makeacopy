@@ -493,6 +493,24 @@
     <string name="crop_aspect_output_size_hint">Saída: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Canto fora da imagem — a saída pode ter bordas pretas</string>
     <string name="crop_edge_dragged">Borda selecionada. Arraste para mover a borda.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Bordas curvas</string>
+    <string name="crop_curved_mode_cd">Alternar bordas curvas para páginas de livro</string>
+    <string name="crop_curved_mode_on">Bordas curvas ativadas</string>
+    <string name="crop_curved_mode_off">Bordas curvas desativadas</string>
+    <string name="crop_depth_slider_cd">Ajustar profundidade de perspectiva</string>
+    <string name="crop_hint_drag_edge_top">Arraste para mover a borda superior</string>
+    <string name="crop_hint_drag_edge_right">Arraste para mover a borda direita</string>
+    <string name="crop_hint_drag_edge_bottom">Arraste para mover a borda inferior</string>
+    <string name="crop_hint_drag_edge_left">Arraste para mover a borda esquerda</string>
+    <string name="crop_hint_drag_edge_generic">Arraste as bordas para ajustar a seleção do documento</string>
+    <string name="crop_hint_drag_corner_top_left">Arraste para ajustar o canto superior esquerdo</string>
+    <string name="crop_hint_drag_corner_top_right">Arraste para ajustar o canto superior direito</string>
+    <string name="crop_hint_drag_corner_bottom_right">Arraste para ajustar o canto inferior direito</string>
+    <string name="crop_hint_drag_corner_bottom_left">Arraste para ajustar o canto inferior esquerdo</string>
+    <string name="crop_hint_drag_corner_generic">Arraste os cantos para ajustar a seleção do documento</string>
+    <string name="crop_hint_drag_curve_top">Arraste para moldar a curva superior</string>
+    <string name="crop_hint_drag_curve_bottom">Arraste para moldar a curva inferior</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Limpeza do documento</string>
     <string name="document_cleanup_original">Original</string>

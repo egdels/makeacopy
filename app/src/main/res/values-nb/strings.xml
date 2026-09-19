@@ -487,6 +487,24 @@
     <string name="crop_aspect_output_size_hint">Utdata: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hjørne utenfor bildet — utdata kan ha svarte kanter</string>
     <string name="crop_edge_dragged">Kant valgt. Dra for å flytte kanten.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Buede kanter</string>
+    <string name="crop_curved_mode_cd">Slå av/på buede kanter for boksider</string>
+    <string name="crop_curved_mode_on">Buede kanter på</string>
+    <string name="crop_curved_mode_off">Buede kanter av</string>
+    <string name="crop_depth_slider_cd">Juster perspektivdybde</string>
+    <string name="crop_hint_drag_edge_top">Dra for å flytte den øverste kanten</string>
+    <string name="crop_hint_drag_edge_right">Dra for å flytte den høyre kanten</string>
+    <string name="crop_hint_drag_edge_bottom">Dra for å flytte den nederste kanten</string>
+    <string name="crop_hint_drag_edge_left">Dra for å flytte den venstre kanten</string>
+    <string name="crop_hint_drag_edge_generic">Dra kantene for å justere dokumentutvalget</string>
+    <string name="crop_hint_drag_corner_top_left">Dra for å justere øverste venstre hjørne</string>
+    <string name="crop_hint_drag_corner_top_right">Dra for å justere øverste høyre hjørne</string>
+    <string name="crop_hint_drag_corner_bottom_right">Dra for å justere nederste høyre hjørne</string>
+    <string name="crop_hint_drag_corner_bottom_left">Dra for å justere nederste venstre hjørne</string>
+    <string name="crop_hint_drag_corner_generic">Dra hjørnene for å justere dokumentutvalget</string>
+    <string name="crop_hint_drag_curve_top">Dra for å forme den øverste kurven</string>
+    <string name="crop_hint_drag_curve_bottom">Dra for å forme den nederste kurven</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentopprydding</string>
     <string name="document_cleanup_original">Original</string>

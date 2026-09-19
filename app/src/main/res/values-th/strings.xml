@@ -484,6 +484,24 @@
     <string name="crop_aspect_output_size_hint">ผลลัพธ์: %1$d × %2$d พิกเซล</string>
     <string name="crop_hint_corner_off_image">มุมอยู่นอกภาพ — ผลลัพธ์อาจมีขอบสีดำ</string>
     <string name="crop_edge_dragged">เลือกขอบแล้ว ลากเพื่อย้ายขอบ</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">ขอบโค้ง</string>
+    <string name="crop_curved_mode_cd">สลับขอบโค้งสำหรับหน้าหนังสือ</string>
+    <string name="crop_curved_mode_on">เปิดขอบโค้ง</string>
+    <string name="crop_curved_mode_off">ปิดขอบโค้ง</string>
+    <string name="crop_depth_slider_cd">ปรับความลึกของมุมมอง</string>
+    <string name="crop_hint_drag_edge_top">ลากเพื่อย้ายขอบบน</string>
+    <string name="crop_hint_drag_edge_right">ลากเพื่อย้ายขอบขวา</string>
+    <string name="crop_hint_drag_edge_bottom">ลากเพื่อย้ายขอบล่าง</string>
+    <string name="crop_hint_drag_edge_left">ลากเพื่อย้ายขอบซ้าย</string>
+    <string name="crop_hint_drag_edge_generic">ลากขอบเพื่อปรับการเลือกเอกสาร</string>
+    <string name="crop_hint_drag_corner_top_left">ลากเพื่อปรับมุมซ้ายบน</string>
+    <string name="crop_hint_drag_corner_top_right">ลากเพื่อปรับมุมขวาบน</string>
+    <string name="crop_hint_drag_corner_bottom_right">ลากเพื่อปรับมุมขวาล่าง</string>
+    <string name="crop_hint_drag_corner_bottom_left">ลากเพื่อปรับมุมซ้ายล่าง</string>
+    <string name="crop_hint_drag_corner_generic">ลากมุมเพื่อปรับการเลือกเอกสาร</string>
+    <string name="crop_hint_drag_curve_top">ลากเพื่อปรับรูปทรงเส้นโค้งด้านบน</string>
+    <string name="crop_hint_drag_curve_bottom">ลากเพื่อปรับรูปทรงเส้นโค้งด้านล่าง</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">การทำความสะอาดเอกสาร</string>
     <string name="document_cleanup_original">ต้นฉบับ</string>

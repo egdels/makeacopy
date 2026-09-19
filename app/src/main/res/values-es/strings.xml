@@ -502,6 +502,24 @@
     <string name="crop_aspect_output_size_hint">Salida: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Esquina fuera de la imagen — la salida puede tener bordes negros</string>
     <string name="crop_edge_dragged">Borde seleccionado. Arrastra para moverlo.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Bordes curvos</string>
+    <string name="crop_curved_mode_cd">Alternar bordes curvos para páginas de libro</string>
+    <string name="crop_curved_mode_on">Bordes curvos activados</string>
+    <string name="crop_curved_mode_off">Bordes curvos desactivados</string>
+    <string name="crop_depth_slider_cd">Ajustar profundidad de perspectiva</string>
+    <string name="crop_hint_drag_edge_top">Arrastra para mover el borde superior</string>
+    <string name="crop_hint_drag_edge_right">Arrastra para mover el borde derecho</string>
+    <string name="crop_hint_drag_edge_bottom">Arrastra para mover el borde inferior</string>
+    <string name="crop_hint_drag_edge_left">Arrastra para mover el borde izquierdo</string>
+    <string name="crop_hint_drag_edge_generic">Arrastra los bordes para ajustar la selección del documento</string>
+    <string name="crop_hint_drag_corner_top_left">Arrastra para ajustar la esquina superior izquierda</string>
+    <string name="crop_hint_drag_corner_top_right">Arrastra para ajustar la esquina superior derecha</string>
+    <string name="crop_hint_drag_corner_bottom_right">Arrastra para ajustar la esquina inferior derecha</string>
+    <string name="crop_hint_drag_corner_bottom_left">Arrastra para ajustar la esquina inferior izquierda</string>
+    <string name="crop_hint_drag_corner_generic">Arrastra las esquinas para ajustar la selección del documento</string>
+    <string name="crop_hint_drag_curve_top">Arrastra para dar forma a la curva superior</string>
+    <string name="crop_hint_drag_curve_bottom">Arrastra para dar forma a la curva inferior</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Limpieza del documento</string>
     <string name="document_cleanup_original">Original</string>

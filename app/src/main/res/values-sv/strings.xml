@@ -487,6 +487,24 @@
     <string name="crop_aspect_output_size_hint">Utdata: %1$d × %2$d px</string>
     <string name="crop_hint_corner_off_image">Hörn utanför bilden — utdata kan ha svarta kanter</string>
     <string name="crop_edge_dragged">Kant vald. Dra för att flytta kanten.</string>
+    <!-- Issue #91: Manual dewarping of curved book pages (curved crop edges) -->
+    <string name="crop_curved_mode">Böjda kanter</string>
+    <string name="crop_curved_mode_cd">Växla böjda kanter för boksidor</string>
+    <string name="crop_curved_mode_on">Böjda kanter på</string>
+    <string name="crop_curved_mode_off">Böjda kanter av</string>
+    <string name="crop_depth_slider_cd">Justera perspektivdjup</string>
+    <string name="crop_hint_drag_edge_top">Dra för att flytta den övre kanten</string>
+    <string name="crop_hint_drag_edge_right">Dra för att flytta den högra kanten</string>
+    <string name="crop_hint_drag_edge_bottom">Dra för att flytta den nedre kanten</string>
+    <string name="crop_hint_drag_edge_left">Dra för att flytta den vänstra kanten</string>
+    <string name="crop_hint_drag_edge_generic">Dra kanterna för att justera dokumentmarkeringen</string>
+    <string name="crop_hint_drag_corner_top_left">Dra för att justera övre vänstra hörnet</string>
+    <string name="crop_hint_drag_corner_top_right">Dra för att justera övre högra hörnet</string>
+    <string name="crop_hint_drag_corner_bottom_right">Dra för att justera nedre högra hörnet</string>
+    <string name="crop_hint_drag_corner_bottom_left">Dra för att justera nedre vänstra hörnet</string>
+    <string name="crop_hint_drag_corner_generic">Dra hörnen för att justera dokumentmarkeringen</string>
+    <string name="crop_hint_drag_curve_top">Dra för att forma den övre kurvan</string>
+    <string name="crop_hint_drag_curve_bottom">Dra för att forma den nedre kurvan</string>
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentrensning</string>
     <string name="document_cleanup_original">Original</string>
