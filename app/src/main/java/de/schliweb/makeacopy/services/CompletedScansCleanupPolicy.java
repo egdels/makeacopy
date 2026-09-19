@@ -115,4 +115,43 @@ public final class CompletedScansCleanupPolicy {
     }
     return result;
   }
+
+  /**
+   * Session 5 (page ownership): filters cleanup candidates so that pages referenced by any
+   * persisted DocumentSession are always kept. Automatic cleanup (age/count/storage) must never
+   * delete a page that is still part of a document — only explicit user deletion may do that.
+   *
+   * @param candidateIds ids proposed for removal by an age/count/storage rule
+   * @param referencedPageIds union of all DocumentSession page ids (active and inactive)
+   * @return the candidates that are safe to delete (not referenced by any document)
+   */
+  public static List<String> filterOutReferenced(
+      List<String> candidateIds, Set<String> referencedPageIds) {
+    List<String> result = new ArrayList<>();
+    if (candidateIds == null) return result;
+    for (String id : candidateIds) {
+      if (id == null) continue;
+      if (referencedPageIds != null && referencedPageIds.contains(id)) continue;
+      result.add(id);
+    }
+    return result;
+  }
+
+  /**
+   * Session 5 (orphan detection): returns the ids of registry pages that are not referenced by any
+   * DocumentSession. These are orphan <em>candidates</em> only — they remain subject to the
+   * existing retention policy (legacy/library pages without a session are intentionally kept until
+   * an explicit cleanup policy applies). This function never deletes anything.
+   */
+  public static List<String> findUnreferencedPages(
+      List<CompletedScan> scans, Set<String> referencedPageIds) {
+    List<String> result = new ArrayList<>();
+    if (scans == null) return result;
+    for (CompletedScan s : scans) {
+      if (s == null || s.id() == null) continue;
+      if (referencedPageIds != null && referencedPageIds.contains(s.id())) continue;
+      result.add(s.id());
+    }
+    return result;
+  }
 }

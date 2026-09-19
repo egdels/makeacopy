@@ -226,6 +226,34 @@ public final class DocumentSessionRepository {
     return removed;
   }
 
+  // ===== Page ownership (Session 5) =====
+
+  /**
+   * Session 5 (page ownership): returns the union of all page ids referenced by any persisted
+   * {@link DocumentSession} — active or inactive. A page id contained in this set MUST NOT be
+   * deleted by any automatic cleanup path; only an explicit user action ("Delete scan permanently")
+   * may remove it. Empty/corrupt entries contribute nothing.
+   */
+  public synchronized java.util.Set<String> getAllReferencedPageIds() {
+    java.util.Set<String> out = new java.util.HashSet<>();
+    for (SessionEntry e : safeLoad().sessions) {
+      if (e == null || e.pageIds == null) continue;
+      for (String id : e.pageIds) {
+        if (id != null) out.add(id);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Session 5 (page ownership): returns {@code true} when the given page id is referenced by at
+   * least one persisted session (active or inactive). Deterministic, no reference counting.
+   */
+  public synchronized boolean isPageReferenced(String pageId) {
+    if (pageId == null) return false;
+    return getAllReferencedPageIds().contains(pageId);
+  }
+
   /** Persists (inserts or replaces) the given session without changing the active id. */
   public synchronized void save(DocumentSession session) {
     if (session == null || session.documentId() == null) return;

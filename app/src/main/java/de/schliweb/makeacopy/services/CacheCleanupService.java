@@ -403,11 +403,19 @@ public class CacheCleanupService extends Service {
       long now = System.currentTimeMillis();
       int totalRemoved = 0;
 
+      // Session 5 (page ownership): pages referenced by any persisted DocumentSession (active or
+      // inactive) must never be removed by automatic cleanup — only explicit user deletion may
+      // remove them. Load the reference set once per run.
+      java.util.Set<String> referencedPageIds =
+          de.schliweb.makeacopy.data.DocumentSessionRepository.get(this).getAllReferencedPageIds();
+
       if ("MAX_AGE".equals(policy) || "COMBINED".equals(policy)) {
         int maxAgeDays = preferences.getInt("completed_scans_max_age_days", 30);
         List<String> ids =
-            CompletedScansCleanupPolicy.idsToRemoveByAge(
-                registry.listAllOrderedByDateDesc(), maxAgeDays, now);
+            CompletedScansCleanupPolicy.filterOutReferenced(
+                CompletedScansCleanupPolicy.idsToRemoveByAge(
+                    registry.listAllOrderedByDateDesc(), maxAgeDays, now),
+                referencedPageIds);
         for (String id : ids) {
           RegistryCleaner.removeEntryAndFiles(this, id);
           totalRemoved++;
@@ -417,8 +425,10 @@ public class CacheCleanupService extends Service {
       if ("MAX_COUNT".equals(policy) || "COMBINED".equals(policy)) {
         int maxCount = preferences.getInt("completed_scans_max_count", 100);
         List<String> ids =
-            CompletedScansCleanupPolicy.idsToRemoveByCount(
-                registry.listAllOrderedByDateDesc(), maxCount);
+            CompletedScansCleanupPolicy.filterOutReferenced(
+                CompletedScansCleanupPolicy.idsToRemoveByCount(
+                    registry.listAllOrderedByDateDesc(), maxCount),
+                referencedPageIds);
         for (String id : ids) {
           RegistryCleaner.removeEntryAndFiles(this, id);
           totalRemoved++;
@@ -434,7 +444,9 @@ public class CacheCleanupService extends Service {
           sizeById.put(s.id(), calculateScanEntrySize(s));
         }
         List<String> ids =
-            CompletedScansCleanupPolicy.idsToRemoveByStorage(scans, sizeById, maxBytes);
+            CompletedScansCleanupPolicy.filterOutReferenced(
+                CompletedScansCleanupPolicy.idsToRemoveByStorage(scans, sizeById, maxBytes),
+                referencedPageIds);
         for (String id : ids) {
           RegistryCleaner.removeEntryAndFiles(this, id);
           totalRemoved++;

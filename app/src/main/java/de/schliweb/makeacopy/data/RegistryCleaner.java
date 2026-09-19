@@ -179,14 +179,26 @@ public class RegistryCleaner {
       }
     }
 
-    // Remove orphan directories not referenced by registry
+    // Remove orphan directories not referenced by registry. Session 5 (page ownership):
+    // directories whose id is still referenced by any persisted DocumentSession (active or
+    // inactive) are never deleted here, even when the registry entry is missing — the document
+    // reference keeps the page artifacts alive until an explicit user deletion.
+    Set<String> sessionReferencedIds;
+    try {
+      sessionReferencedIds = DocumentSessionRepository.get(ctx).getAllReferencedPageIds();
+    } catch (Throwable t) {
+      // Fail safe: when the reference set cannot be determined, do not delete any directory.
+      System.err.println(
+          TAG + ": cleanupOrphans: cannot resolve session references, skipping orphan dirs");
+      return rep;
+    }
     File scansBase = new File(ctx.getFilesDir(), "scans");
     File[] children = scansBase.listFiles();
     if (children != null) {
       for (File child : children) {
         if (child == null || !child.isDirectory()) continue;
         String name = child.getName();
-        if (!ids.contains(name)) {
+        if (!ids.contains(name) && !sessionReferencedIds.contains(name)) {
           int deleted = deleteDirectoryRecursively(child);
           if (deleted > 0) rep.deletedOrphanDirs++;
         }
