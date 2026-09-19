@@ -39,13 +39,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="top|end"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_circle_scrim_inset"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/remove_this_page"
             android:src="@drawable/ic_close"
-            app:tint="?attr/colorControlNormal"
+            app:tint="#FFFFFF"
             android:minWidth="48dp"
             android:minHeight="48dp"
-            android:padding="8dp"
+            android:padding="10dp"
             app:tooltipText="@string/remove_this_page" />
     </FrameLayout>
 

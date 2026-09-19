@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Inset variant of bg_circle_scrim: the visible dark circle stays compact (button size
+  minus 8dp inset per side) while the ImageButton itself keeps the full 48dp touch target.
+  Used for the filmstrip thumbnail "X" close button so it doesn't dominate the thumbnail.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/bg_circle_scrim"
+    android:inset="8dp" />
