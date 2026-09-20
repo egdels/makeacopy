@@ -388,6 +388,18 @@
     <string name="error_pdf_page_render_failed">Kunne ikke gengive siden</string>
     <string name="pdf_select_page">Vælg side</string>
     <string name="pdf_page_number">Side %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Vælg sider</string>
+    <string name="pdf_select_all">Vælg alle</string>
+    <string name="pdf_import_pages">Importér (%1$d)</string>
+    <string name="pdf_import_one_page">Importér (1)</string>
+    <string name="pdf_import_zero_pages">Importér</string>
+    <string name="pdf_importing_title">Importerer PDF</string>
+    <string name="pdf_importing_progress">Side %1$d af %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d sider importeret, %2$d mislykkedes</string>
+    <string name="pdf_import_cancelled">Import annulleret</string>
+    <string name="pdf_import_nothing_imported">Ingen sider kunne importeres</string>
+    <string name="error_insufficient_storage">Ikke nok ledig lagerplads til at importere disse sider</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Vælg OCR-sprog</string>

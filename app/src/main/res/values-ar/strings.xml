@@ -384,6 +384,18 @@
     <string name="error_pdf_page_render_failed">تعذّر عرض الصفحة</string>
     <string name="pdf_select_page">اختر صفحة</string>
     <string name="pdf_page_number">الصفحة %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">تحديد الصفحات</string>
+    <string name="pdf_select_all">تحديد الكل</string>
+    <string name="pdf_import_pages">استيراد (%1$d)</string>
+    <string name="pdf_import_one_page">استيراد (1)</string>
+    <string name="pdf_import_zero_pages">استيراد</string>
+    <string name="pdf_importing_title">جارٍ استيراد PDF</string>
+    <string name="pdf_importing_progress">الصفحة %1$d من %2$d</string>
+    <string name="pdf_import_summary_failed">تم استيراد %1$d صفحة، وفشل %2$d</string>
+    <string name="pdf_import_cancelled">تم إلغاء الاستيراد</string>
+    <string name="pdf_import_nothing_imported">تعذّر استيراد أي صفحة</string>
+    <string name="error_insufficient_storage">لا توجد مساحة تخزين كافية لاستيراد هذه الصفحات</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">اختر لغات التعرّف الضوئي على الحروف</string>

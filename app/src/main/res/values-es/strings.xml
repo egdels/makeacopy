@@ -402,6 +402,18 @@
     <string name="error_pdf_page_render_failed">No se pudo renderizar la página</string>
     <string name="pdf_select_page">Seleccionar página</string>
     <string name="pdf_page_number">Página %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Seleccionar páginas</string>
+    <string name="pdf_select_all">Seleccionar todo</string>
+    <string name="pdf_import_pages">Importar (%1$d)</string>
+    <string name="pdf_import_one_page">Importar (1)</string>
+    <string name="pdf_import_zero_pages">Importar</string>
+    <string name="pdf_importing_title">Importando PDF</string>
+    <string name="pdf_importing_progress">Página %1$d de %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d páginas importadas, %2$d fallidas</string>
+    <string name="pdf_import_cancelled">Importación cancelada</string>
+    <string name="pdf_import_nothing_imported">No se pudo importar ninguna página</string>
+    <string name="error_insufficient_storage">No hay suficiente almacenamiento libre para importar estas páginas</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Seleccionar idiomas de OCR</string>

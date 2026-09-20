@@ -375,6 +375,18 @@
     <string name="error_pdf_page_render_failed">पृष्ठ रेंडर नहीं हो सका</string>
     <string name="pdf_select_page">पृष्ठ चुनें</string>
     <string name="pdf_page_number">पृष्ठ %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">पृष्ठ चुनें</string>
+    <string name="pdf_select_all">सभी चुनें</string>
+    <string name="pdf_import_pages">आयात (%1$d)</string>
+    <string name="pdf_import_one_page">आयात (1)</string>
+    <string name="pdf_import_zero_pages">आयात</string>
+    <string name="pdf_importing_title">PDF आयात हो रहा है</string>
+    <string name="pdf_importing_progress">%2$d में से पृष्ठ %1$d</string>
+    <string name="pdf_import_summary_failed">%1$d पृष्ठ आयात किए गए, %2$d विफल</string>
+    <string name="pdf_import_cancelled">आयात रद्द किया गया</string>
+    <string name="pdf_import_nothing_imported">कोई भी पृष्ठ आयात नहीं किया जा सका</string>
+    <string name="error_insufficient_storage">इन पृष्ठों को आयात करने के लिए पर्याप्त खाली संग्रहण स्थान नहीं है</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR भाषाएँ चुनें</string>

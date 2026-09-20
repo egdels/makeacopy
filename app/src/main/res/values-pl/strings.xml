@@ -394,6 +394,18 @@
     <string name="error_pdf_page_render_failed">Nie można wyrenderować strony</string>
     <string name="pdf_select_page">Wybierz stronę</string>
     <string name="pdf_page_number">Strona %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Wybierz strony</string>
+    <string name="pdf_select_all">Zaznacz wszystkie</string>
+    <string name="pdf_import_pages">Importuj (%1$d)</string>
+    <string name="pdf_import_one_page">Importuj (1)</string>
+    <string name="pdf_import_zero_pages">Importuj</string>
+    <string name="pdf_importing_title">Importowanie pliku PDF</string>
+    <string name="pdf_importing_progress">Strona %1$d z %2$d</string>
+    <string name="pdf_import_summary_failed">Zaimportowano %1$d stron, %2$d nie powiodło się</string>
+    <string name="pdf_import_cancelled">Import anulowany</string>
+    <string name="pdf_import_nothing_imported">Nie udało się zaimportować żadnej strony</string>
+    <string name="error_insufficient_storage">Za mało wolnego miejsca, aby zaimportować te strony</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Wybierz języki OCR</string>

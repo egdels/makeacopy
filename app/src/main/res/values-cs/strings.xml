@@ -392,6 +392,18 @@
     <string name="error_pdf_page_render_failed">Stránku se nepodařilo vykreslit</string>
     <string name="pdf_select_page">Vybrat stránku</string>
     <string name="pdf_page_number">Stránka %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Vybrat stránky</string>
+    <string name="pdf_select_all">Vybrat vše</string>
+    <string name="pdf_import_pages">Importovat (%1$d)</string>
+    <string name="pdf_import_one_page">Importovat (1)</string>
+    <string name="pdf_import_zero_pages">Importovat</string>
+    <string name="pdf_importing_title">Importuje se PDF</string>
+    <string name="pdf_importing_progress">Stránka %1$d z %2$d</string>
+    <string name="pdf_import_summary_failed">Importováno stránek: %1$d, selhalo: %2$d</string>
+    <string name="pdf_import_cancelled">Import zrušen</string>
+    <string name="pdf_import_nothing_imported">Nepodařilo se importovat žádné stránky</string>
+    <string name="error_insufficient_storage">Nedostatek volného úložiště pro import těchto stránek</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Vyberte jazyky OCR</string>

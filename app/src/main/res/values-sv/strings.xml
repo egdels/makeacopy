@@ -388,6 +388,18 @@
     <string name="error_pdf_page_render_failed">Kunde inte rendera sidan</string>
     <string name="pdf_select_page">Välj sida</string>
     <string name="pdf_page_number">Sida %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Välj sidor</string>
+    <string name="pdf_select_all">Välj alla</string>
+    <string name="pdf_import_pages">Importera (%1$d)</string>
+    <string name="pdf_import_one_page">Importera (1)</string>
+    <string name="pdf_import_zero_pages">Importera</string>
+    <string name="pdf_importing_title">Importerar PDF</string>
+    <string name="pdf_importing_progress">Sida %1$d av %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d sidor importerade, %2$d misslyckades</string>
+    <string name="pdf_import_cancelled">Import avbruten</string>
+    <string name="pdf_import_nothing_imported">Inga sidor kunde importeras</string>
+    <string name="error_insufficient_storage">Inte tillräckligt med ledigt lagringsutrymme för att importera dessa sidor</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Välj OCR-språk</string>

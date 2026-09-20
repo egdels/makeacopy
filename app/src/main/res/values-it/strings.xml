@@ -397,6 +397,18 @@
     <string name="error_pdf_page_render_failed">Impossibile visualizzare la pagina</string>
     <string name="pdf_select_page">Seleziona pagina</string>
     <string name="pdf_page_number">Pagina %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Seleziona pagine</string>
+    <string name="pdf_select_all">Seleziona tutto</string>
+    <string name="pdf_import_pages">Importa (%1$d)</string>
+    <string name="pdf_import_one_page">Importa (1)</string>
+    <string name="pdf_import_zero_pages">Importa</string>
+    <string name="pdf_importing_title">Importazione PDF in corso</string>
+    <string name="pdf_importing_progress">Pagina %1$d di %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d pagine importate, %2$d non riuscite</string>
+    <string name="pdf_import_cancelled">Importazione annullata</string>
+    <string name="pdf_import_nothing_imported">Non è stato possibile importare alcuna pagina</string>
+    <string name="error_insufficient_storage">Spazio di archiviazione insufficiente per importare queste pagine</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Seleziona le lingue OCR</string>

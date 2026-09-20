@@ -388,6 +388,18 @@
     <string name="error_pdf_page_render_failed">Kunne ikke vise siden</string>
     <string name="pdf_select_page">Velg side</string>
     <string name="pdf_page_number">Side %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Velg sider</string>
+    <string name="pdf_select_all">Velg alle</string>
+    <string name="pdf_import_pages">Importer (%1$d)</string>
+    <string name="pdf_import_one_page">Importer (1)</string>
+    <string name="pdf_import_zero_pages">Importer</string>
+    <string name="pdf_importing_title">Importerer PDF</string>
+    <string name="pdf_importing_progress">Side %1$d av %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d sider importert, %2$d mislyktes</string>
+    <string name="pdf_import_cancelled">Import avbrutt</string>
+    <string name="pdf_import_nothing_imported">Ingen sider kunne importeres</string>
+    <string name="error_insufficient_storage">Ikke nok ledig lagringsplass til å importere disse sidene</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Velg OCR-språk</string>

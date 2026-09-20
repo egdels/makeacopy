@@ -385,6 +385,18 @@
     <string name="error_pdf_page_render_failed">ไม่สามารถแสดงผลหน้าได้</string>
     <string name="pdf_select_page">เลือกหน้า</string>
     <string name="pdf_page_number">หน้า %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">เลือกหน้า</string>
+    <string name="pdf_select_all">เลือกทั้งหมด</string>
+    <string name="pdf_import_pages">นำเข้า (%1$d)</string>
+    <string name="pdf_import_one_page">นำเข้า (1)</string>
+    <string name="pdf_import_zero_pages">นำเข้า</string>
+    <string name="pdf_importing_title">กำลังนำเข้า PDF</string>
+    <string name="pdf_importing_progress">หน้า %1$d จาก %2$d</string>
+    <string name="pdf_import_summary_failed">นำเข้าแล้ว %1$d หน้า, ล้มเหลว %2$d หน้า</string>
+    <string name="pdf_import_cancelled">ยกเลิกการนำเข้าแล้ว</string>
+    <string name="pdf_import_nothing_imported">ไม่สามารถนำเข้าหน้าใดได้เลย</string>
+    <string name="error_insufficient_storage">พื้นที่จัดเก็บว่างไม่เพียงพอสำหรับการนำเข้าหน้าเหล่านี้</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">เลือกภาษา OCR</string>

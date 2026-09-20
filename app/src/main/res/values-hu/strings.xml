@@ -391,6 +391,18 @@
     <string name="error_pdf_page_render_failed">Az oldal megjelenítése nem sikerült</string>
     <string name="pdf_select_page">Oldal kiválasztása</string>
     <string name="pdf_page_number">%1$d. oldal</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Oldalak kiválasztása</string>
+    <string name="pdf_select_all">Összes kijelölése</string>
+    <string name="pdf_import_pages">Importálás (%1$d)</string>
+    <string name="pdf_import_one_page">Importálás (1)</string>
+    <string name="pdf_import_zero_pages">Importálás</string>
+    <string name="pdf_importing_title">PDF importálása</string>
+    <string name="pdf_importing_progress">%1$d. oldal / %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d oldal importálva, %2$d sikertelen</string>
+    <string name="pdf_import_cancelled">Az importálás megszakítva</string>
+    <string name="pdf_import_nothing_imported">Egyetlen oldalt sem sikerült importálni</string>
+    <string name="error_insufficient_storage">Nincs elég szabad tárhely ezeknek az oldalaknak az importálásához</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR-nyelvek kiválasztása</string>

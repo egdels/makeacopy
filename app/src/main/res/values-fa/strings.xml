@@ -386,6 +386,18 @@
     <string name="error_pdf_page_render_failed">نمایش صفحه امکان‌پذیر نیست</string>
     <string name="pdf_select_page">انتخاب صفحه</string>
     <string name="pdf_page_number">صفحه %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">انتخاب صفحه‌ها</string>
+    <string name="pdf_select_all">انتخاب همه</string>
+    <string name="pdf_import_pages">وارد کردن (%1$d)</string>
+    <string name="pdf_import_one_page">وارد کردن (1)</string>
+    <string name="pdf_import_zero_pages">وارد کردن</string>
+    <string name="pdf_importing_title">در حال وارد کردن PDF</string>
+    <string name="pdf_importing_progress">صفحه %1$d از %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d صفحه وارد شد، %2$d ناموفق بود</string>
+    <string name="pdf_import_cancelled">وارد کردن لغو شد</string>
+    <string name="pdf_import_nothing_imported">هیچ صفحه‌ای وارد نشد</string>
+    <string name="error_insufficient_storage">فضای ذخیره‌سازی آزاد کافی برای وارد کردن این صفحات وجود ندارد</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">انتخاب زبان‌های OCR</string>

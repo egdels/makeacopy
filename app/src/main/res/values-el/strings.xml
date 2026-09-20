@@ -377,6 +377,18 @@
     <string name="error_pdf_page_render_failed">Δεν ήταν δυνατή η απόδοση της σελίδας</string>
     <string name="pdf_select_page">Επιλογή σελίδας</string>
     <string name="pdf_page_number">Σελίδα %1$d</string>
+    <!-- Multi-page PDF import (Session 1) -->
+    <string name="pdf_select_pages">Επιλογή σελίδων</string>
+    <string name="pdf_select_all">Επιλογή όλων</string>
+    <string name="pdf_import_pages">Εισαγωγή (%1$d)</string>
+    <string name="pdf_import_one_page">Εισαγωγή (1)</string>
+    <string name="pdf_import_zero_pages">Εισαγωγή</string>
+    <string name="pdf_importing_title">Εισαγωγή PDF</string>
+    <string name="pdf_importing_progress">Σελίδα %1$d από %2$d</string>
+    <string name="pdf_import_summary_failed">%1$d σελίδες εισήχθησαν, %2$d απέτυχαν</string>
+    <string name="pdf_import_cancelled">Η εισαγωγή ακυρώθηκε</string>
+    <string name="pdf_import_nothing_imported">Δεν ήταν δυνατή η εισαγωγή καμίας σελίδας</string>
+    <string name="error_insufficient_storage">Δεν υπάρχει αρκετός ελεύθερος αποθηκευτικός χώρος για την εισαγωγή αυτών των σελίδων</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Επιλογή γλωσσών OCR</string>
