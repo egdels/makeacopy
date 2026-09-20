@@ -11,6 +11,7 @@ package de.schliweb.makeacopy.data.library;
 
 import android.content.Context;
 import android.util.Log;
+import de.schliweb.makeacopy.utils.ui.AppLanguage;
 import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -52,25 +53,12 @@ public class DefaultCollectionsRepository implements CollectionsRepository {
     this.scansDao = scansDao;
   }
 
-  private boolean isDefaultCollection(Context context, CollectionEntity e) {
-    if (e == null) return false;
-    try {
-      // Determine the real default collection (by ID) and compare IDs.
-      CollectionEntity def = getOrCreateDefaultCompletedCollection(context.getApplicationContext());
-      return def != null && def.id != null && def.id.equals(e.id);
-    } catch (Throwable ignore) {
-      return false;
-    }
+  private static boolean isDefaultCollection(CollectionEntity e) {
+    return e != null && DEFAULT_COLLECTION_ID.equals(e.id);
   }
 
-  private boolean isDefaultCollectionId(Context context, String collectionId) {
-    try {
-      if (collectionId == null) return false;
-      CollectionEntity def = getOrCreateDefaultCompletedCollection(context.getApplicationContext());
-      return def != null && def.id != null && def.id.equals(collectionId);
-    } catch (Throwable t) {
-      return false;
-    }
+  private static boolean isDefaultCollectionId(String collectionId) {
+    return DEFAULT_COLLECTION_ID.equals(collectionId);
   }
 
   @Override
@@ -82,10 +70,7 @@ public class DefaultCollectionsRepository implements CollectionsRepository {
       // If the requested name is the reserved default name, return the (existing or newly created)
       // default collection instead of creating a duplicate.
       try {
-        String defName =
-            context
-                .getApplicationContext()
-                .getString(de.schliweb.makeacopy.R.string.collection_completed_scans);
+        String defName = defaultName(context.getApplicationContext());
         if (defName != null && defName.equalsIgnoreCase(trimmed)) {
           return getOrCreateDefaultCompletedCollection(context);
         }
@@ -139,12 +124,9 @@ public class DefaultCollectionsRepository implements CollectionsRepository {
       // Guard: Default "Completed Scans" collection is ONLY for CompletedScanEntry items.
       // If target is the default collection, verify the scan has the marker in sourceMetaJson.
       try {
-        if (isDefaultCollectionId(context, collectionId)) {
+        if (isDefaultCollectionId(collectionId)) {
           try {
-            ScanEntity se = scansDao.getById(scanId);
-            String sm = (se != null) ? se.sourceMetaJson : null;
-            boolean isCompletedScanEntry = (sm != null && sm.contains("\"CompletedScanEntry\""));
-            if (!isCompletedScanEntry) {
+            if (!isCompletedScanEntry(scanId)) {
               android.util.Log.i(
                   TAG,
                   "assignScanToCollection: blocked assigning finished document to default Completed Scans collection");
@@ -201,7 +183,7 @@ public class DefaultCollectionsRepository implements CollectionsRepository {
   public boolean deleteCollectionIfEmpty(Context context, String collectionId) {
     try {
       // Guard: default collection cannot be deleted at all
-      if (isDefaultCollectionId(context, collectionId)) return false;
+      if (isDefaultCollectionId(collectionId)) return false;
       int count = collectionsDao.countItems(collectionId);
       if (count > 0) return false;
       collectionsDao.deleteById(collectionId);
@@ -231,13 +213,10 @@ public class DefaultCollectionsRepository implements CollectionsRepository {
       CollectionEntity e = collectionsDao.getById(collectionId);
       if (e == null) return false;
       // Guard: default collection cannot be renamed (by ID)
-      if (isDefaultCollection(context, e)) return false;
+      if (isDefaultCollection(e)) return false;
       // Guard: do not allow renaming another collection to the reserved default name
       try {
-        String defName =
-            context
-                .getApplicationContext()
-                .getString(de.schliweb.makeacopy.R.string.collection_completed_scans);
+        String defName = defaultName(context.getApplicationContext());
         if (defName != null && defName.equalsIgnoreCase(trimmed)) {
           return false;
         }
@@ -293,34 +272,116 @@ public class DefaultCollectionsRepository implements CollectionsRepository {
   public CollectionEntity getOrCreateDefaultCompletedCollection(Context context) {
     try {
       Context app = context.getApplicationContext();
-      String name = app.getString(de.schliweb.makeacopy.R.string.collection_completed_scans);
-      CollectionEntity existing = null;
-      try {
-        existing = collectionsDao.getByName(name);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      if (existing != null) return existing;
-      // create new
-      int nextOrder = 0;
-      try {
-        java.util.List<CollectionEntity> all = collectionsDao.getAll();
-        nextOrder = (all != null) ? all.size() : 0;
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      CollectionEntity entity =
-          new CollectionEntity(
-              java.util.UUID.randomUUID().toString(), name, nextOrder, System.currentTimeMillis());
-      try {
-        collectionsDao.insert(entity);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      return entity;
+      return resolveDefaultCollection(defaultName(app), () -> defaultNamesInAllLanguages(app));
     } catch (Throwable t) {
       android.util.Log.e(TAG, "getOrCreateDefaultCompletedCollection failed", t);
       return null;
     }
+  }
+
+  /**
+   * Finds the default collection by its fixed ID and creates it if needed. Installs from before the
+   * fixed ID identified it by its translated name, so a language change produced a second default:
+   * such a collection is adopted once (and duplicates of it merged) using {@code allNames}.
+   *
+   * @param currentName the default collection's name in the current language
+   * @param allNames its name in every language of the app; only evaluated for the one-time adoption
+   */
+  synchronized CollectionEntity resolveDefaultCollection(
+      String currentName, java.util.function.Supplier<List<String>> allNames) {
+    CollectionEntity def = collectionsDao.getById(DEFAULT_COLLECTION_ID);
+    if (def == null) {
+      List<String> names = allNames.get();
+      CollectionEntity legacy = findLegacyDefault(currentName, names);
+      if (legacy != null) {
+        collectionsDao.changeId(legacy.id, DEFAULT_COLLECTION_ID);
+        def = collectionsDao.getById(DEFAULT_COLLECTION_ID);
+      } else {
+        def =
+            new CollectionEntity(
+                DEFAULT_COLLECTION_ID,
+                currentName,
+                collectionsDao.getAll().size(),
+                System.currentTimeMillis());
+        try {
+          collectionsDao.insert(def);
+        } catch (android.database.sqlite.SQLiteConstraintException e) {
+          // Another repository instance created it in the meantime
+          def = collectionsDao.getById(DEFAULT_COLLECTION_ID);
+        }
+      }
+      mergeLegacyDuplicates(names);
+    }
+    // Show the default collection in the current language
+    if (def != null
+        && !currentName.equals(def.name)
+        && collectionsDao.getByName(currentName) == null) {
+      def.name = currentName;
+      collectionsDao.update(def);
+    }
+    return def;
+  }
+
+  /** The former name-based default: prefers the current language, then the fullest candidate. */
+  private CollectionEntity findLegacyDefault(String currentName, List<String> names) {
+    CollectionEntity current = collectionsDao.getByName(currentName);
+    if (current != null) return current;
+    CollectionEntity best = null;
+    int bestCount = -1;
+    for (CollectionEntity c : collectionsDao.getAll()) {
+      if (!names.contains(c.name)) continue;
+      int count = collectionsDao.countItems(c.id);
+      if (count > bestCount) {
+        best = c;
+        bestCount = count;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Merges leftover defaults from earlier language changes into the default collection. Only
+   * collections holding nothing but completed-scan entries qualify — the default accepts no other
+   * items, so anything else was created by the user and is left alone.
+   */
+  private void mergeLegacyDuplicates(List<String> names) {
+    for (CollectionEntity c : collectionsDao.getAll()) {
+      if (DEFAULT_COLLECTION_ID.equals(c.id) || !names.contains(c.name)) continue;
+      boolean onlyCompletedScans = true;
+      for (String scanId : joinDao.getScanIdsForCollection(c.id)) {
+        if (!isCompletedScanEntry(scanId)) {
+          onlyCompletedScans = false;
+          break;
+        }
+      }
+      if (onlyCompletedScans) {
+        Log.i(TAG, "Merging duplicate default collection '" + c.name + "'");
+        collectionsDao.mergeInto(c.id, DEFAULT_COLLECTION_ID);
+      }
+    }
+  }
+
+  private boolean isCompletedScanEntry(String scanId) {
+    ScanEntity se = scansDao.getById(scanId);
+    String sm = (se != null) ? se.sourceMetaJson : null;
+    return sm != null && sm.contains("\"CompletedScanEntry\"");
+  }
+
+  private static String defaultName(Context app) {
+    return AppLanguage.localize(app)
+        .getString(de.schliweb.makeacopy.R.string.collection_completed_scans);
+  }
+
+  private static List<String> defaultNamesInAllLanguages(Context app) {
+    List<String> names = new java.util.ArrayList<>();
+    for (String tag : AppLanguage.supportedTags(app)) {
+      android.content.res.Configuration config =
+          new android.content.res.Configuration(app.getResources().getConfiguration());
+      config.setLocale(java.util.Locale.forLanguageTag(tag));
+      names.add(
+          app.createConfigurationContext(config)
+              .getString(de.schliweb.makeacopy.R.string.collection_completed_scans));
+    }
+    return names;
   }
 }

@@ -280,7 +280,9 @@ public class ScanDetailsFragment extends Fragment {
                     appCtx.getString(de.schliweb.makeacopy.R.string.collection_completed_scans);
                 for (de.schliweb.makeacopy.data.library.CollectionEntity c : cols) {
                   if (c == null) continue;
-                  if (defName != null && defName.equals(c.name)) continue; // exclude default
+                  if (de.schliweb.makeacopy.data.library.CollectionsRepository.DEFAULT_COLLECTION_ID
+                      .equals(c.id)) continue; // exclude default
+                  if (defName != null && defName.equals(c.name)) continue; // not yet adopted
                   filtered.add(c);
                 }
               } catch (Throwable ignore) {

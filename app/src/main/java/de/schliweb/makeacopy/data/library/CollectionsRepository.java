@@ -18,6 +18,12 @@ import java.util.List;
  * collections and scans.
  */
 public interface CollectionsRepository {
+  /**
+   * Fixed ID of the default "Completed Scans" collection. The collection is identified by this ID,
+   * never by its (translated) name, so it survives language changes.
+   */
+  String DEFAULT_COLLECTION_ID = "default_completed_scans";
+
   CollectionEntity createCollection(Context context, String name);
 
   List<CollectionEntity> getAllCollections(Context context);

@@ -58,4 +58,30 @@ public interface CollectionsDao {
 
   @Query("SELECT COUNT(*) FROM scan_collection_join WHERE collectionId = :collectionId")
   int countItems(String collectionId);
+
+  @Query("UPDATE collections SET id = :newId WHERE id = :oldId")
+  void updateId(String oldId, String newId);
+
+  /** Moves the items of one collection to another; items the target already has stay behind. */
+  @Query(
+      "UPDATE OR IGNORE scan_collection_join SET collectionId = :newId WHERE collectionId = :oldId")
+  void moveItems(String oldId, String newId);
+
+  @Query("DELETE FROM scan_collection_join WHERE collectionId = :collectionId")
+  void removeAllItems(String collectionId);
+
+  /** Gives a collection a new ID and keeps its items attached. */
+  @Transaction
+  default void changeId(String oldId, String newId) {
+    updateId(oldId, newId);
+    moveItems(oldId, newId);
+  }
+
+  /** Moves all items of {@code sourceId} into {@code targetId} and deletes the source. */
+  @Transaction
+  default void mergeInto(String sourceId, String targetId) {
+    moveItems(sourceId, targetId);
+    removeAllItems(sourceId); // items the target already had
+    deleteById(sourceId);
+  }
 }
