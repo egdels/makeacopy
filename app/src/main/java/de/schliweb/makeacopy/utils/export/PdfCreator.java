@@ -1843,7 +1843,12 @@ public class PdfCreator {
             normWords = pageWords;
           }
           addTextLayerImageSpace(
-              cs, normWords, fonts, prepared.getWidth(), prepared.getHeight(), textLayerMode,
+              cs,
+              normWords,
+              fonts,
+              prepared.getWidth(),
+              prepared.getHeight(),
+              textLayerMode,
               multiColumn);
           cs.restoreGraphicsState();
         }
