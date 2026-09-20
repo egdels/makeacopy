@@ -110,6 +110,12 @@ All datasets are converted into the strict `trainable` format:
 
 Corners must always be in **clockwise order starting at top-left**: TL → TR → BR → BL.
 
+"Top-left" is geometric (as seen in the image the model gets), not semantic: `make_trainable_from_converted.py` canonicalizes the order (sort by angle around the centroid, start at `min(x+y)`), and the rotation augmentation re-applies the same rule after rotating.
+
+### Coordinate System
+
+`corners_px` are **stored pixel coordinates** — the EXIF orientation of a photo is *not* applied. That is how PIL (training, evaluation) and Android's `BitmapFactory` read the pixels. `labeler.py` displays photos upright (`cv2.imread` applies EXIF), so `convert_to_docquad.py` maps its corners back to stored coordinates (`--label_coords exif`, default). Details: [EVALUATION.md](EVALUATION.md).
+
 ---
 
 ## 5) Dataset Preparation Pipeline
@@ -310,6 +316,32 @@ python3 training/scripts/train_docquad_heatmap.py \
   --backbone small
 ```
 
+### Rotation Fine-tuning (Tilted Documents)
+
+Without rotation augmentation the model fails on documents tilted by more than ~20°: all four corner heatmaps stay flat and the mask is wrong as well, so no postprocessing can recover the quad. `train_docquad_heatmap.py` has an opt-in online rotation augmentation for this:
+
+- the photo is rotated about its centre, the canvas size is kept and uncovered corners are filled by **reflection** (a constant fill adds a straight high-contrast border that looks like a document edge);
+- angles that would push a corner out of the frame are retried with the opposite sign / smaller magnitude, otherwise the sample stays unrotated;
+- the corner order is re-canonicalized after rotating;
+- the validation split gets the same augmentation with a **fixed rotation per sample**, so `val.corner_mae_px` stays comparable between epochs and "best" reflects tilted documents too (it is *not* comparable with runs trained without the flag).
+
+```bash
+python3 training/scripts/train_docquad_heatmap.py \
+  --base_dir training/data/mix_v2_with_receipts_trainable \
+  --epochs 30 \
+  --batch 8 \
+  --lr 3e-5 \
+  --out_dir training/runs/docquad_v6_rot40_from_v2_receipts \
+  --init_ckpt training/runs/docquad_v2_receipts_finetune/checkpoints/best.pt \
+  --aug_rotate_deg 40 \
+  --aug_rotate_prob 0.5 \
+  --early_stop_patience 5
+```
+
+Keep `--aug_rotate_prob` well below 1 so upright documents stay in the training distribution. ±40° is a deliberate limit: around 45° it becomes ambiguous which corner is "top-left". The app covers stronger tilts with test-time rotation in the crop screen (`RotatingDocQuadDetector`).
+
+Measured on the device with `CornerPipelineEvalTest` (single model pass, mean corner error relative to the image diagonal, 15 epochs): tilted hold-out set 5.2% → 2.0%, upright own photos 3.9% → 3.7%, SmartDoc val unchanged at 0.45%.
+
 ### Training Parameters
 
 | Parameter | Description |
@@ -319,7 +351,9 @@ python3 training/scripts/train_docquad_heatmap.py \
 | `--early_stop_patience 0` | Disables early stopping |
 | `--backbone` | `large` (default) or `small` |
 | `--init_ckpt` | Initialize from pretrained weights (model only, not optimizer) |
-| `--resume` | Continue training from checkpoint (includes optimizer state) |
+| `--resume` | Continue training from checkpoint (includes optimizer state); `--epochs` is the total, so raise it to train longer. Pass the augmentation flags again |
+| `--aug_rotate_deg` | Rotation augmentation: max absolute angle in degrees (`0` = off, default) |
+| `--aug_rotate_prob` | Share of samples that get rotated when `--aug_rotate_deg > 0` (default `0.5`) |
 
 ### Training Outputs
 
@@ -361,6 +395,7 @@ python -m training.docquad_m3.export_onnx \
 - Run from repo root (so `training.*` module can be imported)
 - Outputs: `corner_heatmaps` first, then `mask_logits` (both logits)
 - Backbone type is auto-detected from checkpoint
+- Use this module for app models. `scripts/export_docquad_heatmap_onnx.py` (adds a PyTorch↔ORT parity check and golden stats) exports dynamic shape handling (`Shape`/`Gather`/`Unsqueeze`) with recent PyTorch versions — operators the app's operator-stripped ONNX Runtime build does not contain. See the operator check in [section 17](#17-ort-format-conversion-optional-size-optimized).
 
 ---
 
@@ -423,6 +458,16 @@ The filename stays the same — no code changes required in `DocQuadOrtRunner`.
 
 ## 12) Integration into MakeACopy
 
+The app ships the ORT-format model (see [section 17](#17-ort-format-conversion-optional-size-optimized)); the plain ONNX copy below is the intermediate step.
+
+**Preprocessing contract** — the app must feed the model exactly what training does (`DocQuadDetector`):
+
+- letterbox to 256×256 on a **black** canvas. Mid-gray padding was tried in the app and measured worse (lower heatmap peak confidence; single-pass mean corner error 3.1% → 2.4% on upright photos when switching back to black). If the padding ever changes, change it in `DocQuadHeatmapDataset` too and retrain;
+- RGB, `float32`, 0..1, NCHW;
+- ONNX Runtime **CPU execution provider with 2 intra-op threads** (`DocQuadOrtRunner`). NNAPI made inference ~12× slower on a Pixel 7a (≈620 ms vs. ≈54 ms) with bit-identical results, XNNPACK brought no gain; `DocQuadLatencyBenchmarkTest` reproduces the comparison on other devices.
+
+**Measure before swapping a model**: evaluate the candidate on the device with `CornerPipelineEvalTest -PcornerEvalModel=<file.ort>` against the shipped model on sets neither has seen ([EVALUATION.md](EVALUATION.md)). The test-time-rotation and best-of thresholds in the app depend on the model's confidence distribution and have to be re-checked for a new model.
+
 ```bash
 cp training/runs/docquad_v1_smartdoc_bg_uvtail_from_uvdoc_small/checkpoints/best.onnx \
   app/src/main/assets/docquad/docquadnet256_trained_opset17.onnx
@@ -459,6 +504,7 @@ shasum -a 256 \
 | `synthesize_receipt_on_background.py` | Place receipts on DTD backgrounds with perspective |
 | `quantize_fp16_compare.py` | FP16 quantization with quality comparison |
 | `convert_onnx_to_ort.py` | Convert ONNX to ORT format with reduced op config |
+| `make_tilt_eval_set.py` | Build a tilted-document evaluation set by rotating a labelled set (see EVALUATION.md) |
 
 ---
 
@@ -624,10 +670,12 @@ python3 training/scripts/train_docquad_heatmap.py \
 | 7 | Train V1 | `train_docquad_heatmap.py` with init_ckpt |
 | 8 | Evaluate on val/test | `evaluate_docquad_models.py` |
 | 9 | (Optional) V2 hard-focus | Repeat mix + train with HARD emphasis |
-| 10 | Export ONNX | `export_onnx` module |
-| 11 | FP16 quantization | `quantize_fp16_compare.py` |
-| 12 | (Optional) ORT conversion | `convert_onnx_to_ort.py` |
-| 13 | Integrate into app | Copy to `app/src/main/assets/docquad/` |
+| 10 | Rotation fine-tune | `train_docquad_heatmap.py --aug_rotate_deg 40 --aug_rotate_prob 0.5` |
+| 11 | Export ONNX | `export_onnx` module |
+| 12 | FP16 quantization | `quantize_fp16_compare.py` |
+| 13 | ORT conversion + operator check | `convert_onnx_to_ort.py`, diff the `.required_operators.config` against the shipped one |
+| 14 | Measure on device | `CornerPipelineEvalTest -PcornerEvalModel=…` vs. the shipped model |
+| 15 | Integrate into app | Copy to `app/src/main/assets/docquad/`, update golden stats, re-check app thresholds |
 
 ---
 
@@ -674,6 +722,29 @@ This produces:
 
 The script automatically validates that the `.ort` model loads and reports input/output shapes. Use `--verify` to additionally compare inference outputs against the original ONNX model with random input.
 
+### Operator Check (Required for App Models)
+
+The app's ONNX Runtime is built with only the operators of the shipped model. A model that needs any other operator does not load on the device, so compare the generated config with the shipped one:
+
+```bash
+diff <(grep -v '^#' /tmp/ort_output/<model>.required_operators.config) \
+     <(grep -v '^#' app/src/main/assets/docquad/docquadnet256_trained_opset17.required_operators.config) \
+  && echo "compatible with the shipped ONNX Runtime build"
+```
+
+If it differs because of shape operators (`Shape`, `Gather`, `Unsqueeze`, `Concat`, `Slice`), constant-fold them with a fixed input shape and convert again — the outputs stay identical within float tolerance:
+
+```python
+import onnx
+from onnxsim import simplify
+
+model, ok = simplify(onnx.load("best.onnx"), overwrite_input_shapes={"input": [1, 3, 256, 256]})
+assert ok
+onnx.save(model, "best.static.onnx")
+```
+
+Any other difference means the ONNX Runtime libraries have to be rebuilt with the new config (next section).
+
 ### Build ONNX Runtime with Minimal Operators
 
 Using the generated `.required_operators.config`, build a smaller `libonnxruntime.so` via the project's build script:
@@ -716,3 +787,5 @@ With very few own images:
 - **Hamcrest versions**: Mixing versions in androidTest leads to duplicate classes
 - **ABI splits**: Don't upload non-split builds alongside split builds to the same track
 - **Backbone mismatch**: Cannot convert between `large` and `small` checkpoints
+- **Dataset provenance**: Record for every mix which sources it contains and check them against the terms (and any personal agreements) under which you obtained the data *before* training — a fine-tune inherits the constraints of everything in its lineage, including the checkpoint it was initialized from. Evaluate only on sets that are in no training mix of the evaluated model
+- **Labels on EXIF-rotated photos**: `corners_px` outside the image is the tell-tale sign of corners recorded on the upright view; `convert_to_docquad.py` handles it, `CornerPipelineEvalTest` skips and lists such labels
