@@ -215,6 +215,42 @@ android {
         }
     }
 }
+
+// Optional real-world corner eval set for CornerPipelineEvalTest (layout: images/ + labels/,
+// see training/EVALUATION.md). It is bundled into the androidTest APK only when
+// -PcornerEvalDir=<dir> is passed, so regular test builds are not bloated by the photos.
+// -PcornerEvalModel=<file.ort> additionally bundles a candidate model that is evaluated instead of
+// the shipped one (give candidates distinct file names; they are cached on the device by name).
+def cornerEvalDir = providers.gradleProperty('cornerEvalDir').orNull
+def cornerEvalModel = providers.gradleProperty('cornerEvalModel').orNull
+if (cornerEvalDir != null) {
+    def cornerEvalSource = rootProject.file(cornerEvalDir)
+    if (!new File(cornerEvalSource, 'labels').isDirectory()) {
+        throw new GradleException("cornerEvalDir has no labels/ directory: ${cornerEvalSource}")
+    }
+    def cornerEvalAssets = layout.buildDirectory.dir("generated/assets/corner_eval")
+    def syncCornerEvalAssets = tasks.register('syncCornerEvalAssets', Sync) {
+        from(cornerEvalSource) {
+            include 'images/**', 'labels/**'
+        }
+        if (cornerEvalModel != null) {
+            def modelFile = rootProject.file(cornerEvalModel)
+            if (!modelFile.isFile()) {
+                throw new GradleException("cornerEvalModel is not a file: ${modelFile}")
+            }
+            from(modelFile) {
+                into 'model'
+            }
+        }
+        into cornerEvalAssets.map { it.dir('corner_eval') }
+    }
+    android.sourceSets.androidTestStandard.assets.srcDirs += [cornerEvalAssets.get().asFile]
+    tasks.configureEach { t ->
+        if (t.name.startsWith('merge') && t.name.endsWith('AndroidTestAssets')) {
+            t.dependsOn(syncCornerEvalAssets)
+        }
+    }
+}
 dependencies {
 
     implementation libs.appcompat

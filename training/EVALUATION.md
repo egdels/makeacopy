@@ -138,6 +138,8 @@ Each label file contains the ground-truth quad:
 
 Corner order must be **TL, TR, BR, BL (clockwise)**.
 
+`corners_px` are **stored pixel coordinates**: the EXIF orientation of a photo is *not* applied, because that is how PIL (training, evaluation) and Android's `BitmapFactory` read the pixels. `labeler.py` shows photos upright (`cv2.imread` applies EXIF), so `convert_to_docquad.py` maps its corners to stored coordinates (`--label_coords exif`, the default; reported as `exif_orientation_applied`). Pass `--label_coords stored` for labels that are already in stored coordinates.
+
 ---
 
 ## Running the evaluation
@@ -419,6 +421,81 @@ A model is considered **better** if:
 - IoU improves on real camera scenes (shadows, perspective, clutter)
 
 A small reduction in MAE alone does **not** justify a model that increases FAILs.
+
+---
+
+# On-device pipeline evaluation: `CornerPipelineEvalTest`
+
+`evaluate_docquad_models.py` measures the **model**. What the user sees in the crop screen is the result of the whole Android pipeline: DocQuad postprocessing, the OpenCV candidate, the best-of selection and the edge-snap refinement. `CornerPipelineEvalTest` (instrumented test, `app/src/androidTest/.../ui/crop/`) measures exactly that on the **same test set layout** (`images/` + `labels/*.json`).
+
+```bash
+./gradlew :app:connectedStandardDebugAndroidTest \
+  -PcornerEvalDir=training/data/docquad_real_eval \
+  -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.ui.crop.CornerPipelineEvalTest
+```
+
+- The test set is bundled into the androidTest APK **only** when `-PcornerEvalDir` is passed; without it the test is skipped.
+- Labels are in stored-pixel coordinates (no EXIF rotation), identical to what the Python script reads via PIL.
+- Reports are pulled to `app/build/outputs/connected_android_test_additional_output/`:
+  `corner_eval_report.md` (summary table) and `corner_eval_report.json` (per-sample corners and errors).
+- The test never fails on quality; it measures. Compare reports before/after a change.
+
+> ⚠️ `connected…AndroidTest` uninstalls the app after the run. The debug build shares the application id `de.schliweb.makeacopy`, so **use an emulator or a test device**, not a phone whose scans you want to keep.
+
+### Running it on a phone without losing app data
+
+Install both APKs in place and start the instrumentation yourself — nothing gets uninstalled:
+
+```bash
+./gradlew :app:assembleStandardDebug :app:assembleStandardDebugAndroidTest \
+  -PcornerEvalDir=training/data/<eval_set>
+adb install -r -t app/build/outputs/apk/standard/debug/app-standard-arm64-v8a-debug.apk
+adb install -r -t app/build/outputs/apk/androidTest/standard/debug/app-standard-debug-androidTest.apk
+adb shell am instrument -w \
+  -e class de.schliweb.makeacopy.ui.crop.CornerPipelineEvalTest \
+  de.schliweb.makeacopy.test/androidx.test.runner.AndroidJUnitRunner
+adb pull /sdcard/Android/data/de.schliweb.makeacopy/files/corner_eval_report/ .
+```
+
+`adb install -r` only works over an existing **debug** install (same signing key); it fails harmlessly over a release install. Afterwards `adb uninstall de.schliweb.makeacopy.test` removes the test APK (and the bundled photos) without touching the app.
+
+### Evaluating a candidate model
+
+`-PcornerEvalModel=<file.ort>` additionally bundles a model into the test APK; the harness then evaluates it instead of the shipped asset, which stays untouched. The report header and `meta.model` name the model that was used.
+
+```bash
+./gradlew :app:assembleStandardDebugAndroidTest \
+  -PcornerEvalDir=training/data/<eval_set> \
+  -PcornerEvalModel=training/runs/<run>/ort/<distinct_name>.ort
+```
+
+Give candidates distinct file names: the runner caches models in the app's cache directory by name. The candidate must pass the operator check in [README.md, section 17](README.md#17-ort-format-conversion-optional-size-optimized), otherwise it does not load on the device.
+
+Stages reported (each also as `+refine`, i.e. after `EdgeSnapCornerRefiner`):
+
+| Stage | Meaning |
+|-------|---------|
+| `docquad_plain` | single unrotated `DocQuadDetector` pass, as used by the live preview (reported without `+refine`) |
+| `docquad` | crop-screen DocQuad stage (`CornerDetectorFactory.docQuadForCrop`, i.e. with test-time rotation unless disabled), unclamped |
+| `opencv`  | OpenCV contour/Hough candidate (fallback rectangle counts as FAIL) |
+| `bestof`  | what `TrapezoidSelectionView.chooseBestCropCorners` picks — the product result (a DocQuad result with confidence ≥ `DOCQUAD_TRUSTED_CONFIDENCE` wins outright, otherwise the shape comparison decides) |
+
+### Tilted documents: `make_tilt_eval_set.py`
+
+DocQuadNet is weak on documents tilted by more than ~20° (small rotation augmentation in training). To measure that without new labels, rotate an existing labelled set about the image centre, which is what a tilted camera does:
+
+```bash
+python3 training/scripts/make_tilt_eval_set.py \
+  --in_dir training/data/<own_unseen_set> \
+  --out_dir training/data/own_tilt_eval \
+  --per_image 2
+```
+
+The canvas size is kept and uncovered corners are filled by reflection (a constant fill adds a straight high-contrast border that detectors mistake for a document edge). Use only source sets the evaluated model has never seen, keep one rotated set untouched as a holdout when tuning thresholds, and do not use third-party datasets whose terms or agreements exclude this use.
+
+Per-sample fields in `corner_eval_report.json` that make offline what-if analysis possible without another device run: `docquad_confidence` / `docquad_plain_confidence` (peak probability × corner/mask agreement of the crop-screen detector and of the single pass), `docquad_chosen_source` (`CORNERS`, `MASK` or `CORNERS_ROT<angle>` when a rotated pass won), `docquad_shape_score` / `opencv_shape_score` and `opencv_from_hough` (inputs of the best-of policy), `bestof_picked`, and timings. Decide threshold changes from these device reports: a Python replica of the preprocessing agrees with the device on confident detections but not in the low-confidence zone where such thresholds act.
+
+Errors are relative to the image diagonal and minimised over cyclic corner orderings (`order shifted` counts samples where the outline was right but the corner labels were rotated). The **Best-of selection** section reports how often the policy picked the candidate that was actually closer to ground truth, and the regret when it did not.
 
 ---
 
