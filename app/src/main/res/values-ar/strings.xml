@@ -396,6 +396,21 @@
     <string name="pdf_import_cancelled">تم إلغاء الاستيراد</string>
     <string name="pdf_import_nothing_imported">تعذّر استيراد أي صفحة</string>
     <string name="error_insufficient_storage">لا توجد مساحة تخزين كافية لاستيراد هذه الصفحات</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">الصفحة الحالية</string>
+    <string name="ocr_batch_option_selected">الصفحات المحددة…</string>
+    <string name="ocr_batch_option_all">جميع الصفحات</string>
+    <string name="ocr_batch_option_language">لغة OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">تحديد الصفحات لـ OCR</string>
+    <string name="ocr_batch_running_title">جارٍ تشغيل OCR</string>
+    <string name="ocr_batch_already_running">OCR قيد التشغيل بالفعل</string>
+    <string name="ocr_batch_nothing_to_do">جميع الصفحات تحتوي بالفعل على OCR</string>
+    <string name="ocr_batch_finished_title">اكتمل OCR</string>
+    <string name="ocr_batch_summary">نجاح %1$d، فشل %2$d</string>
+    <string name="ocr_batch_summary_skipped">تم تخطي %1$d</string>
+    <string name="ocr_batch_retry_failed">إعادة محاولة الفاشلة</string>
+    <string name="ocr_batch_cancelled">تم إلغاء OCR</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">اختر لغات التعرّف الضوئي على الحروف</string>

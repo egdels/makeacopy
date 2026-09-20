@@ -398,6 +398,21 @@
     <string name="pdf_import_cancelled">وارد کردن لغو شد</string>
     <string name="pdf_import_nothing_imported">هیچ صفحه‌ای وارد نشد</string>
     <string name="error_insufficient_storage">فضای ذخیره‌سازی آزاد کافی برای وارد کردن این صفحات وجود ندارد</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">صفحه فعلی</string>
+    <string name="ocr_batch_option_selected">صفحات انتخاب‌شده…</string>
+    <string name="ocr_batch_option_all">همه صفحات</string>
+    <string name="ocr_batch_option_language">زبان OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">انتخاب صفحات برای OCR</string>
+    <string name="ocr_batch_running_title">در حال اجرای OCR</string>
+    <string name="ocr_batch_already_running">OCR در حال حاضر در حال اجراست</string>
+    <string name="ocr_batch_nothing_to_do">همه صفحات از قبل دارای OCR هستند</string>
+    <string name="ocr_batch_finished_title">OCR تکمیل شد</string>
+    <string name="ocr_batch_summary">%1$d موفق، %2$d ناموفق</string>
+    <string name="ocr_batch_summary_skipped">%1$d رد شد</string>
+    <string name="ocr_batch_retry_failed">تلاش مجدد برای موارد ناموفق</string>
+    <string name="ocr_batch_cancelled">OCR لغو شد</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">انتخاب زبان‌های OCR</string>

@@ -387,6 +387,21 @@
     <string name="pdf_import_cancelled">आयात रद्द किया गया</string>
     <string name="pdf_import_nothing_imported">कोई भी पृष्ठ आयात नहीं किया जा सका</string>
     <string name="error_insufficient_storage">इन पृष्ठों को आयात करने के लिए पर्याप्त खाली संग्रहण स्थान नहीं है</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">वर्तमान पृष्ठ</string>
+    <string name="ocr_batch_option_selected">चयनित पृष्ठ…</string>
+    <string name="ocr_batch_option_all">सभी पृष्ठ</string>
+    <string name="ocr_batch_option_language">OCR भाषा (%1$s)…</string>
+    <string name="ocr_batch_select_pages">OCR के लिए पृष्ठ चुनें</string>
+    <string name="ocr_batch_running_title">OCR चल रहा है</string>
+    <string name="ocr_batch_already_running">OCR पहले से ही चल रहा है</string>
+    <string name="ocr_batch_nothing_to_do">सभी पृष्ठों में पहले से ही OCR है</string>
+    <string name="ocr_batch_finished_title">OCR पूर्ण हुआ</string>
+    <string name="ocr_batch_summary">%1$d सफल, %2$d विफल</string>
+    <string name="ocr_batch_summary_skipped">%1$d छोड़े गए</string>
+    <string name="ocr_batch_retry_failed">विफल को पुनः प्रयास करें</string>
+    <string name="ocr_batch_cancelled">OCR रद्द किया गया</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR भाषाएँ चुनें</string>

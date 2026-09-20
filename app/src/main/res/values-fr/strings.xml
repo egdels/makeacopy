@@ -406,6 +406,21 @@
     <string name="pdf_import_cancelled">Importation annulée</string>
     <string name="pdf_import_nothing_imported">Aucune page n’a pu être importée</string>
     <string name="error_insufficient_storage">Espace de stockage insuffisant pour importer ces pages</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Page actuelle</string>
+    <string name="ocr_batch_option_selected">Pages sélectionnées…</string>
+    <string name="ocr_batch_option_all">Toutes les pages</string>
+    <string name="ocr_batch_option_language">Langue OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Sélectionner les pages pour l’OCR</string>
+    <string name="ocr_batch_running_title">Exécution de l’OCR</string>
+    <string name="ocr_batch_already_running">L’OCR est déjà en cours d’exécution</string>
+    <string name="ocr_batch_nothing_to_do">Toutes les pages ont déjà un OCR</string>
+    <string name="ocr_batch_finished_title">OCR terminé</string>
+    <string name="ocr_batch_summary">%1$d réussies, %2$d échouées</string>
+    <string name="ocr_batch_summary_skipped">%1$d ignorées</string>
+    <string name="ocr_batch_retry_failed">Réessayer les échecs</string>
+    <string name="ocr_batch_cancelled">OCR annulé</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Sélectionner les langues OCR</string>

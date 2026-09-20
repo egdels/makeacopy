@@ -401,6 +401,21 @@
     <string name="pdf_import_cancelled">İçe aktarma iptal edildi</string>
     <string name="pdf_import_nothing_imported">Hiçbir sayfa içe aktarılamadı</string>
     <string name="error_insufficient_storage">Bu sayfaları içe aktarmak için yeterli boş depolama alanı yok</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Geçerli sayfa</string>
+    <string name="ocr_batch_option_selected">Seçili sayfalar…</string>
+    <string name="ocr_batch_option_all">Tüm sayfalar</string>
+    <string name="ocr_batch_option_language">OCR dili (%1$s)…</string>
+    <string name="ocr_batch_select_pages">OCR için sayfaları seç</string>
+    <string name="ocr_batch_running_title">OCR çalıştırılıyor</string>
+    <string name="ocr_batch_already_running">OCR zaten çalışıyor</string>
+    <string name="ocr_batch_nothing_to_do">Tüm sayfalarda zaten OCR var</string>
+    <string name="ocr_batch_finished_title">OCR tamamlandı</string>
+    <string name="ocr_batch_summary">%1$d başarılı, %2$d başarısız</string>
+    <string name="ocr_batch_summary_skipped">%1$d atlandı</string>
+    <string name="ocr_batch_retry_failed">Başarısızları yeniden dene</string>
+    <string name="ocr_batch_cancelled">OCR iptal edildi</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR Dillerini Seçin</string>

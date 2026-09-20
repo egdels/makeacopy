@@ -412,6 +412,21 @@
     <string name="pdf_import_cancelled">Import anulat</string>
     <string name="pdf_import_nothing_imported">Nu s-a putut importa nicio pagină</string>
     <string name="error_insufficient_storage">Spațiu de stocare insuficient pentru a importa aceste pagini</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Pagina curentă</string>
+    <string name="ocr_batch_option_selected">Pagini selectate…</string>
+    <string name="ocr_batch_option_all">Toate paginile</string>
+    <string name="ocr_batch_option_language">Limbă OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Selectați paginile pentru OCR</string>
+    <string name="ocr_batch_running_title">Se rulează OCR</string>
+    <string name="ocr_batch_already_running">OCR rulează deja</string>
+    <string name="ocr_batch_nothing_to_do">Toate paginile au deja OCR</string>
+    <string name="ocr_batch_finished_title">OCR finalizat</string>
+    <string name="ocr_batch_summary">%1$d reușite, %2$d eșuate</string>
+    <string name="ocr_batch_summary_skipped">%1$d omise</string>
+    <string name="ocr_batch_retry_failed">Reîncearcă cele eșuate</string>
+    <string name="ocr_batch_cancelled">OCR anulat</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Selectați limbile OCR</string>

@@ -397,6 +397,21 @@
     <string name="pdf_import_cancelled">ยกเลิกการนำเข้าแล้ว</string>
     <string name="pdf_import_nothing_imported">ไม่สามารถนำเข้าหน้าใดได้เลย</string>
     <string name="error_insufficient_storage">พื้นที่จัดเก็บว่างไม่เพียงพอสำหรับการนำเข้าหน้าเหล่านี้</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">หน้าปัจจุบัน</string>
+    <string name="ocr_batch_option_selected">หน้าที่เลือก…</string>
+    <string name="ocr_batch_option_all">ทุกหน้า</string>
+    <string name="ocr_batch_option_language">ภาษา OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">เลือกหน้าสำหรับ OCR</string>
+    <string name="ocr_batch_running_title">กำลังทำ OCR</string>
+    <string name="ocr_batch_already_running">OCR กำลังทำงานอยู่แล้ว</string>
+    <string name="ocr_batch_nothing_to_do">ทุกหน้ามี OCR แล้ว</string>
+    <string name="ocr_batch_finished_title">OCR เสร็จสมบูรณ์</string>
+    <string name="ocr_batch_summary">สำเร็จ %1$d, ล้มเหลว %2$d</string>
+    <string name="ocr_batch_summary_skipped">ข้าม %1$d รายการ</string>
+    <string name="ocr_batch_retry_failed">ลองอีกครั้งสำหรับรายการที่ล้มเหลว</string>
+    <string name="ocr_batch_cancelled">ยกเลิก OCR แล้ว</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">เลือกภาษา OCR</string>

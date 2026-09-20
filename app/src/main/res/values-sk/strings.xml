@@ -410,6 +410,21 @@
     <string name="pdf_import_cancelled">Import zrušený</string>
     <string name="pdf_import_nothing_imported">Nepodarilo sa importovať žiadnu stranu</string>
     <string name="error_insufficient_storage">Nedostatok voľného úložiska na import týchto strán</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Aktuálna stránka</string>
+    <string name="ocr_batch_option_selected">Vybrané stránky…</string>
+    <string name="ocr_batch_option_all">Všetky stránky</string>
+    <string name="ocr_batch_option_language">Jazyk OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Vybrať stránky pre OCR</string>
+    <string name="ocr_batch_running_title">Prebieha OCR</string>
+    <string name="ocr_batch_already_running">OCR už prebieha</string>
+    <string name="ocr_batch_nothing_to_do">Všetky stránky už majú OCR</string>
+    <string name="ocr_batch_finished_title">OCR dokončené</string>
+    <string name="ocr_batch_summary">%1$d úspešných, %2$d neúspešných</string>
+    <string name="ocr_batch_summary_skipped">%1$d preskočených</string>
+    <string name="ocr_batch_retry_failed">Zopakovať neúspešné</string>
+    <string name="ocr_batch_cancelled">OCR zrušené</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Vyberte jazyky OCR</string>

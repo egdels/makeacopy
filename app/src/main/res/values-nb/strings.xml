@@ -400,6 +400,21 @@
     <string name="pdf_import_cancelled">Import avbrutt</string>
     <string name="pdf_import_nothing_imported">Ingen sider kunne importeres</string>
     <string name="error_insufficient_storage">Ikke nok ledig lagringsplass til å importere disse sidene</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Gjeldende side</string>
+    <string name="ocr_batch_option_selected">Valgte sider…</string>
+    <string name="ocr_batch_option_all">Alle sider</string>
+    <string name="ocr_batch_option_language">OCR-språk (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Velg sider for OCR</string>
+    <string name="ocr_batch_running_title">Kjører OCR</string>
+    <string name="ocr_batch_already_running">OCR kjører allerede</string>
+    <string name="ocr_batch_nothing_to_do">Alle sider har allerede OCR</string>
+    <string name="ocr_batch_finished_title">OCR fullført</string>
+    <string name="ocr_batch_summary">%1$d vellykket, %2$d mislyktes</string>
+    <string name="ocr_batch_summary_skipped">%1$d hoppet over</string>
+    <string name="ocr_batch_retry_failed">Prøv mislykkede på nytt</string>
+    <string name="ocr_batch_cancelled">OCR avbrutt</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Velg OCR-språk</string>

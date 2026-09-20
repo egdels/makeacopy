@@ -405,6 +405,21 @@
     <string name="pdf_import_cancelled">Importeren geannuleerd</string>
     <string name="pdf_import_nothing_imported">Er konden geen pagina\'s worden geïmporteerd</string>
     <string name="error_insufficient_storage">Onvoldoende vrije opslagruimte om deze pagina\'s te importeren</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Huidige pagina</string>
+    <string name="ocr_batch_option_selected">Geselecteerde pagina\'s…</string>
+    <string name="ocr_batch_option_all">Alle pagina\'s</string>
+    <string name="ocr_batch_option_language">OCR-taal (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Pagina\'s selecteren voor OCR</string>
+    <string name="ocr_batch_running_title">OCR wordt uitgevoerd</string>
+    <string name="ocr_batch_already_running">OCR wordt al uitgevoerd</string>
+    <string name="ocr_batch_nothing_to_do">Alle pagina\'s hebben al OCR</string>
+    <string name="ocr_batch_finished_title">OCR voltooid</string>
+    <string name="ocr_batch_summary">%1$d geslaagd, %2$d mislukt</string>
+    <string name="ocr_batch_summary_skipped">%1$d overgeslagen</string>
+    <string name="ocr_batch_retry_failed">Mislukte opnieuw proberen</string>
+    <string name="ocr_batch_cancelled">OCR geannuleerd</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR-talen selecteren</string>

@@ -406,6 +406,21 @@
     <string name="pdf_import_cancelled">Импорт отменён</string>
     <string name="pdf_import_nothing_imported">Не удалось импортировать ни одной страницы</string>
     <string name="error_insufficient_storage">Недостаточно свободного места для импорта этих страниц</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Текущая страница</string>
+    <string name="ocr_batch_option_selected">Выбранные страницы…</string>
+    <string name="ocr_batch_option_all">Все страницы</string>
+    <string name="ocr_batch_option_language">Язык OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Выбрать страницы для OCR</string>
+    <string name="ocr_batch_running_title">Выполняется OCR</string>
+    <string name="ocr_batch_already_running">OCR уже выполняется</string>
+    <string name="ocr_batch_nothing_to_do">На всех страницах уже есть OCR</string>
+    <string name="ocr_batch_finished_title">OCR завершён</string>
+    <string name="ocr_batch_summary">%1$d успешно, %2$d с ошибками</string>
+    <string name="ocr_batch_summary_skipped">%1$d пропущено</string>
+    <string name="ocr_batch_retry_failed">Повторить неудачные</string>
+    <string name="ocr_batch_cancelled">OCR отменён</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Выберите языки OCR</string>

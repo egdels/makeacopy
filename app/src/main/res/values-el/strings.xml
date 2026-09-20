@@ -389,6 +389,21 @@
     <string name="pdf_import_cancelled">Η εισαγωγή ακυρώθηκε</string>
     <string name="pdf_import_nothing_imported">Δεν ήταν δυνατή η εισαγωγή καμίας σελίδας</string>
     <string name="error_insufficient_storage">Δεν υπάρχει αρκετός ελεύθερος αποθηκευτικός χώρος για την εισαγωγή αυτών των σελίδων</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Τρέχουσα σελίδα</string>
+    <string name="ocr_batch_option_selected">Επιλεγμένες σελίδες…</string>
+    <string name="ocr_batch_option_all">Όλες οι σελίδες</string>
+    <string name="ocr_batch_option_language">Γλώσσα OCR (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Επιλογή σελίδων για OCR</string>
+    <string name="ocr_batch_running_title">Εκτέλεση OCR</string>
+    <string name="ocr_batch_already_running">Το OCR εκτελείται ήδη</string>
+    <string name="ocr_batch_nothing_to_do">Όλες οι σελίδες έχουν ήδη OCR</string>
+    <string name="ocr_batch_finished_title">Το OCR ολοκληρώθηκε</string>
+    <string name="ocr_batch_summary">%1$d επιτυχή, %2$d απέτυχαν</string>
+    <string name="ocr_batch_summary_skipped">%1$d παραλείφθηκαν</string>
+    <string name="ocr_batch_retry_failed">Επανάληψη αποτυχημένων</string>
+    <string name="ocr_batch_cancelled">Το OCR ακυρώθηκε</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Επιλογή γλωσσών OCR</string>

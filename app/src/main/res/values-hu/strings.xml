@@ -403,6 +403,21 @@
     <string name="pdf_import_cancelled">Az importálás megszakítva</string>
     <string name="pdf_import_nothing_imported">Egyetlen oldalt sem sikerült importálni</string>
     <string name="error_insufficient_storage">Nincs elég szabad tárhely ezeknek az oldalaknak az importálásához</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">Aktuális oldal</string>
+    <string name="ocr_batch_option_selected">Kijelölt oldalak…</string>
+    <string name="ocr_batch_option_all">Összes oldal</string>
+    <string name="ocr_batch_option_language">OCR nyelve (%1$s)…</string>
+    <string name="ocr_batch_select_pages">Oldalak kiválasztása OCR-hez</string>
+    <string name="ocr_batch_running_title">OCR futtatása</string>
+    <string name="ocr_batch_already_running">Az OCR már fut</string>
+    <string name="ocr_batch_nothing_to_do">Minden oldalon már van OCR</string>
+    <string name="ocr_batch_finished_title">OCR befejezve</string>
+    <string name="ocr_batch_summary">%1$d sikeres, %2$d sikertelen</string>
+    <string name="ocr_batch_summary_skipped">%1$d kihagyva</string>
+    <string name="ocr_batch_retry_failed">Sikertelenek újrapróbálása</string>
+    <string name="ocr_batch_cancelled">OCR megszakítva</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR-nyelvek kiválasztása</string>

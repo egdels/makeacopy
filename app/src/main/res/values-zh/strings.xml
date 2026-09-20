@@ -381,6 +381,21 @@
     <string name="pdf_import_cancelled">导入已取消</string>
     <string name="pdf_import_nothing_imported">未能导入任何页面</string>
     <string name="error_insufficient_storage">可用存储空间不足，无法导入这些页面</string>
+    <!-- Batch OCR (multi-page documents) -->
+    <string name="ocr_batch_title">OCR</string>
+    <string name="ocr_batch_option_current">当前页</string>
+    <string name="ocr_batch_option_selected">已选页面…</string>
+    <string name="ocr_batch_option_all">所有页面</string>
+    <string name="ocr_batch_option_language">OCR 语言 (%1$s)…</string>
+    <string name="ocr_batch_select_pages">选择要进行 OCR 的页面</string>
+    <string name="ocr_batch_running_title">正在运行 OCR</string>
+    <string name="ocr_batch_already_running">OCR 已在运行</string>
+    <string name="ocr_batch_nothing_to_do">所有页面均已完成 OCR</string>
+    <string name="ocr_batch_finished_title">OCR 已完成</string>
+    <string name="ocr_batch_summary">成功 %1$d 个，失败 %2$d 个</string>
+    <string name="ocr_batch_summary_skipped">跳过 %1$d 个</string>
+    <string name="ocr_batch_retry_failed">重试失败项</string>
+    <string name="ocr_batch_cancelled">OCR 已取消</string>
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">选择 OCR 语言</string>
