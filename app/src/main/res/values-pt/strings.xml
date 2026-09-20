@@ -294,41 +294,39 @@
     <string name="library_actions">Ações da biblioteca</string>    <!-- Library list: collections membership -->
     <string name="in_collections_prefix">Em: %1$s</string>
     <!-- Delete confirmation (ScanDetails) -->
-    <string name="delete_warning_irreversible">Plik zostanie usunięty z urządzenia. Tej operacji nie można cofnąć.
-    </string>
+    <string name="delete_warning_irreversible">O arquivo será excluído do dispositivo. Esta ação não pode ser desfeita.</string>
 
     <!-- ExportFragment toasts -->
-    <string name="no_document_to_export">Brak dokumentu do eksportu</string>
-    <string name="failed_to_export_document">Nie udało się wyeksportować dokumentu</string>
-    <string name="error_during_export_with_reason">Błąd podczas eksportu: %1$s</string>
-    <string name="document_exported">Dokument %1$s wyeksportowany</string>
-    <string name="document_multipage_exported">Dokument (wielostronicowy) %1$s wyeksportowany</string>
-    <string name="no_target_selected">Nie wybrano celu</string>
-    <string name="image_exported">Obraz %1$s wyeksportowany</string>
-    <string name="failed_to_export_image">Nie udało się wyeksportować obrazu</string>
-    <string name="error_during_jpeg_export_with_reason">Błąd podczas eksportu JPEG: %1$s</string>
-    <string name="zip_exported">ZIP %1$s wyeksportowany</string>
-    <string name="failed_to_export_zip">Nie udało się wyeksportować ZIP</string>
-    <string name="error_during_zip_export_with_reason">Błąd podczas eksportu ZIP: %1$s</string>
-    <string name="ocr_text_exported_as_txt">Tekst OCR wyeksportowany jako TXT</string>
-    <string name="error_exporting_ocr_text_with_reason">Błąd podczas eksportu tekstu OCR: %1$s</string>
-    <string name="no_document_to_share_export_first">Brak dokumentu do udostępnienia. Najpierw wyeksportuj dokument.
-    </string>
-    <string name="error_sharing_document_with_reason">Błąd podczas udostępniania dokumentu: %1$s</string>
-    <string name="feature_scan_library_disabled">Funkcja biblioteki skanów jest wyłączona</string>
-    <string name="navigation_failed">Nawigacja nie powiodła się</string>
+    <string name="no_document_to_export">Nenhum documento para exportar</string>
+    <string name="failed_to_export_document">Falha ao exportar o documento</string>
+    <string name="error_during_export_with_reason">Erro durante a exportação: %1$s</string>
+    <string name="document_exported">Documento %1$s exportado</string>
+    <string name="document_multipage_exported">Documento (várias páginas) %1$s exportado</string>
+    <string name="no_target_selected">Nenhum destino selecionado</string>
+    <string name="image_exported">Imagem %1$s exportada</string>
+    <string name="failed_to_export_image">Falha ao exportar a imagem</string>
+    <string name="error_during_jpeg_export_with_reason">Erro durante a exportação de JPEG: %1$s</string>
+    <string name="zip_exported">ZIP %1$s exportado</string>
+    <string name="failed_to_export_zip">Falha ao exportar o ZIP</string>
+    <string name="error_during_zip_export_with_reason">Erro durante a exportação de ZIP: %1$s</string>
+    <string name="ocr_text_exported_as_txt">Texto OCR exportado como TXT</string>
+    <string name="error_exporting_ocr_text_with_reason">Erro ao exportar o texto OCR: %1$s</string>
+    <string name="no_document_to_share_export_first">Nenhum documento disponível para compartilhar. Exporte um documento primeiro.</string>
+    <string name="error_sharing_document_with_reason">Erro ao compartilhar o documento: %1$s</string>
+    <string name="feature_scan_library_disabled">O recurso de biblioteca de digitalizações está desativado</string>
+    <string name="navigation_failed">Falha na navegação</string>
 
     <!-- ScanDetailsFragment toasts -->
-    <string name="missing_scan_id">Brak identyfikatora skanu</string>
-    <string name="picker_failed">Nie udało się wybrać</string>
-    <string name="share_failed">Udostępnianie nie powiodło się</string>
-    <string name="no_app_found_to_open_file">Nie znaleziono aplikacji do otwarcia tego pliku</string>
+    <string name="missing_scan_id">ID da digitalização ausente</string>
+    <string name="picker_failed">Falha na seleção</string>
+    <string name="share_failed">Falha ao compartilhar</string>
+    <string name="no_app_found_to_open_file">Nenhum aplicativo encontrado para abrir este arquivo</string>
 
     <!-- ScansLibraryFragment toasts/dialogs -->
-    <string name="remove_from_collection_question">Usunąć z tej kolekcji?</string>
-    <string name="removed_from_collection">Usunięto z kolekcji</string>
-    <string name="indexed_new_items">Zindeksowano %1$d nowych element(ów)</string>
-    <string name="nothing_new_to_index">Brak nowych elementów do zindeksowania</string>
+    <string name="remove_from_collection_question">Remover desta coleção?</string>
+    <string name="removed_from_collection">Removido da coleção</string>
+    <string name="indexed_new_items">%1$d novo(s) item(ns) indexado(s)</string>
+    <string name="nothing_new_to_index">Nada de novo para indexar</string>
 
     <!-- ScansLibraryFragment: seleção múltipla para exclusão -->
     <string name="select_scans">Selecionar digitalizações</string>
