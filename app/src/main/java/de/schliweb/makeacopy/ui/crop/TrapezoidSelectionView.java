@@ -1539,10 +1539,13 @@ public class TrapezoidSelectionView extends View {
    * DocQuad confidence (peak probability × corner/mask agreement) from which its quad is used
    * without consulting the shape comparison. {@link #scoreImageQuad} is a shape prior only and
    * systematically prefers "nicer" OpenCV quads over correct but tilted or perspective DocQuad
-   * results; measured on real photos, OpenCV picks made by shape were wrong about twice as often as
-   * right, while a confident DocQuad result was almost never beaten by OpenCV.
+   * results; measured on real photos, OpenCV picks made by shape were wrong far more often than
+   * right, while a DocQuad result was almost never beaten by OpenCV. The value depends on the
+   * model's confidence distribution: with the rotation-augmented model the shape comparison only
+   * helps when DocQuad has next to no confidence (re-check after a model change, see
+   * training/EVALUATION.md).
    */
-  static final double DOCQUAD_TRUSTED_CONFIDENCE = 0.3;
+  static final double DOCQUAD_TRUSTED_CONFIDENCE = 0.1;
 
   /**
    * Best-of policy between the DocQuad and the OpenCV candidate (both in original image

@@ -130,7 +130,10 @@ public class TrapezoidSelectionViewImageQuadValidationTest {
     Point[] doc = TILTED_DOCQUAD.clone();
     Point[] cv = NICE_OPENCV.clone();
     assertSame(cv, TrapezoidSelectionView.chooseBestCropCorners(doc, null, cv, false, 1000, 1000));
-    assertSame(cv, TrapezoidSelectionView.chooseBestCropCorners(doc, 0.1, cv, false, 1000, 1000));
+    assertSame(
+        cv,
+        TrapezoidSelectionView.chooseBestCropCorners(
+            doc, TrapezoidSelectionView.DOCQUAD_TRUSTED_CONFIDENCE / 2, cv, false, 1000, 1000));
   }
 
   @Test
