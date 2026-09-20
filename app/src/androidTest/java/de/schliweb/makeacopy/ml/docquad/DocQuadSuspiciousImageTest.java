@@ -11,11 +11,12 @@ import android.graphics.Canvas;
 import android.graphics.RectF;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import de.schliweb.makeacopy.ml.corners.CompositeCornerDetector;
+import de.schliweb.makeacopy.BuildConfig;
+import de.schliweb.makeacopy.ml.corners.CornerDetectorFactory;
 import de.schliweb.makeacopy.ml.corners.DetectionResult;
 import de.schliweb.makeacopy.ml.corners.DocQuadDetector;
-import de.schliweb.makeacopy.ml.corners.LegacyCornerDetector;
 import de.schliweb.makeacopy.ml.corners.Source;
+import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import java.io.InputStream;
 import org.junit.Assume;
 import org.junit.Test;
@@ -26,9 +27,10 @@ import org.junit.runner.RunWith;
  * Bild aus der Evaluierung.
  *
  * <p>Das Testbild {@code sample_20260124_174305_846_original.jpg} ist ein bekannter Outlier aus der
- * Evaluierung mit hohem MAE (568px) und niedrigem IoU (0.365). Dieser Test verifiziert, dass die
- * neuen Evidence-Based Guardrails (Rules D/E/F) dieses Bild als "suspicious" erkennen und somit
- * einen OpenCV-Fallback triggern würden.
+ * Evaluierung mit hohem MAE (568px) und niedrigem IoU (0.365). Der erste Test verifiziert, dass die
+ * Evidence-Based Guardrails (Rules D/E/F) dieses Bild als "suspicious" erkennen; der zweite, dass
+ * der Crop-Detektor es trotzdem korrekt löst (der frühere OpenCV-Fallback ist seit 9a2fc99
+ * deaktiviert, siehe dort).
  *
  * <p>Laut Evaluierungsbericht wird dieses Bild mit {@code suspicious_for_product: true} und {@code
  * suspicious_reason: "LOW_PEAK_MARGIN"} (Rule D) markiert.
@@ -133,73 +135,107 @@ public class DocQuadSuspiciousImageTest {
     if (!in256.isRecycled()) in256.recycle();
   }
 
+  // Ground truth of TEST_IMAGE_ASSET in stored pixel coordinates (TL,TR,BR,BL), image 3024x4032.
+  private static final double[][] OUTLIER_GROUND_TRUTH = {
+    {161.1, 1753.5}, {2090.7, 609.6}, {2940.7, 1801.8}, {1000.4, 3104.2}
+  };
+
   /**
-   * Test für den vollständigen Detektionspfad: Verifiziert, dass bei einem suspicious-Bild der
-   * CompositeCornerDetector auf OpenCV zurückfällt.
+   * End-to-end check of what the product does with this known outlier (a book lying at ~30° on a
+   * striped cloth) in the crop screen.
    *
-   * <p>Dieser Test prüft die End-to-End-Integration:
+   * <p>History: the suspicious guard once made {@code DocQuadDetector} fail for such images so that
+   * the composite detector fell back to OpenCV. The guard has been disabled since 9a2fc99, and a
+   * fallback would not have helped here anyway: OpenCV finds no document in this photo at all. The
+   * intended outcome (no wrong quad for the outlier) is delivered today by the crop-screen detector:
    *
    * <ol>
-   *   <li>DocQuadDetector erkennt das Bild als suspicious (via Product Guardrails)
-   *   <li>DocQuadDetector gibt fail() zurück
-   *   <li>CompositeCornerDetector fällt auf LegacyCornerDetector (OpenCV) zurück
-   *   <li>Das Ergebnis kommt von Source.OPENCV oder Source.FALLBACK (nicht DOCQUAD)
+   *   <li>the single model pass is still unsure about this image (low confidence), and
+   *   <li>{@link CornerDetectorFactory#docQuadForCrop} rescues it with a rotated pass and returns an
+   *       accurate quad.
    * </ol>
    */
   @Test
-  public void suspiciousImage_triggersOpenCVFallback() throws Exception {
+  public void knownOutlier_isRescuedByCropDetector() throws Exception {
     Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
     Assume.assumeTrue(
         "trained tests disabled (set RUN_TRAINED_TESTS=1 to enable)",
         TrainedTestConfig.trainedTestsEnabled());
+    Assume.assumeTrue(
+        "test-time rotation is disabled", BuildConfig.FEATURE_DOCQUAD_ROTATION_TTA);
 
-    // 1) Load test image from assets
     Bitmap srcBitmap;
     try (InputStream is = ctx.getAssets().open(TEST_IMAGE_ASSET)) {
       srcBitmap = BitmapFactory.decodeStream(is);
     }
     assertNotNull("Test image could not be loaded: " + TEST_IMAGE_ASSET, srcBitmap);
+    int srcW = srcBitmap.getWidth();
+    int srcH = srcBitmap.getHeight();
 
-    // 2) Create CompositeCornerDetector (DocQuad -> Legacy/OpenCV fallback)
+    // Same pre-scale as the crop screen (TrapezoidSelectionView.initializeCornersAsync()).
+    float scale = Math.min(1f, OpenCVUtils.DETECTION_MAX_EDGE / (float) Math.max(srcW, srcH));
+    Bitmap work =
+        Bitmap.createScaledBitmap(
+            srcBitmap, Math.round(srcW * scale), Math.round(srcH * scale), true);
+
     DocQuadOrtRunner runner =
         DocQuadOrtRunner.getInstance(ctx, DocQuadDetector.DEFAULT_MODEL_ASSET_PATH);
-    DocQuadDetector docQuadDetector = new DocQuadDetector(runner);
-    LegacyCornerDetector legacyDetector = new LegacyCornerDetector();
-    CompositeCornerDetector compositeDetector =
-        new CompositeCornerDetector(docQuadDetector, legacyDetector);
+    DetectionResult single = new DocQuadDetector(runner).detect(work, ctx);
+    DetectionResult crop = CornerDetectorFactory.docQuadForCrop(runner).detect(work, ctx);
 
-    // 3) Run detection through the full pipeline
-    DetectionResult result = compositeDetector.detect(srcBitmap, ctx);
-
-    // 4) Log the result for diagnostic purposes
     android.util.Log.i(
         "DocQuadSuspiciousImageTest",
-        "CompositeDetector result: success="
-            + result.success
-            + ", source="
-            + result.source
+        "single pass: success="
+            + single.success
+            + ", confidence="
+            + single.confidence
+            + " | crop detector: success="
+            + crop.success
             + ", chosenSource="
-            + result.chosenSource);
+            + crop.chosenSource
+            + ", confidence="
+            + crop.confidence);
 
-    // 5) MAIN ASSERTION: The result should NOT come from DOCQUAD
-    // Because the image is suspicious, DocQuadDetector should fail and
-    // CompositeCornerDetector should fall back to OpenCV.
-    assertTrue("Expected detection to succeed (via OpenCV fallback)", result.success);
-
-    // The source should be OPENCV or FALLBACK, but NOT DOCQUAD
-    // (DOCQUAD would indicate the suspicious guardrails didn't trigger)
+    // 1) The single pass must not be confident about this image.
+    assertNotNull("single pass must report a confidence", single.confidence);
     assertTrue(
-        "Expected source to be OPENCV or FALLBACK (not DOCQUAD) for suspicious image. "
-            + "Actual source: "
-            + result.source,
-        result.source == Source.OPENCV || result.source == Source.FALLBACK);
+        "Expected a low single-pass confidence for the outlier, got " + single.confidence,
+        single.confidence < 0.5);
 
-    // 6) Verify corners are valid
-    assertNotNull("Corners should not be null", result.cornersOriginalTLTRBRBL);
-    assertEquals("Should have 4 corners", 4, result.cornersOriginalTLTRBRBL.length);
+    // 2) The crop detector must rescue it with a rotated pass ...
+    assertTrue("Expected the crop detector to succeed", crop.success);
+    assertEquals(Source.DOCQUAD, crop.source);
+    assertNotNull(crop.chosenSource);
+    assertTrue(
+        "Expected a rotated pass to win, got chosenSource=" + crop.chosenSource,
+        crop.chosenSource.startsWith("CORNERS_ROT"));
+    assertNotNull(crop.confidence);
+    assertTrue(
+        "Expected the rotated pass to be more confident than the single pass",
+        crop.confidence > single.confidence);
 
-    // Cleanup
+    // 3) ... and the quad must be accurate: mean corner error below 3% of the image diagonal
+    // (minimised over cyclic corner orderings, as in CornerPipelineEvalTest).
+    double diag = Math.hypot(srcW, srcH);
+    double best = Double.MAX_VALUE;
+    for (int shift = 0; shift < 4; shift++) {
+      double sum = 0.0;
+      for (int k = 0; k < 4; k++) {
+        double[] c = crop.cornersOriginalTLTRBRBL[(k + shift) % 4];
+        sum +=
+            Math.hypot(
+                c[0] / scale - OUTLIER_GROUND_TRUTH[k][0],
+                c[1] / scale - OUTLIER_GROUND_TRUTH[k][1]);
+      }
+      best = Math.min(best, sum / 4.0 / diag);
+    }
+    assertTrue(
+        "Expected mean corner error < 3% of the diagonal, got "
+            + String.format(java.util.Locale.US, "%.2f%%", best * 100.0),
+        best < 0.03);
+
+    if (work != srcBitmap && !work.isRecycled()) work.recycle();
     if (!srcBitmap.isRecycled()) srcBitmap.recycle();
   }
 
