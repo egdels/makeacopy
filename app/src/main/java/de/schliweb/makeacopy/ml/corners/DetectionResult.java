@@ -24,23 +24,31 @@ public final class DetectionResult {
   @Nullable public final Double penaltyMask;
   @Nullable public final Double penaltyCorners;
 
+  /**
+   * Detector confidence in [0,1], or {@code null} if the detector cannot tell. For DocQuad this is
+   * the peak probability × corner/mask agreement of the model pass that produced the quad.
+   */
+  @Nullable public final Double confidence;
+
   private DetectionResult(
       boolean success,
       Source source,
       @Nullable double[][] cornersOriginalTLTRBRBL,
       @Nullable String chosenSource,
       @Nullable Double penaltyMask,
-      @Nullable Double penaltyCorners) {
+      @Nullable Double penaltyCorners,
+      @Nullable Double confidence) {
     this.success = success;
     this.source = source;
     this.cornersOriginalTLTRBRBL = cornersOriginalTLTRBRBL;
     this.chosenSource = chosenSource;
     this.penaltyMask = penaltyMask;
     this.penaltyCorners = penaltyCorners;
+    this.confidence = confidence;
   }
 
   public static DetectionResult success(Source source, double[][] cornersOriginalTLTRBRBL) {
-    return new DetectionResult(true, source, cornersOriginalTLTRBRBL, null, null, null);
+    return new DetectionResult(true, source, cornersOriginalTLTRBRBL, null, null, null, null);
   }
 
   public static DetectionResult successDebug(
@@ -50,10 +58,22 @@ public final class DetectionResult {
       @Nullable Double penaltyMask,
       @Nullable Double penaltyCorners) {
     return new DetectionResult(
-        true, source, cornersOriginalTLTRBRBL, chosenSource, penaltyMask, penaltyCorners);
+        true, source, cornersOriginalTLTRBRBL, chosenSource, penaltyMask, penaltyCorners, null);
+  }
+
+  /** Copy of this result carrying the given detector confidence. */
+  public DetectionResult withConfidence(@Nullable Double confidence) {
+    return new DetectionResult(
+        success,
+        source,
+        cornersOriginalTLTRBRBL,
+        chosenSource,
+        penaltyMask,
+        penaltyCorners,
+        confidence);
   }
 
   public static DetectionResult fail(Source source) {
-    return new DetectionResult(false, source, null, null, null, null);
+    return new DetectionResult(false, source, null, null, null, null, null);
   }
 }

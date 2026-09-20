@@ -119,7 +119,76 @@ public class DocQuadPostprocessor {
         penaltyCorners,
         penaltyMask,
         suspiciousForProduct,
-        suspiciousReason);
+        suspiciousReason,
+        minPeakProb(cornerHeatmaps),
+        cornerMaskIou(corners256, maskLogits));
+  }
+
+  /**
+   * Smallest peak probability ({@code sigmoid(max logit)}) over the four corner heatmaps. Confident
+   * detections are close to 1; when the model has not found the document (strong tilt, low
+   * contrast) at least one channel stays near 0.
+   */
+  public static double minPeakProb(float[][][][] cornerHeatmaps) {
+    requireShapeCorners(cornerHeatmaps);
+    double min = 1.0;
+    for (int c = 0; c < 4; c++) {
+      float best = -Float.MAX_VALUE;
+      for (float[] row : cornerHeatmaps[0][c]) {
+        for (float v : row) {
+          if (v > best) best = v;
+        }
+      }
+      min = Math.min(min, sigmoid(best));
+    }
+    return min;
+  }
+
+  /**
+   * IoU on the 64×64 grid between the quad spanned by the heatmap corners and the segmentation mask
+   * ({@code sigmoid(logit) > 0.5}). The two heads are predicted independently, so a high agreement
+   * is strong evidence that the corners belong to a real document; it is a far better selector
+   * between alternative detections than the peak probability alone.
+   */
+  public static double cornerMaskIou(double[][] corners256, float[][][][] maskLogits) {
+    requireShapeMask(maskLogits);
+    double[][] quad64 = new double[4][2];
+    for (int i = 0; i < 4; i++) {
+      quad64[i][0] = corners256[i][0] / 4.0;
+      quad64[i][1] = corners256[i][1] / 4.0;
+    }
+    float[][] m = maskLogits[0][0];
+    int inter = 0;
+    int union = 0;
+    // Scanline rasterization (even-odd rule at the cell centres): this runs for every analysed
+    // frame, a point-in-polygon test per cell would cost several milliseconds.
+    double[] xs = new double[4];
+    for (int y = 0; y < 64; y++) {
+      double cy = y + 0.5;
+      int n = 0;
+      for (int i = 0; i < 4; i++) {
+        double[] a = quad64[i];
+        double[] b = quad64[(i + 1) % 4];
+        if ((a[1] > cy) != (b[1] > cy)) {
+          xs[n++] = a[0] + (cy - a[1]) * (b[0] - a[0]) / (b[1] - a[1]);
+        }
+      }
+      java.util.Arrays.sort(xs, 0, n);
+      float[] row = m[y];
+      int k = 0;
+      boolean inside = false;
+      for (int x = 0; x < 64; x++) {
+        double cx = x + 0.5;
+        while (k < n && xs[k] <= cx) {
+          inside = !inside;
+          k++;
+        }
+        boolean inMask = row[x] > 0.0f;
+        if (inside && inMask) inter++;
+        if (inside || inMask) union++;
+      }
+    }
+    return union == 0 ? 0.0 : (double) inter / (double) union;
   }
 
   /**
@@ -605,7 +674,11 @@ public class DocQuadPostprocessor {
     return new QuadFromMask(quad256, false);
   }
 
-  private static double[][] canonicalizeQuadOrderV1(double[][] pts) {
+  /**
+   * Cyclic/geometric canonicalization to TL,TR,BR,BL as used for the training labels: sort by angle
+   * around the centroid, then start at the corner with the smallest {@code x+y}.
+   */
+  public static double[][] canonicalizeQuadOrderV1(double[][] pts) {
     if (pts == null || pts.length != 4) {
       throw new IllegalArgumentException("pts must be double[4][2]");
     }
@@ -998,6 +1071,8 @@ public class DocQuadPostprocessor {
    * @param penaltyCorners M6d Penalties (lower is better): - penaltyCorners: Geometry + Mask
    *     disagreement (only for corner quad) - penaltyMask: Geometry only (or +Inf if mask quad was
    *     not viable)
+   * @param minPeakProb see {@link DocQuadPostprocessor#minPeakProb}
+   * @param cornerMaskIou see {@link DocQuadPostprocessor#cornerMaskIou}
    */
   public record Result(
       double[][] corners256,
@@ -1013,7 +1088,18 @@ public class DocQuadPostprocessor {
       double penaltyCorners,
       double penaltyMask,
       boolean suspiciousForProduct,
-      String suspiciousReason) {}
+      String suspiciousReason,
+      double minPeakProb,
+      double cornerMaskIou) {
+
+    /**
+     * Confidence of the heatmap corner quad in [0,1]: {@link #minPeakProb} × {@link
+     * #cornerMaskIou}.
+     */
+    public double cornerConfidence() {
+      return minPeakProb * cornerMaskIou;
+    }
+  }
 
   record PathChoice(
       double[][] chosenQuad256,

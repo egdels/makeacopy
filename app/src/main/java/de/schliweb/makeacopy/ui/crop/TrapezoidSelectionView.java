@@ -1426,6 +1426,7 @@ public class TrapezoidSelectionView extends View {
         Log.w(TAG, "Detected quad cannot be validated without a reference bitmap");
         return null;
       }
+      clampImageQuadToBounds(imgCorners, refBmp.getWidth(), refBmp.getHeight());
       if (!isValidImageQuad(imgCorners, refBmp.getWidth(), refBmp.getHeight())) {
         if (detectionSource == de.schliweb.makeacopy.ml.corners.Source.DOCQUAD) {
           Log.w(TAG, "DocQuad quad is invalid or degenerate — trying OpenCV fallback directly");
@@ -1495,12 +1496,14 @@ public class TrapezoidSelectionView extends View {
   @Nullable
   private org.opencv.core.Point[] detectBestCropCorners(Bitmap work, float scaleToOrig) {
     org.opencv.core.Point[] docQuadCorners = null;
+    Double docQuadConfidence = null;
     try {
       DetectionResult docQuadResult =
-          new de.schliweb.makeacopy.ml.corners.DocQuadDetector(docQuadOrtRunner)
+          de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.docQuadForCrop(docQuadOrtRunner)
               .detect(work, getContext());
       if (docQuadResult != null && docQuadResult.success) {
         docQuadCorners = pointsFromDetectionResult(docQuadResult);
+        docQuadConfidence = docQuadResult.confidence;
         scaleImageQuadToOriginal(docQuadCorners, scaleToOrig);
       }
     } catch (Throwable t) {
@@ -1523,11 +1526,50 @@ public class TrapezoidSelectionView extends View {
 
     Bitmap refBmp = imageBitmap != null ? imageBitmap : work;
     if (refBmp == null) return null;
-    boolean docValid = isValidImageQuad(docQuadCorners, refBmp.getWidth(), refBmp.getHeight());
-    boolean openCvValid = isValidImageQuad(openCvCorners, refBmp.getWidth(), refBmp.getHeight());
+    return chooseBestCropCorners(
+        docQuadCorners,
+        docQuadConfidence,
+        openCvCorners,
+        openCvFromHough,
+        refBmp.getWidth(),
+        refBmp.getHeight());
+  }
+
+  /**
+   * DocQuad confidence (peak probability × corner/mask agreement) from which its quad is used
+   * without consulting the shape comparison. {@link #scoreImageQuad} is a shape prior only and
+   * systematically prefers "nicer" OpenCV quads over correct but tilted or perspective DocQuad
+   * results; measured on real photos, OpenCV picks made by shape were wrong about twice as often as
+   * right, while a confident DocQuad result was almost never beaten by OpenCV.
+   */
+  static final double DOCQUAD_TRUSTED_CONFIDENCE = 0.3;
+
+  /**
+   * Best-of policy between the DocQuad and the OpenCV candidate (both in original image
+   * coordinates, TL/TR/BR/BL). A DocQuad result with confidence ≥ {@link
+   * #DOCQUAD_TRUSTED_CONFIDENCE} wins outright; otherwise DocQuad is preferred unless OpenCV leads
+   * by a margin that depends on how trustworthy the OpenCV path was (contour vs. Hough fallback).
+   * Returns {@code null} when neither candidate is a valid image quad. The DocQuad candidate is
+   * clamped in place.
+   */
+  @Nullable
+  static org.opencv.core.Point[] chooseBestCropCorners(
+      @Nullable org.opencv.core.Point[] docQuadCorners,
+      @Nullable Double docQuadConfidence,
+      @Nullable org.opencv.core.Point[] openCvCorners,
+      boolean openCvFromHough,
+      int imgW,
+      int imgH) {
+    clampImageQuadToBounds(docQuadCorners, imgW, imgH);
+    boolean docValid = isValidImageQuad(docQuadCorners, imgW, imgH);
+    boolean openCvValid = isValidImageQuad(openCvCorners, imgW, imgH);
+    if (docValid && docQuadConfidence != null && docQuadConfidence >= DOCQUAD_TRUSTED_CONFIDENCE) {
+      Log.i(TAG, "Best-of crop corners: using DocQuad (confidence " + docQuadConfidence + ")");
+      return docQuadCorners;
+    }
     if (docValid && openCvValid) {
-      double docScore = scoreImageQuad(docQuadCorners, refBmp.getWidth(), refBmp.getHeight());
-      double openCvScore = scoreImageQuad(openCvCorners, refBmp.getWidth(), refBmp.getHeight());
+      double docScore = scoreImageQuad(docQuadCorners, imgW, imgH);
+      double openCvScore = scoreImageQuad(openCvCorners, imgW, imgH);
       double requiredOpenCvLead = openCvFromHough && docScore >= 0.55 ? 0.35 : 0.03;
       if (openCvFromHough && docScore >= 0.70) {
         requiredOpenCvLead = 0.50;
@@ -1569,7 +1611,7 @@ public class TrapezoidSelectionView extends View {
   }
 
   @Nullable
-  private static org.opencv.core.Point[] pointsFromDetectionResult(@Nullable DetectionResult r) {
+  static org.opencv.core.Point[] pointsFromDetectionResult(@Nullable DetectionResult r) {
     if (r == null || r.cornersOriginalTLTRBRBL == null || r.cornersOriginalTLTRBRBL.length != 4) {
       return null;
     }
@@ -1585,8 +1627,7 @@ public class TrapezoidSelectionView extends View {
     return points;
   }
 
-  private static void scaleImageQuadToOriginal(
-      @Nullable org.opencv.core.Point[] quad, float scaleToOrig) {
+  static void scaleImageQuadToOriginal(@Nullable org.opencv.core.Point[] quad, float scaleToOrig) {
     if (quad == null || scaleToOrig >= 1f) return;
     double inv = 1.0 / scaleToOrig;
     for (org.opencv.core.Point p : quad) {
@@ -1594,6 +1635,22 @@ public class TrapezoidSelectionView extends View {
         p.x *= inv;
         p.y *= inv;
       }
+    }
+  }
+
+  /**
+   * Clamps all finite corners of {@code quad} into the image rectangle {@code [0,imgW]×[0,imgH]}
+   * (in place). DocQuad tolerates corners slightly outside the frame (heatmap peak inside the
+   * letterbox padding when the document fills the frame or a corner is cut off), whereas {@link
+   * #isValidImageQuad} is strict; without clamping such a detection would be discarded entirely.
+   * Non-finite coordinates are left untouched so that validation still rejects them.
+   */
+  static void clampImageQuadToBounds(@Nullable org.opencv.core.Point[] quad, int imgW, int imgH) {
+    if (quad == null || imgW <= 0 || imgH <= 0) return;
+    for (org.opencv.core.Point p : quad) {
+      if (p == null) continue;
+      if (Double.isFinite(p.x)) p.x = Math.max(0.0, Math.min(imgW, p.x));
+      if (Double.isFinite(p.y)) p.y = Math.max(0.0, Math.min(imgH, p.y));
     }
   }
 

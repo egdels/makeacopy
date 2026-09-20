@@ -15,6 +15,8 @@ import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.os.SystemClock;
 import android.util.Log;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.ml.docquad.DocQuadLetterbox;
 import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
@@ -40,29 +42,49 @@ public final class DocQuadDetector implements CornerDetector {
     this.runner = runner;
   }
 
-  @Override
-  public DetectionResult detect(Bitmap src, Context ctx) {
-    if (src == null || ctx == null) return DetectionResult.fail(Source.DOCQUAD);
+  private static final DocQuadPostprocessor.PeakMode PEAK_MODE =
+      DocQuadPostprocessor.PeakMode.REFINE_5X5_QUADRATIC;
 
+  /**
+   * One model pass over {@code src}: letterbox, inference, postprocessing. Coordinates in the
+   * result refer to {@code src}. Returns {@code null} if inference fails.
+   */
+  @Nullable
+  DocQuadPostprocessor.Result infer(@NonNull Bitmap src) {
     Bitmap in256 = null;
     try {
       int srcW = src.getWidth();
       int srcH = src.getHeight();
-      if (srcW <= 0 || srcH <= 0) return DetectionResult.fail(Source.DOCQUAD);
-
+      if (srcW <= 0 || srcH <= 0) return null;
       DocQuadLetterbox lb =
           DocQuadLetterbox.create(srcW, srcH, DocQuadOrtRunner.IN_W, DocQuadOrtRunner.IN_H);
       in256 = renderLetterbox256(src, lb);
       float[] input = bitmapToNchwFloat01(in256);
-
       DocQuadOrtRunner.Outputs outputs = runner.run(input);
+      return DocQuadPostprocessor.postprocess(outputs, lb, PEAK_MODE);
+    } catch (Throwable t) {
+      return null;
+    } finally {
+      // Live analysis can call this repeatedly; avoid accumulating Bitmap native memory.
+      try {
+        if (in256 != null && !in256.isRecycled()) in256.recycle();
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+    }
+  }
 
-      DocQuadPostprocessor.PeakMode peakMode = DocQuadPostprocessor.PeakMode.REFINE_5X5_QUADRATIC;
+  @Override
+  public DetectionResult detect(Bitmap src, Context ctx) {
+    if (src == null || ctx == null) return DetectionResult.fail(Source.DOCQUAD);
+    return toDetectionResult(infer(src), src.getWidth(), src.getHeight());
+  }
 
-      DocQuadPostprocessor.Result r = DocQuadPostprocessor.postprocess(outputs, lb, peakMode);
+  /** Validates a postprocessing result and converts it into the product-facing result. */
+  DetectionResult toDetectionResult(@Nullable DocQuadPostprocessor.Result r, int srcW, int srcH) {
+    try {
       if (r == null || r.chosenQuadOriginal() == null || r.chosenQuadOriginal().length != 4)
         return DetectionResult.fail(Source.DOCQUAD);
-
       if (BuildConfig.FEATURE_FRAMING_LOGGING) {
         long now = SystemClock.uptimeMillis();
         if (now - lastLogMs >= LOG_INTERVAL_MS) {
@@ -74,7 +96,7 @@ public final class DocQuadDetector implements CornerDetector {
                   java.util.Locale.US,
                   "detect peakMode=%s src=%dx%d chosen=%s TL=(%.1f,%.1f) TR=(%.1f,%.1f)"
                       + " BR=(%.1f,%.1f) BL=(%.1f,%.1f)",
-                  peakMode,
+                  PEAK_MODE,
                   srcW,
                   srcH,
                   String.valueOf(r.chosenSource()),
@@ -100,20 +122,14 @@ public final class DocQuadDetector implements CornerDetector {
         return DetectionResult.fail(Source.DOCQUAD);
 
       return DetectionResult.successDebug(
-          Source.DOCQUAD,
-          r.chosenQuadOriginal(),
-          String.valueOf(r.chosenSource()),
-          r.penaltyMask(),
-          r.penaltyCorners());
+              Source.DOCQUAD,
+              r.chosenQuadOriginal(),
+              String.valueOf(r.chosenSource()),
+              r.penaltyMask(),
+              r.penaltyCorners())
+          .withConfidence(r.cornerConfidence());
     } catch (Throwable t) {
       return DetectionResult.fail(Source.DOCQUAD);
-    } finally {
-      // Live analysis can call this repeatedly; avoid accumulating Bitmap native memory.
-      try {
-        if (in256 != null && !in256.isRecycled()) in256.recycle();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
     }
   }
 
@@ -143,11 +159,11 @@ public final class DocQuadDetector implements CornerDetector {
     return out;
   }
 
-  // Neutral mid-gray padding reduces hard contrast at letterbox borders compared to pure black,
-  // which empirically reduces spurious heatmap peaks at the image edge for documents close to
-  // the frame border. Value 0xFF808080 is RGB(128,128,128) — the photometric mid-point in
-  // [0..1] float space the model consumes.
-  private static final int LETTERBOX_PAD_COLOR = 0xFF808080;
+  // Black letterbox padding, exactly as in training (train_docquad_heatmap.py pastes onto a black
+  // canvas). Mid-gray padding was tried and measured worse on real photos: it is a train/inference
+  // mismatch that lowers the heatmap peak confidence (single pass on the device, mean corner error
+  // 3.06% -> 2.35% on upright photos and 7.1% -> 4.6% on tilted ones when switching back to black).
+  static final int LETTERBOX_PAD_COLOR = 0xFF000000;
 
   private static Bitmap renderLetterbox256(Bitmap src, DocQuadLetterbox lb) {
     Bitmap out =
@@ -175,7 +191,7 @@ public final class DocQuadDetector implements CornerDetector {
     return !Double.isNaN(v) && !Double.isInfinite(v);
   }
 
-  private static boolean isValidQuad(double[][] c, int w, int h) {
+  static boolean isValidQuad(double[][] c, int w, int h) {
     if (c == null || c.length != 4) return false;
     for (int i = 0; i < 4; i++) {
       if (c[i] == null || c[i].length != 2) return false;

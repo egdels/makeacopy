@@ -41,7 +41,19 @@ public final class CornerDetectorFactory {
     if (!BuildConfig.FEATURE_DOCQUAD_CORNERS) {
       return new OpenCvCornerDetector();
     }
-    return new CompositeCornerDetector(new DocQuadDetector(runner), new OpenCvCornerDetector());
+    return new CompositeCornerDetector(docQuadForCrop(runner), new OpenCvCornerDetector());
+  }
+
+  /**
+   * The DocQuad stage for one-shot detection on a captured image: with test-time rotation (see
+   * {@link RotatingDocQuadDetector}) unless disabled by feature flag. Never use it for the live
+   * preview, where a weak frame would cost several inferences.
+   */
+  @NonNull
+  public static CornerDetector docQuadForCrop(@NonNull DocQuadOrtRunner runner) {
+    return BuildConfig.FEATURE_DOCQUAD_ROTATION_TTA
+        ? new RotatingDocQuadDetector(runner)
+        : new DocQuadDetector(runner);
   }
 
   /**

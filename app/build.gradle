@@ -58,6 +58,7 @@ android {
         buildConfigField "boolean", "FEATURE_DOCQUAD_CORNERS", "true"
         buildConfigField "boolean", "FEATURE_BEST_OF_CROP_CORNERS", "true"
         buildConfigField "boolean", "FEATURE_CORNER_REFINEMENT", "true"
+        buildConfigField "boolean", "FEATURE_DOCQUAD_ROTATION_TTA", "true"
         buildConfigField "boolean", "FEATURE_PADDLE_OCR", "false"
         buildConfigField "boolean", "FEATURE_FOCUS_QUALITY_INDICATOR", "true"
         buildConfigField "boolean", "IS_LIGHT", isLight ? "true" : "false"

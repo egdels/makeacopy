@@ -164,7 +164,8 @@ final class ThrottledDocQuadLiveDetector implements CornerDetector {
                 src.getHeight()));
       }
       return DetectionResult.successDebug(
-          raw.source, smoothed, raw.chosenSource, raw.penaltyMask, raw.penaltyCorners);
+              raw.source, smoothed, raw.chosenSource, raw.penaltyMask, raw.penaltyCorners)
+          .withConfidence(raw.confidence);
     } catch (Throwable t) {
       // Defensive: never let smoothing break detection.
       smoother.reset();
