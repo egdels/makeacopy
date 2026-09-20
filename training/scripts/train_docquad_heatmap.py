@@ -93,6 +93,64 @@ def _extract_corners_px(label: dict[str, Any]) -> np.ndarray:
     return out
 
 
+# Rotation augmentation works on a reduced copy: the model input is 256 px, so 2x oversampling is
+# plenty and keeps the per-sample cost low.
+_AUG_MAX_EDGE = 512
+
+
+def canonicalize_corners(corners: np.ndarray) -> np.ndarray:
+    """TL,TR,BR,BL as in `make_trainable_from_converted._canonicalize_indices_v1`: sort by angle
+    around the centroid, start at min(x+y). Needed after rotating, because the geometric "top-left"
+    corner changes with the rotation angle."""
+    c = corners.mean(axis=0)
+    ang = np.arctan2(corners[:, 1] - c[1], corners[:, 0] - c[0])
+    order = sorted(range(4), key=lambda i: (float(ang[i]), i))
+    sums = [float(corners[i, 0] + corners[i, 1]) for i in order]
+    tl = min(range(4), key=lambda k: (sums[k], k))
+    return corners[order[tl:] + order[:tl]]
+
+
+def rotate_corners(corners: np.ndarray, angle_deg: float, w: int, h: int) -> np.ndarray:
+    """Corners after rotating a w×h image by `angle_deg` about its centre, same convention as
+    `PIL.Image.rotate` (positive = counter-clockwise on screen, y pointing down)."""
+    a = np.deg2rad(angle_deg)
+    # PIL maps the pixel grid about ((w-1)/2, (h-1)/2) in pixel-index coordinates.
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    dx, dy = corners[:, 0] - cx, corners[:, 1] - cy
+    return np.stack([cx + dx * np.cos(a) + dy * np.sin(a), cy - dx * np.sin(a) + dy * np.cos(a)], axis=1)
+
+
+def rotate_image_reflect(img: Image.Image, angle_deg: float) -> Image.Image:
+    """Rotates about the centre, keeps the canvas size and fills uncovered corners by reflection.
+    A constant fill would add a straight high-contrast border that looks like a document edge."""
+    w, h = img.size
+    pad = int(np.ceil((np.hypot(w, h) - min(w, h)) / 2.0)) + 2
+    pad = min(pad, w - 1, h - 1)  # np.pad(reflect) cannot pad more than the image size - 1
+    arr = np.pad(np.asarray(img), ((pad, pad), (pad, pad), (0, 0)), mode="reflect")
+    rotated = Image.fromarray(arr).rotate(angle_deg, resample=Image.BILINEAR, expand=False)
+    return rotated.crop((pad, pad, pad + w, pad + h))
+
+
+def pick_rotation(
+    rng: random.Random, corners: np.ndarray, w: int, h: int, max_deg: float, margin: float = 0.01
+) -> float:
+    """Random angle in [-max_deg, max_deg] that keeps all corners inside the frame; tries the
+    opposite sign and smaller magnitudes, returns 0.0 if nothing fits."""
+    mag = rng.uniform(0.0, max_deg)
+    sign = rng.choice((-1.0, 1.0))
+    for m in (mag, mag * 0.66, mag * 0.33):
+        for a in (sign * m, -sign * m):
+            r = rotate_corners(corners, a, w, h)
+            if (
+                (r[:, 0] >= margin * w).all()
+                and (r[:, 0] <= (w - 1) - margin * w).all()
+                and (r[:, 1] >= margin * h).all()
+                and (r[:, 1] <= (h - 1) - margin * h).all()
+            ):
+                return float(a)
+    return 0.0
+
+
 def _pil_to_chw_float01(img_rgb: Image.Image) -> torch.Tensor:
     if img_rgb.mode != "RGB":
         img_rgb = img_rgb.convert("RGB")
@@ -135,12 +193,28 @@ class DocQuadHeatmapDataset(torch.utils.data.Dataset):
     but it is deterministic.
     """
 
-    def __init__(self, base_dir: Path, names: list[str], *, sigma: float):
+    def __init__(
+        self,
+        base_dir: Path,
+        names: list[str],
+        *,
+        sigma: float,
+        rotate_max_deg: float = 0.0,
+        rotate_prob: float = 0.0,
+        deterministic_aug: bool = False,
+    ):
+        """`rotate_max_deg`/`rotate_prob` enable rotation augmentation (off by default).
+        `deterministic_aug` derives the augmentation from the sample index, so a validation set
+        sees the same rotations every epoch and its metric stays comparable."""
         self.base_dir = base_dir
         self.images_dir = base_dir / "images"
         self.labels_dir = base_dir / "labels"
         self.names = list(names)
         self.sigma = float(sigma)
+        self.rotate_max_deg = float(rotate_max_deg)
+        self.rotate_prob = float(rotate_prob)
+        self.deterministic_aug = bool(deterministic_aug)
+        self._rng = random.Random(0)
 
     def __len__(self) -> int:
         return len(self.names)
@@ -167,6 +241,20 @@ class DocQuadHeatmapDataset(torch.utils.data.Dataset):
             im0 = im0.convert("RGB")
             if im0.size != (w, h):
                 raise ValueError(f"image size mismatch for {name}: label=({w},{h}) file={im0.size}")
+
+            if self.rotate_max_deg > 0.0 and self.rotate_prob > 0.0:
+                rng = random.Random(1_000_003 * int(idx) + 17) if self.deterministic_aug else self._rng
+                if rng.random() < self.rotate_prob:
+                    s = min(1.0, _AUG_MAX_EDGE / float(max(w, h)))
+                    small = im0.resize((max(2, round(w * s)), max(2, round(h * s))), resample=Image.BILINEAR) if s < 1.0 else im0
+                    sw, sh = small.size
+                    small_corners = corners_src * np.array([sw / float(w), sh / float(h)])
+                    angle = pick_rotation(rng, small_corners, sw, sh, self.rotate_max_deg)
+                    if angle != 0.0:
+                        im0 = rotate_image_reflect(small, angle)
+                        rotated = rotate_corners(small_corners, angle, sw, sh)
+                        # Back to the label's coordinate frame (w×h) so metrics keep their scale.
+                        corners_src = canonicalize_corners(rotated * np.array([w / float(sw), h / float(sh)]))
 
             letterbox = LetterboxTransform.create(w, h, IN_SIZE, IN_SIZE)
             resized_w = int(round(w * letterbox.scale))
@@ -490,6 +578,19 @@ def main(argv: list[str]) -> int:
         default=0.0,
         help="Minimum required drop in val.corner_mae_px to count as an improvement.",
     )
+    p.add_argument(
+        "--aug_rotate_deg",
+        type=float,
+        default=0.0,
+        help="Rotation augmentation: max absolute angle in degrees (0 = off). Rotates the photo about its "
+        "centre with reflected borders and re-canonicalizes the corner order.",
+    )
+    p.add_argument(
+        "--aug_rotate_prob",
+        type=float,
+        default=0.5,
+        help="Share of samples that get rotated when --aug_rotate_deg > 0 (the rest stays upright).",
+    )
     p.add_argument("--sigma", type=float, default=DEFAULT_SIGMA)
     p.add_argument("--overlay_mask", action="store_true")
     p.add_argument(
@@ -578,8 +679,18 @@ def main(argv: list[str]) -> int:
         raise ValueError("split files must contain at least one sample name")
 
     sigma = float(args.sigma)
-    ds_train = DocQuadHeatmapDataset(base_dir, train_names, sigma=sigma)
-    ds_val = DocQuadHeatmapDataset(base_dir, val_names, sigma=sigma)
+    ds_train = DocQuadHeatmapDataset(
+        base_dir, train_names, sigma=sigma, rotate_max_deg=args.aug_rotate_deg, rotate_prob=args.aug_rotate_prob
+    )
+    # Validation gets the same augmentation, fixed per sample, so "best" reflects tilted documents too.
+    ds_val = DocQuadHeatmapDataset(
+        base_dir,
+        val_names,
+        sigma=sigma,
+        rotate_max_deg=args.aug_rotate_deg,
+        rotate_prob=args.aug_rotate_prob,
+        deterministic_aug=True,
+    )
 
     gen = torch.Generator()
     gen.manual_seed(0)
