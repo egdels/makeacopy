@@ -67,6 +67,8 @@
     <string name="error_resetting_camera">Fout bij resetten camera: %1$s</string>
     <string name="error_toggling_flashlight">Fout bij schakelen zaklamp: %1$s</string>
     <string name="error_camera_preview_failed">Voorbeeld van de camera kon niet starten. Probeer opnieuw.</string>
+    <string name="app_language_label">App-taal</string>
+    <string name="app_language_system_default">Systeemstandaard</string>
 
     <string name="share_logs">Logbestanden delen</string>
     <string name="share_logs_subject">MakeACopy diagnostische logbestanden</string>

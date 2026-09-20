@@ -27,6 +27,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.utils.export.ScanPersister;
+import de.schliweb.makeacopy.utils.ui.AppLanguage;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.UIUtils;
 import java.io.IOException;
@@ -244,8 +245,11 @@ final class PdfMultiPageImporter {
                     } else if (failedCount > 0 && !resultPages.isEmpty()) {
                       UIUtils.showToast(
                           appContext,
-                          appContext.getString(
-                              R.string.pdf_import_summary_failed, resultPages.size(), failedCount),
+                          AppLanguage.localize(appContext)
+                              .getString(
+                                  R.string.pdf_import_summary_failed,
+                                  resultPages.size(),
+                                  failedCount),
                           Toast.LENGTH_LONG);
                     } else if (resultPages.isEmpty()) {
                       UIUtils.showToast(

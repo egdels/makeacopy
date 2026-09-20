@@ -66,6 +66,9 @@
     <string name="error_toggling_flashlight">خطا در تغییر وضعیت چراغ‌قوه: %1$s</string>
     <string name="error_camera_preview_failed">شروع پیش‌نمایش دوربین ناموفق بود. لطفاً دوباره تلاش کنید.</string>
 
+    <string name="app_language_label">زبان برنامه</string>
+    <string name="app_language_system_default">پیش‌فرض سیستم</string>
+
     <!-- Logging / Share logs -->
     <string name="share_logs">اشتراک‌گذاری لاگ‌ها</string>
     <string name="share_logs_subject">لاگ‌های عیب‌یابی MakeACopy</string>

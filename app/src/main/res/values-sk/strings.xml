@@ -69,6 +69,8 @@
     <string name="error_resetting_camera">Chyba pri resete fotoaparátu: %1$s</string>
     <string name="error_toggling_flashlight">Chyba pri prepínaní blesku: %1$s</string>
     <string name="error_camera_preview_failed">Náhľad fotoaparátu sa nepodarilo spustiť. Skúste to znova.</string>
+    <string name="app_language_label">Jazyk aplikácie</string>
+    <string name="app_language_system_default">Predvolené systémom</string>
 
     <string name="share_logs">Zdieľať záznamy</string>
     <string name="share_logs_subject">Diagnostické záznamy MakeACopy</string>

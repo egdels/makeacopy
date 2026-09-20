@@ -68,6 +68,8 @@
     <string name="error_resetting_camera">Erreur lors de la réinitialisation de la caméra : %1$s</string>
     <string name="error_toggling_flashlight">Erreur lors de l’activation de la lampe : %1$s</string>
     <string name="error_camera_preview_failed">L’aperçu de la caméra n’a pas pu démarrer. Veuillez réessayer.</string>
+    <string name="app_language_label">Langue de l’application</string>
+    <string name="app_language_system_default">Paramètre système par défaut</string>
 
     <string name="share_logs">Partager les journaux</string>
     <string name="share_logs_subject">Journaux de diagnostic MakeACopy</string>

@@ -63,6 +63,8 @@
     <string name="error_resetting_camera">ข้อผิดพลาดในการรีเซ็ตกล้อง: %1$s</string>
     <string name="error_toggling_flashlight">เปิด/ปิดไฟฉายผิดพลาด: %1$s</string>
     <string name="error_camera_preview_failed">ไม่สามารถเริ่มพรีวิวกล้อง กรุณาลองใหม่</string>
+    <string name="app_language_label">ภาษาของแอป</string>
+    <string name="app_language_system_default">ค่าเริ่มต้นของระบบ</string>
 
     <string name="share_logs">แชร์บันทึก</string>
     <string name="share_logs_subject">บันทึกการวินิจฉัยของ MakeACopy</string>

@@ -66,6 +66,8 @@
     <string name="error_resetting_camera">Kamera sıfırlanırken hata: %1$s</string>
     <string name="error_toggling_flashlight">Fener açılırken/kapatılırken hata: %1$s</string>
     <string name="error_camera_preview_failed">Kamera önizlemesi başlatılamadı. Lütfen tekrar deneyin.</string>
+    <string name="app_language_label">Uygulama dili</string>
+    <string name="app_language_system_default">Sistem varsayılanı</string>
 
     <string name="share_logs">Günlükleri paylaş</string>
     <string name="share_logs_subject">MakeACopy tanılama günlükleri</string>

@@ -70,6 +70,8 @@
     <string name="error_camera_preview_failed">No se pudo iniciar la vista previa de la cámara. Por favor, inténtalo de
         nuevo.
     </string>
+    <string name="app_language_label">Idioma de la aplicación</string>
+    <string name="app_language_system_default">Predeterminado del sistema</string>
 
     <string name="share_logs">Compartir registros</string>
     <string name="share_logs_subject">Registros de diagnóstico de MakeACopy</string>

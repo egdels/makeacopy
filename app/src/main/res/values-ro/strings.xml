@@ -67,6 +67,8 @@
     <string name="error_resetting_camera">Eroare la resetarea camerei: %1$s</string>
     <string name="error_toggling_flashlight">Eroare la comutarea lanternei: %1$s</string>
     <string name="error_camera_preview_failed">Previzualizarea camerei nu a putut fi pornită. Încearcă din nou.</string>
+    <string name="app_language_label">Limba aplicației</string>
+    <string name="app_language_system_default">Prestabilită de sistem</string>
 
     <string name="share_logs">Partajează jurnalele</string>
     <string name="share_logs_subject">Jurnale de diagnostic MakeACopy</string>

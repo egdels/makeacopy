@@ -67,6 +67,8 @@
     <string name="error_toggling_flashlight">Fehler beim Umschalten der Taschenlampe: %1$s</string>
     <string name="error_camera_preview_failed">Kameravorschau konnte nicht gestartet werden. Bitte versuche es erneut.
     </string>
+    <string name="app_language_label">App-Sprache</string>
+    <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Protokolle teilen</string>
     <string name="share_logs_subject">MakeACopy-Diagnoseprotokolle</string>

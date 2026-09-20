@@ -174,7 +174,8 @@ public class UIUtils {
     // Resolve string now to funnel through the same accessibility path
     String msg;
     try {
-      msg = appContext.getString(resId);
+      // The application context does not follow the in-app language on Android 12 and older
+      msg = AppLanguage.localize(appContext).getString(resId);
     } catch (Throwable t) {
       msg = null;
     }

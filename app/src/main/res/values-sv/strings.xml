@@ -65,6 +65,8 @@
     <string name="error_resetting_camera">Fel vid återställning av kamera: %1$s</string>
     <string name="error_toggling_flashlight">Fel vid växling av ficklampa: %1$s</string>
     <string name="error_camera_preview_failed">Kameraförhandsvisning kunde inte startas. Försök igen.</string>
+    <string name="app_language_label">Appspråk</string>
+    <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Dela loggar</string>
     <string name="share_logs_subject">MakeACopy diagnostikloggar</string>

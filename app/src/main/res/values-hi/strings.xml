@@ -58,6 +58,8 @@
     <string name="error_toggling_flashlight">फ्लैशलाइट टॉगल करने में त्रुटि: %1$s</string>
     <string name="error_camera_preview_failed">कैमरा पूर्वावलोकन शुरू नहीं हो सका। कृपया पुनः प्रयास करें।
     </string>
+    <string name="app_language_label">ऐप की भाषा</string>
+    <string name="app_language_system_default">सिस्टम डिफ़ॉल्ट</string>
 
     <string name="share_logs">लॉग शेयर करें</string>
     <string name="share_logs_subject">MakeACopy डायग्नोस्टिक लॉग</string>

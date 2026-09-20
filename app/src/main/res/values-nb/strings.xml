@@ -65,6 +65,8 @@
     <string name="error_resetting_camera">Feil ved tilbakestilling av kamera: %1$s</string>
     <string name="error_toggling_flashlight">Feil ved veksling av lommelykt: %1$s</string>
     <string name="error_camera_preview_failed">Kameraforhåndsvisning kunne ikke starte. Prøv igjen.</string>
+    <string name="app_language_label">Appspråk</string>
+    <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Del logger</string>
     <string name="share_logs_subject">MakeACopy diagnoselogger</string>

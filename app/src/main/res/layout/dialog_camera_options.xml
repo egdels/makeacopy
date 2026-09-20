@@ -60,6 +60,35 @@
             android:layout_height="wrap_content"
             android:text="@string/focus_quality_option" />
 
+        <!-- In-app UI language: label plus current value, opens a picker -->
+        <LinearLayout
+            android:id="@+id/row_app_language"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_language_label"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <TextView
+                android:id="@+id/text_app_language_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?android:textColorSecondary" />
+        </LinearLayout>
+
         <!-- Share logs button placed directly under the options (de-emphasized) -->
         <Button
             android:id="@+id/button_share_logs"

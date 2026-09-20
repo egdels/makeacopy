@@ -66,6 +66,8 @@
     <string name="error_resetting_camera">Hiba a kamera visszaállításakor: %1$s</string>
     <string name="error_toggling_flashlight">Hiba a vaku kapcsolásakor: %1$s</string>
     <string name="error_camera_preview_failed">A kamera előnézete nem indítható el. Próbálja újra.</string>
+    <string name="app_language_label">Alkalmazás nyelve</string>
+    <string name="app_language_system_default">Rendszer alapértelmezése</string>
 
     <string name="share_logs">Naplók megosztása</string>
     <string name="share_logs_subject">MakeACopy diagnosztikai naplók</string>

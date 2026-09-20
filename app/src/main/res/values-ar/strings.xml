@@ -63,6 +63,9 @@
     <string name="error_toggling_flashlight">خطأ في تبديل الفلاش: %1$s</string>
     <string name="error_camera_preview_failed">فشل بدء معاينة الكاميرا. يرجى المحاولة مرة أخرى.</string>
 
+    <string name="app_language_label">لغة التطبيق</string>
+    <string name="app_language_system_default">افتراضي النظام</string>
+
     <!-- Logging / Share logs -->
     <string name="share_logs">مشاركة السجلات</string>
     <string name="share_logs_subject">سجلات تشخيص MakeACopy</string>

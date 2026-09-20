@@ -66,6 +66,8 @@
     <string name="error_resetting_camera">Błąd resetowania aparatu: %1$s</string>
     <string name="error_toggling_flashlight">Błąd włączania latarki: %1$s</string>
     <string name="error_camera_preview_failed">Nie udało się uruchomić podglądu aparatu. Spróbuj ponownie.</string>
+    <string name="app_language_label">Język aplikacji</string>
+    <string name="app_language_system_default">Domyślny systemowy</string>
 
     <string name="share_logs">Udostępnij logi</string>
     <string name="share_logs_subject">Logi diagnostyczne MakeACopy</string>

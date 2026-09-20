@@ -65,6 +65,8 @@
     <string name="error_resetting_camera">Fejl ved nulstilling af kamera: %1$s</string>
     <string name="error_toggling_flashlight">Fejl ved tænd/sluk af lommelygte: %1$s</string>
     <string name="error_camera_preview_failed">Kameraforhåndsvisning kunne ikke starte. Prøv igen.</string>
+    <string name="app_language_label">Appsprog</string>
+    <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Del logfiler</string>
     <string name="share_logs_subject">MakeACopy diagnostic-logfiler</string>

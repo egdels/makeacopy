@@ -69,6 +69,8 @@
     <string name="error_resetting_camera">Errore durante il ripristino della fotocamera: %1$s</string>
     <string name="error_toggling_flashlight">Errore durante l’attivazione della torcia: %1$s</string>
     <string name="error_camera_preview_failed">Impossibile avviare l’anteprima della fotocamera. Riprova.</string>
+    <string name="app_language_label">Lingua dell’app</string>
+    <string name="app_language_system_default">Predefinita di sistema</string>
 
     <string name="share_logs">Condividi i log</string>
     <string name="share_logs_subject">Log diagnostici di MakeACopy</string>

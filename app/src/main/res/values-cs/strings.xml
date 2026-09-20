@@ -67,6 +67,8 @@
     <string name="error_resetting_camera">Chyba při obnově fotoaparátu: %1$s</string>
     <string name="error_toggling_flashlight">Chyba při přepínání svítilny: %1$s</string>
     <string name="error_camera_preview_failed">Náhled fotoaparátu se nepodařilo spustit. Zkuste to znovu.</string>
+    <string name="app_language_label">Jazyk aplikace</string>
+    <string name="app_language_system_default">Výchozí nastavení systému</string>
 
     <string name="share_logs">Sdílet protokoly</string>
     <string name="share_logs_subject">Diagnostické protokoly MakeACopy</string>

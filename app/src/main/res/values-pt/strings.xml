@@ -68,6 +68,8 @@
     <string name="error_resetting_camera">Erro ao reiniciar a câmera: %1$s</string>
     <string name="error_toggling_flashlight">Erro ao alternar a lanterna: %1$s</string>
     <string name="error_camera_preview_failed">Falha ao iniciar a visualização da câmera. Tente novamente.</string>
+    <string name="app_language_label">Idioma do app</string>
+    <string name="app_language_system_default">Padrão do sistema</string>
 
     <string name="share_logs">Compartilhar logs</string>
     <string name="share_logs_subject">Logs de diagnóstico do MakeACopy</string>

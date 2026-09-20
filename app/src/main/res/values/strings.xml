@@ -67,6 +67,10 @@
     <string name="error_toggling_flashlight">Error toggling flashlight: %1$s</string>
     <string name="error_camera_preview_failed">Camera preview failed to start. Please try again.</string>
 
+    <!-- In-app UI language selection -->
+    <string name="app_language_label">App language</string>
+    <string name="app_language_system_default">System default</string>
+
     <!-- Logging / Share logs -->
     <string name="share_logs">Share logs</string>
     <string name="share_logs_subject">MakeACopy diagnostic logs</string>

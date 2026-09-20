@@ -17,14 +17,19 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentManager;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.R;
+import de.schliweb.makeacopy.utils.ui.AppLanguage;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
+import java.util.List;
 
 /**
  * A DialogFragment implementation that provides camera-specific options and configurations. It
@@ -270,6 +275,42 @@ public class CameraOptionsDialogFragment extends DialogFragment {
     return out.toString();
   }
 
+  /**
+   * Shows a single-choice list of the available UI languages, each named in its own language, with
+   * "System default" on top. The choice is applied immediately; AppCompat then recreates the
+   * activity (and with it this dialog) in the new language.
+   */
+  private void showLanguagePicker(
+      @NonNull Context ctx, @NonNull List<String> tags, @NonNull String current) {
+    String[] labels = new String[tags.size() + 1];
+    labels[0] = getString(R.string.app_language_system_default);
+    for (int i = 0; i < tags.size(); i++) labels[i + 1] = AppLanguage.displayName(tags.get(i));
+    int checked = tags.indexOf(current) + 1; // 0 = system default
+
+    AlertDialog dialog =
+        new MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.app_language_label)
+            .setSingleChoiceItems(
+                labels,
+                checked,
+                (d, which) -> {
+                  d.dismiss();
+                  if (which == checked) return;
+                  AppLanguage.apply(which == 0 ? AppLanguage.SYSTEM_DEFAULT : tags.get(which - 1));
+                })
+            .setNegativeButton(R.string.cancel, (d, w) -> d.dismiss())
+            .create();
+    dialog.setOnShowListener(
+        dlg -> {
+          try {
+            DialogUtils.improveAlertDialogButtonContrastForNight(dialog, ctx);
+          } catch (Throwable ignore) {
+            // Dialog contrast improvement is best-effort
+          }
+        });
+    dialog.show();
+  }
+
   @NonNull
   @Override
   public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
@@ -309,6 +350,19 @@ public class CameraOptionsDialogFragment extends DialogFragment {
       } else {
         cbFocusQuality.setVisibility(View.GONE);
       }
+    }
+
+    // App language row: shows the current choice and opens the picker
+    View languageRow = view.findViewById(R.id.row_app_language);
+    TextView languageValue = view.findViewById(R.id.text_app_language_value);
+    if (languageRow != null && languageValue != null) {
+      List<String> tags = AppLanguage.supportedTags(ctx);
+      String current = AppLanguage.currentTag(tags);
+      languageValue.setText(
+          current.isEmpty()
+              ? getString(R.string.app_language_system_default)
+              : AppLanguage.displayName(current));
+      languageRow.setOnClickListener(v -> showLanguagePicker(ctx, tags, current));
     }
 
     // Wire up the Share Logs button placed under the options

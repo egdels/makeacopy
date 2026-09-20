@@ -67,6 +67,8 @@
     <string name="error_resetting_camera">Ошибка сброса камеры: %1$s</string>
     <string name="error_toggling_flashlight">Ошибка переключения фонарика: %1$s</string>
     <string name="error_camera_preview_failed">Не удалось запустить предпросмотр камеры. Повторите попытку.</string>
+    <string name="app_language_label">Язык приложения</string>
+    <string name="app_language_system_default">Как в системе</string>
 
     <string name="share_logs">Поделиться журналами</string>
     <string name="share_logs_subject">Диагностические журналы MakeACopy</string>

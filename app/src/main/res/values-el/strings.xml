@@ -54,6 +54,9 @@
     <string name="error_toggling_flashlight">Σφάλμα κατά την εναλλαγή του φακού: %1$s</string>
     <string name="error_camera_preview_failed">Η προεπισκόπηση κάμερας απέτυχε να ξεκινήσει. Δοκιμάστε ξανά.</string>
 
+    <string name="app_language_label">Γλώσσα εφαρμογής</string>
+    <string name="app_language_system_default">Προεπιλογή συστήματος</string>
+
     <!-- Logging / Share logs -->
     <string name="share_logs">Κοινοποίηση αρχείων καταγραφής</string>
     <string name="share_logs_subject">Διαγνωστικά αρχεία καταγραφής MakeACopy</string>
