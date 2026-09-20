@@ -38,6 +38,9 @@ public class AppLanguage {
   private static final String TAG = "AppLanguage";
   private static final String ANDROID_NS = "http://schemas.android.com/apk/res/android";
 
+  private static final String PREFS_NAME = "app_language";
+  private static final String PREF_KEY_TAG = "tag";
+
   /** Tag representing "follow the system language". */
   public static final String SYSTEM_DEFAULT = "";
 
@@ -102,11 +105,34 @@ public class AppLanguage {
    *
    * @param tag a tag from {@link #supportedTags(Context)} or {@link #SYSTEM_DEFAULT}
    */
-  public static void apply(@NonNull String tag) {
+  public static void apply(@NonNull Context ctx, @NonNull String tag) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+      ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+          .edit()
+          .putString(PREF_KEY_TAG, tag)
+          .apply();
+    }
     AppCompatDelegate.setApplicationLocales(
         tag.isEmpty()
             ? LocaleListCompat.getEmptyLocaleList()
             : LocaleListCompat.forLanguageTags(tag));
+  }
+
+  /**
+   * Makes the chosen language known before the first activity exists; call at the start of {@code
+   * Application.onCreate()}. On Android 12 and older AppCompat loads its stored choice only when an
+   * activity attaches, so until then {@link #localize(Context)} would see the system language (e.g.
+   * on the application's startup threads). Not needed on Android 13+, where the platform knows the
+   * app language from the start.
+   */
+  public static void restoreEarly(@NonNull Context ctx) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return;
+    String tag =
+        ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(PREF_KEY_TAG, SYSTEM_DEFAULT);
+    if (!tag.isEmpty()) {
+      AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag));
+    }
   }
 
   /**

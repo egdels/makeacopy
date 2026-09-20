@@ -296,7 +296,8 @@ public class CameraOptionsDialogFragment extends DialogFragment {
                 (d, which) -> {
                   d.dismiss();
                   if (which == checked) return;
-                  AppLanguage.apply(which == 0 ? AppLanguage.SYSTEM_DEFAULT : tags.get(which - 1));
+                  AppLanguage.apply(
+                      ctx, which == 0 ? AppLanguage.SYSTEM_DEFAULT : tags.get(which - 1));
                 })
             .setNegativeButton(R.string.cancel, (d, w) -> d.dismiss())
             .create();
