@@ -181,6 +181,46 @@ def _safe_read_image_size(path: Path) -> tuple[int, int] | None:
         return None
 
 
+_EXIF_ORIENTATION_TAG = 274
+
+
+def _read_exif_orientation(path: Path) -> int:
+    """EXIF orientation (1..8); 1 if absent or unreadable."""
+    try:
+        with Image.open(path) as im:
+            o = im.getexif().get(_EXIF_ORIENTATION_TAG, 1)
+        return int(o) if isinstance(o, int) and 1 <= o <= 8 else 1
+    except Exception:
+        return 1
+
+
+def display_to_stored(p: Point, orientation: int, width: int, height: int) -> Point:
+    """Map a point from the EXIF-upright view to stored pixel coordinates.
+
+    Label tools that load photos with EXIF orientation applied (``cv2.imread`` does, and so does
+    ``training/scripts/labeler.py``) produce corners in the upright view. Everything downstream
+    (PIL in training/evaluation, ``BitmapFactory`` in the app) reads the pixels as stored, so
+    ``corners_px`` must be in stored coordinates. ``width``/``height`` are the stored dimensions.
+    """
+    x, y = p.x, p.y
+    w1, h1 = float(width - 1), float(height - 1)
+    if orientation == 2:  # mirrored horizontally
+        return Point(w1 - x, y)
+    if orientation == 3:  # rotated 180
+        return Point(w1 - x, h1 - y)
+    if orientation == 4:  # mirrored vertically
+        return Point(x, h1 - y)
+    if orientation == 5:  # transposed
+        return Point(y, x)
+    if orientation == 6:  # displayed rotated 90 CW
+        return Point(y, h1 - x)
+    if orientation == 7:  # transversed
+        return Point(w1 - y, h1 - x)
+    if orientation == 8:  # displayed rotated 90 CCW
+        return Point(w1 - y, x)
+    return p
+
+
 def _ensure_empty_output_dir(out_dir: Path) -> None:
     if out_dir.exists():
         # "Do not overwrite": if the directory already contains content, abort.
@@ -205,7 +245,10 @@ def convert(
     in_images: Path,
     in_jsonl: Path,
     out_dir: Path,
+    label_coords: str = "exif",
 ) -> dict[str, Any]:
+    if label_coords not in ("exif", "stored"):
+        raise ValueError(f"label_coords must be 'exif' or 'stored', got {label_coords!r}")
     _ensure_empty_output_dir(out_dir)
     out_images = out_dir / "images"
     out_labels = out_dir / "labels"
@@ -299,6 +342,14 @@ def convert(
             width, height = size
             sample["width"] = int(width)
             sample["height"] = int(height)
+
+            # Corners labelled on the EXIF-upright view -> stored pixel coordinates.
+            if label_coords == "exif":
+                orientation = _read_exif_orientation(src_img)
+                if orientation != 1:
+                    pts = [display_to_stored(p, orientation, width, height) for p in pts]
+                    sample["exif_orientation"] = orientation
+                    _add_unique_error(sample, "exif_orientation_applied")
 
             # Additional checks (report-only)
             # Bounds
@@ -422,6 +473,16 @@ def main(argv: Iterable[str] | None = None) -> int:
         default="training/data/docquad_uvdoc_all_converted",
         help="Ausgabe-Verzeichnis (wird neu angelegt; Default: training/data/docquad_uvdoc_all_converted)",
     )
+    parser.add_argument(
+        "--label_coords",
+        choices=("exif", "stored"),
+        default="exif",
+        help=(
+            "Koordinatensystem der Eingabe-Labels bei Fotos mit EXIF-Orientierung: 'exif' = auf der "
+            "aufrechten Ansicht gelabelt (labeler.py / cv2.imread; Default), 'stored' = bereits in "
+            "gespeicherten Pixelkoordinaten. Die Ausgabe ist immer in gespeicherten Pixelkoordinaten."
+        ),
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     in_images = Path(args.in_images)
@@ -433,7 +494,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     if not in_jsonl.is_file():
         raise SystemExit(f"in_jsonl ist keine Datei: {in_jsonl}")
 
-    report = convert(in_images=in_images, in_jsonl=in_jsonl, out_dir=out_dir)
+    report = convert(
+        in_images=in_images, in_jsonl=in_jsonl, out_dir=out_dir, label_coords=args.label_coords
+    )
 
     print(f"[docquad] out_dir: {out_dir}")
     print(f"[docquad] total_records: {report['total_records']}")
