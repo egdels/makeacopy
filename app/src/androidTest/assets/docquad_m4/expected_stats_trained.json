@@ -2,11 +2,11 @@
   "mask_area_definition": "mask_prob_gt_0.5",
   "samples": {
     "sample0": {
-      "corner_heatmaps_mean": -17.46522184521433,
-      "corner_heatmaps_std": 6.2083616304459195,
-      "mask_area": 692,
-      "mask_logits_mean": -18.49719167290459,
-      "mask_logits_std": 15.37704817183681
+      "corner_heatmaps_mean": -15.705098106472178,
+      "corner_heatmaps_std": 5.8898597850366095,
+      "mask_area": 625,
+      "mask_logits_mean": -14.921300655149935,
+      "mask_logits_std": 12.390112181446757
     }
   },
   "version": 1

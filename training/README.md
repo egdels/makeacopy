@@ -336,11 +336,33 @@ python3 training/scripts/train_docquad_heatmap.py \
   --aug_rotate_deg 40 \
   --aug_rotate_prob 0.5 \
   --early_stop_patience 5
+
+# The script has no LR scheduler. Once val.corner_mae_px only oscillates, finish with a lower
+# learning rate (the CLI value overrides the one stored in the checkpoint):
+python3 training/scripts/train_docquad_heatmap.py \
+  --base_dir training/data/mix_v2_with_receipts_trainable \
+  --epochs 36 \
+  --batch 8 \
+  --lr 1e-5 \
+  --out_dir training/runs/docquad_v6_rot40_from_v2_receipts \
+  --resume training/runs/docquad_v6_rot40_from_v2_receipts/checkpoints/last.pt \
+  --aug_rotate_deg 40 \
+  --aug_rotate_prob 0.5
 ```
+
+The trainer keeps only `best.pt` and `last.pt`; copy `last.pt` after an epoch if you want to evaluate that specific state later.
 
 Keep `--aug_rotate_prob` well below 1 so upright documents stay in the training distribution. ±40° is a deliberate limit: around 45° it becomes ambiguous which corner is "top-left". The app covers stronger tilts with test-time rotation in the crop screen (`RotatingDocQuadDetector`).
 
-Measured on the device with `CornerPipelineEvalTest` (single model pass, mean corner error relative to the image diagonal, 15 epochs): tilted hold-out set 5.2% → 2.0%, upright own photos 3.9% → 3.7%, SmartDoc val unchanged at 0.45%.
+This recipe produced the model shipped since 4.7.0 (30 epochs at 3e-5, then 6 at 1e-5; best state: epoch 35, `val.corner_mae_px` 13.4 → 9.8). Measured on the device with `CornerPipelineEvalTest` against the previous model (mean corner error relative to the image diagonal, failures counted as 100%, sets unseen by both models):
+
+| Set | Single pass (live preview) | Crop screen result |
+|-----|----------------------------|--------------------|
+| Tilted hold-out (150) | 5.2% → 1.4% | 1.9% → 1.0% |
+| Upright own photos (61) | 3.9% → 2.5% | 2.2% → 1.6% |
+| SmartDoc val (75) | 0.45% → 0.40% | 0.55% → 0.53% |
+
+Checkpoints on the plateau differ by only a few images on these sets, and neither `val.total_loss` nor `val.corner_mae_px` predicts their on-device ranking reliably, so measure the final candidates on the device rather than picking by the validation metric alone. What remains hard afterwards is not tilt but small documents and cluttered, low-contrast backgrounds.
 
 ### Training Parameters
 
