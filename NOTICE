@@ -39,7 +39,7 @@ includes third-party components under their respective licenses as noted below.
     - Project: https://github.com/microsoft/onnxruntime
     - Path: external/onnxruntime (Git submodule)
     - License: MIT License
-    - Notes: Built from source for Android (XNNPACK and NNAPI, Java bindings) via
+    - Notes: Built from source for Android (CPU execution provider, Java bindings) via
       scripts/build_onnxruntime_android.sh. The resulting native libraries and
       Java JAR are integrated into app/jniLibs and app/libs respectively as part
       of the required ONNX Runtime support. The MIT license text is included at

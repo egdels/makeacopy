@@ -50,6 +50,15 @@ ORT_OPS_CONFIG="${ORT_OPS_CONFIG:-}"
 ORT_OPS_CONFIGS="${ORT_OPS_CONFIGS:-}"
 INCLUDE_PADDLE_OPS="${INCLUDE_PADDLE_OPS:-1}"
 
+# Optional execution providers (default: CPU only).
+# The app runs all models (DocQuad, PaddleOCR) on the CPU execution provider: measured on a
+# Pixel 7a, NNAPI made DocQuad inference ~12x slower with identical results and XNNPACK brought no
+# gain (see DocQuadLatencyBenchmarkTest). Building them in only costs binary size and build time.
+# Set to 1 to include an EP again, e.g. to repeat the benchmark on other hardware:
+#   ORT_USE_XNNPACK=1 ORT_USE_NNAPI=1 ./scripts/build_onnxruntime_android.sh
+ORT_USE_XNNPACK="${ORT_USE_XNNPACK:-0}"
+ORT_USE_NNAPI="${ORT_USE_NNAPI:-0}"
+
 # Merge multiple "domain;opset;OpA,OpB" config files into one.  Lines with the
 # same domain+opset are unioned; comments are dropped and replaced with a small
 # provenance header.  The implementation is `awk`-only to keep the script
@@ -168,7 +177,8 @@ cpu_jobs() {
   sysctl -n hw.ncpu 2>/dev/null || \
   echo 1
 }
-JOBS="$(cpu_jobs)"
+# Parallel build jobs; override with JOBS=<n> to leave cores free for other work.
+JOBS="${JOBS:-$(cpu_jobs)}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"   # CMake/Ninja honor this
 info "Parallel jobs: $JOBS"
 
@@ -339,13 +349,13 @@ info "SDK: ${ANDROID_SDK_ROOT:-UNKNOWN}"
 info "NDK: $ANDROID_NDK_HOME"
 
 # ===============================
-# Build per ABI (FULL, XNNPACK+NNAPI, Java)
+# Build per ABI (shared lib + Java bindings; CPU EP, optional XNNPACK/NNAPI)
 # ===============================
 rm -rf "$BUILD_ROOT"
 mkdir -p "$BUILD_ROOT" "$APP_LIBS"
 
 for ABI in $ABIS; do
-  info "Building ONNX Runtime for $ABI (XNNPACK+NNAPI)"
+  info "Building ONNX Runtime for $ABI (CPU EP; XNNPACK=$ORT_USE_XNNPACK, NNAPI=$ORT_USE_NNAPI)"
   ABI_BUILD_DIR="$BUILD_ROOT/$ABI"
   rm -rf "$ABI_BUILD_DIR"
   mkdir -p "$ABI_BUILD_DIR"
@@ -369,13 +379,19 @@ for ABI in $ABIS; do
     --android_sdk_path "${ANDROID_SDK_ROOT:?}"
     --android_ndk_path "${ANDROID_NDK_HOME:?}"
     --android_api 29
-    --use_xnnpack
-    --use_nnapi
     --android_abi "$ABI"
     --build_java
     --skip_submodule_sync
     --compile_no_warning_as_error
   )
+  XNNPACK_DEFINE=OFF
+  if [ "$ORT_USE_XNNPACK" = "1" ]; then
+    COMMON_ARGS+=( --use_xnnpack )
+    XNNPACK_DEFINE=ON
+  fi
+  if [ "$ORT_USE_NNAPI" = "1" ]; then
+    COMMON_ARGS+=( --use_nnapi )
+  fi
 
   # Minimal build flags (when ORT_OPS_CONFIG is set)
   if [ -n "$ORT_OPS_CONFIG" ]; then
@@ -402,7 +418,7 @@ for ABI in $ABIS; do
 
     onnxruntime_USE_FULL_PROTOBUF=ON
     onnxruntime_USE_MIMALLOC=OFF
-    onnxruntime_USE_XNNPACK=ON
+    onnxruntime_USE_XNNPACK=$XNNPACK_DEFINE
     onnxruntime_USE_KLEIDIAI=OFF
     onnxruntime_USE_SVE=OFF
     onnxruntime_USE_CUDA=OFF

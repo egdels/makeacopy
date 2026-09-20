@@ -215,6 +215,13 @@ chmod +x scripts/build_onnxruntime_android.sh
 ./scripts/build_onnxruntime_android.sh
 ```
 
+The script builds ONNX Runtime with the **CPU execution provider only** and strips it down to the operators of the bundled models. Notes for local builds:
+
+- The host `python3` needs the `flatbuffers` package (`python3 -m pip install flatbuffers`); without it the operator reduction fails with `cannot import name 'parse_config'`.
+- If the script picks an older CMake from the Android SDK, point it to the required one: `ORT_CMAKE=/path/to/cmake-3.31.6/bin/cmake`.
+- `JOBS=<n>` limits the parallel compile jobs (default: all cores).
+- `ORT_USE_XNNPACK=1` and/or `ORT_USE_NNAPI=1` build the optional execution providers in again. The app does not use them (NNAPI was ~12× slower for the corner model on a Pixel 7a, XNNPACK brought no gain); this is only useful to repeat that measurement with `DocQuadLatencyBenchmarkTest` on other hardware.
+
 > **Tip:** To build only for a specific ABI (faster for development):
 > ```bash
 > ABIS="arm64-v8a" ./scripts/build_opencv_android.sh
