@@ -73,52 +73,32 @@ public final class DocQuadOrtRunner implements AutoCloseable {
     // Optimized model loading: copy to cache and use file path for mmap support.
     File modelFile = copyAssetToCache(context, modelAssetPath, cacheDir);
 
-    this.session = createSessionWithFallback(env, modelFile.getAbsolutePath());
+    this.session = createSession(env, modelFile.getAbsolutePath());
     Log.d(TAG, "Model loaded from " + modelFile.getAbsolutePath());
   }
 
   /**
-   * Creates an ORT session with tiered EP fallback to avoid native crashes.
-   *
-   * <p>NNAPI on API 29 (and some other devices) can cause a native SIGABRT during graph
-   * partitioning that cannot be caught by Java. To work around this, NNAPI is only enabled on API
-   * 30+ where the implementation is more stable. If session creation with accelerated EPs fails,
-   * falls back to CPU-only.
+   * Intra-op threads for the CPU execution provider. Two threads stay on the big cores of
+   * big.LITTLE SoCs; more threads spill onto little cores and get slower again (Pixel 7a: 1 thread
+   * ~102 ms, 2 threads ~54 ms, 4 threads ~108 ms per inference).
    */
-  private static OrtSession createSessionWithFallback(OrtEnvironment env, String modelPath)
-      throws Exception {
-    // First attempt: XNNPACK + optionally NNAPI (API 30+)
+  private static final int INTRA_OP_THREADS = 2;
+
+  /**
+   * Creates a CPU-only ORT session.
+   *
+   * <p>NNAPI and XNNPACK are deliberately not used: measured with {@code
+   * DocQuadLatencyBenchmarkTest} on a Pixel 7a, NNAPI made inference ~12x slower (~620 ms vs. ~54
+   * ms), XNNPACK brought no gain over the default CPU provider for this model, and NNAPI is known
+   * to abort natively during graph partitioning on some devices (API 29). NNAPI is also deprecated
+   * as of Android 15.
+   */
+  private static OrtSession createSession(OrtEnvironment env, String modelPath) throws Exception {
     try (OrtSession.SessionOptions opts = new OrtSession.SessionOptions()) {
       opts.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-      opts.setIntraOpNumThreads(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-      // NNAPI is unstable on API 29 (native SIGABRT in graph partitioning)
-      if (android.os.Build.VERSION.SDK_INT >= 30) {
-        try {
-          opts.addNnapi();
-          Log.i(TAG, "NNAPI EP enabled");
-        } catch (Throwable t) {
-          Log.i(TAG, "NNAPI not available: " + t.getMessage());
-        }
-      } else {
-        Log.i(TAG, "NNAPI EP skipped (API " + android.os.Build.VERSION.SDK_INT + " < 30)");
-      }
-      try {
-        opts.addXnnpack(Collections.emptyMap());
-        Log.i(TAG, "XNNPACK EP enabled");
-      } catch (Throwable t) {
-        Log.i(TAG, "XNNPACK not available: " + t.getMessage());
-      }
+      opts.setIntraOpNumThreads(
+          Math.max(1, Math.min(INTRA_OP_THREADS, Runtime.getRuntime().availableProcessors())));
       return env.createSession(modelPath, opts);
-    } catch (Exception e) {
-      Log.w(
-          TAG,
-          "Session creation with accelerated EPs failed, falling back to CPU: " + e.getMessage());
-      // Fallback: CPU only
-      try (OrtSession.SessionOptions opts = new OrtSession.SessionOptions()) {
-        opts.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-        opts.setIntraOpNumThreads(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-        return env.createSession(modelPath, opts);
-      }
     }
   }
 
