@@ -521,4 +521,9 @@
     <string name="document_cleanup_clean_text">Temiz metin</string>
     <string name="workflow_step_description">Adım %1$d / %2$d: %3$s</string>
     <string name="search_scans">Taramalarda ara</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Bitmemiş belge bulundu</string>
+    <string name="resume_document_message">Bitmemiş, %1$d sayfalık bir belgeniz var. Devam etmek ister misiniz?</string>
+    <string name="resume_document_resume">Devam et</string>
+    <string name="resume_document_start_new">Yeni başlat</string>
 </resources>

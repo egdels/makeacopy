@@ -519,4 +519,9 @@
     <string name="document_cleanup_clean_text">متن تمیز</string>
     <string name="workflow_step_description">مرحله %1$d از %2$d: %3$s</string>
     <string name="search_scans">جستجوی اسکن‌ها</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">سند ناتمام پیدا شد</string>
+    <string name="resume_document_message">یک سند ناتمام با %1$d صفحه دارید. آیا می‌خواهید آن را ادامه دهید؟</string>
+    <string name="resume_document_resume">ادامه</string>
+    <string name="resume_document_start_new">شروع سند جدید</string>
 </resources>

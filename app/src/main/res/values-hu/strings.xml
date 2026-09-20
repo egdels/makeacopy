@@ -523,4 +523,9 @@
     <string name="document_cleanup_clean_text">Tiszta szöveg</string>
     <string name="workflow_step_description">%1$d. lépés a(z) %2$d közül: %3$s</string>
     <string name="search_scans">Szkennelések keresése</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Befejezetlen dokumentum található</string>
+    <string name="resume_document_message">Van egy befejezetlen, %1$d oldalas dokumentuma. Szeretné folytatni?</string>
+    <string name="resume_document_resume">Folytatás</string>
+    <string name="resume_document_start_new">Új indítása</string>
 </resources>

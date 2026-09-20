@@ -535,4 +535,9 @@
     <string name="document_cleanup_clean_text">Texto limpio</string>
     <string name="workflow_step_description">Paso %1$d de %2$d: %3$s</string>
     <string name="search_scans">Buscar escaneos</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Documento sin terminar encontrado</string>
+    <string name="resume_document_message">Tiene un documento sin terminar con %1$d página(s). ¿Desea continuar con él?</string>
+    <string name="resume_document_resume">Continuar</string>
+    <string name="resume_document_start_new">Empezar nuevo</string>
 </resources>

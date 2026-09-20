@@ -499,4 +499,9 @@
     <string name="document_cleanup_clean_text">स्वच्छ पाठ</string>
     <string name="workflow_step_description">चरण %1$d / %2$d: %3$s</string>
     <string name="search_scans">स्कैन खोजें</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">अधूरा दस्तावेज़ मिला</string>
+    <string name="resume_document_message">आपके पास %1$d पृष्ठ वाला एक अधूरा दस्तावेज़ है। क्या आप उसे जारी रखना चाहते हैं?</string>
+    <string name="resume_document_resume">जारी रखें</string>
+    <string name="resume_document_start_new">नया शुरू करें</string>
 </resources>

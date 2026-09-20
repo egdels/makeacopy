@@ -526,4 +526,9 @@
     <string name="document_cleanup_clean_text">Чистый текст</string>
     <string name="workflow_step_description">Шаг %1$d из %2$d: %3$s</string>
     <string name="search_scans">Поиск сканов</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Найден незавершённый документ</string>
+    <string name="resume_document_message">У вас есть незавершённый документ на %1$d стр. Хотите продолжить его?</string>
+    <string name="resume_document_resume">Продолжить</string>
+    <string name="resume_document_start_new">Начать новый</string>
 </resources>

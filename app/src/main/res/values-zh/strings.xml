@@ -501,4 +501,9 @@
     <string name="document_cleanup_clean_text">纯文本</string>
     <string name="workflow_step_description">第 %1$d 步，共 %2$d 步：%3$s</string>
     <string name="search_scans">搜索扫描件</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">发现未完成的文档</string>
+    <string name="resume_document_message">您有一个包含 %1$d 页的未完成文档，是否要继续？</string>
+    <string name="resume_document_resume">继续</string>
+    <string name="resume_document_start_new">新建</string>
 </resources>

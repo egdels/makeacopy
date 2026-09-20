@@ -526,4 +526,9 @@
     <string name="document_cleanup_clean_text">Czysty tekst</string>
     <string name="workflow_step_description">Krok %1$d z %2$d: %3$s</string>
     <string name="search_scans">Szukaj skanów</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Znaleziono niedokończony dokument</string>
+    <string name="resume_document_message">Masz niedokończony dokument z %1$d stronami. Czy chcesz go kontynuować?</string>
+    <string name="resume_document_resume">Kontynuuj</string>
+    <string name="resume_document_start_new">Rozpocznij nowy</string>
 </resources>

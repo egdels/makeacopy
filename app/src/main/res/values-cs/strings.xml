@@ -525,4 +525,9 @@
     <string name="document_cleanup_clean_text">Čistý text</string>
     <string name="workflow_step_description">Krok %1$d z %2$d: %3$s</string>
     <string name="search_scans">Hledat skeny</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Nalezen nedokončený dokument</string>
+    <string name="resume_document_message">Máte nedokončený dokument s %1$d stránkami. Chcete v něm pokračovat?</string>
+    <string name="resume_document_resume">Pokračovat</string>
+    <string name="resume_document_start_new">Začít nový</string>
 </resources>

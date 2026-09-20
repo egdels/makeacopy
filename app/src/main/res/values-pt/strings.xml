@@ -526,4 +526,9 @@
     <string name="document_cleanup_clean_text">Texto limpo</string>
     <string name="workflow_step_description">Etapa %1$d de %2$d: %3$s</string>
     <string name="search_scans">Pesquisar digitalizações</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Documento inacabado encontrado</string>
+    <string name="resume_document_message">Tem um documento inacabado com %1$d página(s). Deseja continuar?</string>
+    <string name="resume_document_resume">Continuar</string>
+    <string name="resume_document_start_new">Iniciar novo</string>
 </resources>

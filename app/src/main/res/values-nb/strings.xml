@@ -520,4 +520,9 @@
     <string name="document_cleanup_clean_text">Ren tekst</string>
     <string name="workflow_step_description">Trinn %1$d av %2$d: %3$s</string>
     <string name="search_scans">Søk i skanninger</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Ufullført dokument funnet</string>
+    <string name="resume_document_message">Du har et ufullført dokument med %1$d side(r). Vil du fortsette med det?</string>
+    <string name="resume_document_resume">Fortsett</string>
+    <string name="resume_document_start_new">Start nytt</string>
 </resources>

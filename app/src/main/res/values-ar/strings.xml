@@ -516,4 +516,9 @@
     <string name="document_cleanup_clean_text">نص نظيف</string>
     <string name="workflow_step_description">الخطوة %1$d من %2$d: %3$s</string>
     <string name="search_scans">البحث في المستندات الممسوحة</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">تم العثور على مستند غير مكتمل</string>
+    <string name="resume_document_message">لديك مستند غير مكتمل يحتوي على %1$d صفحة. هل تريد المتابعة؟</string>
+    <string name="resume_document_resume">متابعة</string>
+    <string name="resume_document_start_new">بدء مستند جديد</string>
 </resources>

@@ -495,4 +495,9 @@
     <string name="crop_hint_drag_curve_bottom">Σύρετε για να διαμορφώσετε την κάτω καμπύλη</string>
     <string name="workflow_step_description">Βήμα %1$d από %2$d: %3$s</string>
     <string name="search_scans">Αναζήτηση σαρώσεων</string>
+    <!-- Session 3: persistent document sessions / resume -->
+    <string name="resume_document_title">Βρέθηκε ημιτελές έγγραφο</string>
+    <string name="resume_document_message">Έχετε ένα ημιτελές έγγραφο με %1$d σελίδες. Θέλετε να συνεχίσετε;</string>
+    <string name="resume_document_resume">Συνέχεια</string>
+    <string name="resume_document_start_new">Έναρξη νέου</string>
 </resources>
