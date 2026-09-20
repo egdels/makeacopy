@@ -27,6 +27,10 @@ local.properties
 /venv/
 /training/runs/
 /training/data/
+# Same locations as symlinks (a trailing slash only matches real directories)
+/training/data
+/training/runs
+/training/runs2
 /training/labels/
 /training/dataset/
 __pycache__/
