@@ -543,55 +543,68 @@ final class PaddleResultBuilder {
                 PaddleDebugDumper.dumpCrop(full, globalCropIndex.getAndIncrement(), q, crop, out);
             }
 
-            // Space-/Token-Rekonstruktion: Recognition liefert keine Spaces.
-            // Versuche, den Crop per vertikalem Projection-Profile in Wort-Segmente
-            // zu trennen und den erkannten Text proportional zu verteilen.
-            //
-            // Bei RTL-Texten (Arabisch, Persisch, Hebräisch, …) ist diese Pixel-zu-
-            // Codepoint-Verteilung nicht zuverlässig: WordSplitter schneidet den rec-
-            // Output linear nach Pixel-Spalten in feste Substring-Bereiche, was die
-            // Codepoints an falschen Positionen kappt und zu Buchstabensalat in
-            // einzelnen Wörtern führt (zerrissene End-/Mittel-Formen). Wir skippen
-            // den Splitter daher bei RTL-Crops und nehmen den rec-Text als ein Snippet
-            // pro Quad; Sub-Word-Geometrie für den PDF-Layer kommt aus der CTC-Frame-
-            // basierten buildSubWords (geometrisch korrekt unabhängig von Schriftrichtung).
-            float aggConf100 = Math.max(0f, Math.min(100f, out.confidence() * 100f));
-
-            // Bei rotierten Vertikal-Crops sind weder die Pixel-Spalten des Crops noch die
-            // CTC-Frame-Geometrie auf die (unrotierte) Quad-Geometrie abbildbar: WordSplitter
-            // und buildSubWords würden falsche Boxen liefern. Der gesamte Quad wird daher als
-            // ein Wort mit der vollen Det-Box emittiert.
-            if (rotatedVertical) {
-                List<RecognizedWord> vWords = new ArrayList<>(1);
-                if (!text.isEmpty()) {
-                    vWords.add(new RecognizedWord(text, quadBBox(q), aggConf100));
-                }
-                return new QuadRecognition(text, vWords);
-            }
-
-            boolean cropIsRtl = isRtlText(text);
-            List<RecognizedWord> subWords =
-                    (!ENABLE_BITMAP_WORD_SPLITTER || cropIsRtl)
-                            ? null
-                            : WordSplitter.split(q, crop, text, aggConf100);
-            String emittedText;
-            if (subWords != null && subWords.size() >= 2) {
-                StringBuilder sb = new StringBuilder();
-                for (int wi = 0; wi < subWords.size(); wi++) {
-                    if (wi > 0) sb.append(' ');
-                    sb.append(subWords.get(wi).getText());
-                }
-                emittedText = sb.toString();
-            } else {
-                subWords = buildSubWords(q, out);
-                emittedText = text;
-            }
-            return new QuadRecognition(emittedText, subWords);
+            return emitQuadWords(q, crop, text, out, rotatedVertical);
         } finally {
             if (crop != null && crop != full && !crop.isRecycled()) {
                 crop.recycle();
             }
         }
+    }
+
+    /**
+     * Baut aus dem erkannten Text eines Quads den emittierten Snippet und seine Wörter
+     * (Wort-Boxen für den PDF-Layer).
+     */
+    private static QuadRecognition emitQuadWords(
+            Quad q,
+            Bitmap crop,
+            String text,
+            PaddleRecOrtRunner.RecOutput out,
+            boolean rotatedVertical) {
+        // Space-/Token-Rekonstruktion: Recognition liefert keine Spaces.
+        // Versuche, den Crop per vertikalem Projection-Profile in Wort-Segmente
+        // zu trennen und den erkannten Text proportional zu verteilen.
+        //
+        // Bei RTL-Texten (Arabisch, Persisch, Hebräisch, …) ist diese Pixel-zu-
+        // Codepoint-Verteilung nicht zuverlässig: WordSplitter schneidet den rec-
+        // Output linear nach Pixel-Spalten in feste Substring-Bereiche, was die
+        // Codepoints an falschen Positionen kappt und zu Buchstabensalat in
+        // einzelnen Wörtern führt (zerrissene End-/Mittel-Formen). Wir skippen
+        // den Splitter daher bei RTL-Crops und nehmen den rec-Text als ein Snippet
+        // pro Quad; Sub-Word-Geometrie für den PDF-Layer kommt aus der CTC-Frame-
+        // basierten buildSubWords (geometrisch korrekt unabhängig von Schriftrichtung).
+        float aggConf100 = Math.max(0f, Math.min(100f, out.confidence() * 100f));
+
+        // Bei rotierten Vertikal-Crops sind weder die Pixel-Spalten des Crops noch die
+        // CTC-Frame-Geometrie auf die (unrotierte) Quad-Geometrie abbildbar: WordSplitter
+        // und buildSubWords würden falsche Boxen liefern. Der gesamte Quad wird daher als
+        // ein Wort mit der vollen Det-Box emittiert.
+        if (rotatedVertical) {
+            List<RecognizedWord> vWords = new ArrayList<>(1);
+            if (!text.isEmpty()) {
+                vWords.add(new RecognizedWord(text, quadBBox(q), aggConf100));
+            }
+            return new QuadRecognition(text, vWords);
+        }
+
+        boolean cropIsRtl = isRtlText(text);
+        List<RecognizedWord> subWords =
+                (!ENABLE_BITMAP_WORD_SPLITTER || cropIsRtl)
+                        ? null
+                        : WordSplitter.split(q, crop, text, aggConf100);
+        String emittedText;
+        if (subWords != null && subWords.size() >= 2) {
+            StringBuilder sb = new StringBuilder();
+            for (int wi = 0; wi < subWords.size(); wi++) {
+                if (wi > 0) sb.append(' ');
+                sb.append(subWords.get(wi).getText());
+            }
+            emittedText = sb.toString();
+        } else {
+            subWords = buildSubWords(q, out);
+            emittedText = text;
+        }
+        return new QuadRecognition(emittedText, subWords);
     }
 
     /**
