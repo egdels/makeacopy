@@ -34,6 +34,7 @@ import de.schliweb.makeacopy.data.library.ScansRepository;
 import de.schliweb.makeacopy.databinding.FragmentExportBinding;
 import de.schliweb.makeacopy.ui.camera.CameraViewModel;
 import de.schliweb.makeacopy.ui.crop.CropViewModel;
+import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.ui.ocr.OCRViewModel;
 import de.schliweb.makeacopy.utils.export.*;
 import de.schliweb.makeacopy.utils.export.jpeg.JpegExportOptions;
@@ -133,8 +134,7 @@ public class ExportFragment extends Fragment {
    * @param onLoaded callback invoked on the main thread with the decoded bitmap (never null)
    */
   private void loadPageIntoPreviewAsync(
-      de.schliweb.makeacopy.ui.export.session.CompletedScan page,
-      java.util.function.Consumer<Bitmap> onLoaded) {
+      CompletedScan page, java.util.function.Consumer<Bitmap> onLoaded) {
     if (page == null) return;
     int[] sz =
         ViewSizeUtils.sizeOrDefault(binding != null ? binding.documentPreview : null, 2048, 2048);
@@ -336,7 +336,7 @@ public class ExportFragment extends Fragment {
         badge.setOnClickListener(null);
         return;
       }
-      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+      List<CompletedScan> pages =
           (exportSessionViewModel != null) ? exportSessionViewModel.getPages().getValue() : null;
       // Resolve the active page like the edit entry points do (multi-page pages restored from
       // disk have a freshly decoded preview bitmap, so the in-memory identity lookup alone
@@ -351,7 +351,7 @@ public class ExportFragment extends Fragment {
         badge.setOnClickListener(null);
         return;
       }
-      de.schliweb.makeacopy.ui.export.session.CompletedScan s = pages.get(idx);
+      CompletedScan s = pages.get(idx);
       if (s == null) {
         badge.setVisibility(View.GONE);
         badge.setOnClickListener(null);
@@ -419,7 +419,7 @@ public class ExportFragment extends Fragment {
         // Session 3: any persisted page (page.jpg on disk) is editable via the persisted-page
         // edit path, regardless of whether the original capture is still reachable.
         if (!show) {
-          de.schliweb.makeacopy.ui.export.session.CompletedScan active = getActivePageForEdit();
+          CompletedScan active = getActivePageForEdit();
           show = active != null && active.filePath() != null;
         }
       }
@@ -451,13 +451,12 @@ public class ExportFragment extends Fragment {
   private int findActivePageIndex() {
     try {
       if (exportSessionViewModel == null || exportViewModel == null) return -1;
-      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-          exportSessionViewModel.getPages().getValue();
+      List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
       if (pages == null || pages.isEmpty()) return -1;
       Bitmap curPreview = exportViewModel.getDocumentBitmap().getValue();
       if (curPreview == null) return -1;
       for (int i = 0; i < pages.size(); i++) {
-        de.schliweb.makeacopy.ui.export.session.CompletedScan s = pages.get(i);
+        CompletedScan s = pages.get(i);
         if (s != null && s.inMemoryBitmap() == curPreview) return i;
       }
       return -1;
@@ -479,18 +478,15 @@ public class ExportFragment extends Fragment {
       if (cur == null) return false;
       int n = 0;
       if (exportSessionViewModel != null) {
-        List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-            exportSessionViewModel.getPages().getValue();
+        List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
         n = (pages == null) ? 0 : pages.size();
       }
       if (n <= 1) return true;
       if (activeSessionPageIndex < 0 || activeSessionPageIndex >= n) return false;
       if (lastFreshMultipagePageId == null) return false;
-      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-          exportSessionViewModel.getPages().getValue();
+      List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
       if (pages == null || activeSessionPageIndex >= pages.size()) return false;
-      de.schliweb.makeacopy.ui.export.session.CompletedScan activePage =
-          pages.get(activeSessionPageIndex);
+      CompletedScan activePage = pages.get(activeSessionPageIndex);
       if (activePage == null || !lastFreshMultipagePageId.equals(activePage.id())) return false;
       Bitmap fresh = cropViewModel.getLastFreshPageBitmap();
       if (fresh != null) return cur == fresh;
@@ -507,18 +503,8 @@ public class ExportFragment extends Fragment {
   }
 
   /**
-   * Creates and initializes the view hierarchy associated with this fragment. This method handles
-   * view inflation, view model setup, event listeners, and initializes shared preferences for
-   * maintaining user selections.
-   *
-   * @param inflater The LayoutInflater object that can be used to inflate any views in the
-   *     fragment.
-   * @param container If non-null, this is the parent view that the fragment's UI should be attached
-   *     to. The fragment should not add the view itself, but this can be used to generate the
-   *     LayoutParams of the view.
-   * @param savedInstanceState If non-null, this fragment is being re-constructed from a previous
-   *     saved state as given here.
-   * @return The root view of the fragment's layout that has been created and initialized.
+   * Creates and initializes the view hierarchy associated with this fragment: view models, the page
+   * filmstrip, document launchers, buttons and observers.
    */
   @Override
   public View onCreateView(
@@ -529,32 +515,11 @@ public class ExportFragment extends Fragment {
     Context context = requireContext();
     ExportPrefsHelper.getPrefs(context);
 
-    boolean includeOcr = ExportPrefsHelper.isIncludeOcr(context);
-    boolean convertToGrayscale = ExportPrefsHelper.isGrayscaleFromPdfMode(context);
-    boolean exportAsJpeg = ExportPrefsHelper.isExportAsJpeg(context);
-
-    // Initialize JPEG mode checkboxes from saved preference (default AUTO)
-    // jpeg_mode preference is read later when building export options
-
     // ViewModel
     exportViewModel = new ViewModelProvider(this).get(ExportViewModel.class);
-    exportViewModel.setIncludeOcr(includeOcr);
-    exportViewModel.setConvertToGrayscale(convertToGrayscale);
-    exportViewModel.setExportFormat(exportAsJpeg ? "JPEG" : "PDF");
-
-    // Inline export format selector (PDF | JPEG): mirrors the persisted preference and
-    // updates it immediately so the Save button uses the visible selection.
-    binding.exportFormatToggle.check(exportAsJpeg ? R.id.format_jpeg : R.id.format_pdf);
-    binding.exportFormatToggle.addOnButtonCheckedListener(
-        (group, checkedId, isChecked) -> {
-          if (!isChecked) return;
-          boolean jpegSelected = checkedId == R.id.format_jpeg;
-          Context c = getContext();
-          if (c == null || ExportPrefsHelper.isExportAsJpeg(c) == jpegSelected) return;
-          ExportPrefsHelper.setExportAsJpeg(c, jpegSelected);
-          exportViewModel.setExportFormat(jpegSelected ? "JPEG" : "PDF");
-          renderPreviewFromCurrent();
-        });
+    exportViewModel.setIncludeOcr(ExportPrefsHelper.isIncludeOcr(context));
+    exportViewModel.setConvertToGrayscale(ExportPrefsHelper.isGrayscaleFromPdfMode(context));
+    setupExportFormatToggle(ExportPrefsHelper.isExportAsJpeg(context));
 
     // Include OCR option is now managed solely via ExportOptionsDialogFragment.
     // Keep the inline checkbox hidden and do not alter its visibility here.
@@ -565,474 +530,28 @@ public class ExportFragment extends Fragment {
     // Back button: navigate to OCR (if not skipping OCR) or Crop (if skipping OCR)
     View backBtn = root.findViewById(R.id.button_back);
     if (backBtn != null) {
+      // Delegate to the same back handling as system Back to ensure identical behavior
       backBtn.setOnClickListener(
-          v -> {
-            // Delegate to the same back handling as system Back to ensure identical behavior
-            requireActivity().getOnBackPressedDispatcher().onBackPressed();
-          });
+          v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
     }
 
     cropViewModel = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
     ocrViewModel = new ViewModelProvider(requireActivity()).get(OCRViewModel.class);
     cameraViewModel = new ViewModelProvider(requireActivity()).get(CameraViewModel.class);
 
-    // Ensure we have a bitmap if arriving here directly (skipping Crop/OCR)
-    if (cropViewModel.getImageBitmap().getValue() == null) {
-      Context ctxInit = getContext();
-      if (ctxInit != null) {
-        String path =
-            cameraViewModel.getImagePath() != null
-                ? cameraViewModel.getImagePath().getValue()
-                : null;
-        Uri u =
-            cameraViewModel.getImageUri() != null ? cameraViewModel.getImageUri().getValue() : null;
-        Bitmap bmp = ImageLoader.decode(ctxInit, path, u);
-        if (bmp != null) {
-          cropViewModel.setImageBitmap(bmp);
-        }
-      }
-    }
-
-    // FR #72 — Edit-Overlay: re-enter CropFragment to adjust the trapezoid for the
-    // currently displayed preview page. The overlay is only shown when the original
-    // image source for the active page is reachable (single-page hot workflow in V1):
-    // a known image path / URI in CameraViewModel and previously persisted corners
-    // in CropViewModel.
-    if (binding.buttonEditCrop != null) {
-      binding.buttonEditCrop.setOnClickListener(
-          v -> {
-            android.graphics.PointF[] lastCorners =
-                cropViewModel.getLastAcceptedCornersOriginal().getValue();
-            String path =
-                cameraViewModel.getImagePath() != null
-                    ? cameraViewModel.getImagePath().getValue()
-                    : null;
-            Uri origUri =
-                cameraViewModel.getImageUri() != null
-                    ? cameraViewModel.getImageUri().getValue()
-                    : null;
-            boolean hasOriginal = (path != null && !path.isEmpty()) || origUri != null;
-            if (!hasOriginal || lastCorners == null || !isActivePageReEditable()) {
-              // Session 3: fall back to editing the persisted page image (page.jpg) so ANY
-              // persisted page of the document can be re-edited, not only the fresh one.
-              de.schliweb.makeacopy.ui.export.session.CompletedScan active = getActivePageForEdit();
-              if (active != null && active.filePath() != null) {
-                startPersistedPageEdit(v, active);
-                return;
-              }
-              UIUtils.showToast(
-                  requireContext(),
-                  getString(R.string.edit_crop_original_unavailable),
-                  Toast.LENGTH_SHORT);
-              return;
-            }
-            // Mark Re-Edit entry so CropFragment can:
-            //   - reload the original from disk (the in-memory original was nulled here),
-            //   - pre-populate the trapezoid with lastAcceptedCornersOriginal,
-            //   - on confirm/back, pop directly back to Export instead of advancing to OCR.
-            cropViewModel.setCameFromExport(true);
-            cropViewModel.setImageCropped(false);
-            // FR #72 multi-page: remember which session page is being re-edited so the
-            // confirm path can update the correct page instead of hardcoded index 0.
-            cropViewModel.setReEditPageIndex(findActivePageIndex());
-            // Session 3: also record the stable page id — the id survives page moves/deletes
-            // while the editor is open, unlike the index.
-            {
-              de.schliweb.makeacopy.ui.export.session.CompletedScan active = getActivePageForEdit();
-              cropViewModel.setReEditPageId(active != null ? active.id() : null);
-            }
-            try {
-              // FR #72 — use forward navigate (not popBackStack) so the existing Export
-              // entry is preserved on the back stack. On confirm/back the Re-Edit flow can
-              // then popBackStack(navigation_export, false) and the very same Export
-              // instance (with its observers) receives the updated cropped bitmap and
-              // re-renders the preview correctly.
-              Navigation.findNavController(v).navigate(R.id.navigation_crop);
-            } catch (Throwable t) {
-              Log.w(TAG, "Re-Edit navigation failed", t);
-              cropViewModel.setCameFromExport(false);
-              cropViewModel.setReEditPageIndex(-1);
-              cropViewModel.setReEditPageId(null);
-            }
-          });
-      // Visibility is recomputed whenever the preview is rendered; default hidden.
-      updateEditCropOverlayVisibility();
-    }
+    ensureBitmapWhenArrivingDirectly();
+    setupEditCropButton();
 
     // Multipage session setup (v1 increment) - use Activity scope so it survives navigation
     exportSessionViewModel =
         new ViewModelProvider(requireActivity())
             .get(de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel.class);
-    pagesAdapter =
-        new de.schliweb.makeacopy.ui.export.session.ExportPagesAdapter(
-            new de.schliweb.makeacopy.ui.export.session.ExportPagesAdapter.Callbacks() {
-              @Override
-              public void onRemoveClicked(int position) {
-                if (!isAdded()) return;
-                // Confirm removal to avoid accidental fat-finger deletions (analog to back
-                // navigation)
-                androidx.appcompat.app.AlertDialog dialog =
-                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(
-                            requireContext())
-                        .setTitle(getString(R.string.confirm_remove_page_title))
-                        .setMessage(getString(R.string.confirm_remove_page_message))
-                        .setPositiveButton(
-                            R.string.confirm,
-                            (dialogInterface, which) -> {
-                              if (exportSessionViewModel == null) return;
-                              List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-                                  exportSessionViewModel.getPages().getValue();
-                              int n = (cur == null) ? 0 : cur.size();
-                              if (position < 0 || position >= n) return;
-                              exportSessionViewModel.removeAt(position);
-                              // A11y: announce removal
-                              View v = getView();
-                              if (isAdded() && v != null) {
-                                A11yUtils.announce(v, getString(R.string.page_removed));
-                              }
-                            })
-                        .setNegativeButton(
-                            R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-                        .create();
-                dialog.setOnShowListener(
-                    dlg ->
-                        DialogUtils.improveAlertDialogButtonContrastForNight(
-                            dialog, requireContext()));
-                dialog.show();
-              }
+    setupPagesFilmstrip();
+    exportSessionViewModel.getPages().observe(getViewLifecycleOwner(), this::onPagesChanged);
+    seedOrAppendCurrentPage(context);
 
-              @Override
-              public void onRemoveConfirmed(int position) {
-                if (!isAdded() || exportSessionViewModel == null) return;
-                List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-                    exportSessionViewModel.getPages().getValue();
-                int n = (cur == null) ? 0 : cur.size();
-                if (position < 0 || position >= n) return;
-                exportSessionViewModel.removeAt(position);
-                View v = getView();
-                if (isAdded() && v != null) {
-                  A11yUtils.announce(v, getString(R.string.page_removed));
-                }
-              }
-
-              @Override
-              public void onPageClicked(int position) {
-                List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-                    exportSessionViewModel.getPages().getValue();
-                if (cur == null || position < 0 || position >= cur.size()) return;
-                de.schliweb.makeacopy.ui.export.session.CompletedScan sel = cur.get(position);
-                if (sel == null) return;
-                activeSessionPageIndex = position;
-                loadPageIntoPreviewAsync(
-                    sel,
-                    bmp -> {
-                      exportViewModel.setDocumentBitmap(bmp);
-                      exportViewModel.setDocumentReady(true);
-                    });
-              }
-
-              @Override
-              public void onReorder(int fromPosition, int toPosition) {
-                if (activeSessionPageIndex == fromPosition) {
-                  activeSessionPageIndex = toPosition;
-                } else if (fromPosition < activeSessionPageIndex
-                    && activeSessionPageIndex <= toPosition) {
-                  activeSessionPageIndex--;
-                } else if (toPosition <= activeSessionPageIndex
-                    && activeSessionPageIndex < fromPosition) {
-                  activeSessionPageIndex++;
-                }
-                exportSessionViewModel.move(fromPosition, toPosition);
-                // A11y: announce new position (1-based)
-                View rootV = getView();
-                if (isAdded() && rootV != null) {
-                  A11yUtils.announce(
-                      rootV, getString(R.string.page_moved_to_position, toPosition + 1));
-                }
-              }
-
-              @Override
-              public void onOcrRequested(int position) {
-                showOcrBatchOptions(position);
-              }
-            });
-    androidx.recyclerview.widget.LinearLayoutManager lm =
-        new androidx.recyclerview.widget.LinearLayoutManager(
-            requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false);
-    binding.pagesRecycler.setLayoutManager(lm);
-    binding.pagesRecycler.setAdapter(pagesAdapter);
-
-    // Enable drag & drop reordering via ItemTouchHelper (horizontal)
-    androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback cb =
-        new androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
-            androidx.recyclerview.widget.ItemTouchHelper.LEFT
-                | androidx.recyclerview.widget.ItemTouchHelper.RIGHT,
-            0) {
-          @Override
-          public boolean onMove(
-              @NonNull androidx.recyclerview.widget.RecyclerView recyclerView,
-              @NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder viewHolder,
-              @NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder target) {
-            int from = viewHolder.getBindingAdapterPosition();
-            int to = target.getBindingAdapterPosition();
-            return pagesAdapter.onItemMove(from, to);
-          }
-
-          @Override
-          public void onSwiped(
-              @NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder viewHolder,
-              int direction) {
-            // no-op (we don't support swipe to dismiss here)
-          }
-
-          @Override
-          public boolean isLongPressDragEnabled() {
-            // Long-press on the item starts drag
-            return true;
-          }
-        };
-    new androidx.recyclerview.widget.ItemTouchHelper(cb)
-        .attachToRecyclerView(binding.pagesRecycler);
-    // Observe pages to update UI
-    exportSessionViewModel
-        .getPages()
-        .observe(
-            getViewLifecycleOwner(),
-            pages -> {
-              pagesAdapter.submitList(pages);
-              int n = (pages == null) ? 0 : pages.size();
-              // Show filmstrip only when there are actually more than one page
-              binding.pagesContainer.setVisibility(n > 1 ? View.VISIBLE : View.GONE);
-              // Show "Clear all" only when more than one page exists
-              // Trash icon is always visible; only enabled when there are multiple pages
-              binding.buttonClearPages.setVisibility(View.VISIBLE);
-              binding.buttonClearPages.setEnabled(n > 1);
-              // If current preview points to a removed page, auto-select a remaining one
-              Bitmap curPreview = exportViewModel.getDocumentBitmap().getValue();
-              boolean found = false;
-              if (curPreview != null && pages != null) {
-                for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
-                  if (s != null && s.inMemoryBitmap() == curPreview) {
-                    found = true;
-                    break;
-                  }
-                }
-                if (!found
-                    && lastFreshMultipagePageId != null
-                    && curPreview == lastFreshMultipagePreviewBitmap) {
-                  for (int i = 0; i < pages.size(); i++) {
-                    de.schliweb.makeacopy.ui.export.session.CompletedScan s = pages.get(i);
-                    if (s != null && lastFreshMultipagePageId.equals(s.id())) {
-                      activeSessionPageIndex = i;
-                      found = true;
-                      break;
-                    }
-                  }
-                }
-              }
-              if (!found && pages != null && !pages.isEmpty()) {
-                de.schliweb.makeacopy.ui.export.session.CompletedScan first = pages.get(0);
-                if (first != null) {
-                  final int pageCount = n;
-                  loadPageIntoPreviewAsync(
-                      first,
-                      bmp -> {
-                        activeSessionPageIndex = 0;
-                        exportViewModel.setDocumentBitmap(bmp);
-                        if (pageCount <= 1) {
-                          try {
-                            cropViewModel.setLastFreshPageBitmap(bmp);
-                          } catch (Throwable ignore) {
-                            // Best-effort; failure is non-critical
-                          }
-                        }
-                        exportViewModel.setDocumentReady(true);
-                      });
-                }
-              }
-              // Accessibility: Announce updated page count when it changes
-              if (isAdded() && n != lastPagesCount) {
-                lastPagesCount = n;
-                View rootView = getView();
-                if (rootView != null) {
-                  String msg = getString(R.string.pages_count_announcement, n);
-                  A11yUtils.announce(rootView, msg);
-                }
-              }
-              // Do not toggle Include OCR checkbox visibility here; it remains hidden and
-              // controlled by the dialog.
-              // Refresh OCR badge overlay on the preview (mirrors filmstrip badge state).
-              updatePreviewOcrBadge();
-              // Session 3: keep the persistent DocumentSession snapshot in sync with the runtime
-              // page list (ordered page ids) on every add/addAll/remove/move/update.
-              syncDocumentSessionAsync(pages);
-            });
-    // Initialize or update pages based on current state and pending add-page flag
-    Bitmap initBmp = cropViewModel.getImageBitmap().getValue();
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> currentPages =
-        exportSessionViewModel.getPages().getValue();
-    int curSize = (currentPages == null) ? 0 : currentPages.size();
-
-    boolean pendingAdd = ExportPrefsHelper.isPendingAddPage(context);
-    if (curSize == 0) {
-      // First time opening Export in this session: seed with current cropped bitmap if available
-      if (initBmp != null) {
-        int userDeg = 0;
-        Integer vDeg = cropViewModel.getUserRotationDegrees().getValue();
-        if (vDeg != null) userDeg = ((vDeg % 360) + 360) % 360;
-        de.schliweb.makeacopy.ui.export.session.CompletedScan initial =
-            new de.schliweb.makeacopy.ui.export.session.CompletedScan(
-                java.util.UUID.randomUUID().toString(),
-                null,
-                userDeg,
-                null,
-                null,
-                null,
-                System.currentTimeMillis(),
-                initBmp.getWidth(),
-                initBmp.getHeight(),
-                initBmp,
-                1,
-                "metadata");
-        // Align the session id used by Review autosave to this export session id
-        if (FeatureFlags.isOcrReviewEnabled() && isAdded()) {
-          Context c = getContext();
-          if (c != null) {
-            SessionIds.setCurrentScanId(c.getApplicationContext(), initial.id());
-          }
-        }
-        activeSessionPageIndex = 0;
-        exportSessionViewModel.setInitial(initial);
-        // FR #72 V1.3: mark this bitmap as the "fresh" page (re-editable). Older pages
-        // selected later via the filmstrip will have a different bitmap identity and will
-        // therefore not show the Edit overlay.
-        try {
-          cropViewModel.setLastFreshPageBitmap(initBmp);
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-        // Persist initial page so it appears in the registry as well
-        persistCompletedScanAsync(initial);
-      } else {
-        exportSessionViewModel.setInitial(null);
-        // Session 3: no in-memory state (e.g. fresh process) — try to restore the active
-        // persisted DocumentSession so the document composition survives process death.
-        restoreDocumentSessionAsync();
-      }
-    } else if (pendingAdd) {
-      // User initiated adding another page and returned here after new capture/crop
-      if (initBmp != null) {
-        // Avoid adding duplicates if the same bitmap reference is already present
-        boolean alreadyPresent = false;
-        for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : currentPages) {
-          if (s != null && s.inMemoryBitmap() == initBmp) {
-            alreadyPresent = true;
-            break;
-          }
-        }
-        if (!alreadyPresent) {
-          int userDeg = 0;
-          Integer v2 = cropViewModel.getUserRotationDegrees().getValue();
-          if (v2 != null) userDeg = ((v2 % 360) + 360) % 360;
-          de.schliweb.makeacopy.ui.export.session.CompletedScan added =
-              new de.schliweb.makeacopy.ui.export.session.CompletedScan(
-                  java.util.UUID.randomUUID().toString(),
-                  null,
-                  userDeg,
-                  null,
-                  null,
-                  null,
-                  System.currentTimeMillis(),
-                  initBmp.getWidth(),
-                  initBmp.getHeight(),
-                  initBmp,
-                  1,
-                  "metadata");
-          // Keep SessionIds aligned to the last added page (so Review autosave per-page stays
-          // consistent)
-          if (FeatureFlags.isOcrReviewEnabled() && isAdded()) {
-            Context c2 = getContext();
-            if (c2 != null) {
-              SessionIds.setCurrentScanId(c2.getApplicationContext(), added.id());
-            }
-          }
-          activeSessionPageIndex = curSize;
-          exportSessionViewModel.add(added);
-          // FR #72 V1.3: the newly added page is the fresh one (its original capture is still
-          // tracked by CameraViewModel). Mark it for the Edit-overlay identity check.
-          try {
-            cropViewModel.setLastFreshPageBitmap(initBmp);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-          // Persist this newly added page into the CompletedScans registry (Insert-Hook)
-          persistCompletedScanAsync(added);
-        }
-      }
-      // Clear the flag regardless to prevent re-adding on future opens
-      ExportPrefsHelper.clearPendingAddPage(context);
-    }
-    binding.buttonAddPage.setOnClickListener(
-        v -> {
-          // Directly open the Completed Scans picker (no dialog)
-          ArrayList<String> already = new ArrayList<>();
-          List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-              exportSessionViewModel.getPages().getValue();
-          if (cur != null) {
-            for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : cur) {
-              if (s != null && s.id() != null) already.add(s.id());
-            }
-          }
-          Bundle args = new Bundle();
-          args.putStringArrayList(
-              de.schliweb.makeacopy.ui.export.picker.CompletedScansPickerFragment
-                  .ARG_ALREADY_SELECTED_IDS,
-              already);
-          try {
-            Navigation.findNavController(requireView())
-                .navigate(R.id.navigation_completed_scans_picker, args);
-          } catch (IllegalArgumentException | IllegalStateException ignored) {
-            // Best-effort; failure is non-critical
-          }
-        });
-    binding.buttonClearPages.setOnClickListener(
-        v -> {
-          androidx.appcompat.app.AlertDialog dialog =
-              new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                  .setTitle(getString(R.string.confirm_clear_pages_title))
-                  .setMessage(getString(R.string.confirm_clear_pages_message))
-                  .setPositiveButton(
-                      R.string.confirm,
-                      (dialogInterface, which) -> {
-                        // Reset to initial single page
-                        Bitmap bmp = exportViewModel.getDocumentBitmap().getValue();
-                        de.schliweb.makeacopy.ui.export.session.CompletedScan one = null;
-                        if (bmp != null) {
-                          one =
-                              new de.schliweb.makeacopy.ui.export.session.CompletedScan(
-                                  UUID.randomUUID().toString(),
-                                  null,
-                                  0,
-                                  null,
-                                  null,
-                                  null,
-                                  System.currentTimeMillis(),
-                                  bmp.getWidth(),
-                                  bmp.getHeight(),
-                                  bmp,
-                                  1,
-                                  "metadata");
-                        }
-                        exportSessionViewModel.setInitial(one);
-                      })
-                  .setNegativeButton(
-                      R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
-                  .create();
-          dialog.setOnShowListener(
-              dlg ->
-                  DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext()));
-          dialog.show();
-        });
+    binding.buttonAddPage.setOnClickListener(v -> openCompletedScansPicker());
+    binding.buttonClearPages.setOnClickListener(v -> confirmClearPages());
     binding.buttonLibraryActions.setOnClickListener(
         v -> {
           try {
@@ -1042,133 +561,18 @@ public class ExportFragment extends Fragment {
           }
         });
 
-    createDocumentLauncher =
-        registerForActivityResult(
-            new CreateDocumentWithInitialUri("application/pdf"),
-            uri -> {
-              Log.d(TAG, "createDocumentLauncher: Document creation result received");
-              if (uri != null) {
-                Uri safeUri = FileUtils.ensureExtension(requireContext(), uri, ".pdf");
-                Uri folderHint =
-                    de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(
-                        safeUri);
-                ExportPrefsHelper.setLastExportUri(
-                    requireContext(),
-                    folderHint != null ? folderHint.toString() : safeUri.toString());
-                String displayName = FileUtils.getDisplayNameFromUri(requireContext(), safeUri);
-                exportViewModel.setSelectedFileLocation(safeUri);
-                exportViewModel.setSelectedFileLocationName(displayName);
-                lastExportedPdfName = displayName;
-                performExport();
-              } else {
-                Log.d(TAG, "createDocumentLauncher: User cancelled document creation");
-              }
-            });
-
-    createTxtDocumentLauncher =
-        registerForActivityResult(
-            new CreateDocumentWithInitialUri("text/plain"),
-            uri -> {
-              if (uri != null) {
-                Uri safeUri = FileUtils.ensureExtension(requireContext(), uri, ".txt");
-                Uri folderHint =
-                    de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(
-                        safeUri);
-                ExportPrefsHelper.setLastExportUri(
-                    requireContext(),
-                    folderHint != null ? folderHint.toString() : safeUri.toString());
-                String displayName = FileUtils.getDisplayNameFromUri(requireContext(), safeUri);
-                Log.d(TAG, "createTxtDocumentLauncher: Display name from URI: " + displayName);
-                exportOcrTextToTxt(safeUri);
-              } else {
-                Log.d(TAG, "createTxtDocumentLauncher: User cancelled TXT document creation");
-              }
-            });
-
-    createJpegDocumentLauncher =
-        registerForActivityResult(
-            new CreateDocumentWithInitialUri("image/jpeg"),
-            uri -> {
-              Log.d(TAG, "createJpegDocumentLauncher: JPEG creation result received");
-              if (uri != null) {
-                Uri safeUri = FileUtils.ensureExtension(requireContext(), uri, ".jpg");
-                Uri folderHint =
-                    de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(
-                        safeUri);
-                ExportPrefsHelper.setLastExportUri(
-                    requireContext(),
-                    folderHint != null ? folderHint.toString() : safeUri.toString());
-                String displayName = FileUtils.getDisplayNameFromUri(requireContext(), safeUri);
-                exportViewModel.setSelectedFileLocation(safeUri);
-                exportViewModel.setSelectedFileLocationName(displayName);
-                performJpegExport();
-              } else {
-                Log.d(TAG, "createJpegDocumentLauncher: User cancelled JPEG document creation");
-              }
-            });
-    createZipDocumentLauncher =
-        registerForActivityResult(
-            new CreateDocumentWithInitialUri("application/zip"),
-            uri -> {
-              Log.d(TAG, "createZipDocumentLauncher: ZIP creation result received");
-              if (uri != null) {
-                Uri safeUri = FileUtils.ensureExtension(requireContext(), uri, ".zip");
-                Uri folderHint =
-                    de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(
-                        safeUri);
-                ExportPrefsHelper.setLastExportUri(
-                    requireContext(),
-                    folderHint != null ? folderHint.toString() : safeUri.toString());
-                String displayName = FileUtils.getDisplayNameFromUri(requireContext(), safeUri);
-                exportViewModel.setSelectedFileLocation(safeUri);
-                exportViewModel.setSelectedFileLocationName(displayName);
-                performJpegZipExport();
-              } else {
-                Log.d(TAG, "createZipDocumentLauncher: User cancelled ZIP document creation");
-              }
-            });
+    registerDocumentLaunchers();
 
     // Listen for results from CompletedScansPickerFragment
     getParentFragmentManager()
         .setFragmentResultListener(
             de.schliweb.makeacopy.ui.export.picker.CompletedScansPickerFragment.RESULT_KEY,
             getViewLifecycleOwner(),
-            (requestKey, bundle) -> {
-              java.util.ArrayList<String> ids =
-                  bundle.getStringArrayList(
-                      de.schliweb.makeacopy.ui.export.picker.CompletedScansPickerFragment
-                          .RESULT_IDS);
-              if (ids == null || ids.isEmpty()) return;
-              Context ctx2 = getContext();
-              if (ctx2 == null) return;
-              // Resolve from registry
-              java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> all =
-                  de.schliweb.makeacopy.data.CompletedScansRegistry.get(ctx2)
-                      .listAllOrderedByDateDesc();
-              java.util.Map<String, de.schliweb.makeacopy.ui.export.session.CompletedScan> byId =
-                  new java.util.HashMap<>();
-              for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : all) {
-                if (s != null && s.id() != null) byId.put(s.id(), s);
-              }
-              java.util.ArrayList<de.schliweb.makeacopy.ui.export.session.CompletedScan> picked =
-                  new java.util.ArrayList<>();
-              for (String id : ids) {
-                de.schliweb.makeacopy.ui.export.session.CompletedScan s = byId.get(id);
-                if (s != null) picked.add(s);
-              }
-              if (!picked.isEmpty()) {
-                // Sort by creation timestamp ascending to maintain chronological order when adding
-                // multiple pages
-                picked.sort(
-                    java.util.Comparator.comparingLong(
-                        de.schliweb.makeacopy.ui.export.session.CompletedScan::createdAt));
-                exportSessionViewModel.addAll(picked);
-                UIUtils.showToast(
-                    requireContext(),
-                    getString(R.string.added_pages_from_registry, picked.size()),
-                    Toast.LENGTH_SHORT);
-              }
-            });
+            (requestKey, bundle) ->
+                addPickedScans(
+                    bundle.getStringArrayList(
+                        de.schliweb.makeacopy.ui.export.picker.CompletedScansPickerFragment
+                            .RESULT_IDS)));
 
     // Back-Handling
     requireActivity()
@@ -1178,186 +582,22 @@ public class ExportFragment extends Fragment {
             new OnBackPressedCallback(true) {
               @Override
               public void handleOnBackPressed() {
-                // If multipage session is active (>1 pages), ask for confirmation to delete all
-                // pages
-                List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-                    exportSessionViewModel != null
-                        ? exportSessionViewModel.getPages().getValue()
-                        : null;
-                int n = (pages == null) ? 0 : pages.size();
-                if (n > 1) {
-                  androidx.appcompat.app.AlertDialog dialog =
-                      new com.google.android.material.dialog.MaterialAlertDialogBuilder(
-                              requireContext())
-                          .setTitle(getString(R.string.confirm_clear_multipage_title))
-                          .setMessage(getString(R.string.confirm_clear_multipage_message))
-                          .setPositiveButton(
-                              R.string.confirm,
-                              (dialogInterface, which) -> {
-                                // Clear all pages in the session before leaving
-                                // Session 3: the user explicitly discards the document — also
-                                // drop the persisted DocumentSession (pages themselves follow the
-                                // existing registry cleanup policy).
-                                discardActiveDocumentSessionAsync();
-                                if (exportSessionViewModel != null)
-                                  exportSessionViewModel.setInitial(null);
-                                // Reset camera/crop state and navigate back to camera
-                                cameraViewModel.setImageUri(null);
-                                cropViewModel.setImageCropped(false);
-                                cropViewModel.setImageBitmap(null);
-                                cropViewModel.setOriginalImageBitmap(null);
-                                cropViewModel.setImageLoaded(false);
-                                // Also clear pending add flag to avoid unintended re-adding on next
-                                // open
-                                ExportPrefsHelper.clearPendingAddPage(requireContext());
-                                View fragmentView = getView();
-                                if (fragmentView == null) return;
-                                NavOptions navOptions =
-                                    new NavOptions.Builder()
-                                        .setPopUpTo(R.id.navigation_camera, true)
-                                        .build();
-                                Navigation.findNavController(fragmentView)
-                                    .navigate(R.id.navigation_camera, null, navOptions);
-                              })
-                          .setNegativeButton(
-                              R.string.cancel,
-                              (dialogInterface, which) -> {
-                                dialogInterface.dismiss(); // stay on Export
-                              })
-                          .create();
-                  dialog.setOnShowListener(
-                      dlg ->
-                          DialogUtils.improveAlertDialogButtonContrastForNight(
-                              dialog, requireContext()));
-                  dialog.show();
-                  return;
-                }
-                // Default behavior (single/zero page): clear session, reset and navigate back
-                // Session 3: leaving Export back to Camera discards the current document draft
-                // (same semantics as before Session 3, now also for the persisted snapshot).
-                discardActiveDocumentSessionAsync();
-                if (exportSessionViewModel != null) exportSessionViewModel.setInitial(null);
-                cameraViewModel.setImageUri(null);
-                cropViewModel.setImageCropped(false);
-                cropViewModel.setImageBitmap(null);
-                cropViewModel.setOriginalImageBitmap(null);
-                cropViewModel.setImageLoaded(false);
-                NavOptions navOptions =
-                    new NavOptions.Builder().setPopUpTo(R.id.navigation_camera, true).build();
-                Navigation.findNavController(requireView())
-                    .navigate(R.id.navigation_camera, null, navOptions);
+                onBackRequested();
               }
             });
 
     exportViewModel.getText().observe(getViewLifecycleOwner(), binding.textExport::setText);
 
     // No inline option listeners: options are managed exclusively via ExportOptionsDialogFragment.
-
-    binding.buttonExport.setOnClickListener(
-        v -> {
-          // Use last saved options directly to save a click
-          Context ctx = requireContext();
-          boolean includeOcrSel = ExportPrefsHelper.isIncludeOcr(ctx);
-          boolean exportAsJpegSel = ExportPrefsHelper.isExportAsJpeg(ctx);
-          boolean graySel = ExportPrefsHelper.isGrayscaleFromPdfMode(ctx);
-
-          // Update ViewModel to reflect the options used for this export
-          exportViewModel.setIncludeOcr(includeOcrSel);
-          exportViewModel.setConvertToGrayscale(graySel);
-          exportViewModel.setExportFormat(exportAsJpegSel ? "JPEG" : "PDF");
-
-          // Inbox Mode: skip file picker and export directly to inbox directory
-          if (FeatureFlags.isInboxModeEnabled() && ExportPrefsHelper.isInboxEnabled(ctx)) {
-            String inboxUriStr = ExportPrefsHelper.getInboxUri(ctx);
-            if (inboxUriStr == null) {
-              UIUtils.showToast(
-                  ctx, getString(R.string.inbox_no_folder_selected), Toast.LENGTH_LONG);
-              return;
-            }
-            if (inboxUriStr != null) {
-              Uri inboxTreeUri = Uri.parse(inboxUriStr);
-              if (InboxExporter.hasValidPermission(ctx, inboxTreeUri)) {
-                String template = ExportPrefsHelper.getInboxFilenameTemplate(ctx);
-                String baseName = InboxExporter.buildInboxBaseName(template);
-                String mimeType = exportAsJpegSel ? "image/jpeg" : "application/pdf";
-                String extension = exportAsJpegSel ? ".jpg" : ".pdf";
-                Uri fileUri =
-                    InboxExporter.createFileInInbox(
-                        ctx, inboxTreeUri, mimeType, baseName, extension);
-                if (fileUri != null) {
-                  fileUri = FileUtils.ensureExtension(ctx, fileUri, extension);
-                  String displayName =
-                      de.schliweb.makeacopy.utils.infra.FileUtils.getDisplayNameFromUri(
-                          ctx, fileUri);
-                  exportViewModel.setSelectedFileLocation(fileUri);
-                  exportViewModel.setSelectedFileLocationName(displayName);
-                  lastExportedPdfName = displayName;
-                  inboxExportInProgress = true;
-                  if (exportAsJpegSel) {
-                    performJpegExport();
-                  } else {
-                    performExport();
-                  }
-                  return;
-                }
-              }
-              // Permission lost or file creation failed → clear inbox and fall through to picker
-              UIUtils.showToast(ctx, getString(R.string.inbox_permission_lost), Toast.LENGTH_LONG);
-              ExportPrefsHelper.clearInbox(ctx);
-            }
-          }
-
-          // Proceed to file location selection based on format
-          if (exportAsJpegSel) {
-            selectJpegFileLocation();
-          } else {
-            selectFileLocation();
-          }
-        });
-
+    binding.buttonExport.setOnClickListener(v -> onExportClicked());
     // Options button opens the export options dialog without starting export
-    binding.buttonOptions.setOnClickListener(
-        v -> {
-          getParentFragmentManager()
-              .setFragmentResultListener(
-                  ExportOptionsDialogFragment.REQUEST_KEY,
-                  getViewLifecycleOwner(),
-                  (requestKey, bundle) -> {
-                    // Update ViewModel with new choices for immediate feedback and re-render
-                    // preview
-                    boolean includeOcrSel =
-                        bundle.getBoolean(ExportOptionsDialogFragment.BUNDLE_INCLUDE_OCR, false);
-                    boolean exportAsJpegSel =
-                        bundle.getBoolean(ExportOptionsDialogFragment.BUNDLE_EXPORT_AS_JPEG, false);
-                    String pdfMode = bundle.getString("pdf_bw_mode", null);
-                    exportViewModel.setIncludeOcr(includeOcrSel);
-                    // Derive grayscale flag for ViewModel from pdf_bw_mode (GRAYSCALE selected)
-                    boolean graySel = "GRAYSCALE".equalsIgnoreCase(pdfMode);
-                    exportViewModel.setConvertToGrayscale(graySel);
-                    exportViewModel.setExportFormat(exportAsJpegSel ? "JPEG" : "PDF");
-                    // Re-render preview to reflect grayscale/BW selections immediately
-                    renderPreviewFromCurrent();
-                    // No export kickoff here
-                    getParentFragmentManager()
-                        .clearFragmentResultListener(ExportOptionsDialogFragment.REQUEST_KEY);
-                  });
-          ExportOptionsDialogFragment.show(getParentFragmentManager());
-        });
+    binding.buttonOptions.setOnClickListener(v -> openExportOptions());
     binding.buttonAddScan.setOnClickListener(
         v -> {
-          Context ctx3 = getContext();
-          if (ctx3 != null) {
-            ExportPrefsHelper.setPendingAddPage(ctx3);
-          }
-          cameraViewModel.setImageUri(null);
-          cropViewModel.setImageCropped(false);
-          cropViewModel.setImageBitmap(null);
-          cropViewModel.setOriginalImageBitmap(null);
-          cropViewModel.setImageLoaded(false);
-          NavOptions navOptions =
-              new NavOptions.Builder().setPopUpTo(R.id.navigation_camera, true).build();
-          Navigation.findNavController(requireView())
-              .navigate(R.id.navigation_camera, null, navOptions);
+          Context ctx = getContext();
+          if (ctx != null) ExportPrefsHelper.setPendingAddPage(ctx);
+          resetCaptureState();
+          navigateToCamera(requireView());
         });
     binding.buttonShareSmall.setOnClickListener(v -> shareDocument());
 
@@ -1404,11 +644,674 @@ public class ExportFragment extends Fragment {
     return root;
   }
 
+  /**
+   * Inline export format selector (PDF | JPEG): mirrors the persisted preference and updates it
+   * immediately so the Save button uses the visible selection.
+   */
+  private void setupExportFormatToggle(boolean exportAsJpeg) {
+    exportViewModel.setExportFormat(exportAsJpeg ? "JPEG" : "PDF");
+    binding.exportFormatToggle.check(exportAsJpeg ? R.id.format_jpeg : R.id.format_pdf);
+    binding.exportFormatToggle.addOnButtonCheckedListener(
+        (group, checkedId, isChecked) -> {
+          if (!isChecked) return;
+          boolean jpegSelected = checkedId == R.id.format_jpeg;
+          Context c = getContext();
+          if (c == null || ExportPrefsHelper.isExportAsJpeg(c) == jpegSelected) return;
+          ExportPrefsHelper.setExportAsJpeg(c, jpegSelected);
+          exportViewModel.setExportFormat(jpegSelected ? "JPEG" : "PDF");
+          renderPreviewFromCurrent();
+        });
+  }
+
+  /** Ensure we have a bitmap if arriving here directly (skipping Crop/OCR). */
+  private void ensureBitmapWhenArrivingDirectly() {
+    if (cropViewModel.getImageBitmap().getValue() != null) return;
+    Context ctx = getContext();
+    if (ctx == null) return;
+    Bitmap bmp = ImageLoader.decode(ctx, capturedImagePath(), capturedImageUri());
+    if (bmp != null) cropViewModel.setImageBitmap(bmp);
+  }
+
+  private String capturedImagePath() {
+    return cameraViewModel.getImagePath() != null
+        ? cameraViewModel.getImagePath().getValue()
+        : null;
+  }
+
+  private Uri capturedImageUri() {
+    return cameraViewModel.getImageUri() != null ? cameraViewModel.getImageUri().getValue() : null;
+  }
+
+  /**
+   * FR #72 — Edit-Overlay: re-enter CropFragment to adjust the trapezoid for the currently
+   * displayed preview page. The overlay is only shown when the original image source for the active
+   * page is reachable (single-page hot workflow in V1): a known image path / URI in CameraViewModel
+   * and previously persisted corners in CropViewModel.
+   */
+  private void setupEditCropButton() {
+    if (binding.buttonEditCrop == null) return;
+    binding.buttonEditCrop.setOnClickListener(this::onEditCropClicked);
+    // Visibility is recomputed whenever the preview is rendered; default hidden.
+    updateEditCropOverlayVisibility();
+  }
+
+  private void onEditCropClicked(View v) {
+    android.graphics.PointF[] lastCorners =
+        cropViewModel.getLastAcceptedCornersOriginal().getValue();
+    String path = capturedImagePath();
+    boolean hasOriginal = (path != null && !path.isEmpty()) || capturedImageUri() != null;
+    CompletedScan active = getActivePageForEdit();
+    if (!hasOriginal || lastCorners == null || !isActivePageReEditable()) {
+      // Session 3: fall back to editing the persisted page image (page.jpg) so ANY
+      // persisted page of the document can be re-edited, not only the fresh one.
+      if (active != null && active.filePath() != null) {
+        startPersistedPageEdit(v, active);
+        return;
+      }
+      UIUtils.showToast(
+          requireContext(), getString(R.string.edit_crop_original_unavailable), Toast.LENGTH_SHORT);
+      return;
+    }
+    // Mark Re-Edit entry so CropFragment can:
+    //   - reload the original from disk (the in-memory original was nulled here),
+    //   - pre-populate the trapezoid with lastAcceptedCornersOriginal,
+    //   - on confirm/back, pop directly back to Export instead of advancing to OCR.
+    cropViewModel.setCameFromExport(true);
+    cropViewModel.setImageCropped(false);
+    // FR #72 multi-page: remember which session page is being re-edited so the
+    // confirm path can update the correct page instead of hardcoded index 0.
+    cropViewModel.setReEditPageIndex(findActivePageIndex());
+    // Session 3: also record the stable page id — the id survives page moves/deletes
+    // while the editor is open, unlike the index.
+    cropViewModel.setReEditPageId(active != null ? active.id() : null);
+    try {
+      // FR #72 — use forward navigate (not popBackStack) so the existing Export
+      // entry is preserved on the back stack. On confirm/back the Re-Edit flow can
+      // then popBackStack(navigation_export, false) and the very same Export
+      // instance (with its observers) receives the updated cropped bitmap and
+      // re-renders the preview correctly.
+      Navigation.findNavController(v).navigate(R.id.navigation_crop);
+    } catch (Throwable t) {
+      Log.w(TAG, "Re-Edit navigation failed", t);
+      cropViewModel.setCameFromExport(false);
+      cropViewModel.setReEditPageIndex(-1);
+      cropViewModel.setReEditPageId(null);
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Page filmstrip
+  // ---------------------------------------------------------------------------------------------
+
+  private void setupPagesFilmstrip() {
+    pagesAdapter =
+        new de.schliweb.makeacopy.ui.export.session.ExportPagesAdapter(
+            new de.schliweb.makeacopy.ui.export.session.ExportPagesAdapter.Callbacks() {
+              @Override
+              public void onRemoveClicked(int position) {
+                confirmRemovePage(position);
+              }
+
+              @Override
+              public void onRemoveConfirmed(int position) {
+                if (isAdded()) removePage(position);
+              }
+
+              @Override
+              public void onPageClicked(int position) {
+                selectPage(position);
+              }
+
+              @Override
+              public void onReorder(int fromPosition, int toPosition) {
+                movePage(fromPosition, toPosition);
+              }
+
+              @Override
+              public void onOcrRequested(int position) {
+                showOcrBatchOptions(position);
+              }
+            });
+    androidx.recyclerview.widget.LinearLayoutManager lm =
+        new androidx.recyclerview.widget.LinearLayoutManager(
+            requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false);
+    binding.pagesRecycler.setLayoutManager(lm);
+    binding.pagesRecycler.setAdapter(pagesAdapter);
+
+    // Enable drag & drop reordering via ItemTouchHelper (horizontal)
+    androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback cb =
+        new androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
+            androidx.recyclerview.widget.ItemTouchHelper.LEFT
+                | androidx.recyclerview.widget.ItemTouchHelper.RIGHT,
+            0) {
+          @Override
+          public boolean onMove(
+              @NonNull androidx.recyclerview.widget.RecyclerView recyclerView,
+              @NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder viewHolder,
+              @NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder target) {
+            int from = viewHolder.getBindingAdapterPosition();
+            int to = target.getBindingAdapterPosition();
+            return pagesAdapter.onItemMove(from, to);
+          }
+
+          @Override
+          public void onSwiped(
+              @NonNull androidx.recyclerview.widget.RecyclerView.ViewHolder viewHolder,
+              int direction) {
+            // no-op (we don't support swipe to dismiss here)
+          }
+
+          @Override
+          public boolean isLongPressDragEnabled() {
+            // Long-press on the item starts drag
+            return true;
+          }
+        };
+    new androidx.recyclerview.widget.ItemTouchHelper(cb)
+        .attachToRecyclerView(binding.pagesRecycler);
+  }
+
+  /** Confirm removal to avoid accidental fat-finger deletions (analog to back navigation). */
+  private void confirmRemovePage(int position) {
+    if (!isAdded()) return;
+    showConfirmDialog(
+        R.string.confirm_remove_page_title,
+        R.string.confirm_remove_page_message,
+        () -> removePage(position));
+  }
+
+  private void removePage(int position) {
+    if (exportSessionViewModel == null) return;
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
+    int n = (cur == null) ? 0 : cur.size();
+    if (position < 0 || position >= n) return;
+    exportSessionViewModel.removeAt(position);
+    announce(getString(R.string.page_removed));
+  }
+
+  private void selectPage(int position) {
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
+    if (cur == null || position < 0 || position >= cur.size()) return;
+    CompletedScan sel = cur.get(position);
+    if (sel == null) return;
+    activeSessionPageIndex = position;
+    loadPageIntoPreviewAsync(
+        sel,
+        bmp -> {
+          exportViewModel.setDocumentBitmap(bmp);
+          exportViewModel.setDocumentReady(true);
+        });
+  }
+
+  private void movePage(int fromPosition, int toPosition) {
+    activeSessionPageIndex = indexAfterMove(activeSessionPageIndex, fromPosition, toPosition);
+    exportSessionViewModel.move(fromPosition, toPosition);
+    // A11y: announce new position (1-based)
+    announce(getString(R.string.page_moved_to_position, toPosition + 1));
+  }
+
+  /** Index of the item that was at {@code index} after moving {@code from} to {@code to}. */
+  @VisibleForTesting
+  static int indexAfterMove(int index, int from, int to) {
+    if (index == from) return to;
+    if (from < index && index <= to) return index - 1;
+    if (to <= index && index < from) return index + 1;
+    return index;
+  }
+
+  /** A11y announcement on the fragment's root view, if it is still attached. */
+  private void announce(String message) {
+    View v = getView();
+    if (isAdded() && v != null) A11yUtils.announce(v, message);
+  }
+
+  /** Shows a confirm/cancel dialog; cancel just dismisses it. */
+  private void showConfirmDialog(int titleRes, int messageRes, Runnable onConfirm) {
+    androidx.appcompat.app.AlertDialog dialog =
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(titleRes))
+            .setMessage(getString(messageRes))
+            .setPositiveButton(R.string.confirm, (dialogInterface, which) -> onConfirm.run())
+            .setNegativeButton(
+                R.string.cancel, (dialogInterface, which) -> dialogInterface.dismiss())
+            .create();
+    dialog.setOnShowListener(
+        dlg -> DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext()));
+    dialog.show();
+  }
+
+  /** Observer for the session's page list: keeps filmstrip, preview and persistence in sync. */
+  private void onPagesChanged(List<CompletedScan> pages) {
+    pagesAdapter.submitList(pages);
+    int n = (pages == null) ? 0 : pages.size();
+    // Show filmstrip only when there are actually more than one page
+    binding.pagesContainer.setVisibility(n > 1 ? View.VISIBLE : View.GONE);
+    // Trash icon is always visible; only enabled when there are multiple pages
+    binding.buttonClearPages.setVisibility(View.VISIBLE);
+    binding.buttonClearPages.setEnabled(n > 1);
+
+    // If current preview points to a removed page, auto-select a remaining one
+    if (!isPreviewPageStillPresent(pages) && pages != null && !pages.isEmpty()) {
+      CompletedScan first = pages.get(0);
+      if (first != null) {
+        loadPageIntoPreviewAsync(
+            first,
+            bmp -> {
+              activeSessionPageIndex = 0;
+              exportViewModel.setDocumentBitmap(bmp);
+              if (n <= 1) {
+                try {
+                  cropViewModel.setLastFreshPageBitmap(bmp);
+                } catch (Throwable ignore) {
+                  // Best-effort; failure is non-critical
+                }
+              }
+              exportViewModel.setDocumentReady(true);
+            });
+      }
+    }
+    // Accessibility: Announce updated page count when it changes
+    if (isAdded() && n != lastPagesCount) {
+      lastPagesCount = n;
+      announce(getString(R.string.pages_count_announcement, n));
+    }
+    // Do not toggle Include OCR checkbox visibility here; it remains hidden and
+    // controlled by the dialog.
+    // Refresh OCR badge overlay on the preview (mirrors filmstrip badge state).
+    updatePreviewOcrBadge();
+    // Session 3: keep the persistent DocumentSession snapshot in sync with the runtime
+    // page list (ordered page ids) on every add/addAll/remove/move/update.
+    syncDocumentSessionAsync(pages);
+  }
+
+  /**
+   * Whether the bitmap shown in the preview still belongs to one of {@code pages}. For the fresh
+   * multi-page preview (a derived bitmap) the page is matched by id and becomes the active page.
+   */
+  private boolean isPreviewPageStillPresent(List<CompletedScan> pages) {
+    Bitmap curPreview = exportViewModel.getDocumentBitmap().getValue();
+    if (curPreview == null || pages == null) return false;
+    for (CompletedScan s : pages) {
+      if (s != null && s.inMemoryBitmap() == curPreview) return true;
+    }
+    if (lastFreshMultipagePageId == null || curPreview != lastFreshMultipagePreviewBitmap) {
+      return false;
+    }
+    for (int i = 0; i < pages.size(); i++) {
+      CompletedScan s = pages.get(i);
+      if (s != null && lastFreshMultipagePageId.equals(s.id())) {
+        activeSessionPageIndex = i;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Initialize or update pages based on current state and pending add-page flag. */
+  private void seedOrAppendCurrentPage(Context context) {
+    Bitmap initBmp = cropViewModel.getImageBitmap().getValue();
+    List<CompletedScan> currentPages = exportSessionViewModel.getPages().getValue();
+    int curSize = (currentPages == null) ? 0 : currentPages.size();
+
+    if (curSize == 0) {
+      // First time opening Export in this session: seed with current cropped bitmap if available
+      if (initBmp != null) {
+        CompletedScan initial = newInMemoryPage(initBmp, currentUserRotation());
+        // Align the session id used by Review autosave to this export session id
+        alignReviewSessionId(initial);
+        activeSessionPageIndex = 0;
+        exportSessionViewModel.setInitial(initial);
+        markFreshAndPersist(initial, initBmp);
+      } else {
+        exportSessionViewModel.setInitial(null);
+        // Session 3: no in-memory state (e.g. fresh process) — try to restore the active
+        // persisted DocumentSession so the document composition survives process death.
+        restoreDocumentSessionAsync();
+      }
+    } else if (ExportPrefsHelper.isPendingAddPage(context)) {
+      // User initiated adding another page and returned here after new capture/crop.
+      // Avoid adding duplicates if the same bitmap reference is already present
+      if (initBmp != null && !containsBitmap(currentPages, initBmp)) {
+        CompletedScan added = newInMemoryPage(initBmp, currentUserRotation());
+        // Keep SessionIds aligned to the last added page (so Review autosave per-page stays
+        // consistent)
+        alignReviewSessionId(added);
+        activeSessionPageIndex = curSize;
+        exportSessionViewModel.add(added);
+        markFreshAndPersist(added, initBmp);
+      }
+      // Clear the flag regardless to prevent re-adding on future opens
+      ExportPrefsHelper.clearPendingAddPage(context);
+    }
+  }
+
+  private static boolean containsBitmap(List<CompletedScan> pages, Bitmap bitmap) {
+    for (CompletedScan s : pages) {
+      if (s != null && s.inMemoryBitmap() == bitmap) return true;
+    }
+    return false;
+  }
+
+  /** A not yet persisted page that only lives in memory (orientation mode "metadata"). */
+  private static CompletedScan newInMemoryPage(Bitmap bmp, int rotationDeg) {
+    return new CompletedScan(
+        UUID.randomUUID().toString(),
+        null,
+        rotationDeg,
+        null,
+        null,
+        null,
+        System.currentTimeMillis(),
+        bmp.getWidth(),
+        bmp.getHeight(),
+        bmp,
+        1,
+        "metadata");
+  }
+
+  /** The user rotation from CropViewModel, normalized to [0, 360). */
+  private int currentUserRotation() {
+    Integer deg = cropViewModel.getUserRotationDegrees().getValue();
+    return deg != null ? ((deg % 360) + 360) % 360 : 0;
+  }
+
+  private void alignReviewSessionId(CompletedScan page) {
+    if (!FeatureFlags.isOcrReviewEnabled() || !isAdded()) return;
+    Context c = getContext();
+    if (c != null) SessionIds.setCurrentScanId(c.getApplicationContext(), page.id());
+  }
+
+  /**
+   * FR #72 V1.3: marks the bitmap as the "fresh" page (re-editable; its original capture is still
+   * tracked by CameraViewModel). Older pages selected later via the filmstrip have a different
+   * bitmap identity and therefore do not show the Edit overlay. Also persists the page so it
+   * appears in the CompletedScans registry (Insert-Hook).
+   */
+  private void markFreshAndPersist(CompletedScan page, Bitmap bitmap) {
+    try {
+      cropViewModel.setLastFreshPageBitmap(bitmap);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    persistCompletedScanAsync(page);
+  }
+
+  /** Directly open the Completed Scans picker (no dialog). */
+  private void openCompletedScansPicker() {
+    ArrayList<String> already = new ArrayList<>();
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
+    if (cur != null) {
+      for (CompletedScan s : cur) {
+        if (s != null && s.id() != null) already.add(s.id());
+      }
+    }
+    Bundle args = new Bundle();
+    args.putStringArrayList(
+        de.schliweb.makeacopy.ui.export.picker.CompletedScansPickerFragment
+            .ARG_ALREADY_SELECTED_IDS,
+        already);
+    try {
+      Navigation.findNavController(requireView())
+          .navigate(R.id.navigation_completed_scans_picker, args);
+    } catch (IllegalArgumentException | IllegalStateException ignored) {
+      // Best-effort; failure is non-critical
+    }
+  }
+
+  /** Adds the pages chosen in CompletedScansPickerFragment, resolved from the registry. */
+  private void addPickedScans(List<String> ids) {
+    if (ids == null || ids.isEmpty()) return;
+    Context ctx = getContext();
+    if (ctx == null) return;
+    Map<String, CompletedScan> byId = new HashMap<>();
+    for (CompletedScan s :
+        de.schliweb.makeacopy.data.CompletedScansRegistry.get(ctx).listAllOrderedByDateDesc()) {
+      if (s != null && s.id() != null) byId.put(s.id(), s);
+    }
+    ArrayList<CompletedScan> picked = new ArrayList<>();
+    for (String id : ids) {
+      CompletedScan s = byId.get(id);
+      if (s != null) picked.add(s);
+    }
+    if (picked.isEmpty()) return;
+    // Sort by creation timestamp ascending to maintain chronological order when adding
+    // multiple pages
+    picked.sort(Comparator.comparingLong(CompletedScan::createdAt));
+    exportSessionViewModel.addAll(picked);
+    UIUtils.showToast(
+        requireContext(),
+        getString(R.string.added_pages_from_registry, picked.size()),
+        Toast.LENGTH_SHORT);
+  }
+
+  private void confirmClearPages() {
+    showConfirmDialog(
+        R.string.confirm_clear_pages_title,
+        R.string.confirm_clear_pages_message,
+        () -> {
+          // Reset to initial single page
+          Bitmap bmp = exportViewModel.getDocumentBitmap().getValue();
+          exportSessionViewModel.setInitial(bmp != null ? newInMemoryPage(bmp, 0) : null);
+        });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Leaving Export
+  // ---------------------------------------------------------------------------------------------
+
+  private void onBackRequested() {
+    // If multipage session is active (>1 pages), ask for confirmation to delete all pages
+    List<CompletedScan> pages =
+        exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
+    int n = (pages == null) ? 0 : pages.size();
+    if (n > 1) {
+      showConfirmDialog(
+          R.string.confirm_clear_multipage_title,
+          R.string.confirm_clear_multipage_message,
+          () -> {
+            discardDocumentAndResetCaptureState();
+            // Also clear pending add flag to avoid unintended re-adding on next open
+            ExportPrefsHelper.clearPendingAddPage(requireContext());
+            View fragmentView = getView();
+            if (fragmentView != null) navigateToCamera(fragmentView);
+          });
+      return;
+    }
+    // Default behavior (single/zero page): clear session, reset and navigate back
+    discardDocumentAndResetCaptureState();
+    navigateToCamera(requireView());
+  }
+
+  /**
+   * Session 3: leaving Export back to Camera discards the current document draft, including the
+   * persisted DocumentSession snapshot (pages themselves follow the existing registry cleanup
+   * policy).
+   */
+  private void discardDocumentAndResetCaptureState() {
+    discardActiveDocumentSessionAsync();
+    if (exportSessionViewModel != null) exportSessionViewModel.setInitial(null);
+    resetCaptureState();
+  }
+
+  private void resetCaptureState() {
+    cameraViewModel.setImageUri(null);
+    cropViewModel.setImageCropped(false);
+    cropViewModel.setImageBitmap(null);
+    cropViewModel.setOriginalImageBitmap(null);
+    cropViewModel.setImageLoaded(false);
+  }
+
+  private static void navigateToCamera(View navView) {
+    NavOptions navOptions =
+        new NavOptions.Builder().setPopUpTo(R.id.navigation_camera, true).build();
+    Navigation.findNavController(navView).navigate(R.id.navigation_camera, null, navOptions);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Export targets
+  // ---------------------------------------------------------------------------------------------
+
+  private void registerDocumentLaunchers() {
+    createDocumentLauncher =
+        registerForActivityResult(
+            new CreateDocumentWithInitialUri("application/pdf"),
+            uri -> {
+              Log.d(TAG, "createDocumentLauncher: Document creation result received");
+              if (uri == null) {
+                Log.d(TAG, "createDocumentLauncher: User cancelled document creation");
+                return;
+              }
+              lastExportedPdfName = selectExportTarget(rememberExportFolder(uri, ".pdf"));
+              performExport();
+            });
+
+    createTxtDocumentLauncher =
+        registerForActivityResult(
+            new CreateDocumentWithInitialUri("text/plain"),
+            uri -> {
+              if (uri == null) {
+                Log.d(TAG, "createTxtDocumentLauncher: User cancelled TXT document creation");
+                return;
+              }
+              Uri safeUri = rememberExportFolder(uri, ".txt");
+              String displayName = FileUtils.getDisplayNameFromUri(requireContext(), safeUri);
+              Log.d(TAG, "createTxtDocumentLauncher: Display name from URI: " + displayName);
+              exportOcrTextToTxt(safeUri);
+            });
+
+    createJpegDocumentLauncher =
+        registerForActivityResult(
+            new CreateDocumentWithInitialUri("image/jpeg"),
+            uri -> {
+              Log.d(TAG, "createJpegDocumentLauncher: JPEG creation result received");
+              if (uri == null) {
+                Log.d(TAG, "createJpegDocumentLauncher: User cancelled JPEG document creation");
+                return;
+              }
+              selectExportTarget(rememberExportFolder(uri, ".jpg"));
+              performJpegExport();
+            });
+
+    createZipDocumentLauncher =
+        registerForActivityResult(
+            new CreateDocumentWithInitialUri("application/zip"),
+            uri -> {
+              Log.d(TAG, "createZipDocumentLauncher: ZIP creation result received");
+              if (uri == null) {
+                Log.d(TAG, "createZipDocumentLauncher: User cancelled ZIP document creation");
+                return;
+              }
+              selectExportTarget(rememberExportFolder(uri, ".zip"));
+              performJpegZipExport();
+            });
+  }
+
+  /**
+   * Makes sure the created document has the given extension and remembers its folder (or the
+   * document itself when the parent cannot be derived) as the start location of the next export.
+   *
+   * @return the document URI with the ensured extension
+   */
+  private Uri rememberExportFolder(Uri uri, String extension) {
+    Uri safeUri = FileUtils.ensureExtension(requireContext(), uri, extension);
+    Uri folderHint =
+        de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(safeUri);
+    ExportPrefsHelper.setLastExportUri(
+        requireContext(), folderHint != null ? folderHint.toString() : safeUri.toString());
+    return safeUri;
+  }
+
+  /** Sets the export target in the ViewModel and returns its display name. */
+  private String selectExportTarget(Uri uri) {
+    String displayName = FileUtils.getDisplayNameFromUri(requireContext(), uri);
+    exportViewModel.setSelectedFileLocation(uri);
+    exportViewModel.setSelectedFileLocationName(displayName);
+    return displayName;
+  }
+
+  private void onExportClicked() {
+    // Use last saved options directly to save a click
+    Context ctx = requireContext();
+    boolean exportAsJpeg = ExportPrefsHelper.isExportAsJpeg(ctx);
+
+    // Update ViewModel to reflect the options used for this export
+    exportViewModel.setIncludeOcr(ExportPrefsHelper.isIncludeOcr(ctx));
+    exportViewModel.setConvertToGrayscale(ExportPrefsHelper.isGrayscaleFromPdfMode(ctx));
+    exportViewModel.setExportFormat(exportAsJpeg ? "JPEG" : "PDF");
+
+    // Inbox Mode: skip file picker and export directly to inbox directory
+    if (FeatureFlags.isInboxModeEnabled() && ExportPrefsHelper.isInboxEnabled(ctx)) {
+      String inboxUriStr = ExportPrefsHelper.getInboxUri(ctx);
+      if (inboxUriStr == null) {
+        UIUtils.showToast(ctx, getString(R.string.inbox_no_folder_selected), Toast.LENGTH_LONG);
+        return;
+      }
+      if (startInboxExport(ctx, Uri.parse(inboxUriStr), exportAsJpeg)) return;
+      // Permission lost or file creation failed → clear inbox and fall through to picker
+      UIUtils.showToast(ctx, getString(R.string.inbox_permission_lost), Toast.LENGTH_LONG);
+      ExportPrefsHelper.clearInbox(ctx);
+    }
+
+    // Proceed to file location selection based on format
+    if (exportAsJpeg) {
+      selectJpegFileLocation();
+    } else {
+      selectFileLocation();
+    }
+  }
+
+  /**
+   * Creates the target file in the inbox folder and starts the export.
+   *
+   * @return {@code false} if the folder permission is gone or the file could not be created
+   */
+  private boolean startInboxExport(Context ctx, Uri inboxTreeUri, boolean exportAsJpeg) {
+    if (!InboxExporter.hasValidPermission(ctx, inboxTreeUri)) return false;
+    String baseName =
+        InboxExporter.buildInboxBaseName(ExportPrefsHelper.getInboxFilenameTemplate(ctx));
+    String mimeType = exportAsJpeg ? "image/jpeg" : "application/pdf";
+    String extension = exportAsJpeg ? ".jpg" : ".pdf";
+    Uri fileUri = InboxExporter.createFileInInbox(ctx, inboxTreeUri, mimeType, baseName, extension);
+    if (fileUri == null) return false;
+    lastExportedPdfName = selectExportTarget(FileUtils.ensureExtension(ctx, fileUri, extension));
+    inboxExportInProgress = true;
+    if (exportAsJpeg) {
+      performJpegExport();
+    } else {
+      performExport();
+    }
+    return true;
+  }
+
+  /** Opens the export options dialog without starting export. */
+  private void openExportOptions() {
+    getParentFragmentManager()
+        .setFragmentResultListener(
+            ExportOptionsDialogFragment.REQUEST_KEY,
+            getViewLifecycleOwner(),
+            (requestKey, bundle) -> {
+              // Update ViewModel with new choices for immediate feedback and re-render preview
+              boolean exportAsJpegSel =
+                  bundle.getBoolean(ExportOptionsDialogFragment.BUNDLE_EXPORT_AS_JPEG, false);
+              exportViewModel.setIncludeOcr(
+                  bundle.getBoolean(ExportOptionsDialogFragment.BUNDLE_INCLUDE_OCR, false));
+              // Derive grayscale flag for ViewModel from pdf_bw_mode (GRAYSCALE selected)
+              exportViewModel.setConvertToGrayscale(
+                  "GRAYSCALE".equalsIgnoreCase(bundle.getString("pdf_bw_mode", null)));
+              exportViewModel.setExportFormat(exportAsJpegSel ? "JPEG" : "PDF");
+              // Re-render preview to reflect grayscale/BW selections immediately
+              renderPreviewFromCurrent();
+              // No export kickoff here
+              getParentFragmentManager()
+                  .clearFragmentResultListener(ExportOptionsDialogFragment.REQUEST_KEY);
+            });
+    ExportOptionsDialogFragment.show(getParentFragmentManager());
+  }
+
   private void markSinglePageBitmapFreshForReEdit(Bitmap bitmap) {
     if (bitmap == null || cropViewModel == null || exportSessionViewModel == null) return;
     try {
-      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-          exportSessionViewModel.getPages().getValue();
+      List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
       int n = (pages == null) ? 0 : pages.size();
       if (n <= 1) {
         cropViewModel.setLastFreshPageBitmap(bitmap);
@@ -1423,8 +1326,7 @@ public class ExportFragment extends Fragment {
       // chain. Do not mark arbitrary filmstrip selections.
       Bitmap fresh = cropViewModel.getLastFreshPageBitmap();
       if (activeSessionPageIndex < 0 || activeSessionPageIndex >= n) return;
-      de.schliweb.makeacopy.ui.export.session.CompletedScan activePage =
-          pages.get(activeSessionPageIndex);
+      CompletedScan activePage = pages.get(activeSessionPageIndex);
       Bitmap activePageBitmap = activePage != null ? activePage.inMemoryBitmap() : null;
       boolean activePageIsFresh =
           activePage != null
@@ -1497,12 +1399,12 @@ public class ExportFragment extends Fragment {
       if (!keepFreshReEditBitmap) {
         try {
           cropViewModel.setLastFreshPageBitmap(bmp);
-          List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+          List<CompletedScan> pages =
               exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
           int n = (pages == null) ? 0 : pages.size();
           if (n > 1 && activeSessionPageIndex == n - 1) {
             lastFreshMultipagePreviewBitmap = bmp;
-            de.schliweb.makeacopy.ui.export.session.CompletedScan activePage =
+            CompletedScan activePage =
                 pages != null
                         && activeSessionPageIndex >= 0
                         && activeSessionPageIndex < pages.size()
@@ -1560,7 +1462,7 @@ public class ExportFragment extends Fragment {
     Log.d(TAG, "performExport: Starting export process");
 
     // Multipage handling: if >1 pages, compose PDF
-    final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+    final List<CompletedScan> pages =
         exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
     final boolean isMulti = pages != null && pages.size() > 1;
 
@@ -1582,7 +1484,7 @@ public class ExportFragment extends Fragment {
       wordsTmp = null;
       // Try to find a scan id to resolve autosave path
       String candidateId = null;
-      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pgs =
+      List<CompletedScan> pgs =
           exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
       if (pgs != null && !pgs.isEmpty() && pgs.get(0) != null) {
         candidateId = pgs.get(0).id();
@@ -1634,7 +1536,7 @@ public class ExportFragment extends Fragment {
             () -> {
               try {
                 // Resolve export settings from SharedPreferences via helper
-                List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pgsForPreset =
+                List<CompletedScan> pgsForPreset =
                     exportSessionViewModel != null
                         ? exportSessionViewModel.getPages().getValue()
                         : null;
@@ -1659,8 +1561,7 @@ public class ExportFragment extends Fragment {
                   // Streaming export: pages are loaded lazily one at a time via PageSource so
                   // peak memory depends on a single page, not on the document page count.
                   final Bitmap current = documentBitmap;
-                  final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pageSnapshot =
-                      new ArrayList<>(pages);
+                  final List<CompletedScan> pageSnapshot = new ArrayList<>(pages);
                   final int totalPages = pageSnapshot.size();
                   postToUiSafe(
                       () -> {
@@ -1682,8 +1583,7 @@ public class ExportFragment extends Fragment {
 
                         @Override
                         public Bitmap loadBitmap(int index) {
-                          de.schliweb.makeacopy.ui.export.session.CompletedScan s =
-                              pageSnapshot.get(index);
+                          CompletedScan s = pageSnapshot.get(index);
                           currentPageOwned = false;
                           if (s == null) return null;
                           Bitmap pageBmp = s.inMemoryBitmap();
@@ -1728,8 +1628,7 @@ public class ExportFragment extends Fragment {
 
                         @Override
                         public List<RecognizedWord> loadWords(int index) {
-                          de.schliweb.makeacopy.ui.export.session.CompletedScan s =
-                              pageSnapshot.get(index);
+                          CompletedScan s = pageSnapshot.get(index);
                           if (s == null) return null;
                           List<RecognizedWord> pageWords = loadWordsForSessionPage(s);
                           if (pageWords == null
@@ -1880,8 +1779,7 @@ public class ExportFragment extends Fragment {
    * (when the OCR Review feature is enabled), then falls back to the registry-backed words_json
    * payload. Returns {@code null} when no usable OCR words exist (image-only page).
    */
-  private List<RecognizedWord> loadWordsForSessionPage(
-      de.schliweb.makeacopy.ui.export.session.CompletedScan s) {
+  private List<RecognizedWord> loadWordsForSessionPage(CompletedScan s) {
     if (s == null) return null;
     List<RecognizedWord> pageWords = null;
     if (FeatureFlags.isOcrReviewEnabled()) {
@@ -1989,7 +1887,7 @@ public class ExportFragment extends Fragment {
 
   /** Launches SAF CreateDocument for JPEG export with default filename. */
   private void selectJpegFileLocation() {
-    java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+    java.util.List<CompletedScan> pages =
         exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
     int n = (pages == null) ? 0 : pages.size();
     String base = buildDefaultBaseName();
@@ -2013,7 +1911,7 @@ public class ExportFragment extends Fragment {
   /** Performs JPEG export using a chosen enhancement mode. */
   private void performJpegExport(JpegExportOptions.Mode chosenMode) {
     // If multiple pages, this call path shouldn't be used; ZIP path handles it
-    java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pagesCheck =
+    java.util.List<CompletedScan> pagesCheck =
         exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
     if (pagesCheck != null && pagesCheck.size() > 1) {
       // Should have gone through ZIP flow
@@ -2023,7 +1921,7 @@ public class ExportFragment extends Fragment {
     }
     Log.d(TAG, "performJpegExport: Starting JPEG export process with mode=" + chosenMode);
     // v1 increment: if multiple pages are present, multi-image ZIP export is not implemented
-    java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+    java.util.List<CompletedScan> pages =
         exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
     if (pages != null && pages.size() > 1) {
       UIUtils.showToast(
@@ -2157,7 +2055,7 @@ public class ExportFragment extends Fragment {
           requireContext(), getString(R.string.no_target_selected), Toast.LENGTH_SHORT);
       return;
     }
-    final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
+    final List<CompletedScan> pages =
         exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
     if (pages == null || pages.size() <= 1) {
       UIUtils.showToast(
@@ -2209,7 +2107,7 @@ public class ExportFragment extends Fragment {
                 zos = new java.util.zip.ZipOutputStream(os);
 
                 int idx = 1;
-                for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
+                for (CompletedScan s : pages) {
                   if (s == null) continue;
                   String name = String.format(Locale.getDefault(), "page_%03d.jpg", idx);
                   java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(name);
@@ -2408,10 +2306,9 @@ public class ExportFragment extends Fragment {
    * Returns the currently active/previewed page, falling back to the single page when the session
    * has exactly one entry. Used by the edit entry points.
    */
-  private de.schliweb.makeacopy.ui.export.session.CompletedScan getActivePageForEdit() {
+  private CompletedScan getActivePageForEdit() {
     if (exportSessionViewModel == null) return null;
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-        exportSessionViewModel.getPages().getValue();
+    List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
     if (pages == null || pages.isEmpty()) return null;
     int idx = activeSessionPageIndex;
     if (idx < 0 || idx >= pages.size()) idx = findActivePageIndex();
@@ -2426,8 +2323,7 @@ public class ExportFragment extends Fragment {
    * an original PDF), previous trapezoid state is cleared and the stable page id is recorded so the
    * editor return path updates the SAME page (no new page id).
    */
-  private void startPersistedPageEdit(
-      View v, de.schliweb.makeacopy.ui.export.session.CompletedScan page) {
+  private void startPersistedPageEdit(View v, CompletedScan page) {
     if (page == null || page.filePath() == null) return;
     Bitmap src = null;
     try {
@@ -2468,15 +2364,14 @@ public class ExportFragment extends Fragment {
    * lists are ignored here — explicit discards go through {@link
    * #discardActiveDocumentSessionAsync()}.
    */
-  private void syncDocumentSessionAsync(
-      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages) {
+  private void syncDocumentSessionAsync(List<CompletedScan> pages) {
     if (exportSessionViewModel == null) return;
     Context c = getContext();
     if (c == null) return;
     final Context app = c.getApplicationContext();
     final ArrayList<String> ids = new ArrayList<>();
     if (pages != null) {
-      for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
+      for (CompletedScan s : pages) {
         if (s != null && s.id() != null) ids.add(s.id());
       }
     }
@@ -2512,15 +2407,14 @@ public class ExportFragment extends Fragment {
                 de.schliweb.makeacopy.data.DocumentSessionRepository.get(app);
             de.schliweb.makeacopy.data.DocumentSession session = repo.getActiveSession();
             if (session == null) return;
-            final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> resolved =
+            final List<CompletedScan> resolved =
                 repo.resolveActivePages(de.schliweb.makeacopy.data.CompletedScansRegistry.get(app));
             if (resolved.isEmpty()) return;
             final String docId = session.documentId();
             postToUiSafe(
                 () -> {
                   if (exportSessionViewModel == null) return;
-                  List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-                      exportSessionViewModel.getPages().getValue();
+                  List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
                   if (cur != null && !cur.isEmpty()) return; // runtime session took over meanwhile
                   exportSessionViewModel.setDocumentId(docId);
                   activeSessionPageIndex = 0;
@@ -2564,7 +2458,7 @@ public class ExportFragment extends Fragment {
   }
 
   // Insert-Hook implementation: persist a newly added CompletedScan to app storage and registry
-  private void persistCompletedScanAsync(de.schliweb.makeacopy.ui.export.session.CompletedScan s) {
+  private void persistCompletedScanAsync(CompletedScan s) {
     if (s == null || s.id() == null || s.inMemoryBitmap() == null) return;
     final android.content.Context appContext = requireContext().getApplicationContext();
     final String id = s.id();
@@ -2579,7 +2473,7 @@ public class ExportFragment extends Fragment {
               try {
                 // Persist scan (page.jpg, thumb.jpg, and optional OCR artifacts) and insert into
                 // registry
-                de.schliweb.makeacopy.ui.export.session.CompletedScan persisted =
+                CompletedScan persisted =
                     ScanPersister.persist(appContext, s, ocrTextAtCall, ocrWordsAtCall);
 
                 // Update current session item so the filmstrip badge reflects OCR immediately
@@ -2587,14 +2481,13 @@ public class ExportFragment extends Fragment {
                 final String finalOcrFormat = persisted.ocrFormat();
                 postToUiSafe(
                     () -> {
-                      List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-                          exportSessionViewModel.getPages().getValue();
+                      List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
                       if (cur == null) return;
                       for (int i = 0; i < cur.size(); i++) {
-                        de.schliweb.makeacopy.ui.export.session.CompletedScan it = cur.get(i);
+                        CompletedScan it = cur.get(i);
                         if (it != null && id.equals(it.id())) {
-                          de.schliweb.makeacopy.ui.export.session.CompletedScan updated =
-                              new de.schliweb.makeacopy.ui.export.session.CompletedScan(
+                          CompletedScan updated =
+                              new CompletedScan(
                                   it.id(),
                                   persisted.filePath(),
                                   it.rotationDeg(),
@@ -2641,10 +2534,9 @@ public class ExportFragment extends Fragment {
    * feedback when sharing fails.
    */
   private void runInlineOcrForPage(int position) {
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-        exportSessionViewModel.getPages().getValue();
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
     if (cur == null || position < 0 || position >= cur.size()) return;
-    de.schliweb.makeacopy.ui.export.session.CompletedScan s = cur.get(position);
+    CompletedScan s = cur.get(position);
     if (s == null) return;
     // Enqueue background OCR job for this page id. UI will be updated when the job broadcasts
     // completion.
@@ -2812,8 +2704,7 @@ public class ExportFragment extends Fragment {
    * complete OCR result), or changing the OCR language used for these runs.
    */
   private void showOcrBatchOptions(int position) {
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-        exportSessionViewModel.getPages().getValue();
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
     if (cur == null || cur.size() <= 1) {
       runInlineOcrForPage(position);
       return;
@@ -2851,8 +2742,7 @@ public class ExportFragment extends Fragment {
 
   /** Multi-choice page picker for "OCR selected pages" (reuses the picker UX pattern). */
   private void showOcrPagePicker(int preselectedPosition) {
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-        exportSessionViewModel.getPages().getValue();
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
     if (cur == null || cur.isEmpty()) return;
     final int n = cur.size();
     final String[] labels = new String[n];
@@ -2861,8 +2751,7 @@ public class ExportFragment extends Fragment {
       labels[i] = getString(R.string.page_n_of_m, i + 1, n);
       checked[i] = (i == preselectedPosition);
     }
-    final List<de.schliweb.makeacopy.ui.export.session.CompletedScan> snapshot =
-        new ArrayList<>(cur);
+    final List<CompletedScan> snapshot = new ArrayList<>(cur);
     new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
         .setTitle(R.string.ocr_batch_select_pages)
         .setMultiChoiceItems(labels, checked, (dlg, which, isChecked) -> checked[which] = isChecked)
@@ -2871,7 +2760,7 @@ public class ExportFragment extends Fragment {
             (dlg, w) -> {
               List<String> ids = new ArrayList<>();
               for (int i = 0; i < n; i++) {
-                de.schliweb.makeacopy.ui.export.session.CompletedScan s = snapshot.get(i);
+                CompletedScan s = snapshot.get(i);
                 if (checked[i] && s != null && s.id() != null) ids.add(s.id());
               }
               if (!ids.isEmpty()) startOcrBatch(ids);
@@ -2886,14 +2775,12 @@ public class ExportFragment extends Fragment {
    * explicit per-page/selected actions).
    */
   private void startOcrAll() {
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-        exportSessionViewModel.getPages().getValue();
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
     if (cur == null || cur.isEmpty()) return;
     List<String> ids = new ArrayList<>();
-    for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : cur) {
+    for (CompletedScan s : cur) {
       if (s == null || s.id() == null) continue;
-      if (de.schliweb.makeacopy.ui.export.session.CompletedScan.STATUS_OCR_COMPLETE.equals(
-          s.pageStatus())) {
+      if (CompletedScan.STATUS_OCR_COMPLETE.equals(s.pageStatus())) {
         continue; // already has OCR → skip by default
       }
       ids.add(s.id());
@@ -2933,10 +2820,9 @@ public class ExportFragment extends Fragment {
             },
             pageId -> {
               // Deleted pages are skipped: the batch works with stable ids, not positions.
-              List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
-                  exportSessionViewModel.getPages().getValue();
+              List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
               if (pages == null) return false;
-              for (de.schliweb.makeacopy.ui.export.session.CompletedScan s : pages) {
+              for (CompletedScan s : pages) {
                 if (s != null && pageId.equals(s.id())) return true;
               }
               return false;
@@ -2967,15 +2853,14 @@ public class ExportFragment extends Fragment {
   /** Reflects a persisted OCR failure in the in-memory session entry (badge/status). */
   private void markSessionPageOcrFailed(String pageId) {
     if (exportSessionViewModel == null || pageId == null) return;
-    List<de.schliweb.makeacopy.ui.export.session.CompletedScan> cur =
-        exportSessionViewModel.getPages().getValue();
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
     if (cur == null) return;
     for (int i = 0; i < cur.size(); i++) {
-      de.schliweb.makeacopy.ui.export.session.CompletedScan it = cur.get(i);
+      CompletedScan it = cur.get(i);
       if (it != null && pageId.equals(it.id())) {
         exportSessionViewModel.updateAt(
             i,
-            new de.schliweb.makeacopy.ui.export.session.CompletedScan(
+            new CompletedScan(
                 it.id(),
                 it.filePath(),
                 it.rotationDeg(),
@@ -2990,7 +2875,7 @@ public class ExportFragment extends Fragment {
                 it.orientationMode(),
                 it.sourceType(),
                 it.pdfPageIndex(),
-                de.schliweb.makeacopy.ui.export.session.CompletedScan.STATUS_OCR_FAILED));
+                CompletedScan.STATUS_OCR_FAILED));
         break;
       }
     }
