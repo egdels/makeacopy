@@ -40,6 +40,9 @@ public final class HiltFragmentScenario<F extends Fragment> {
       @Nullable Bundle args,
       int themeResId,
       @NonNull Lifecycle.State initialState) {
+    // Fragments must not start from a draft that an earlier run or manual use left behind:
+    // CameraFragment would cover itself with the "resume document" dialog.
+    TestAppState.endActiveDocumentSession();
     Intent intent =
         Intent.makeMainActivity(
             new android.content.ComponentName(
