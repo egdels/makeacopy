@@ -298,7 +298,60 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       @NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
     cameraViewModel = new ViewModelProvider(requireActivity()).get(CameraViewModel.class);
     cropViewModel = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
+    registerLaunchers();
 
+    binding = FragmentCameraBinding.inflate(inflater, container, false);
+    View root = binding.getRoot();
+
+    // Verbose environment log to help diagnose device-specific issues
+    logEnvironment();
+    setupInsets(root);
+
+    // Init UI visibility
+    showCameraMode();
+
+    // If MainActivity received a shared image/PDF (ACTION_SEND / ACTION_VIEW),
+    // route it through the existing import pipeline. Posted to the view so that
+    // the navigation graph and bindings are fully ready.
+    consumePendingShareIfAny();
+
+    // DocQuad runner is now injected via Hilt (docQuadOrtRunner field).
+    // No proactive loading needed — the singleton is created eagerly by the DI container.
+
+    final TextView textView = binding.textCamera;
+    cameraViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
+
+    setupCaptureControls();
+    // Pick image button (supports images and PDFs)
+    binding.buttonPickImage.setOnClickListener(v -> launchImportPicker());
+    binding.buttonCameraOptions.setOnClickListener(v -> showCameraOptions());
+    setupVolumeKeyShutter(root);
+    setupLibraryButton();
+    setupReviewButtons();
+
+    // Camera permission
+    cameraViewModel
+        .isCameraPermissionGranted()
+        .observe(
+            getViewLifecycleOwner(),
+            granted -> {
+              if (granted) {
+                initializeCamera();
+              }
+            });
+    checkCameraPermission();
+
+    // Only capability detection here; registration happens in onResume (3)
+    initLightSensor();
+    setupBackHandling();
+
+    // Session 3: offer resuming an unfinished persisted document (once per process start).
+    maybeOfferDocumentResume();
+
+    return root;
+  }
+
+  private void registerLaunchers() {
     requestPermissionLauncher =
         registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
@@ -315,64 +368,59 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     // Register the image/PDF picker launcher (SAF)
     pickImageLauncher =
         registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-              if (result == null || result.getData() == null) return;
-              if (result.getResultCode() != android.app.Activity.RESULT_OK) return;
-              Intent data = result.getData();
-              Uri uri = data.getData();
-              if (uri == null) return;
+            new ActivityResultContracts.StartActivityForResult(), this::onImportPicked);
+  }
 
-              // Determine MIME type
-              String mime = requireContext().getContentResolver().getType(uri);
-              if (mime == null) {
-                UIUtils.showToast(
-                    requireContext(), R.string.error_unknown_file_type, Toast.LENGTH_SHORT);
-                return;
-              }
+  /** Result of the image/PDF picker: remember the folder and route the file into the import. */
+  private void onImportPicked(androidx.activity.result.ActivityResult result) {
+    if (result == null || result.getData() == null) return;
+    if (result.getResultCode() != android.app.Activity.RESULT_OK) return;
+    Intent data = result.getData();
+    Uri uri = data.getData();
+    if (uri == null) return;
 
-              // Persist read permission if granted by the chooser (ignore if not allowed)
-              int takeFlags =
-                  data.getFlags()
-                      & (Intent.FLAG_GRANT_READ_URI_PERMISSION
-                          | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-              if ((takeFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
-                try {
-                  requireContext()
-                      .getContentResolver()
-                      .takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                } catch (SecurityException se) {
-                  Log.w(TAG, "Persistable read permission not granted by provider", se);
-                }
-              }
+    // Determine MIME type
+    String mime = requireContext().getContentResolver().getType(uri);
+    if (mime == null) {
+      UIUtils.showToast(requireContext(), R.string.error_unknown_file_type, Toast.LENGTH_SHORT);
+      return;
+    }
 
-              // Derive a parent/folder URI for the picker's initial location hint.
-              // Using the raw file URI often fails on OEM pickers (Xiaomi, Samsung, etc.).
-              Uri folderHint =
-                  de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(uri);
-              // Save folder URI if derivable, otherwise fall back to the original URI.
-              // Even a file URI is better than nothing — some pickers still respect it.
-              ExportPrefsHelper.setLastImportUri(
-                  requireContext(), folderHint != null ? folderHint.toString() : uri.toString());
+    // Persist read permission if granted by the chooser (ignore if not allowed)
+    int takeFlags =
+        data.getFlags()
+            & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+    if ((takeFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+      try {
+        requireContext()
+            .getContentResolver()
+            .takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      } catch (SecurityException se) {
+        Log.w(TAG, "Persistable read permission not granted by provider", se);
+      }
+    }
 
-              if (mime.startsWith("image/")) {
-                // Handle image import (existing logic)
-                handleImageImport(uri);
-              } else if (mime.equals("application/pdf")) {
-                // Handle PDF import
-                handlePdfImport(uri);
-              } else {
-                UIUtils.showToast(
-                    requireContext(), R.string.error_unsupported_file_type, Toast.LENGTH_SHORT);
-              }
-            });
+    // Derive a parent/folder URI for the picker's initial location hint.
+    // Using the raw file URI often fails on OEM pickers (Xiaomi, Samsung, etc.).
+    Uri folderHint =
+        de.schliweb.makeacopy.utils.infra.DocumentUriUtils.deriveParentDocumentUri(uri);
+    // Save folder URI if derivable, otherwise fall back to the original URI.
+    // Even a file URI is better than nothing — some pickers still respect it.
+    ExportPrefsHelper.setLastImportUri(
+        requireContext(), folderHint != null ? folderHint.toString() : uri.toString());
 
-    binding = FragmentCameraBinding.inflate(inflater, container, false);
-    View root = binding.getRoot();
+    if (mime.startsWith("image/")) {
+      // Handle image import (existing logic)
+      handleImageImport(uri);
+    } else if (mime.equals("application/pdf")) {
+      // Handle PDF import
+      handlePdfImport(uri);
+    } else {
+      UIUtils.showToast(requireContext(), R.string.error_unsupported_file_type, Toast.LENGTH_SHORT);
+    }
+  }
 
-    // Verbose environment log to help diagnose device-specific issues
-    logEnvironment();
-
+  private void setupInsets(View root) {
     ViewCompat.setOnApplyWindowInsetsListener(
         binding.buttonContainer,
         (v, insets) -> {
@@ -385,21 +433,21 @@ public class CameraFragment extends Fragment implements SensorEventListener {
           UIUtils.adjustMarginForSystemInsets(binding.scanButtonContainer, 8);
           return insets;
         });
+    // Insets (Status bar)
+    ViewCompat.setOnApplyWindowInsetsListener(
+        root,
+        (v, insets) -> {
+          int topInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
+          ViewGroup.MarginLayoutParams textParams =
+              (ViewGroup.MarginLayoutParams) binding.textCamera.getLayoutParams();
+          textParams.topMargin = (int) (8 * getResources().getDisplayMetrics().density) + topInset;
+          binding.textCamera.setLayoutParams(textParams);
+          return insets;
+        });
+  }
 
-    // Init UI visibility
-    showCameraMode();
-
-    // If MainActivity received a shared image/PDF (ACTION_SEND / ACTION_VIEW),
-    // route it through the existing import pipeline. Posted to the view so that
-    // the navigation graph and bindings are fully ready.
-    consumePendingShareIfAny();
-
-    // DocQuad runner is now injected via Hilt (docQuadOrtRunner field).
-    // No proactive loading needed — the singleton is created eagerly by the DI container.
-
-    final TextView textView = binding.textCamera;
-    cameraViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
-
+  /** Shutter, flashlight, zoom and tap-to-focus. */
+  private void setupCaptureControls() {
     // Scan
     binding.buttonScan.setOnClickListener(
         v -> {
@@ -418,150 +466,156 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     updateZoomButtonLabel(selectedZoomRatio);
     binding.buttonCameraZoom.setOnClickListener(v -> showZoomPicker());
     setupTapToFocus();
+  }
 
-    // Set up pick image button (supports images and PDFs)
-    binding.buttonPickImage.setOnClickListener(
-        v -> {
-          Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-          intent.addCategory(Intent.CATEGORY_OPENABLE);
-          // Accept both images and PDFs
-          intent.setType("*/*");
-          intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {"image/*", "application/pdf"});
-          intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-          intent.addFlags(
-              Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+  private void launchImportPicker() {
+    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    // Accept both images and PDFs
+    intent.setType("*/*");
+    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {"image/*", "application/pdf"});
+    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+    intent.addFlags(
+        Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
 
-          // Restore last import folder location if available.
-          // EXTRA_INITIAL_URI is only a hint — OEM pickers may ignore it.
-          String lastImportUri = ExportPrefsHelper.getLastImportUri(requireContext());
-          if (lastImportUri != null) {
-            try {
-              Uri initialUri = Uri.parse(lastImportUri);
-              intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, initialUri);
-            } catch (Exception e) {
-              Log.w(TAG, "Ignoring invalid last import URI", e);
-            }
-          }
-
-          pickImageLauncher.launch(intent);
-        });
-
-    // Options
-    binding.buttonCameraOptions.setOnClickListener(
-        v -> {
-          getParentFragmentManager()
-              .setFragmentResultListener(
-                  CameraOptionsDialogFragment.REQUEST_KEY,
-                  getViewLifecycleOwner(),
-                  (requestKey, bundle) -> {
-                    boolean skip =
-                        bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_SKIP_OCR, false);
-                    boolean analysisPref =
-                        bundle.getBoolean(
-                            CameraOptionsDialogFragment.BUNDLE_ANALYSIS_ENABLED, true);
-                    boolean a11yPref =
-                        bundle.getBoolean(
-                            CameraOptionsDialogFragment.BUNDLE_ACCESSIBILITY_MODE, false);
-                    boolean exposurePref =
-                        bundle.getBoolean(
-                            CameraOptionsDialogFragment.BUNDLE_EXPOSURE_COMPENSATION, false);
-                    boolean manualFocusPref =
-                        bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_MANUAL_FOCUS, false);
-                    Context ctx = getContext();
-                    if (ctx != null) {
-                      android.content.SharedPreferences prefs =
-                          ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-                      prefs
-                          .edit()
-                          .putBoolean("skip_ocr", skip)
-                          .putBoolean("include_ocr", !skip)
-                          .putBoolean("analysis_enabled", analysisPref)
-                          // Accessibility is already persisted by the dialog; keep a mirror for
-                          // local reads if needed
-                          .putBoolean(
-                              CameraOptionsDialogFragment.BUNDLE_ACCESSIBILITY_MODE, a11yPref)
-                          .apply();
-                    }
-                    // Apply analysis toggle immediately if we are in camera mode
-                    if (binding != null && binding.viewFinder.getVisibility() == View.VISIBLE) {
-                      setLiveAnalysisEnabled(analysisPref);
-                      // Apply exposure compensation toggle immediately
-                      if (exposurePref) {
-                        setupExposureCompensation();
-                      } else {
-                        binding.exposureControl.setVisibility(View.GONE);
-                        // Reset EV to 0 when feature is disabled
-                        applyExposureCompensation(0);
-                        persistExposureIndex(0);
-                      }
-                      if (manualFocusPref) {
-                        setupManualFocusControl();
-                      } else {
-                        resetManualFocusControl();
-                      }
-                      // Re-assert focus so volume keys are captured again after closing dialog
-                      binding.getRoot().setFocusableInTouchMode(true);
-                      binding.getRoot().requestFocus();
-                      // If Accessibility Mode was enabled, give a one-time ready announcement
-                      // (debounced)
-                      if (isAccessibilityModeEnabled()) {
-                        long now = System.currentTimeMillis();
-                        if (now - lastA11yReadyAnnounceTs > 4000L) {
-                          lastA11yReadyAnnounceTs = now;
-                          announce(R.string.a11y_camera_ready);
-                        }
-                      }
-                    }
-                    getParentFragmentManager()
-                        .clearFragmentResultListener(CameraOptionsDialogFragment.REQUEST_KEY);
-                  });
-          CameraOptionsDialogFragment.show(getParentFragmentManager());
-        });
-
-    // Intercept hardware volume keys in Accessibility Mode to trigger shutter
-    root.setFocusableInTouchMode(true);
-    root.requestFocus();
-    root.setOnKeyListener(
-        (v, keyCode, event) -> {
-          if (!isAccessibilityModeEnabled()) return false;
-          if (keyCode != KeyEvent.KEYCODE_VOLUME_UP && keyCode != KeyEvent.KEYCODE_VOLUME_DOWN)
-            return false;
-          if (event.getAction() != KeyEvent.ACTION_DOWN)
-            return true; // consume UP as well by returning true on DOWN
-
-          long now = System.currentTimeMillis();
-          if (now - lastVolumeShutterTs < 800L) return true; // debounce
-          lastVolumeShutterTs = now;
-
-          // Haptic feedback on key press
-          v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-
-          // Only trigger if not already processing and camera is visible
-          boolean cameraVisible =
-              binding != null && binding.viewFinder.getVisibility() == View.VISIBLE;
-          boolean ready = binding != null && binding.buttonScan.isEnabled();
-          if (cameraVisible && ready) {
-            captureImage();
-          }
-          return true; // consume to suppress actual volume change
-        });
-
-    // Library entry from Camera screen (feature-gated)
-    if (FeatureFlags.isScanLibraryEnable()) {
-      binding.buttonOpenLibraryCam.setVisibility(View.VISIBLE);
-      binding.buttonOpenLibraryCam.setOnClickListener(
-          v -> {
-            try {
-              Navigation.findNavController(requireView()).navigate(R.id.navigation_scans_library);
-            } catch (IllegalArgumentException | IllegalStateException ex) {
-              Log.w(TAG, "Navigation to scans library failed", ex);
-            }
-          });
-    } else {
-      binding.buttonOpenLibraryCam.setVisibility(View.GONE);
+    // Restore last import folder location if available.
+    // EXTRA_INITIAL_URI is only a hint — OEM pickers may ignore it.
+    String lastImportUri = ExportPrefsHelper.getLastImportUri(requireContext());
+    if (lastImportUri != null) {
+      try {
+        Uri initialUri = Uri.parse(lastImportUri);
+        intent.putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, initialUri);
+      } catch (Exception e) {
+        Log.w(TAG, "Ignoring invalid last import URI", e);
+      }
     }
 
-    // Set up retake and confirm button listeners
+    pickImageLauncher.launch(intent);
+  }
+
+  private void showCameraOptions() {
+    getParentFragmentManager()
+        .setFragmentResultListener(
+            CameraOptionsDialogFragment.REQUEST_KEY,
+            getViewLifecycleOwner(),
+            (requestKey, bundle) -> {
+              onCameraOptionsResult(bundle);
+              getParentFragmentManager()
+                  .clearFragmentResultListener(CameraOptionsDialogFragment.REQUEST_KEY);
+            });
+    CameraOptionsDialogFragment.show(getParentFragmentManager());
+  }
+
+  private void onCameraOptionsResult(Bundle bundle) {
+    boolean skip = bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_SKIP_OCR, false);
+    boolean analysisPref =
+        bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_ANALYSIS_ENABLED, true);
+    boolean a11yPref =
+        bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_ACCESSIBILITY_MODE, false);
+    boolean exposurePref =
+        bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_EXPOSURE_COMPENSATION, false);
+    boolean manualFocusPref =
+        bundle.getBoolean(CameraOptionsDialogFragment.BUNDLE_MANUAL_FOCUS, false);
+    Context ctx = getContext();
+    if (ctx != null) {
+      android.content.SharedPreferences prefs =
+          ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
+      prefs
+          .edit()
+          .putBoolean("skip_ocr", skip)
+          .putBoolean("include_ocr", !skip)
+          .putBoolean("analysis_enabled", analysisPref)
+          // Accessibility is already persisted by the dialog; keep a mirror for
+          // local reads if needed
+          .putBoolean(CameraOptionsDialogFragment.BUNDLE_ACCESSIBILITY_MODE, a11yPref)
+          .apply();
+    }
+    // Apply the toggles immediately if we are in camera mode
+    if (binding != null && binding.viewFinder.getVisibility() == View.VISIBLE) {
+      applyCameraOptionsToLivePreview(analysisPref, exposurePref, manualFocusPref);
+    }
+  }
+
+  private void applyCameraOptionsToLivePreview(
+      boolean analysisPref, boolean exposurePref, boolean manualFocusPref) {
+    setLiveAnalysisEnabled(analysisPref);
+    // Apply exposure compensation toggle immediately
+    if (exposurePref) {
+      setupExposureCompensation();
+    } else {
+      binding.exposureControl.setVisibility(View.GONE);
+      // Reset EV to 0 when feature is disabled
+      applyExposureCompensation(0);
+      persistExposureIndex(0);
+    }
+    if (manualFocusPref) {
+      setupManualFocusControl();
+    } else {
+      resetManualFocusControl();
+    }
+    // Re-assert focus so volume keys are captured again after closing dialog
+    binding.getRoot().setFocusableInTouchMode(true);
+    binding.getRoot().requestFocus();
+    // If Accessibility Mode was enabled, give a one-time ready announcement
+    // (debounced)
+    if (isAccessibilityModeEnabled()) {
+      long now = System.currentTimeMillis();
+      if (now - lastA11yReadyAnnounceTs > 4000L) {
+        lastA11yReadyAnnounceTs = now;
+        announce(R.string.a11y_camera_ready);
+      }
+    }
+  }
+
+  /** Intercept hardware volume keys in Accessibility Mode to trigger shutter. */
+  private void setupVolumeKeyShutter(View root) {
+    root.setFocusableInTouchMode(true);
+    root.requestFocus();
+    root.setOnKeyListener((v, keyCode, event) -> onVolumeKey(v, keyCode, event));
+  }
+
+  private boolean onVolumeKey(View v, int keyCode, KeyEvent event) {
+    if (!isAccessibilityModeEnabled()) return false;
+    if (keyCode != KeyEvent.KEYCODE_VOLUME_UP && keyCode != KeyEvent.KEYCODE_VOLUME_DOWN)
+      return false;
+    if (event.getAction() != KeyEvent.ACTION_DOWN)
+      return true; // consume UP as well by returning true on DOWN
+
+    long now = System.currentTimeMillis();
+    if (now - lastVolumeShutterTs < 800L) return true; // debounce
+    lastVolumeShutterTs = now;
+
+    // Haptic feedback on key press
+    v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+
+    // Only trigger if not already processing and camera is visible
+    boolean cameraVisible = binding != null && binding.viewFinder.getVisibility() == View.VISIBLE;
+    boolean ready = binding != null && binding.buttonScan.isEnabled();
+    if (cameraVisible && ready) {
+      captureImage();
+    }
+    return true; // consume to suppress actual volume change
+  }
+
+  /** Library entry from Camera screen (feature-gated). */
+  private void setupLibraryButton() {
+    if (!FeatureFlags.isScanLibraryEnable()) {
+      binding.buttonOpenLibraryCam.setVisibility(View.GONE);
+      return;
+    }
+    binding.buttonOpenLibraryCam.setVisibility(View.VISIBLE);
+    binding.buttonOpenLibraryCam.setOnClickListener(
+        v -> {
+          try {
+            Navigation.findNavController(requireView()).navigate(R.id.navigation_scans_library);
+          } catch (IllegalArgumentException | IllegalStateException ex) {
+            Log.w(TAG, "Navigation to scans library failed", ex);
+          }
+        });
+  }
+
+  /** Retake and confirm (continue) of the captured-image review. */
+  private void setupReviewButtons() {
     binding.buttonRetake.setOnClickListener(
         v -> {
           if (isAdded() && binding != null) {
@@ -589,20 +643,9 @@ public class CameraFragment extends Fragment implements SensorEventListener {
         v -> {
           if (!isAdded()) return;
           cropViewModel.setImageCropped(false);
-          boolean skipOcr = false;
-          boolean skipCropping = false;
-          Context ctx2 = getContext();
-          if (ctx2 != null) {
-            android.content.SharedPreferences prefs =
-                ctx2.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-            skipOcr = prefs.getBoolean("skip_ocr", false);
-            skipCropping = prefs.getBoolean("skip_cropping", false);
-          }
-          int dest =
-              skipCropping
-                  ? (skipOcr ? R.id.navigation_export : R.id.navigation_ocr)
-                  : R.id.navigation_crop;
-          if (skipCropping && !skipOcr) {
+          int dest = nextScanFlowDestination();
+          // Going straight to OCR (cropping skipped): start from a clean OCR state
+          if (dest == R.id.navigation_ocr) {
             OCRViewModel ocrVm = new ViewModelProvider(requireActivity()).get(OCRViewModel.class);
             ocrVm.resetForNewImage();
           }
@@ -612,35 +655,30 @@ public class CameraFragment extends Fragment implements SensorEventListener {
             // Best-effort; failure is non-critical
           }
         });
+  }
 
-    // Insets (Status bar)
-    ViewCompat.setOnApplyWindowInsetsListener(
-        root,
-        (v, insets) -> {
-          int topInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
-          ViewGroup.MarginLayoutParams textParams =
-              (ViewGroup.MarginLayoutParams) binding.textCamera.getLayoutParams();
-          textParams.topMargin = (int) (8 * getResources().getDisplayMetrics().density) + topInset;
-          binding.textCamera.setLayoutParams(textParams);
-          return insets;
-        });
+  /** Where the scan flow continues once an image is available, per the skip options. */
+  private int nextScanFlowDestination() {
+    boolean skipOcr = false;
+    boolean skipCropping = false;
+    Context ctx = getContext();
+    if (ctx != null) {
+      android.content.SharedPreferences prefs =
+          ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
+      skipOcr = prefs.getBoolean("skip_ocr", false);
+      skipCropping = prefs.getBoolean("skip_cropping", false);
+    }
+    return scanFlowDestination(skipCropping, skipOcr);
+  }
 
-    // Camera permission
-    cameraViewModel
-        .isCameraPermissionGranted()
-        .observe(
-            getViewLifecycleOwner(),
-            granted -> {
-              if (granted) {
-                initializeCamera();
-              }
-            });
-    checkCameraPermission();
+  @androidx.annotation.VisibleForTesting
+  static int scanFlowDestination(boolean skipCropping, boolean skipOcr) {
+    if (!skipCropping) return R.id.navigation_crop;
+    return skipOcr ? R.id.navigation_export : R.id.navigation_ocr;
+  }
 
-    // Only capability detection here; registration happens in onResume (3)
-    initLightSensor();
-
-    // Handle back: in review mode -> reset, otherwise default
+  /** Handle back: in review mode -> reset, otherwise default. */
+  private void setupBackHandling() {
     requireActivity()
         .getOnBackPressedDispatcher()
         .addCallback(
@@ -656,11 +694,6 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                 }
               }
             });
-
-    // Session 3: offer resuming an unfinished persisted document (once per process start).
-    maybeOfferDocumentResume();
-
-    return root;
   }
 
   /**
@@ -2021,20 +2054,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
               cropViewModel.setImageCropped(false);
               cropViewModel.setImageBitmap(null);
 
-              boolean skipOcr = false;
-              boolean skipCropping = false;
-              Context ctx = getContext();
-              if (ctx != null) {
-                android.content.SharedPreferences prefs =
-                    ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-                skipOcr = prefs.getBoolean("skip_ocr", false);
-                skipCropping = prefs.getBoolean("skip_cropping", false);
-              }
-
-              int dest =
-                  skipCropping
-                      ? (skipOcr ? R.id.navigation_export : R.id.navigation_ocr)
-                      : R.id.navigation_crop;
+              int dest = nextScanFlowDestination();
               try {
                 Navigation.findNavController(requireView())
                     .navigate(dest, null, scanFlowNavOptions());
@@ -4115,19 +4135,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
 
       // Navigate to next step depending on preference
       if (isAdded()) {
-        boolean skipOcr = false;
-        boolean skipCropping = false;
-        Context ctx = getContext();
-        if (ctx != null) {
-          android.content.SharedPreferences prefs =
-              ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-          skipOcr = prefs.getBoolean("skip_ocr", false);
-          skipCropping = prefs.getBoolean("skip_cropping", false);
-        }
-        int dest =
-            skipCropping
-                ? (skipOcr ? R.id.navigation_export : R.id.navigation_ocr)
-                : R.id.navigation_crop;
+        int dest = nextScanFlowDestination();
         try {
           Navigation.findNavController(requireView()).navigate(dest);
         } catch (IllegalArgumentException | IllegalStateException ignored) {
@@ -4279,20 +4287,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     ocrVm.resetForNewImage();
 
     // Navigation based on settings
-    boolean skipOcr = false;
-    boolean skipCropping = false;
-    Context ctx = getContext();
-    if (ctx != null) {
-      android.content.SharedPreferences prefs =
-          ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-      skipOcr = prefs.getBoolean("skip_ocr", false);
-      skipCropping = prefs.getBoolean("skip_cropping", false);
-    }
-
-    int dest =
-        skipCropping
-            ? (skipOcr ? R.id.navigation_export : R.id.navigation_ocr)
-            : R.id.navigation_crop;
+    int dest = nextScanFlowDestination();
 
     try {
       Navigation.findNavController(requireView()).navigate(dest);
