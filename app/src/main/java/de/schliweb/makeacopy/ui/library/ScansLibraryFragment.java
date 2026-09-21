@@ -88,6 +88,37 @@ public class ScansLibraryFragment extends Fragment {
       @Nullable ViewGroup container,
       @Nullable Bundle savedInstanceState) {
     View root = inflater.inflate(R.layout.fragment_scans_library, container, false);
+    bindViews(root);
+    setupInsets(root);
+    setupAdapterAndSelection();
+    setupSearch(root);
+    setupNavigationButtons(root);
+
+    if (!FeatureFlags.isScanLibraryEnable()) {
+      UIUtils.showToast(
+          requireContext(),
+          R.string.feature_scan_library_disabled,
+          android.widget.Toast.LENGTH_SHORT);
+      // Optionally navigate up if embedded in backstack
+      requireActivity().getOnBackPressedDispatcher().onBackPressed();
+      return root;
+    }
+
+    if (getArguments() != null) {
+      collectionIdArg = getArguments().getString("collectionId");
+      collectionNameArg = getArguments().getString("collectionName");
+    }
+    bindCollectionTitle();
+    loadDataAsync();
+    // When viewing a specific collection, enable long-press to remove an item from that collection
+    if (collectionIdArg != null) {
+      adapter.setOnItemLongClickListener(this::confirmRemoveFromCollection);
+    }
+    setupLibraryActions();
+    return root;
+  }
+
+  private void bindViews(View root) {
     list = root.findViewById(R.id.list);
     progress = root.findViewById(R.id.progress);
     emptyText = root.findViewById(R.id.emptyText);
@@ -103,9 +134,13 @@ public class ScansLibraryFragment extends Fragment {
     textSelectedCount = root.findViewById(R.id.textSelectedCount);
     buttonExitSelection = root.findViewById(R.id.buttonExitSelection);
     buttonDeleteSelected = root.findViewById(R.id.buttonDeleteSelected);
+  }
 
-    // Apply system insets: the AppBarLayout (fitsSystemWindows) handles the status bar; the
-    // bottom button container gets the nav bar inset added to its base margin.
+  /**
+   * Apply system insets: the AppBarLayout (fitsSystemWindows) handles the status bar; the bottom
+   * button container gets the nav bar inset added to its base margin.
+   */
+  private void setupInsets(View root) {
     de.schliweb.makeacopy.utils.ui.UIUtils.adjustMarginForSystemInsets(buttonContainer, 8);
     androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
         root,
@@ -124,7 +159,9 @@ public class ScansLibraryFragment extends Fragment {
           @Override
           public void onViewDetachedFromWindow(@NonNull View v) {}
         });
+  }
 
+  private void setupAdapterAndSelection() {
     adapter =
         new ScansAdapter(
             item -> {
@@ -162,7 +199,54 @@ public class ScansLibraryFragment extends Fragment {
       buttonDeleteSelected.setOnClickListener(v -> confirmDeleteSelected());
     }
 
-    // Back button action
+    list.setAdapter(adapter);
+    // Adaptive grid: one column per ~360dp of available width (cards carry their own margins)
+    int spanCount = Math.max(1, (int) (getResources().getConfiguration().screenWidthDp / 360f));
+    list.setLayoutManager(
+        new androidx.recyclerview.widget.GridLayoutManager(requireContext(), spanCount));
+  }
+
+  /**
+   * Material SearchBar + SearchView: filter loaded metadata and augment it with OCR FTS matches.
+   */
+  private void setupSearch(View root) {
+    com.google.android.material.search.SearchBar searchBar = root.findViewById(R.id.search_bar);
+    com.google.android.material.search.SearchView searchView = root.findViewById(R.id.search_view);
+    RecyclerView searchResults = root.findViewById(R.id.search_results);
+    if (searchBar == null || searchView == null || searchResults == null) return;
+    searchView.setupWithSearchBar(searchBar);
+    searchResults.setLayoutManager(
+        new androidx.recyclerview.widget.LinearLayoutManager(requireContext()));
+    // Share the adapter so results stay in sync without duplicating data
+    searchResults.setAdapter(adapter);
+    searchView
+        .getEditText()
+        .addTextChangedListener(
+            new android.text.TextWatcher() {
+              @Override
+              public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+
+              @Override
+              public void onTextChanged(CharSequence s, int st, int b, int c) {}
+
+              @Override
+              public void afterTextChanged(android.text.Editable s) {
+                String query = s == null ? null : s.toString();
+                adapter.filter(query);
+                loadOcrMatchesAsync(query);
+              }
+            });
+    searchView.addTransitionListener(
+        (sv, previousState, newState) -> {
+          if (newState == com.google.android.material.search.SearchView.TransitionState.HIDDEN) {
+            adapter.filter(null);
+            adapter.setOcrMatches(null);
+          }
+        });
+  }
+
+  /** Back button and the empty-state call to action. */
+  private void setupNavigationButtons(View root) {
     if (backButton != null) {
       backButton.setOnClickListener(
           v -> {
@@ -173,203 +257,121 @@ public class ScansLibraryFragment extends Fragment {
             }
           });
     }
-    list.setAdapter(adapter);
-    // Adaptive grid: one column per ~360dp of available width (cards carry their own margins)
-    int spanCount = Math.max(1, (int) (getResources().getConfiguration().screenWidthDp / 360f));
-    list.setLayoutManager(
-        new androidx.recyclerview.widget.GridLayoutManager(requireContext(), spanCount));
-
-    // Material SearchBar + SearchView: filter loaded metadata and augment it with OCR FTS matches
-    com.google.android.material.search.SearchBar searchBar = root.findViewById(R.id.search_bar);
-    com.google.android.material.search.SearchView searchView = root.findViewById(R.id.search_view);
-    RecyclerView searchResults = root.findViewById(R.id.search_results);
-    if (searchBar != null && searchView != null && searchResults != null) {
-      searchView.setupWithSearchBar(searchBar);
-      searchResults.setLayoutManager(
-          new androidx.recyclerview.widget.LinearLayoutManager(requireContext()));
-      // Share the adapter so results stay in sync without duplicating data
-      searchResults.setAdapter(adapter);
-      searchView
-          .getEditText()
-          .addTextChangedListener(
-              new android.text.TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
-
-                @Override
-                public void onTextChanged(CharSequence s, int st, int b, int c) {}
-
-                @Override
-                public void afterTextChanged(android.text.Editable s) {
-                  String query = s == null ? null : s.toString();
-                  adapter.filter(query);
-                  loadOcrMatchesAsync(query);
-                }
-              });
-      searchView.addTransitionListener(
-          (sv, previousState, newState) -> {
-            if (newState == com.google.android.material.search.SearchView.TransitionState.HIDDEN) {
-              adapter.filter(null);
-              adapter.setOcrMatches(null);
-            }
-          });
-    }
-
     // Empty-state call to action: jump straight to the camera to create the first scan
     View scanFirst = root.findViewById(R.id.buttonScanFirst);
     if (scanFirst != null) {
-      scanFirst.setOnClickListener(
-          v -> {
-            try {
-              Navigation.findNavController(requireView()).navigate(R.id.navigation_camera);
-            } catch (Throwable t) {
-              UIUtils.showToast(
-                  requireContext(), R.string.navigation_failed, android.widget.Toast.LENGTH_SHORT);
-            }
-          });
+      scanFirst.setOnClickListener(v -> navigateOrToast(R.id.navigation_camera));
     }
+  }
 
-    if (!FeatureFlags.isScanLibraryEnable()) {
+  private void navigateOrToast(int destinationId) {
+    try {
+      Navigation.findNavController(requireView()).navigate(destinationId);
+    } catch (Throwable t) {
       UIUtils.showToast(
-          requireContext(),
-          R.string.feature_scan_library_disabled,
-          android.widget.Toast.LENGTH_SHORT);
-      // Optionally navigate up if embedded in backstack
-      requireActivity().getOnBackPressedDispatcher().onBackPressed();
-      return root;
+          requireContext(), R.string.navigation_failed, android.widget.Toast.LENGTH_SHORT);
     }
+  }
 
-    if (getArguments() != null) {
-      collectionIdArg = getArguments().getString("collectionId");
-      collectionNameArg = getArguments().getString("collectionName");
-    }
-    // If no collection specified, show all completed documents (no collection title)
-    if (collectionIdArg == null) {
-      if (titleCollection != null) {
-        titleCollection.setVisibility(View.GONE);
-      }
-      loadDataAsync();
-    } else {
-      // Show collection name as title when provided
-      if (titleCollection != null) {
-        if (collectionNameArg != null && !collectionNameArg.trim().isEmpty()) {
-          titleCollection.setText(collectionNameArg);
-          titleCollection.setVisibility(View.VISIBLE);
-        } else {
-          titleCollection.setVisibility(View.GONE);
-        }
-      }
-      loadDataAsync();
-    }
-    // When viewing a specific collection, enable long-press to remove an item from that collection
-    if (collectionIdArg != null) {
-      adapter.setOnItemLongClickListener(
-          item -> {
-            String display =
-                (item.title != null && !item.title.trim().isEmpty()) ? item.title : item.id;
-            final androidx.appcompat.app.AlertDialog dialog =
-                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(display)
-                    .setMessage(R.string.remove_from_collection_question)
-                    .setPositiveButton(
-                        R.string.ok,
-                        (d, w) -> {
-                          showLoading(true);
-                          new Thread(
-                                  () -> {
-                                    try {
-                                      collectionsRepository.removeScanFromCollection(
-                                          requireContext(), item.id, collectionIdArg);
-                                    } catch (Throwable ignore) {
-                                      // Best-effort; failure is non-critical
-                                    }
-                                    if (!isAdded()) return;
-                                    requireActivity()
-                                        .runOnUiThread(
-                                            () -> {
-                                              UIUtils.showToast(
-                                                  requireContext(),
-                                                  R.string.removed_from_collection,
-                                                  android.widget.Toast.LENGTH_SHORT);
-                                              loadDataAsync();
-                                            });
-                                  })
-                              .start();
-                        })
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .create();
-            dialog.setOnShowListener(
-                d -> {
-                  try {
-                    DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext());
-                  } catch (Throwable ignore) {
-                    // Best-effort; failure is non-critical
-                  }
-                });
-            dialog.show();
-          });
-    }
+  /**
+   * Shows the collection name as title when a collection with a name is displayed; without a
+   * collection all completed documents are shown and there is no title.
+   */
+  private void bindCollectionTitle() {
+    if (titleCollection == null) return;
+    boolean hasName =
+        collectionIdArg != null && collectionNameArg != null && !collectionNameArg.trim().isEmpty();
+    if (hasName) titleCollection.setText(collectionNameArg);
+    titleCollection.setVisibility(hasName ? View.VISIBLE : View.GONE);
+  }
 
-    buttonOpenCollections.setOnClickListener(
-        v -> {
+  private void confirmRemoveFromCollection(ScanEntity item) {
+    String display = (item.title != null && !item.title.trim().isEmpty()) ? item.title : item.id;
+    final androidx.appcompat.app.AlertDialog dialog =
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(display)
+            .setMessage(R.string.remove_from_collection_question)
+            .setPositiveButton(R.string.ok, (d, w) -> removeFromCollectionAsync(item))
+            .setNegativeButton(android.R.string.cancel, null)
+            .create();
+    dialog.setOnShowListener(
+        d -> {
           try {
-            Navigation.findNavController(requireView()).navigate(R.id.navigation_collections);
-          } catch (Throwable t) {
-            UIUtils.showToast(
-                requireContext(), R.string.navigation_failed, android.widget.Toast.LENGTH_SHORT);
+            DialogUtils.improveAlertDialogButtonContrastForNight(dialog, requireContext());
+          } catch (Throwable ignore) {
+            // Best-effort; failure is non-critical
           }
         });
-    if (buttonIndexExistingIcon != null) {
-      buttonIndexExistingIcon.setOnClickListener(
-          v -> {
-            showLoading(true);
-            new Thread(
-                    () -> {
-                      int n = 0;
-                      try {
-                        n =
-                            ExistingScansIndexer.runIncremental(
-                                requireContext(), scansRepository, collectionsRepository);
-                      } catch (Throwable ignore) {
-                        // Best-effort; failure is non-critical
-                      }
-                      final int finalN = n;
-                      if (!isAdded()) return;
-                      requireActivity()
-                          .runOnUiThread(
-                              () -> {
-                                // Build a short user message and provide both Toast and A11y
-                                // announcement
-                                CharSequence msg;
-                                if (finalN > 0) {
-                                  msg = getString(R.string.indexed_new_items, finalN);
-                                  UIUtils.showToast(
-                                      requireContext(),
-                                      msg.toString(),
-                                      android.widget.Toast.LENGTH_SHORT);
-                                } else {
-                                  msg = getString(R.string.nothing_new_to_index);
-                                  UIUtils.showToast(
-                                      requireContext(),
-                                      msg.toString(),
-                                      android.widget.Toast.LENGTH_SHORT);
-                                }
-                                // Announce for accessibility so screen reader users receive a
-                                // concise summary
-                                announceText(msg);
-                                loadDataAsync();
-                              });
-                    })
-                .start();
-          });
-    }
+    dialog.show();
+  }
 
+  private void removeFromCollectionAsync(ScanEntity item) {
+    showLoading(true);
+    new Thread(
+            () -> {
+              try {
+                collectionsRepository.removeScanFromCollection(
+                    requireContext(), item.id, collectionIdArg);
+              } catch (Throwable ignore) {
+                // Best-effort; failure is non-critical
+              }
+              if (!isAdded()) return;
+              requireActivity()
+                  .runOnUiThread(
+                      () -> {
+                        UIUtils.showToast(
+                            requireContext(),
+                            R.string.removed_from_collection,
+                            android.widget.Toast.LENGTH_SHORT);
+                        loadDataAsync();
+                      });
+            })
+        .start();
+  }
+
+  /** Collections, "index existing scans" and cleanup settings. */
+  private void setupLibraryActions() {
+    buttonOpenCollections.setOnClickListener(v -> navigateOrToast(R.id.navigation_collections));
+    if (buttonIndexExistingIcon != null) {
+      buttonIndexExistingIcon.setOnClickListener(v -> indexExistingScansAsync());
+    }
     if (buttonCleanupSettings != null) {
       buttonCleanupSettings.setOnClickListener(v -> showCleanupSettingsDialog());
     }
+  }
 
-    // loadDataAsync() already called above depending on collection presence
-    return root;
+  private void indexExistingScansAsync() {
+    showLoading(true);
+    new Thread(
+            () -> {
+              int n = 0;
+              try {
+                n =
+                    ExistingScansIndexer.runIncremental(
+                        requireContext(), scansRepository, collectionsRepository);
+              } catch (Throwable ignore) {
+                // Best-effort; failure is non-critical
+              }
+              final int finalN = n;
+              if (!isAdded()) return;
+              requireActivity()
+                  .runOnUiThread(
+                      () -> {
+                        // Build a short user message and provide both Toast and A11y
+                        // announcement
+                        CharSequence msg =
+                            finalN > 0
+                                ? getString(R.string.indexed_new_items, finalN)
+                                : getString(R.string.nothing_new_to_index);
+                        UIUtils.showToast(
+                            requireContext(), msg.toString(), android.widget.Toast.LENGTH_SHORT);
+                        // Announce for accessibility so screen reader users receive a
+                        // concise summary
+                        announceText(msg);
+                        loadDataAsync();
+                      });
+            })
+        .start();
   }
 
   private void showCleanupSettingsDialog() {
