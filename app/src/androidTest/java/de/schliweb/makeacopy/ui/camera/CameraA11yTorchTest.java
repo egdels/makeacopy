@@ -85,8 +85,16 @@ public class CameraA11yTorchTest extends de.schliweb.makeacopy.a11y.util.A11yBas
       assumeTrue("Skipping: cannot click flash button (animations/device constraints).", false);
     }
 
-    // Expect either an announcement for ON or OFF, depending on prior state
-    CharSequence ann = de.schliweb.makeacopy.a11y.util.A11yCapture.await(2500);
+    // Expect either an announcement for ON or OFF, depending on prior state. Other announcements
+    // are ignored: with Accessibility Mode on, "Camera ready" is announced whenever the preview
+    // starts streaming, which can happen right around the click on a cold camera start.
+    Context target =
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().getTargetContext();
+    final String onS = target.getString(R.string.flashlight_on);
+    final String offS = target.getString(R.string.flashlight_off);
+    java.util.function.Predicate<String> isFlashAnnouncement =
+        text -> text.contains(onS) || text.contains(offS);
+    CharSequence ann = A11yCapture.awaitMatching(2500, isFlashAnnouncement);
 
     // If no announcement was captured, assume the environment lacks a flash-capable camera and
     // skip.
@@ -94,31 +102,11 @@ public class CameraA11yTorchTest extends de.schliweb.makeacopy.a11y.util.A11yBas
         "Skipping: torch announcement not observed; device may have no flash or camera unbound.",
         ann != null);
 
-    // Assert the announcement contains one of the localized flash strings
-    scenario.onFragment(
-        f -> {
-          String onS = f.getString(R.string.flashlight_on);
-          String offS = f.getString(R.string.flashlight_off);
-          String text = String.valueOf(ann);
-          boolean matches = text.contains(onS) || text.contains(offS);
-          org.junit.Assert.assertTrue(
-              "Expected flashlight_on/off announcement, was: " + text, matches);
-        });
-
     // Toggle again to switch state and expect the opposite announcement
     A11yCapture.clear();
     Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withId(R.id.button_flash))
         .perform(ViewActions.click());
-    CharSequence ann2 = de.schliweb.makeacopy.a11y.util.A11yCapture.await(2500);
+    CharSequence ann2 = A11yCapture.awaitMatching(2500, isFlashAnnouncement);
     assertNotNull("Expected second flashlight announcement", ann2);
-    scenario.onFragment(
-        f -> {
-          String onS = f.getString(R.string.flashlight_on);
-          String offS = f.getString(R.string.flashlight_off);
-          String text = String.valueOf(ann2);
-          boolean ok = text.contains(onS) || text.contains(offS);
-          org.junit.Assert.assertTrue(
-              "Second announcement should be flashlight_on/off, was: " + text, ok);
-        });
   }
 }
