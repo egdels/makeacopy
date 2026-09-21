@@ -1482,44 +1482,12 @@ public class ExportFragment extends Fragment {
         Boolean.TRUE.equals(exportViewModel.isConvertToGrayscale().getValue());
     final Uri selectedLocation = exportViewModel.getSelectedFileLocation().getValue();
 
-    // PDF text layer words sourcing: prefer edited OCR JSON when OCR Review feature is enabled
-    List<RecognizedWord> wordsTmp;
-    if (FeatureFlags.isOcrReviewEnabled()) {
-      wordsTmp = null;
-      // Try to find a scan id to resolve autosave path
-      String candidateId = null;
-      List<CompletedScan> pgs =
-          exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
-      if (pgs != null && !pgs.isEmpty() && pgs.get(0) != null) {
-        candidateId = pgs.get(0).id();
-      }
-      Context ctxForIds = getContext();
-      if ((candidateId == null || candidateId.trim().isEmpty()) && ctxForIds != null) {
-        // Fall back to session id used by Review autosave
-        candidateId = SessionIds.getOrCreateCurrentScanId(ctxForIds.getApplicationContext());
-      }
-      if (candidateId != null && !candidateId.trim().isEmpty() && ctxForIds != null) {
-        File dir = new File(ctxForIds.getFilesDir(), "scans/" + candidateId);
-        File ocrFile = new File(dir, "page.ocr.json");
-        List<RecognizedWord> fromJson = OcrJsonWords.parseFile(ocrFile);
-        if (fromJson != null && !fromJson.isEmpty()) {
-          wordsTmp = fromJson;
-        }
-      }
-      if (wordsTmp == null) {
-        // fallback: current in-memory OCR words
-        wordsTmp = getOcrWordsFromState();
-      }
-    } else {
-      wordsTmp = getOcrWordsFromState();
-    }
-    if (wordsTmp != null && wordsTmp.isEmpty()) {
-      wordsTmp = null;
-    }
     final String recognizedText = getOcrTextFromState();
     final List<RecognizedWord> recognizedWords =
         ensurePdfTextLayerWords(
-            wordsTmp, recognizedText, exportViewModel.getDocumentBitmap().getValue());
+            resolveCurrentPageWords(),
+            recognizedText,
+            exportViewModel.getDocumentBitmap().getValue());
 
     final Context appContext = requireContext().getApplicationContext();
     exportViewModel.setTxtExportUri(null);
@@ -1539,223 +1507,31 @@ public class ExportFragment extends Fragment {
     new Thread(
             () -> {
               try {
-                // Resolve export settings from SharedPreferences via helper
-                List<CompletedScan> pgsForPreset =
-                    exportSessionViewModel != null
-                        ? exportSessionViewModel.getPages().getValue()
-                        : null;
-                int pageCount = (pgsForPreset == null) ? 0 : pgsForPreset.size();
-                PdfQualityPreset preset = ExportPrefsHelper.resolvePreset(appContext, pageCount);
-                boolean[] grayBw =
-                    ExportPrefsHelper.resolveGrayAndBwFlags(
-                        appContext, preset.forceGrayscale, convertToGrayscale);
-                final boolean convertGrayEffective = grayBw[0];
-                final boolean convertBwEffective = grayBw[1];
-                final int jpegQuality = preset.jpegQuality;
-                final PdfCreator.BwMode bwMode = ExportPrefsHelper.resolveBwMode(appContext);
-                final de.schliweb.makeacopy.utils.image.DocumentCleanupMode cleanupMode =
-                    ExportPrefsHelper.resolveCleanupMode(appContext);
-                final PageFormat pageFormat = ExportPrefsHelper.resolvePageFormat(appContext);
-                final PdfCreator.TextLayerMode textLayerMode =
-                    ExportPrefsHelper.resolveTextLayerMode(appContext);
-
-                Uri exportUri;
-                if (isMulti) {
-                  Log.d(TAG, "performExport: Creating PDF for multipage session (streaming)");
-                  // Streaming export: pages are loaded lazily one at a time via PageSource so
-                  // peak memory depends on a single page, not on the document page count.
-                  final Bitmap current = documentBitmap;
-                  final List<CompletedScan> pageSnapshot = new ArrayList<>(pages);
-                  final int totalPages = pageSnapshot.size();
-                  postToUiSafe(
-                      () -> {
-                        exportViewModel.setExportProgressMax(totalPages);
-                        exportViewModel.setExportProgress(0);
-                      });
-                  final PdfCreator.PageSource pageSource =
-                      new PdfCreator.PageSource() {
-                        // Tracks whether the bitmap handed out for the current page is owned by
-                        // this source (decoded/rotated here) or shared (session in-memory bitmap).
-                        // Only owned bitmaps are recycled in releasePage(). Access is safe because
-                        // PdfCreator consumes pages strictly sequentially.
-                        private boolean currentPageOwned = false;
-
-                        @Override
-                        public int getPageCount() {
-                          return totalPages;
-                        }
-
-                        @Override
-                        public Bitmap loadBitmap(int index) {
-                          CompletedScan s = pageSnapshot.get(index);
-                          currentPageOwned = false;
-                          if (s == null) return null;
-                          Bitmap pageBmp = s.inMemoryBitmap();
-                          boolean loadedFromFile = false;
-                          if (pageBmp == null) {
-                            String p = s.filePath();
-                            if (p != null) {
-                              // Decode full-res without implicit EXIF rotation; baked files are
-                              // visually upright
-                              pageBmp = ImageDecodeUtils.decodeFull(p);
-                              loadedFromFile = (pageBmp != null);
-                              currentPageOwned = loadedFromFile;
-                            }
-                          }
-                          if (pageBmp == null) return null;
-                          int deg = s.rotationDeg();
-                          String mode = s.orientationMode();
-                          boolean shouldRotate =
-                              RotationPolicy.shouldRotateForExport(loadedFromFile, mode, deg);
-                          if (shouldRotate) {
-                            android.graphics.Matrix m = new android.graphics.Matrix();
-                            m.postRotate(((deg % 360) + 360) % 360);
-                            Bitmap rotated =
-                                android.graphics.Bitmap.createBitmap(
-                                    pageBmp,
-                                    0,
-                                    0,
-                                    pageBmp.getWidth(),
-                                    pageBmp.getHeight(),
-                                    m,
-                                    true);
-                            if (rotated != pageBmp) {
-                              if (loadedFromFile && !pageBmp.isRecycled()) {
-                                pageBmp.recycle();
-                              }
-                              pageBmp = rotated;
-                              currentPageOwned = true;
-                            }
-                          }
-                          return pageBmp;
-                        }
-
-                        @Override
-                        public List<RecognizedWord> loadWords(int index) {
-                          CompletedScan s = pageSnapshot.get(index);
-                          if (s == null) return null;
-                          List<RecognizedWord> pageWords = loadWordsForSessionPage(s);
-                          if (pageWords == null
-                              && s.inMemoryBitmap() == current
-                              && recognizedWords != null
-                              && !recognizedWords.isEmpty()) {
-                            pageWords = recognizedWords;
-                          }
-                          return pageWords;
-                        }
-
-                        @Override
-                        public void releasePage(int index, Bitmap bitmap) {
-                          // Ownership contract: only recycle bitmaps this source created; the
-                          // session's in-memory bitmaps stay alive for the UI.
-                          if (currentPageOwned && bitmap != null && !bitmap.isRecycled()) {
-                            bitmap.recycle();
-                          }
-                          currentPageOwned = false;
-                        }
-                      };
-                  exportUri =
-                      PdfCreator.createSearchablePdf(
-                          appContext,
-                          pageSource,
-                          selectedLocation,
-                          jpegQuality,
-                          convertGrayEffective,
-                          convertBwEffective,
-                          preset.targetDpi,
-                          (pageIndex, total) ->
-                              postToUiSafe(
-                                  () ->
-                                      exportViewModel.setExportProgress(
-                                          Math.max(0, Math.min(pageIndex, total)))),
-                          bwMode,
-                          pageFormat,
-                          cleanupMode,
-                          textLayerMode,
-                          MultiColumnOcrPrefs.isEnabled(appContext));
-
-                } else {
-                  Log.d(TAG, "performExport: Creating PDF for single page session");
-                  // Single-page: documentBitmap is already oriented for preview; avoid
-                  // double-rotating here
-                  final Bitmap toExport = documentBitmap;
-                  exportUri =
-                      PdfCreator.createSearchablePdf(
-                          appContext,
-                          toExport,
-                          recognizedWords,
-                          selectedLocation,
-                          jpegQuality,
-                          convertGrayEffective,
-                          convertBwEffective,
-                          preset.targetDpi,
-                          bwMode,
-                          pageFormat,
-                          cleanupMode,
-                          textLayerMode,
-                          MultiColumnOcrPrefs.isEnabled(appContext));
-                }
-
-                final Uri finalUri = exportUri;
+                final Uri finalUri =
+                    createPdf(
+                        appContext,
+                        isMulti ? pages : null,
+                        documentBitmap,
+                        recognizedWords,
+                        selectedLocation,
+                        convertToGrayscale);
+                final int pageCountForIndex = isMulti ? pages.size() : 1;
                 postToUiSafe(
                     () -> {
                       if (finalUri != null) {
-                        lastExportedDocumentUri = finalUri;
-                        // Persist SAF permission so the file stays readable after app restarts
-                        persistUriPermission(finalUri);
-                        String displayName =
-                            FileUtils.getDisplayNameFromUri(
-                                requireContext(), lastExportedDocumentUri);
-                        lastExportedPdfName = displayName;
-                        setShareButtonsEnabled(true);
-
-                        String msg =
-                            getString(
-                                isMulti
-                                    ? R.string.document_multipage_exported
-                                    : R.string.document_exported,
-                                lastExportedPdfName);
-                        // Confirm the successful export with a short haptic tick
-                        HapticsUtils.vibrateOneShot(appContext, 30L);
-                        UIUtils.showToast(appContext, msg, Toast.LENGTH_LONG);
-                        View rv = getView();
-                        if (isAdded() && rv != null) {
-                          A11yUtils.announce(rv, msg);
-                        }
-
-                        // Begin: index exported PDF into scan library (feature-guarded via service
-                        // locator)
-                        int pageCountForIndex = isMulti ? ((pages == null) ? 0 : pages.size()) : 1;
-                        indexScanLibraryAsync(displayName, pageCountForIndex, finalUri);
-                        // End: index
-                        startTxtExport(includeOcr, inboxExportInProgress);
+                        onPdfExported(appContext, finalUri, isMulti, pageCountForIndex, includeOcr);
                       } else {
-                        lastExportedDocumentUri = null;
-                        exportViewModel.setTxtExportUri(null);
-                        setShareButtonsEnabled(false);
-                        String fail = getString(R.string.failed_to_export_document);
-                        UIUtils.showToast(appContext, fail, Toast.LENGTH_SHORT);
-                        View rv = getView();
-                        if (isAdded() && rv != null) {
-                          A11yUtils.announce(rv, fail);
-                        }
+                        onPdfExportFailed(
+                            appContext, getString(R.string.failed_to_export_document));
                       }
                     });
               } catch (Exception e) {
                 Log.e(TAG, "Error during export", e);
                 postToUiSafe(
-                    () -> {
-                      lastExportedDocumentUri = null;
-                      exportViewModel.setTxtExportUri(null);
-                      setShareButtonsEnabled(false);
-                      String err =
-                          getString(R.string.error_during_export_with_reason, e.getMessage());
-                      UIUtils.showToast(appContext, err, Toast.LENGTH_SHORT);
-                      View rv = getView();
-                      if (isAdded() && rv != null) {
-                        A11yUtils.announce(rv, err);
-                      }
-                    });
+                    () ->
+                        onPdfExportFailed(
+                            appContext,
+                            getString(R.string.error_during_export_with_reason, e.getMessage())));
               } finally {
                 postToUiSafe(
                     () -> {
@@ -1767,6 +1543,246 @@ public class ExportFragment extends Fragment {
               }
             })
         .start();
+  }
+
+  /**
+   * PDF text layer words of the current page: prefers the edited OCR JSON when the OCR Review
+   * feature is enabled, otherwise (or when there is none) the in-memory OCR words.
+   *
+   * @return the words, or {@code null} when there are none
+   */
+  private List<RecognizedWord> resolveCurrentPageWords() {
+    List<RecognizedWord> words = null;
+    if (FeatureFlags.isOcrReviewEnabled()) {
+      // Try to find a scan id to resolve autosave path
+      String candidateId = null;
+      List<CompletedScan> pgs =
+          exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
+      if (pgs != null && !pgs.isEmpty() && pgs.get(0) != null) {
+        candidateId = pgs.get(0).id();
+      }
+      Context ctxForIds = getContext();
+      if ((candidateId == null || candidateId.trim().isEmpty()) && ctxForIds != null) {
+        // Fall back to session id used by Review autosave
+        candidateId = SessionIds.getOrCreateCurrentScanId(ctxForIds.getApplicationContext());
+      }
+      if (candidateId != null && !candidateId.trim().isEmpty() && ctxForIds != null) {
+        File dir = new File(ctxForIds.getFilesDir(), "scans/" + candidateId);
+        File ocrFile = new File(dir, "page.ocr.json");
+        List<RecognizedWord> fromJson = OcrJsonWords.parseFile(ocrFile);
+        if (fromJson != null && !fromJson.isEmpty()) {
+          words = fromJson;
+        }
+      }
+    }
+    // fallback: current in-memory OCR words
+    if (words == null) words = getOcrWordsFromState();
+    return (words != null && words.isEmpty()) ? null : words;
+  }
+
+  /**
+   * Writes the searchable PDF on the calling (background) thread.
+   *
+   * @param multiPages the session pages for a multi-page export, {@code null} for a single page
+   * @return the URI of the written document, or {@code null} on failure
+   */
+  private Uri createPdf(
+      Context appContext,
+      List<CompletedScan> multiPages,
+      Bitmap documentBitmap,
+      List<RecognizedWord> recognizedWords,
+      Uri selectedLocation,
+      boolean convertToGrayscale) {
+    // Resolve export settings from SharedPreferences via helper
+    List<CompletedScan> pgsForPreset =
+        exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
+    int pageCount = (pgsForPreset == null) ? 0 : pgsForPreset.size();
+    PdfQualityPreset preset = ExportPrefsHelper.resolvePreset(appContext, pageCount);
+    boolean[] grayBw =
+        ExportPrefsHelper.resolveGrayAndBwFlags(
+            appContext, preset.forceGrayscale, convertToGrayscale);
+    final boolean convertGrayEffective = grayBw[0];
+    final boolean convertBwEffective = grayBw[1];
+    final PdfCreator.BwMode bwMode = ExportPrefsHelper.resolveBwMode(appContext);
+    final de.schliweb.makeacopy.utils.image.DocumentCleanupMode cleanupMode =
+        ExportPrefsHelper.resolveCleanupMode(appContext);
+    final PageFormat pageFormat = ExportPrefsHelper.resolvePageFormat(appContext);
+    final PdfCreator.TextLayerMode textLayerMode =
+        ExportPrefsHelper.resolveTextLayerMode(appContext);
+
+    if (multiPages == null) {
+      Log.d(TAG, "performExport: Creating PDF for single page session");
+      // Single-page: documentBitmap is already oriented for preview; avoid
+      // double-rotating here
+      return PdfCreator.createSearchablePdf(
+          appContext,
+          documentBitmap,
+          recognizedWords,
+          selectedLocation,
+          preset.jpegQuality,
+          convertGrayEffective,
+          convertBwEffective,
+          preset.targetDpi,
+          bwMode,
+          pageFormat,
+          cleanupMode,
+          textLayerMode,
+          MultiColumnOcrPrefs.isEnabled(appContext));
+    }
+
+    Log.d(TAG, "performExport: Creating PDF for multipage session (streaming)");
+    // Streaming export: pages are loaded lazily one at a time via PageSource so
+    // peak memory depends on a single page, not on the document page count.
+    final SessionPageSource pageSource =
+        new SessionPageSource(new ArrayList<>(multiPages), documentBitmap, recognizedWords);
+    final int totalPages = pageSource.getPageCount();
+    postToUiSafe(
+        () -> {
+          exportViewModel.setExportProgressMax(totalPages);
+          exportViewModel.setExportProgress(0);
+        });
+    return PdfCreator.createSearchablePdf(
+        appContext,
+        pageSource,
+        selectedLocation,
+        preset.jpegQuality,
+        convertGrayEffective,
+        convertBwEffective,
+        preset.targetDpi,
+        (pageIndex, total) ->
+            postToUiSafe(
+                () -> exportViewModel.setExportProgress(Math.max(0, Math.min(pageIndex, total)))),
+        bwMode,
+        pageFormat,
+        cleanupMode,
+        textLayerMode,
+        MultiColumnOcrPrefs.isEnabled(appContext));
+  }
+
+  /** Hands the session pages to PdfCreator one at a time (streaming multi-page export). */
+  private final class SessionPageSource implements PdfCreator.PageSource {
+    private final List<CompletedScan> pageSnapshot;
+    private final Bitmap currentPreviewBitmap;
+    private final List<RecognizedWord> currentPageWords;
+
+    // Tracks whether the bitmap handed out for the current page is owned by
+    // this source (decoded/rotated here) or shared (session in-memory bitmap).
+    // Only owned bitmaps are recycled in releasePage(). Access is safe because
+    // PdfCreator consumes pages strictly sequentially.
+    private boolean currentPageOwned = false;
+
+    SessionPageSource(
+        List<CompletedScan> pageSnapshot,
+        Bitmap currentPreviewBitmap,
+        List<RecognizedWord> currentPageWords) {
+      this.pageSnapshot = pageSnapshot;
+      this.currentPreviewBitmap = currentPreviewBitmap;
+      this.currentPageWords = currentPageWords;
+    }
+
+    @Override
+    public int getPageCount() {
+      return pageSnapshot.size();
+    }
+
+    @Override
+    public Bitmap loadBitmap(int index) {
+      CompletedScan s = pageSnapshot.get(index);
+      currentPageOwned = false;
+      if (s == null) return null;
+      Bitmap pageBmp = s.inMemoryBitmap();
+      boolean loadedFromFile = false;
+      if (pageBmp == null) {
+        String p = s.filePath();
+        if (p != null) {
+          // Decode full-res without implicit EXIF rotation; baked files are
+          // visually upright
+          pageBmp = ImageDecodeUtils.decodeFull(p);
+          loadedFromFile = (pageBmp != null);
+          currentPageOwned = loadedFromFile;
+        }
+      }
+      if (pageBmp == null) return null;
+      int deg = s.rotationDeg();
+      String mode = s.orientationMode();
+      boolean shouldRotate = RotationPolicy.shouldRotateForExport(loadedFromFile, mode, deg);
+      if (shouldRotate) {
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        m.postRotate(((deg % 360) + 360) % 360);
+        Bitmap rotated =
+            android.graphics.Bitmap.createBitmap(
+                pageBmp, 0, 0, pageBmp.getWidth(), pageBmp.getHeight(), m, true);
+        if (rotated != pageBmp) {
+          if (loadedFromFile && !pageBmp.isRecycled()) {
+            pageBmp.recycle();
+          }
+          pageBmp = rotated;
+          currentPageOwned = true;
+        }
+      }
+      return pageBmp;
+    }
+
+    @Override
+    public List<RecognizedWord> loadWords(int index) {
+      CompletedScan s = pageSnapshot.get(index);
+      if (s == null) return null;
+      List<RecognizedWord> pageWords = loadWordsForSessionPage(s);
+      if (pageWords == null
+          && s.inMemoryBitmap() == currentPreviewBitmap
+          && currentPageWords != null
+          && !currentPageWords.isEmpty()) {
+        pageWords = currentPageWords;
+      }
+      return pageWords;
+    }
+
+    @Override
+    public void releasePage(int index, Bitmap bitmap) {
+      // Ownership contract: only recycle bitmaps this source created; the
+      // session's in-memory bitmaps stay alive for the UI.
+      if (currentPageOwned && bitmap != null && !bitmap.isRecycled()) {
+        bitmap.recycle();
+      }
+      currentPageOwned = false;
+    }
+  }
+
+  private void onPdfExported(
+      Context appContext, Uri exportedUri, boolean isMulti, int pageCount, boolean includeTxt) {
+    lastExportedDocumentUri = exportedUri;
+    // Persist SAF permission so the file stays readable after app restarts
+    persistUriPermission(exportedUri);
+    String displayName = FileUtils.getDisplayNameFromUri(requireContext(), exportedUri);
+    lastExportedPdfName = displayName;
+    setShareButtonsEnabled(true);
+
+    String msg =
+        getString(
+            isMulti ? R.string.document_multipage_exported : R.string.document_exported,
+            lastExportedPdfName);
+    // Confirm the successful export with a short haptic tick
+    HapticsUtils.vibrateOneShot(appContext, 30L);
+    UIUtils.showToast(appContext, msg, Toast.LENGTH_LONG);
+    View rv = getView();
+    if (isAdded() && rv != null) {
+      A11yUtils.announce(rv, msg);
+    }
+
+    // Index exported PDF into scan library (feature-guarded via service locator)
+    indexScanLibraryAsync(displayName, pageCount, exportedUri);
+    startTxtExport(includeTxt, inboxExportInProgress);
+  }
+
+  private void onPdfExportFailed(Context appContext, String message) {
+    lastExportedDocumentUri = null;
+    exportViewModel.setTxtExportUri(null);
+    setShareButtonsEnabled(false);
+    UIUtils.showToast(appContext, message, Toast.LENGTH_SHORT);
+    View rv = getView();
+    if (isAdded() && rv != null) {
+      A11yUtils.announce(rv, message);
+    }
   }
 
   /**
