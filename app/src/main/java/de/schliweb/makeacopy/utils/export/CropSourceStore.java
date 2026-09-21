@@ -147,27 +147,36 @@ public final class CropSourceStore {
     int purged = 0;
     for (File dir : dirs) {
       if (dir == null || !dir.isDirectory()) continue;
-      File tmp = new File(dir, ORIGINAL_TMP_FILE);
-      if (tmp.isFile() && nowMillis - tmp.lastModified() > STALE_TMP_MILLIS && !tmp.delete()) {
-        Log.w(TAG, "purgeExpired: failed to delete " + tmp);
-      }
-      File original = new File(dir, ORIGINAL_FILE);
-      File crop = new File(dir, CROP_FILE);
-      if (!original.exists() && !crop.exists()) continue;
-      // A re-edit rewrites crop.json: a page that is still being worked on keeps its original
-      long lastWritten = Math.max(original.lastModified(), crop.lastModified());
+      deleteStaleTempCopy(dir, nowMillis);
       boolean inActiveSession = activePageIds != null && activePageIds.contains(dir.getName());
-      if (!isExpired(lastWritten, inActiveSession, nowMillis)) continue;
-      boolean deleted = true;
-      for (File f : new File[] {original, crop}) {
-        if (f.exists() && !f.delete()) {
-          deleted = false;
-          Log.w(TAG, "purgeExpired: failed to delete " + f);
-        }
-      }
-      if (deleted) purged++;
+      if (purgePageIfExpired(dir, inActiveSession, nowMillis)) purged++;
     }
     return purged;
+  }
+
+  private static void deleteStaleTempCopy(File pageDir, long nowMillis) {
+    File tmp = new File(pageDir, ORIGINAL_TMP_FILE);
+    if (tmp.isFile() && nowMillis - tmp.lastModified() > STALE_TMP_MILLIS && !tmp.delete()) {
+      Log.w(TAG, "purgeExpired: failed to delete " + tmp);
+    }
+  }
+
+  /** Returns whether the page had an expired crop source that is now completely gone. */
+  private static boolean purgePageIfExpired(File pageDir, boolean inActiveSession, long nowMillis) {
+    File original = new File(pageDir, ORIGINAL_FILE);
+    File crop = new File(pageDir, CROP_FILE);
+    if (!original.exists() && !crop.exists()) return false;
+    // A re-edit rewrites crop.json: a page that is still being worked on keeps its original
+    long lastWritten = Math.max(original.lastModified(), crop.lastModified());
+    if (!isExpired(lastWritten, inActiveSession, nowMillis)) return false;
+    boolean deleted = true;
+    for (File f : new File[] {original, crop}) {
+      if (f.exists() && !f.delete()) {
+        deleted = false;
+        Log.w(TAG, "purgeExpired: failed to delete " + f);
+      }
+    }
+    return deleted;
   }
 
   /** Whether a crop source last written at {@code lastWrittenMillis} is due for removal. */
