@@ -523,7 +523,6 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       prefs
           .edit()
           .putBoolean("skip_ocr", skip)
-          .putBoolean("include_ocr", !skip)
           .putBoolean("analysis_enabled", analysisPref)
           // Accessibility is already persisted by the dialog; keep a mirror for
           // local reads if needed

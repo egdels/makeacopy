@@ -387,11 +387,11 @@ public class CameraOptionsDialogFragment extends DialogFragment {
           boolean focusQuality = cbFocusQuality != null && cbFocusQuality.isChecked();
           // No extra A11y options persisted
 
-          // Persist and keep legacy/new flags in sync
+          // Persist. "include_ocr" is deliberately NOT touched here: it is the export option
+          // "Export OCR as separate TXT" and belongs to the export options dialog alone.
           prefs
               .edit()
               .putBoolean(BUNDLE_SKIP_OCR, skip)
-              .putBoolean("include_ocr", !skip) // TODO
               .putBoolean(BUNDLE_SKIP_CROPPING, skipCropping)
               .putBoolean(BUNDLE_SKIP_EDGE_DETECTION, skipEdge)
               .putBoolean(BUNDLE_ANALYSIS_ENABLED, analysis)
