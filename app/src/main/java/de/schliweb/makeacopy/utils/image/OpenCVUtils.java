@@ -2378,26 +2378,14 @@ public final class OpenCVUtils {
     Mat gray = new Mat();
     Mat work = new Mat();
     Mat bw = new Mat();
-    Bitmap out = null;
 
     try {
       // 1) Bitmap -> RGBA -> GRAY
       Utils.bitmapToMat(src, rgba);
       Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY);
 
-      // 1b) Inversion detection: if image is predominantly dark (inverted/negative),
-      //     flip it so text becomes dark-on-light (required for OCR)
-      try {
-        double meanVal = Core.mean(gray).val[0];
-        if (meanVal < 128) {
-          // Image is inverted (white text on black background) - invert it
-          Core.bitwise_not(gray, gray);
-          Log.d(
-              TAG, "prepareForOCR: detected inverted image (mean=" + meanVal + "), auto-inverting");
-        }
-      } catch (Throwable ignore) {
-        // If mean calculation fails, continue without inversion
-      }
+      // 1b) Inversion detection
+      autoInvertIfDark(gray);
 
       // 2) Low-light handling (reuse existing utility)
       // SAFE MODE: Skip preprocessLowLight which uses convertTo (can crash on emulators)
@@ -2423,258 +2411,256 @@ public final class OpenCVUtils {
         /* optional */
       }
 
-      if (binaryOutput) {
-        // NEW ROBUST PIPELINE (from scratch): deskew → Retinex norm → edge-preserving denoise →
-        // Sauvola → refine → smart scale
-
-        // 5a) Deskew (estimate skew angle and rotate to horizontal baselines)
-        // SAFE MODE: Skip deskewInPlace which uses warpAffine via OpenCV's parallel_for_,
-        // known to cause native SIGILL crashes on emulators / certain ARM SoCs.
-        if (!isSafeMode()) {
-          try {
-            deskewInPlace(work); // rotates in-place and resizes 'work' as needed
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-        } else {
-          Log.d(TAG, "prepareForOCR: skipping deskewInPlace (safe mode)");
-        }
-
-        // 5b) Retinex-like normalization to flatten illumination
-        // SAFE MODE: Skip retinexNormalize which uses Mat.convertTo via OpenCV's parallel_for_,
-        // known to cause native SIGILL crashes on emulators / certain ARM SoCs (cannot be caught
-        // by try/catch since native signals terminate the process).
-        if (!isSafeMode()) {
-          try {
-            retinexNormalize(
-                work, /*sigma*/ Math.max(15, Math.min(work.width(), work.height()) / 20));
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-        } else {
-          Log.d(TAG, "prepareForOCR: skipping retinexNormalize (safe mode)");
-        }
-
-        // Detect low-resolution images (e.g. from autoscan) and use gentler parameters
-        int ocrLongSide = Math.max(work.width(), work.height());
-        boolean ocrLowRes = ocrLongSide < 1500;
-
-        // 5c) Edge-preserving denoise: prefer fastNlMeans (grayscale) then bilateral as fallback
-        //     For low-res images use lower h to preserve fine text strokes
-        try {
-          int denoiseH = ocrLowRes ? 5 : 10;
-          Photo.fastNlMeansDenoising(
-              work, work, /*h*/ denoiseH, /*templateWindowSize*/ 7, /*searchWindowSize*/ 21);
-        } catch (Throwable tNl) {
-          try {
-            int longSide = Math.max(work.width(), work.height());
-            int d = (longSide >= 2200 ? 7 : 5);
-            double sigmaColor = (longSide >= 2200 ? 65 : 55);
-            double sigmaSpace = (longSide >= 2200 ? 65 : 55);
-            Imgproc.bilateralFilter(work, work, d, sigmaColor, sigmaSpace);
-          } catch (Throwable ignore2) {
-            // Best-effort; failure is non-critical
-          }
-        }
-
-        // 5d) High-quality binarization: build multiple candidates and pick the best by quality
-        // score
-        List<Mat> candidates = new ArrayList<>();
-
-        try {
-          // Candidate A/B/C: Sauvola with varying k and window sizes (real devices only)
-          if (!isSafeMode()) {
-            // For low-res images use larger relative window (min/10) for broader context
-            int baseWin =
-                Math.max(31, ((Math.min(work.width(), work.height()) / (ocrLowRes ? 10 : 24)) | 1));
-            if (baseWin % 2 == 0) baseWin++;
-            int[] wins = new int[] {baseWin, Math.max(31, baseWin + 8), Math.max(31, baseWin - 8)};
-            double[] ks = new double[] {0.30, 0.34, 0.40};
-            for (int wv : wins) {
-              for (double kv : ks) {
-                try {
-                  Mat m = new Mat();
-                  sauvolaThreshold(work, m, wv, kv, 128.0);
-                  candidates.add(m);
-                } catch (Throwable ignore) {
-                  // Best-effort; failure is non-critical
-                }
-              }
-            }
-          }
-          // Candidate D: Otsu (robust global)
-          try {
-            Mat m = new Mat();
-            Imgproc.threshold(work, m, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-            candidates.add(m);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-          // Candidate E: Adaptive mean (device only)
-          if (!isSafeMode()) {
-            try {
-              Mat m = new Mat();
-              int bs =
-                  Math.max(
-                      31, ((Math.min(work.width(), work.height()) / (ocrLowRes ? 10 : 32)) | 1));
-              if (bs % 2 == 0) bs++;
-              int adaptC = ocrLowRes ? 3 : 5;
-              Imgproc.adaptiveThreshold(
-                  work, m, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, bs, adaptC);
-              candidates.add(m);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          }
-          // Candidate F: Wolf binarization (better for uneven illumination, device only)
-          if (!isSafeMode()) {
-            int wolfWin =
-                Math.max(31, ((Math.min(work.width(), work.height()) / (ocrLowRes ? 10 : 24)) | 1));
-            if (wolfWin % 2 == 0) wolfWin++;
-            double[] wolfKs = new double[] {0.25, 0.35, 0.45};
-            for (double kv : wolfKs) {
-              try {
-                Mat m = new Mat();
-                wolfThreshold(work, m, wolfWin, kv);
-                candidates.add(m);
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-            }
-          }
-          // Candidate G: NICK binarization (better for low contrast, device only)
-          if (!isSafeMode()) {
-            int nickWin =
-                Math.max(31, ((Math.min(work.width(), work.height()) / (ocrLowRes ? 10 : 24)) | 1));
-            if (nickWin % 2 == 0) nickWin++;
-            double[] nickKs = new double[] {-0.10, -0.14, -0.20};
-            for (double kv : nickKs) {
-              try {
-                Mat m = new Mat();
-                nickThreshold(work, m, nickWin, kv);
-                candidates.add(m);
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-            }
-          }
-          // Pick best by lowest score
-          double bestScore = Double.POSITIVE_INFINITY;
-          int bestIdx = -1;
-          for (int i = 0; i < candidates.size(); i++) {
-            Mat m = candidates.get(i);
-            double s = scoreBwQuality(m);
-            if (s < bestScore) {
-              bestScore = s;
-              bestIdx = i;
-            }
-          }
-          if (bestIdx >= 0) {
-            candidates.get(bestIdx).copyTo(bw);
-          } else {
-            // Fallback: simple Otsu
-            Imgproc.threshold(work, bw, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-          }
-        } finally {
-          // release all candidates except the chosen one (bw already copied)
-          for (Mat m : candidates) {
-            try {
-              m.release();
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          }
-        }
-
-        // 5e) Post-binarization refinement
-        //     - despeckle small salt/pepper
-        //     - micro closing to reconnect thin strokes
-        //     - connected components cleanup with dynamic thresholds
-        //     Skip all post-processing for low-res images to preserve text readability
-        if (!ocrLowRes) {
-          try {
-            despeckleFast(bw, 0); // Use default DPI (300) for OCR preparation
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-          try {
-            Mat kClose = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
-            Imgproc.morphologyEx(bw, bw, Imgproc.MORPH_CLOSE, kClose);
-            kClose.release();
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-          try {
-            int area = bw.rows() * bw.cols();
-            int minArea = Math.max(10, area / 15000);
-            int minHeight = Math.max(3, Math.min(10, Math.max(bw.rows(), bw.cols()) / 170));
-            removeSmallComponents(bw, minArea, minHeight);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-        }
-
-        // 5f) Super-resolution scaling for small text (~24-32 px target glyph height)
-        // Uses Lanczos interpolation + adaptive sharpening for best OCR quality
-        try {
-          int targetGlyphPx = 28; // slightly higher target for better recognition
-          boolean scaled = superResolutionUpscale(bw, targetGlyphPx, /*maxScale*/ 2.5);
-          if (!scaled) {
-            // Fallback: ensure minimum resolution if glyph estimation failed
-            int medH = estimateMedianComponentHeight(bw);
-            if (medH <= 0) {
-              ensureMinTextScaleLanczos(bw, /*minLongSide*/ 1900, /*scaleMax*/ 2.2);
-            }
-          }
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-
-        // 7) Resize back to original input dimensions to keep API contract with callers/tests
-        if (bw.cols() != src.getWidth() || bw.rows() != src.getHeight()) {
-          Mat resized = new Mat();
-          Imgproc.resize(
-              bw, resized, new Size(src.getWidth(), src.getHeight()), 0, 0, Imgproc.INTER_AREA);
-          bw.release();
-          bw = resized;
-        }
-        // -> ARGB_8888
-        out = Bitmap.createBitmap(bw.cols(), bw.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(bw, out);
-        return out;
-      } else {
-        // 5b) Grayscale path (no hard threshold; good for already clean scans)
-        // very light unsharp to increase edge contrast
-        try {
-          Mat blurred = new Mat();
-          Imgproc.GaussianBlur(work, blurred, new Size(0, 0), 1.0);
-          Core.addWeighted(work, 1.5, blurred, -0.5, 0, work);
-          blurred.release();
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-
-        ensureMinTextScale(work, /*minLongSide*/ 1800, /*scaleMax*/ 2.0);
-
-        // Resize back to original dimensions to preserve size
-        if (work.cols() != src.getWidth() || work.rows() != src.getHeight()) {
-          Mat resized = new Mat();
-          Imgproc.resize(
-              work, resized, new Size(src.getWidth(), src.getHeight()), 0, 0, Imgproc.INTER_AREA);
-          work.release();
-          work = resized;
-        }
-
-        out = Bitmap.createBitmap(work.cols(), work.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(work, out);
-        return out;
+      if (!binaryOutput) {
+        // 5) Grayscale path (no hard threshold; good for already clean scans)
+        sharpenAndUpscaleGray(work);
+        return toBitmapAtSize(work, src.getWidth(), src.getHeight());
       }
 
+      // ROBUST PIPELINE: deskew → Retinex norm → edge-preserving denoise → best-of binarization →
+      // refine → smart scale
+      deskewAndFlattenIllumination(work);
+
+      // Detect low-resolution images (e.g. from autoscan) and use gentler parameters
+      boolean lowRes = Math.max(work.width(), work.height()) < 1500;
+
+      edgePreservingDenoise(work, lowRes);
+      binarizeBestCandidate(work, bw, lowRes);
+      // Skip all post-processing for low-res images to preserve text readability
+      if (!lowRes) refineBinary(bw);
+      upscaleSmallText(bw);
+
+      // Resize back to original input dimensions to keep API contract with callers/tests
+      return toBitmapAtSize(bw, src.getWidth(), src.getHeight());
     } catch (Throwable t) {
       Log.e(TAG, "prepareForOCR failed", t);
       return null;
     } finally {
       release(rgba, gray, work, bw);
+    }
+  }
+
+  /**
+   * Inversion detection: if the image is predominantly dark (inverted/negative), flip it so text
+   * becomes dark-on-light (required for OCR).
+   */
+  private static void autoInvertIfDark(Mat gray) {
+    try {
+      double meanVal = Core.mean(gray).val[0];
+      if (meanVal < 128) {
+        // Image is inverted (white text on black background) - invert it
+        Core.bitwise_not(gray, gray);
+        Log.d(TAG, "prepareForOCR: detected inverted image (mean=" + meanVal + "), auto-inverting");
+      }
+    } catch (Throwable ignore) {
+      // If mean calculation fails, continue without inversion
+    }
+  }
+
+  /** Grayscale path: very light unsharp to increase edge contrast, then ensure a minimum scale. */
+  private static void sharpenAndUpscaleGray(Mat work) {
+    try {
+      Mat blurred = new Mat();
+      Imgproc.GaussianBlur(work, blurred, new Size(0, 0), 1.0);
+      Core.addWeighted(work, 1.5, blurred, -0.5, 0, work);
+      blurred.release();
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    ensureMinTextScale(work, /*minLongSide*/ 1800, /*scaleMax*/ 2.0);
+  }
+
+  /** Converts a single-channel Mat to an ARGB_8888 bitmap of exactly {@code width x height}. */
+  private static Bitmap toBitmapAtSize(Mat m, int width, int height) {
+    Mat sized = m;
+    try {
+      if (m.cols() != width || m.rows() != height) {
+        sized = new Mat();
+        Imgproc.resize(m, sized, new Size(width, height), 0, 0, Imgproc.INTER_AREA);
+      }
+      Bitmap out = Bitmap.createBitmap(sized.cols(), sized.rows(), Bitmap.Config.ARGB_8888);
+      Utils.matToBitmap(sized, out);
+      return out;
+    } finally {
+      if (sized != m) sized.release();
+    }
+  }
+
+  /**
+   * Deskew (estimate skew angle and rotate to horizontal baselines), then Retinex-like
+   * normalization to flatten illumination.
+   *
+   * <p>SAFE MODE: both steps are skipped. They use warpAffine / Mat.convertTo via OpenCV's
+   * parallel_for_, known to cause native SIGILL crashes on emulators / certain ARM SoCs (cannot be
+   * caught by try/catch since native signals terminate the process).
+   */
+  private static void deskewAndFlattenIllumination(Mat work) {
+    if (isSafeMode()) {
+      Log.d(TAG, "prepareForOCR: skipping deskewInPlace and retinexNormalize (safe mode)");
+      return;
+    }
+    try {
+      deskewInPlace(work); // rotates in-place and resizes 'work' as needed
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    try {
+      retinexNormalize(work, /*sigma*/ Math.max(15, Math.min(work.width(), work.height()) / 20));
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+  }
+
+  /**
+   * Edge-preserving denoise: prefer fastNlMeans (grayscale) then bilateral as fallback. For low-res
+   * images a lower h preserves fine text strokes.
+   */
+  private static void edgePreservingDenoise(Mat work, boolean lowRes) {
+    try {
+      int denoiseH = lowRes ? 5 : 10;
+      Photo.fastNlMeansDenoising(
+          work, work, /*h*/ denoiseH, /*templateWindowSize*/ 7, /*searchWindowSize*/ 21);
+    } catch (Throwable tNl) {
+      try {
+        boolean large = Math.max(work.width(), work.height()) >= 2200;
+        double sigma = large ? 65 : 55;
+        Imgproc.bilateralFilter(
+            work, work, large ? 7 : 5, /*sigmaColor*/ sigma, /*sigmaSpace*/ sigma);
+      } catch (Throwable ignore2) {
+        // Best-effort; failure is non-critical
+      }
+    }
+  }
+
+  /** Odd local-threshold window of roughly {@code minSide / divisor} pixels, at least 31. */
+  static int oddWindow(int minSide, int divisor) {
+    return Math.max(31, (minSide / divisor) | 1);
+  }
+
+  private interface Thresholder {
+    void apply(Mat src, Mat dst);
+  }
+
+  private static void addCandidate(List<Mat> candidates, Mat work, Thresholder thresholder) {
+    Mat m = new Mat();
+    try {
+      thresholder.apply(work, m);
+      candidates.add(m);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+      m.release();
+    }
+  }
+
+  /**
+   * High-quality binarization: builds multiple candidates and copies the one with the best (lowest)
+   * quality score into {@code bw}. Only Otsu runs in safe mode; the local methods are device only.
+   */
+  private static void binarizeBestCandidate(Mat work, Mat bw, boolean lowRes) {
+    List<Mat> candidates = new ArrayList<>();
+    try {
+      // Candidate order matters: score ties resolve to the earliest candidate.
+      boolean device = !isSafeMode();
+      // For low-res images use larger relative window (min/10) for broader context
+      int minSide = Math.min(work.width(), work.height());
+      int win = oddWindow(minSide, lowRes ? 10 : 24);
+
+      if (device) {
+        // Candidate A/B/C: Sauvola with varying k and window sizes
+        for (int wv : new int[] {win, Math.max(31, win + 8), Math.max(31, win - 8)}) {
+          for (double kv : new double[] {0.30, 0.34, 0.40}) {
+            addCandidate(candidates, work, (s, d) -> sauvolaThreshold(s, d, wv, kv, 128.0));
+          }
+        }
+      }
+      // Candidate D: Otsu (robust global)
+      addCandidate(candidates, work, OpenCVUtils::otsuThreshold);
+      if (device) {
+        // Candidate E: Adaptive mean
+        int bs = oddWindow(minSide, lowRes ? 10 : 32);
+        int adaptC = lowRes ? 3 : 5;
+        addCandidate(
+            candidates,
+            work,
+            (s, d) ->
+                Imgproc.adaptiveThreshold(
+                    s, d, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, bs, adaptC));
+        // Candidate F: Wolf binarization (better for uneven illumination)
+        for (double kv : new double[] {0.25, 0.35, 0.45}) {
+          addCandidate(candidates, work, (s, d) -> wolfThreshold(s, d, win, kv));
+        }
+        // Candidate G: NICK binarization (better for low contrast)
+        for (double kv : new double[] {-0.10, -0.14, -0.20}) {
+          addCandidate(candidates, work, (s, d) -> nickThreshold(s, d, win, kv));
+        }
+      }
+
+      // Pick best by lowest score
+      Mat best = null;
+      double bestScore = Double.POSITIVE_INFINITY;
+      for (Mat m : candidates) {
+        double s = scoreBwQuality(m);
+        if (s < bestScore) {
+          bestScore = s;
+          best = m;
+        }
+      }
+      if (best != null) {
+        best.copyTo(bw);
+      } else {
+        // Fallback: simple Otsu
+        otsuThreshold(work, bw);
+      }
+    } finally {
+      release(candidates.toArray(new Mat[0]));
+    }
+  }
+
+  private static void otsuThreshold(Mat src, Mat dst) {
+    Imgproc.threshold(src, dst, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+  }
+
+  /**
+   * Post-binarization refinement: despeckle small salt/pepper, micro closing to reconnect thin
+   * strokes, connected components cleanup with dynamic thresholds.
+   */
+  private static void refineBinary(Mat bw) {
+    try {
+      despeckleFast(bw, 0); // Use default DPI (300) for OCR preparation
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    try {
+      Mat kClose = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
+      Imgproc.morphologyEx(bw, bw, Imgproc.MORPH_CLOSE, kClose);
+      kClose.release();
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    try {
+      int area = bw.rows() * bw.cols();
+      int minArea = Math.max(10, area / 15000);
+      int minHeight = Math.max(3, Math.min(10, Math.max(bw.rows(), bw.cols()) / 170));
+      removeSmallComponents(bw, minArea, minHeight);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+  }
+
+  /**
+   * Super-resolution scaling for small text (~24-32 px target glyph height). Uses Lanczos
+   * interpolation + adaptive sharpening for best OCR quality.
+   */
+  private static void upscaleSmallText(Mat bw) {
+    try {
+      int targetGlyphPx = 28; // slightly higher target for better recognition
+      boolean scaled = superResolutionUpscale(bw, targetGlyphPx, /*maxScale*/ 2.5);
+      // Fallback: ensure minimum resolution if glyph estimation failed
+      if (!scaled && estimateMedianComponentHeight(bw) <= 0) {
+        ensureMinTextScaleLanczos(bw, /*minLongSide*/ 1900, /*scaleMax*/ 2.2);
+      }
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
     }
   }
 
