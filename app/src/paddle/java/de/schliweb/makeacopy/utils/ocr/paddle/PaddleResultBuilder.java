@@ -234,20 +234,7 @@ final class PaddleResultBuilder {
         boolean verticalLayout = isVerticalLayout(effectiveQuads);
         if (verticalLayout) {
             Log.i(TAG, "vertical text layout detected (quads=" + effectiveQuads.size() + ")");
-            // Kleine, von der Detection abgetrennte Einzel-Glyphen (typisch: 。 oder
-            // versetztes っ) zurück in ihre Spalte mergen. Isoliert erkannt würden sie
-            // vom Rec-Modell als „o"/„0" fehlgedeutet; im Spaltenkontext stimmen sie.
-            List<Quad> mergedQuads = mergeVerticalFragments(effectiveQuads);
-            if (mergedQuads.size() != effectiveQuads.size()) {
-                Log.i(
-                        TAG,
-                        "vertical fragment merge: "
-                                + effectiveQuads.size()
-                                + " -> "
-                                + mergedQuads.size()
-                                + " quads");
-                effectiveQuads = mergedQuads;
-            }
+            effectiveQuads = mergeVerticalFragmentsLogged(effectiveQuads);
         }
 
         // Reading-Order via Zeilen-Gruppierung: vertikales Center-Y-Overlap mit Toleranz
@@ -266,103 +253,58 @@ final class PaddleResultBuilder {
         int confCount = 0;
 
         AtomicInteger globalCropIndex = new AtomicInteger();
-        int totalQuads = 0;
         List<Quad> allQuads = new ArrayList<>();
         for (List<Quad> line : lines) {
-            totalQuads += line.size();
             allQuads.addAll(line);
         }
         ExecutorService recognitionExecutor =
                 full != null
                                 && PARALLEL_RECOGNITION_THREADS > 1
-                                && totalQuads >= PARALLEL_RECOGNITION_MIN_QUADS
+                                && allQuads.size() >= PARALLEL_RECOGNITION_MIN_QUADS
                         ? Executors.newFixedThreadPool(PARALLEL_RECOGNITION_THREADS)
                         : null;
         try {
-        for (int li = 0; li < lines.size(); li++) {
-            List<Quad> line = lines.get(li);
-            if (li > 0) {
-                textBuilder.append('\n');
-            }
+            for (int li = 0; li < lines.size(); li++) {
+                if (li > 0) {
+                    textBuilder.append('\n');
+                }
+                QuadRecognition[] recognized =
+                        recognizeLine(
+                                full,
+                                lines.get(li),
+                                rec,
+                                cropper,
+                                globalCropIndex,
+                                allQuads,
+                                recognitionExecutor);
 
-            // Phase 1: Recognition pro Quad in visueller Reihenfolge (links→rechts).
-            // Wir sammeln pro Quad den emittierten Text-Snippet sowie alle Sub-Words.
-            // Erst nach Abschluss der Zeile entscheiden wir per Codepoint-Heuristik
-            // (RTL vs. LTR) über die logische Reihenfolge — ohne sprachspezifisches
-            // Routing, konsistent mit PdfTextUtils.isRtlText/isRtlLine im PdfCreator.
-            int n = line.size();
-            String[] perQuadText = new String[n];
-            List<List<RecognizedWord>> perQuadWords = new ArrayList<>(n);
-            if (recognitionExecutor != null && n >= 2) {
-                List<Future<QuadRecognition>> futures = new ArrayList<>(n);
-                for (int qi = 0; qi < n; qi++) {
-                    final Quad q = line.get(qi);
-                    futures.add(
-                            recognitionExecutor.submit(
-                                    (Callable<QuadRecognition>)
-                                            () -> recognizeQuad(full, q, rec, cropper, globalCropIndex, allQuads)));
-                }
-                for (int qi = 0; qi < n; qi++) {
-                    QuadRecognition recognized = futures.get(qi).get();
-                    perQuadText[qi] = recognized.text;
-                    perQuadWords.add(recognized.words);
-                }
-            } else {
-                for (int qi = 0; qi < n; qi++) {
-                    QuadRecognition recognized =
-                            recognizeQuad(full, line.get(qi), rec, cropper, globalCropIndex, allQuads);
-                    perQuadText[qi] = recognized.text;
-                    perQuadWords.add(recognized.words);
-                }
-            }
+                // Phase 2: RTL-Detection für die Zeile anhand der erkannten Texte.
+                // Eine Zeile gilt als RTL, wenn mehr ihrer Wort-Codepoints RTL als LTR
+                // sind. Bei RTL kehren wir die Reihenfolge der Quads beim Aufbau des
+                // konkatenierten Textes um — die linke (visuell erste) Quad-Box ist
+                // logisch das letzte Wort der Zeile, die rechte das erste.
+                boolean rtl = isRtlLineByText(recognized);
+                appendLineText(textBuilder, recognized, rtl, verticalLayout);
 
-            // Phase 2: RTL-Detection für die Zeile anhand der erkannten Texte.
-            // Eine Zeile gilt als RTL, wenn mehr ihrer Wort-Codepoints RTL als LTR
-            // sind. Bei RTL kehren wir die Reihenfolge der Quads beim Aufbau des
-            // konkatenierten Textes um — die linke (visuell erste) Quad-Box ist
-            // logisch das letzte Wort der Zeile, die rechte das erste.
-            boolean rtl = isRtlLineByText(perQuadText);
-            for (int qi = 0; qi < n; qi++) {
-                int idx = rtl ? (n - 1 - qi) : qi;
-                String emittedText = perQuadText[idx];
-                if (emittedText == null) continue;
-                // Bei RTL liefert Paddle die Glyphen pro Crop in visueller (links→rechts)
-                // Reihenfolge — das ist die Spiegelung der logischen Codepoint-Reihenfolge.
-                // Für korrekten TXT-/BiDi-Output drehen wir jeden Snippet per Codepoints um.
-                if (rtl) {
-                    emittedText = reverseByCodepoints(emittedText);
-                }
-                // In vertikalen CJK-Spalten sind Spaces zwischen Quad-Segmenten nicht
-                // sinnvoll — Segmente derselben Spalte werden direkt konkateniert.
-                if (!verticalLayout && qi > 0 && textBuilder.length() > 0) {
-                    char last = textBuilder.charAt(textBuilder.length() - 1);
-                    if (last != ' ' && last != '\n' && !emittedText.isEmpty()
-                            && emittedText.charAt(0) != ' ') {
-                        textBuilder.append(' ');
+                // Sub-Words werden in visueller Reihenfolge der Zeile gesammelt: der
+                // PdfCreator macht seine eigene RTL-Sortierung anhand der Bounding-Boxes
+                // (siehe PdfTextUtils.isRtlLine + Sortierung in PdfCreator), daher hier
+                // bewusst keine Umkehrung. Bei RTL müssen aber auch die Wort-Texte selbst
+                // in dieselbe logische Codepoint-Reihenfolge gebracht werden wie der oben
+                // aufgebaute Gesamttext; sonst zeigen word-basierte Views (OCRReview) die
+                // einzelnen Wörter gespiegelt an.
+                for (QuadRecognition quad : recognized) {
+                    for (RecognizedWord sw : quad.words) {
+                        if (sw == null) continue;
+                        if (rtl && isRtlText(sw.getText())) {
+                            sw.setText(reverseByCodepoints(sw.getText()));
+                        }
+                        words.add(sw);
+                        confSum += sw.getConfidence();
+                        confCount++;
                     }
                 }
-                textBuilder.append(emittedText);
             }
-
-            // Sub-Words werden in visueller Reihenfolge der Zeile gesammelt: der
-            // PdfCreator macht seine eigene RTL-Sortierung anhand der Bounding-Boxes
-            // (siehe PdfTextUtils.isRtlLine + Sortierung in PdfCreator), daher hier
-            // bewusst keine Umkehrung. Bei RTL müssen aber auch die Wort-Texte selbst
-            // in dieselbe logische Codepoint-Reihenfolge gebracht werden wie der oben
-            // aufgebaute Gesamttext; sonst zeigen word-basierte Views (OCRReview) die
-            // einzelnen Wörter gespiegelt an.
-            for (List<RecognizedWord> subWords : perQuadWords) {
-                for (RecognizedWord sw : subWords) {
-                    if (sw == null) continue;
-                    if (rtl && isRtlText(sw.getText())) {
-                        sw.setText(reverseByCodepoints(sw.getText()));
-                    }
-                    words.add(sw);
-                    confSum += sw.getConfidence();
-                    confCount++;
-                }
-            }
-        }
         } finally {
             if (recognitionExecutor != null) {
                 recognitionExecutor.shutdownNow();
@@ -376,6 +318,101 @@ final class PaddleResultBuilder {
             PaddleDebugDumper.finishSample(full, textBuilder.toString(), meanConf);
         }
         return new OCRHelper.OcrResultWords(textBuilder.toString(), meanConf, words);
+    }
+
+    /**
+     * Kleine, von der Detection abgetrennte Einzel-Glyphen (typisch: 。 oder versetztes っ) zurück
+     * in ihre Spalte mergen. Isoliert erkannt würden sie vom Rec-Modell als „o"/„0" fehlgedeutet;
+     * im Spaltenkontext stimmen sie.
+     */
+    private static List<Quad> mergeVerticalFragmentsLogged(List<Quad> effectiveQuads) {
+        List<Quad> mergedQuads = mergeVerticalFragments(effectiveQuads);
+        if (mergedQuads.size() == effectiveQuads.size()) return effectiveQuads;
+        Log.i(
+                TAG,
+                "vertical fragment merge: "
+                        + effectiveQuads.size()
+                        + " -> "
+                        + mergedQuads.size()
+                        + " quads");
+        return mergedQuads;
+    }
+
+    /**
+     * Phase 1: Recognition pro Quad in visueller Reihenfolge (links→rechts) — parallel, wenn ein
+     * Executor vorhanden ist und die Zeile mindestens zwei Quads hat. Erst nach Abschluss der
+     * Zeile wird per Codepoint-Heuristik (RTL vs. LTR) über die logische Reihenfolge entschieden —
+     * ohne sprachspezifisches Routing, konsistent mit PdfTextUtils.isRtlText/isRtlLine im
+     * PdfCreator.
+     */
+    private static QuadRecognition[] recognizeLine(
+            Bitmap full,
+            List<Quad> line,
+            PaddleRecOrtRunner rec,
+            Cropper cropper,
+            AtomicInteger globalCropIndex,
+            List<Quad> allQuads,
+            ExecutorService recognitionExecutor)
+            throws Exception {
+        int n = line.size();
+        QuadRecognition[] recognized = new QuadRecognition[n];
+        if (recognitionExecutor != null && n >= 2) {
+            List<Future<QuadRecognition>> futures = new ArrayList<>(n);
+            for (int qi = 0; qi < n; qi++) {
+                final Quad q = line.get(qi);
+                futures.add(
+                        recognitionExecutor.submit(
+                                (Callable<QuadRecognition>)
+                                        () -> recognizeQuad(full, q, rec, cropper, globalCropIndex, allQuads)));
+            }
+            for (int qi = 0; qi < n; qi++) {
+                recognized[qi] = futures.get(qi).get();
+            }
+        } else {
+            for (int qi = 0; qi < n; qi++) {
+                recognized[qi] =
+                        recognizeQuad(full, line.get(qi), rec, cropper, globalCropIndex, allQuads);
+            }
+        }
+        return recognized;
+    }
+
+    private static boolean isRtlLineByText(QuadRecognition[] recognized) {
+        String[] perQuadText = new String[recognized.length];
+        for (int i = 0; i < recognized.length; i++) {
+            perQuadText[i] = recognized[i].text;
+        }
+        return isRtlLineByText(perQuadText);
+    }
+
+    /** Hängt die Snippets einer Zeile in logischer Reihenfolge an den Gesamttext an. */
+    private static void appendLineText(
+            StringBuilder textBuilder,
+            QuadRecognition[] recognized,
+            boolean rtl,
+            boolean verticalLayout) {
+        int n = recognized.length;
+        for (int qi = 0; qi < n; qi++) {
+            int idx = rtl ? (n - 1 - qi) : qi;
+            String emittedText = recognized[idx].text;
+            if (emittedText == null) continue;
+            // Bei RTL liefert Paddle die Glyphen pro Crop in visueller (links→rechts)
+            // Reihenfolge — das ist die Spiegelung der logischen Codepoint-Reihenfolge.
+            // Für korrekten TXT-/BiDi-Output drehen wir jeden Snippet per Codepoints um.
+            if (rtl) {
+                emittedText = reverseByCodepoints(emittedText);
+            }
+            // In vertikalen CJK-Spalten sind Spaces zwischen Quad-Segmenten nicht
+            // sinnvoll — Segmente derselben Spalte werden direkt konkateniert.
+            if (!verticalLayout && qi > 0 && textBuilder.length() > 0) {
+                char last = textBuilder.charAt(textBuilder.length() - 1);
+                if (last != ' ' && last != '\n' && !emittedText.isEmpty()
+                        && emittedText.charAt(0) != ' ') {
+                    textBuilder.append(' ');
+                }
+            }
+            textBuilder.append(emittedText);
+        }
     }
 
     private static QuadRecognition recognizeQuad(
