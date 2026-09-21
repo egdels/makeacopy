@@ -12,9 +12,14 @@ import org.junit.Test;
  * directory without showing a file picker. When Inbox Mode is not active, the normal file picker
  * flow must be used.
  *
- * <p>These tests model the decision seam without requiring an Android device.
+ * <p>A TXT file is only exported for a real OCR result: without recognized text (e.g. "Skip OCR")
+ * nothing is exported, regardless of the "Include TXT" option.
+ *
+ * <p>These tests exercise the decision seam without requiring an Android device.
  */
 public class InboxTxtExportDecisionTest {
+
+  private static final String OCR_TEXT = "Hello world";
 
   /**
    * Determines which TXT export action should be taken.
@@ -23,13 +28,19 @@ public class InboxTxtExportDecisionTest {
    *     "none" if no TXT export is needed.
    */
   private static String decideTxtExportAction(boolean includeOcr, boolean inboxExportInProgress) {
-    if (!includeOcr) {
-      return "none";
+    return decideTxtExportAction(includeOcr, inboxExportInProgress, OCR_TEXT);
+  }
+
+  private static String decideTxtExportAction(
+      boolean includeOcr, boolean inboxExportInProgress, String ocrText) {
+    switch (ExportTxtHelper.decideTxtExport(includeOcr, inboxExportInProgress, ocrText)) {
+      case INBOX:
+        return "inbox";
+      case PICKER:
+        return "picker";
+      default:
+        return "none";
     }
-    if (inboxExportInProgress) {
-      return "inbox";
-    }
-    return "picker";
   }
 
   // --- Inbox Mode active ---
@@ -54,6 +65,28 @@ public class InboxTxtExportDecisionTest {
   @Test
   public void normalMode_withoutOcr_noTxtExport() {
     assertEquals("none", decideTxtExportAction(false, false));
+  }
+
+  // --- No real OCR result (e.g. "Skip OCR"): never export a TXT ---
+
+  @Test
+  public void includeTxt_withoutOcrResult_noTxtExport() {
+    assertEquals("none", decideTxtExportAction(true, false, null));
+    assertEquals("none", decideTxtExportAction(true, true, null));
+    assertEquals("none", decideTxtExportAction(true, false, ""));
+  }
+
+  @Test
+  public void includeTxt_withOnlyPageSeparators_noTxtExport() {
+    // Multi-page session in which no page has OCR text: only the "\n\n" separators remain
+    assertEquals("none", decideTxtExportAction(true, false, "\n\n\n\n"));
+    assertEquals("none", decideTxtExportAction(true, true, " \n\n "));
+  }
+
+  @Test
+  public void collectOcrText_singlePage_usesInMemoryText() {
+    assertEquals(OCR_TEXT, ExportTxtHelper.collectOcrText(null, OCR_TEXT, null));
+    assertNull(ExportTxtHelper.collectOcrText(null, null, null));
   }
 
   // --- TXT base name derivation (mirrors ExportFragment.stripOneExtension) ---

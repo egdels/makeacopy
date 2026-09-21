@@ -1724,16 +1724,7 @@ public class ExportFragment extends Fragment {
                         int pageCountForIndex = isMulti ? ((pages == null) ? 0 : pages.size()) : 1;
                         indexScanLibraryAsync(displayName, pageCountForIndex, finalUri);
                         // End: index
-                        if (includeOcr) {
-                          if (inboxExportInProgress) {
-                            // Inbox Mode: export TXT directly to inbox without file picker
-                            exportTxtToInbox();
-                          } else {
-                            // Normal mode: show file picker for TXT
-                            deferAssignUntilTxt = true;
-                            launchTxtFileCreation();
-                          }
-                        }
+                        startTxtExport(includeOcr, inboxExportInProgress);
                       } else {
                         lastExportedDocumentUri = null;
                         exportViewModel.setTxtExportUri(null);
@@ -2002,16 +1993,7 @@ public class ExportFragment extends Fragment {
                         // locator)
                         indexScanLibraryAsync(displayName, 1, exportUriFinal);
                         // End: index
-                        if (includeOcr) {
-                          if (inboxExportInProgress) {
-                            // Inbox Mode: export TXT directly to inbox without file picker
-                            exportTxtToInbox();
-                          } else {
-                            // Normal mode: show file picker for TXT
-                            deferAssignUntilTxt = true;
-                            launchTxtFileCreation();
-                          }
-                        }
+                        startTxtExport(includeOcr, inboxExportInProgress);
                       } else {
                         lastExportedDocumentUri = null;
                         setShareButtonsEnabled(false);
@@ -2184,11 +2166,9 @@ public class ExportFragment extends Fragment {
                         // service locator)
                         indexScanLibraryAsync(displayName, totalPages, exportUri);
                         // End: index
-                        if (Boolean.TRUE.equals(exportViewModel.isIncludeOcr().getValue())) {
-                          // Defer showing the assignment snackbar until TXT has been saved
-                          deferAssignUntilTxt = true;
-                          launchTxtFileCreation();
-                        }
+                        // ZIP export has no inbox mode: the TXT always goes through the file picker
+                        startTxtExport(
+                            Boolean.TRUE.equals(exportViewModel.isIncludeOcr().getValue()), false);
                       } else {
                         lastExportedDocumentUri = null;
                         setShareButtonsEnabled(false);
@@ -2226,6 +2206,34 @@ public class ExportFragment extends Fragment {
               }
             })
         .start();
+  }
+
+  /**
+   * Exports the TXT companion file after a successful document export — but only when there is a
+   * real OCR result. With "Skip OCR" (or a failed/empty recognition) no TXT file is created, no
+   * matter how "Include TXT" is set; otherwise the file picker would produce an empty file.
+   */
+  private void startTxtExport(boolean includeTxt, boolean inboxMode) {
+    String ocrText =
+        ExportTxtHelper.collectOcrText(
+            exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null,
+            getOcrTextFromState(),
+            exportViewModel.getDocumentBitmap().getValue());
+    switch (ExportTxtHelper.decideTxtExport(includeTxt, inboxMode, ocrText)) {
+      case INBOX:
+        // Inbox Mode: export TXT directly to inbox without file picker
+        exportTxtToInbox();
+        break;
+      case PICKER:
+        // Normal mode: show file picker for TXT and defer the assignment snackbar until the TXT
+        // has been saved
+        deferAssignUntilTxt = true;
+        launchTxtFileCreation();
+        break;
+      default:
+        if (includeTxt) Log.d(TAG, "startTxtExport: no OCR result, skipping TXT export");
+        break;
+    }
   }
 
   /**
