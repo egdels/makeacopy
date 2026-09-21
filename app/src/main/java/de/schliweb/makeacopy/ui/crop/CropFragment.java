@@ -1223,7 +1223,8 @@ public class CropFragment extends Fragment {
    * de.schliweb.makeacopy.utils.export.ScanPersister#persistEditedPage}. When done, the session
    * entry is refreshed on the main thread with the persisted file paths (keeping the in-memory
    * bitmap for the preview). The page keeps its id, so the persisted DocumentSession page order is
-   * unaffected.
+   * unaffected. After an edit on the original image, the freshly accepted trapezoid/rotation
+   * replace the page's stored crop parameters, so the next edit starts with the current shape.
    */
   private void persistEditedPageAsync(
       de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionVm,
@@ -1231,12 +1232,27 @@ public class CropFragment extends Fragment {
     if (sessionVm == null || edited == null || edited.id() == null) return;
     final android.content.Context appContext = requireContext().getApplicationContext();
     final String id = edited.id();
+    // performCrop has just stored the accepted corners/rotation; capture them on the main thread
+    final android.graphics.PointF[] acceptedCorners =
+        cropViewModel.getLastAcceptedCornersOriginal().getValue();
+    final int acceptedRotation =
+        normalizeDegrees(cropViewModel.getLastAcceptedUserRotationDeg().getValue());
+    final boolean fromOriginal = cropViewModel.isReEditFromOriginal();
     new Thread(
             () -> {
               try {
                 de.schliweb.makeacopy.ui.export.session.CompletedScan persisted =
                     de.schliweb.makeacopy.utils.export.ScanPersister.persistEditedPage(
                         appContext, edited);
+                if (fromOriginal) {
+                  // No-op for pages without a stored original
+                  de.schliweb.makeacopy.utils.export.CropSourceStore.updateCrop(
+                      appContext, id, acceptedCorners, acceptedRotation);
+                } else {
+                  // Edited on the cropped page image: a stored original (that could not be used)
+                  // and its corners no longer reproduce this page
+                  de.schliweb.makeacopy.utils.export.CropSourceStore.delete(appContext, id);
+                }
                 new android.os.Handler(android.os.Looper.getMainLooper())
                     .post(
                         () -> {

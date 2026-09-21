@@ -269,6 +269,13 @@ public class CropViewModel extends BaseViewModel {
   @Setter @Getter private String reEditPageId = null;
 
   /**
+   * Whether the running Re-Edit works on the page's ORIGINAL image (so the accepted corners are in
+   * the original's coordinate space) rather than on its already cropped page image. Decides whether
+   * the page's stored crop source stays valid after the edit.
+   */
+  @Setter @Getter private boolean reEditFromOriginal = true;
+
+  /**
    * FR #72 V1.3 (multi-page filmstrip identity): identity reference to the in-memory bitmap of the
    * most recently confirmed crop. Held as a {@link java.lang.ref.WeakReference} to avoid extending
    * bitmap lifetime. Used by ExportFragment to decide whether the currently previewed page is the

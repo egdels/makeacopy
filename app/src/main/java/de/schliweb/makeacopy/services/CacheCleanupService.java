@@ -365,6 +365,7 @@ public class CacheCleanupService extends Service {
       int cameraFilesCleanup = cleanupOldCameraImages();
       int tempFilesCleanup = cleanupTempFiles();
       int completedScansCleanup = cleanupCompletedScans();
+      int cropSourcesCleanup = cleanupExpiredCropSources();
 
       // Force garbage collection
       System.gc();
@@ -377,15 +378,42 @@ public class CacheCleanupService extends Service {
       Log.i(
           TAG,
           String.format(
-              "Cache cleanup completed in %dms. Files removed: debug=%d, camera=%d, temp=%d, completedScans=%d",
+              "Cache cleanup completed in %dms. Files removed: debug=%d, camera=%d, temp=%d, completedScans=%d, cropSources=%d",
               duration,
               debugFilesCleanup,
               cameraFilesCleanup,
               tempFilesCleanup,
-              completedScansCleanup));
+              completedScansCleanup,
+              cropSourcesCleanup));
 
     } catch (Exception e) {
       Log.e(TAG, "Error during comprehensive cleanup", e);
+    }
+  }
+
+  /**
+   * Removes the kept original captures (crop sources) of pages that have not been edited for a
+   * while. Runs regardless of the completed scans policy — with the default policy NONE the
+   * originals would otherwise stay forever. The scans themselves are not touched.
+   *
+   * @return number of pages whose crop source was removed
+   */
+  private int cleanupExpiredCropSources() {
+    try {
+      // Only the active document is protected: inactive sessions are kept indefinitely and would
+      // keep every original alive with them.
+      de.schliweb.makeacopy.data.DocumentSession active =
+          de.schliweb.makeacopy.data.DocumentSessionRepository.get(this).getActiveSession();
+      java.util.Set<String> activePageIds =
+          active != null ? new java.util.HashSet<>(active.pageIds()) : new java.util.HashSet<>();
+      int purged =
+          de.schliweb.makeacopy.utils.export.CropSourceStore.purgeExpired(
+              this, activePageIds, System.currentTimeMillis());
+      if (purged > 0) Log.i(TAG, "Removed expired crop sources of " + purged + " pages");
+      return purged;
+    } catch (Exception e) {
+      Log.e(TAG, "Error cleaning up crop sources", e);
+      return 0;
     }
   }
 

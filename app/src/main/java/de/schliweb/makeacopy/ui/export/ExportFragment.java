@@ -701,6 +701,9 @@ public class ExportFragment extends Fragment {
     String path = capturedImagePath();
     boolean hasOriginal = (path != null && !path.isEmpty()) || capturedImageUri() != null;
     CompletedScan active = getActivePageForEdit();
+    // Any page whose original capture was kept can be re-cropped from that original — in a
+    // multi-page document not only the most recent capture that CameraViewModel still tracks.
+    if (active != null && startOriginalPageEdit(v, active)) return;
     if (!hasOriginal || lastCorners == null || !isActivePageReEditable()) {
       // Session 3: fall back to editing the persisted page image (page.jpg) so ANY
       // persisted page of the document can be re-edited, not only the fresh one.
@@ -716,6 +719,7 @@ public class ExportFragment extends Fragment {
     //   - reload the original from disk (the in-memory original was nulled here),
     //   - pre-populate the trapezoid with lastAcceptedCornersOriginal,
     //   - on confirm/back, pop directly back to Export instead of advancing to OCR.
+    cropViewModel.setReEditFromOriginal(true);
     cropViewModel.setCameFromExport(true);
     cropViewModel.setImageCropped(false);
     // FR #72 multi-page: remember which session page is being re-edited so the
@@ -2326,6 +2330,48 @@ public class ExportFragment extends Fragment {
   }
 
   /**
+   * Opens the crop editor on the ORIGINAL (un-cropped) image of a page, with the trapezoid and
+   * rotation of its last accepted crop restored. Feeds the same CropViewModel state as the fresh
+   * page Re-Edit, so CropFragment handles both identically.
+   *
+   * @return {@code false} when no crop source was kept for the page (e.g. PDF import, pages
+   *     persisted before crop sources existed); the caller then falls back
+   */
+  private boolean startOriginalPageEdit(View v, CompletedScan page) {
+    if (page == null || page.id() == null) return false;
+    Context ctx = getContext();
+    if (ctx == null) return false;
+    CropSourceStore.CropSource source = CropSourceStore.load(ctx, page.id());
+    if (source == null) return false;
+    Bitmap original = ImageLoader.decode(ctx, source.originalPath(), null);
+    if (original == null) {
+      Log.w(TAG, "startOriginalPageEdit: decode failed for " + source.originalPath());
+      return false;
+    }
+    // Start from the unrotated original; CropFragment re-applies the accepted rotation first and
+    // then restores the corners, which live in the rotated coordinate space.
+    cropViewModel.setUserRotationDegrees(0);
+    cropViewModel.setLastAcceptedUserRotationDeg(source.userRotationDeg());
+    cropViewModel.setLastAcceptedCornersOriginal(source.corners());
+    cropViewModel.setOriginalImageBitmap(original);
+    cropViewModel.setImageCropped(false);
+    cropViewModel.setImageBitmap(original);
+    cropViewModel.setReEditFromOriginal(true);
+    cropViewModel.setCameFromExport(true);
+    cropViewModel.setReEditPageIndex(findActivePageIndex());
+    cropViewModel.setReEditPageId(page.id());
+    try {
+      Navigation.findNavController(v).navigate(R.id.navigation_crop);
+    } catch (Throwable t) {
+      Log.w(TAG, "Original page edit navigation failed", t);
+      cropViewModel.setCameFromExport(false);
+      cropViewModel.setReEditPageIndex(-1);
+      cropViewModel.setReEditPageId(null);
+    }
+    return true;
+  }
+
+  /**
    * Session 3: opens the existing single-page crop editor for a persisted page. The persisted
    * page.jpg is decoded as the editing source (the authoritative working copy — no re-render from
    * an original PDF), previous trapezoid state is cleared and the stable page id is recorded so the
@@ -2352,6 +2398,7 @@ public class ExportFragment extends Fragment {
     cropViewModel.setOriginalImageBitmap(src);
     cropViewModel.setImageCropped(false);
     cropViewModel.setImageBitmap(src);
+    cropViewModel.setReEditFromOriginal(false);
     cropViewModel.setCameFromExport(true);
     cropViewModel.setReEditPageIndex(findActivePageIndex());
     cropViewModel.setReEditPageId(page.id());
@@ -2476,9 +2523,29 @@ public class ExportFragment extends Fragment {
     final String ocrTextAtCall = skipOcrPref ? null : getOcrTextFromState();
     final java.util.List<RecognizedWord> ocrWordsAtCall =
         skipOcrPref ? null : getOcrWordsFromState();
+    // Capture the crop source at call time as well: CameraViewModel/CropViewModel only describe
+    // THIS page until the next capture. Only a page that went through the crop step has one.
+    final android.graphics.PointF[] cornersAtCall =
+        Boolean.TRUE.equals(cropViewModel.isImageCropped().getValue())
+            ? cropViewModel.getLastAcceptedCornersOriginal().getValue()
+            : null;
+    final Integer acceptedRotation = cropViewModel.getLastAcceptedUserRotationDeg().getValue();
+    final int rotationAtCall = acceptedRotation != null ? acceptedRotation : 0;
+    final String originalPathAtCall = capturedImagePath();
+    final Uri originalUriAtCall = capturedImageUri();
     new Thread(
             () -> {
               try {
+                // Keep the original first, while the capture file is guaranteed to still exist
+                if (cornersAtCall != null) {
+                  CropSourceStore.save(
+                      appContext,
+                      id,
+                      originalPathAtCall,
+                      originalUriAtCall,
+                      cornersAtCall,
+                      rotationAtCall);
+                }
                 // Persist scan (page.jpg, thumb.jpg, and optional OCR artifacts) and insert into
                 // registry
                 CompletedScan persisted =
