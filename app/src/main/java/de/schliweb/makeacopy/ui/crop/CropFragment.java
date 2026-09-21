@@ -81,18 +81,8 @@ public class CropFragment extends Fragment {
   private OnBackPressedCallback dragBackBlockCallback;
 
   /**
-   * Inflates the layout for this fragment and initializes all necessary components including
-   * ViewModels, UI bindings, and View listeners. It also observes various LiveData objects to
-   * dynamically update the UI based on changes in app state.
-   *
-   * @param inflater The LayoutInflater object that can be used to inflate any views in the
-   *     fragment.
-   * @param container If non-null, this is the parent view that the fragment's UI should be attached
-   *     to. The fragment should not add the view itself, but this can be used to generate the
-   *     LayoutParams of the view.
-   * @param savedInstanceState If non-null, this fragment is being re-constructed from a previous
-   *     saved state as given here.
-   * @return The root View for the fragment's UI, or null if the fragment does not provide a UI.
+   * Inflates the layout for this fragment, wires the trapezoid overlay and the buttons, and
+   * observes the ViewModels to keep the crop UI in sync with the app state.
    */
   @Override
   public View onCreateView(
@@ -103,151 +93,11 @@ public class CropFragment extends Fragment {
     binding = FragmentCropBinding.inflate(inflater, container, false);
     View root = binding.getRoot();
 
-    // FR #72 — Re-Edit entry from Export:
-    // When the user re-enters CropFragment via the Export edit-overlay, the in-memory
-    // original image bitmap has typically been released by ExportFragment to save memory.
-    // Re-decode it from the on-disk capture (or shared URI) so performCrop has the same
-    // full-resolution source as in the first pass. The cropped flag must be cleared so the
-    // imageBitmap observer takes the crop-mode branch (instead of immediately navigating).
-    if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
-      try {
-        Integer lastRot = cropViewModel.getLastAcceptedUserRotationDeg().getValue();
-        int lr = lastRot == null ? 0 : ((lastRot % 360) + 360) % 360;
-        if (lr != 0) {
-          // Rebuild the Re-Edit working bitmap from a known unrotated baseline. Otherwise a
-          // retained userRotationDegrees value equal to the last accepted rotation can make the
-          // bitmap observer apply persisted corners to the freshly reloaded original before the
-          // rotation observer has recreated the accepted working orientation.
-          cropViewModel.setUserRotationDegrees(0);
-        }
-        reEditCornersRestored = false;
-        Bitmap original = cropViewModel.getOriginalImageBitmap().getValue();
-        if (original == null || original.isRecycled()) {
-          String path =
-              cameraViewModel != null && cameraViewModel.getImagePath() != null
-                  ? cameraViewModel.getImagePath().getValue()
-                  : null;
-          Uri u =
-              cameraViewModel != null && cameraViewModel.getImageUri() != null
-                  ? cameraViewModel.getImageUri().getValue()
-                  : null;
-          Bitmap reloaded = ImageLoader.decode(requireContext(), path, u);
-          if (reloaded != null) {
-            cropViewModel.setOriginalImageBitmap(reloaded);
-            // Reset cropped flag and write the original back as the working bitmap, so the
-            // observer below shows the crop UI and the trapezoid view receives the unrotated
-            // source. The user rotation will be re-applied via the existing rotation observer.
-            cropViewModel.setImageCropped(false);
-            cropViewModel.setImageBitmap(reloaded);
-          } else {
-            android.util.Log.w(
-                TAG, "[FR72] Re-Edit: failed to reload original from path=" + path + " uri=" + u);
-          }
-        } else {
-          // Original still in-memory: force the crop UI by clearing cropped + setting bitmap.
-          cropViewModel.setImageCropped(false);
-          cropViewModel.setImageBitmap(original);
-        }
-      } catch (Throwable t) {
-        android.util.Log.w(TAG, "[FR72] Re-Edit: reload failed: " + t.getMessage(), t);
-      }
-    }
-
-    // Pass the Hilt-injected DocQuadOrtRunner to the TrapezoidSelectionView
-    binding.trapezoidSelection.setDocQuadOrtRunner(docQuadOrtRunner);
-
-    // Hint binding: when at least one corner of the trapezoid leaves the original image
-    // rectangle (off-image), show a dedicated hint warning the user that the warped output
-    // may contain black borders. Otherwise restore the standard adjust-corners instruction.
-    // See docs/edge_drag_pan_zoom_concept.md §5.3.
-    binding.trapezoidSelection.setOnCornersChangedListener(
-        anyCornerOffImage -> {
-          if (binding == null) return;
-          if (anyCornerOffImage) {
-            binding.textCrop.setText(R.string.crop_hint_corner_off_image);
-          } else {
-            binding.textCrop.setText(
-                R.string
-                    .adjust_the_trapezoid_corners_to_select_the_area_to_crop_then_tap_the_crop_button);
-          }
-        });
-
-    // Block the system Back gesture / Back press while a corner or edge drag is in progress.
-    // The callback is registered up-front but disabled, then enabled only for the duration of
-    // an active drag, so normal back navigation continues to work outside drag operations.
-    dragBackBlockCallback =
-        new OnBackPressedCallback(false) {
-          @Override
-          public void handleOnBackPressed() {
-            // Intentionally swallow back while dragging.
-          }
-        };
-    requireActivity()
-        .getOnBackPressedDispatcher()
-        .addCallback(getViewLifecycleOwner(), dragBackBlockCallback);
-    binding.trapezoidSelection.setOnDragStateChangedListener(
-        isDragging -> {
-          if (dragBackBlockCallback != null) {
-            dragBackBlockCallback.setEnabled(isDragging);
-          }
-        });
-
-    // Pan/Zoom (Phase 2 step 2/4/5): keep the underlying image_to_crop ImageView's render
-    // matrix in sync with TrapezoidSelectionView.viewMatrix so that the bitmap and overlay
-    // pan/zoom together. The flag stays default-off in releases — when off, this listener
-    // still fires once on registration with identity transform (and we restore fitCenter),
-    // so existing behaviour is unaffected. See docs/edge_drag_pan_zoom_concept.md §4.1.
-    binding.trapezoidSelection.setOnViewTransformChangedListener(
-        (scale, tx, ty, viewMatrix) -> {
-          if (binding == null) return;
-          if (!de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM
-              || (Math.abs(scale - 1f) < 1e-4f && Math.abs(tx) < 1e-4f && Math.abs(ty) < 1e-4f)) {
-            // Identity (or feature off): restore default fitCenter rendering. This avoids any
-            // residual matrix from a previous interaction polluting the next bitmap load.
-            if (binding.imageToCrop.getScaleType()
-                != android.widget.ImageView.ScaleType.FIT_CENTER) {
-              binding.imageToCrop.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-              binding.imageToCrop.setImageMatrix(new android.graphics.Matrix());
-            }
-            // Drop any clip set during a previous zoom session so the unzoomed view returns
-            // to its normal (unclipped) rendering.
-            binding.imageToCrop.setClipBounds(null);
-            return;
-          }
-          // Confine the scaled bitmap rendering to the ImageView bounds so the parent
-          // ConstraintLayout's clipChildren="false" does not let the zoomed bitmap overflow
-          // into adjacent layout regions.
-          int cw = binding.imageToCrop.getWidth();
-          int ch = binding.imageToCrop.getHeight();
-          if (cw > 0 && ch > 0) {
-            binding.imageToCrop.setClipBounds(new android.graphics.Rect(0, 0, cw, ch));
-          }
-          // Compute baseFitMatrix that reproduces fitCenter for the current bitmap+view, then
-          // pre-concatenate viewMatrix so the bitmap moves with the overlay.
-          android.graphics.drawable.Drawable d = binding.imageToCrop.getDrawable();
-          if (d == null) return;
-          int dw = d.getIntrinsicWidth();
-          int dh = d.getIntrinsicHeight();
-          int vw = binding.imageToCrop.getWidth();
-          int vh = binding.imageToCrop.getHeight();
-          if (dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) return;
-          android.graphics.Matrix base = new android.graphics.Matrix();
-          android.graphics.RectF src = new android.graphics.RectF(0, 0, dw, dh);
-          android.graphics.RectF dst = new android.graphics.RectF(0, 0, vw, vh);
-          base.setRectToRect(src, dst, android.graphics.Matrix.ScaleToFit.CENTER);
-          // Final = viewMatrix · base (viewMatrix operates on view coordinates, base maps
-          // bitmap → view).
-          android.graphics.Matrix combined = new android.graphics.Matrix(viewMatrix);
-          combined.preConcat(base);
-          if (binding.imageToCrop.getScaleType() != android.widget.ImageView.ScaleType.MATRIX) {
-            binding.imageToCrop.setScaleType(android.widget.ImageView.ScaleType.MATRIX);
-          }
-          binding.imageToCrop.setImageMatrix(combined);
-        });
+    if (isReEdit()) prepareReEditSource();
+    setupTrapezoidSelection();
 
     // Wire the Magnifier source view: compute and pass image->overlay matrix once layout/bitmap
-    // ready
-    // Try immediately; if sizes are 0 we'll retry after bitmap/layout
+    // ready. Try immediately; if sizes are 0 we'll retry after bitmap/layout
     tryUpdateMagnifierMapping();
 
     cropViewModel.getText().observe(getViewLifecycleOwner(), binding.textCrop::setText);
@@ -264,49 +114,7 @@ public class CropFragment extends Fragment {
     // Ensure hint text in overlay avoids bottom UI
     binding.getRoot().post(this::updateTrapezoidHintInset);
 
-    // Back button: return to Camera for a fresh scan — except for the FR #72 Re-Edit flow,
-    // where Back must return to Export without losing the captured image, OCR result, etc.
-    binding.buttonBack.setOnClickListener(
-        v -> {
-          if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
-            cropViewModel.setCameFromExport(false);
-            cropViewModel.setReEditPageIndex(-1);
-            cropViewModel.setReEditPageId(null);
-            try {
-              boolean popped =
-                  Navigation.findNavController(requireView())
-                      .popBackStack(R.id.navigation_export, false);
-              if (!popped) {
-                Navigation.findNavController(requireView()).navigate(R.id.navigation_export);
-              }
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-            return;
-          }
-          try {
-            // Reset state for a fresh scan
-            cropViewModel.setImageCropped(false);
-            cropViewModel.setUserRotationDegrees(0);
-            cropViewModel.setCaptureRotationDegrees(0);
-            // Clear current image references so Camera shows live preview
-            if (cameraViewModel != null) {
-              cameraViewModel.setImageUri(null);
-              cameraViewModel.setImagePath(null);
-            }
-          } catch (Throwable ignored) {
-            // Best-effort; failure is non-critical
-          }
-          // Navigate back to Camera: disable the shared-axis exit transition for this hop,
-          // the camera's SurfaceView preview must not be animated by view transitions.
-          setExitTransition(null);
-          NavOptions navOptions =
-              new NavOptions.Builder().setPopUpTo(R.id.navigation_camera, true).build();
-          Navigation.findNavController(requireView())
-              .navigate(R.id.navigation_camera, null, navOptions);
-        });
-
-    // Crop-Button
+    binding.buttonBack.setOnClickListener(v -> onBackClicked());
     binding.buttonCrop.setOnClickListener(
         v -> {
           // Confirm the crop action with a short haptic tick
@@ -331,102 +139,7 @@ public class CropFragment extends Fragment {
     // Perspective-depth slider (Issue #91, Phase 3)
     setupDepthSlider();
 
-    // Bitmap-Change
-    cropViewModel
-        .getImageBitmap()
-        .observe(
-            getViewLifecycleOwner(),
-            bitmap -> {
-              if (skipNextBitmapObserver) {
-                // Skip handling caused by our own rotation writeback to prevent retriggering edge
-                // detection
-                skipNextBitmapObserver = false;
-                return;
-              }
-              if (bitmap != null) {
-                if (Boolean.TRUE.equals(cropViewModel.isImageCropped().getValue())) {
-                  android.util.Log.d(
-                      TAG,
-                      "[CROP_LOG] imageBitmap observer: isCropped=true, navigating. bmp="
-                          + bitmap.getWidth()
-                          + "x"
-                          + bitmap.getHeight());
-                  navigateAfterCrop();
-                } else {
-                  showCropMode();
-                  Bitmap safe = BitmapUtils.ensureDisplaySafe(bitmap);
-                  binding.imageToCrop.setImageBitmap(safe);
-                  // Gate the "already-cropped" fallback heuristic so it only runs for
-                  // imported/shared images (gallery, share intent, PDF page) and never for
-                  // live camera captures, where the heuristic must not interfere with
-                  // genuine document-corner detection on the captured frame.
-                  binding.trapezoidSelection.setPreCroppedHint(
-                      cameraViewModel != null && cameraViewModel.isImageSourceImported());
-                  binding.trapezoidSelection.setImageBitmap(safe);
-                  // FR #72 — Re-Edit: pre-populate trapezoid corners from the previously
-                  // accepted crop and apply the previously accepted user rotation, so the
-                  // user re-enters the exact same shape they had on the first pass instead
-                  // of starting from auto-detection. The corners are stored in coordinates
-                  // of the rotated full-res source; we apply them directly because the
-                  // displayed bitmap has the same aspect ratio (the trapezoid view scales
-                  // image coords → view coords on its own).
-                  if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
-                    try {
-                      Integer lastRot = cropViewModel.getLastAcceptedUserRotationDeg().getValue();
-                      Integer curRot = cropViewModel.getUserRotationDegrees().getValue();
-                      int lr = lastRot == null ? 0 : lastRot;
-                      int cr = curRot == null ? 0 : ((curRot % 360) + 360) % 360;
-                      if (lr != cr) {
-                        // First rebuild the working bitmap in the same orientation in which the
-                        // corners were accepted. The persisted corners are already in that rotated
-                        // source coordinate space, so applying them before this rotation would put
-                        // a rotated trapezoid onto the wrong image.
-                        reEditCornersRestored = false;
-                        cropViewModel.setUserRotationDegrees(lr);
-                        return;
-                      }
-                      applyPersistedReEditCornersIfNeeded();
-                    } catch (Throwable t) {
-                      android.util.Log.w(
-                          TAG, "[FR72] Re-Edit: corner pre-population failed: " + t.getMessage());
-                    }
-                  }
-                  if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
-                    Integer curRot = cropViewModel.getUserRotationDegrees().getValue();
-                    lastUserRotationDeg = curRot == null ? 0 : ((curRot % 360) + 360) % 360;
-                  } else {
-                    lastUserRotationDeg = 0; // reset rotation baseline for selection sync
-                  }
-                  // Disable rotation while edge detection likely runs, then re-enable shortly
-                  setRotationButtonsEnabled(false);
-                  binding.trapezoidSelection.postDelayed(
-                      () -> setRotationButtonsEnabled(true), 600);
-                  // Update hint inset to avoid overlapping the rotation bar
-                  binding.getRoot().post(this::updateTrapezoidHintInset);
-                  // With a new bitmap, recompute and wire the magnifier mapping
-                  tryUpdateMagnifierMapping();
-
-                  // Post-capture: announce detection summary once in Accessibility Mode
-                  maybeAnnounceCropDetectionOnce(safe);
-
-                  // Dev-Overlay: zeige modelRect im Crop-Screen, wenn Logging-Flag aktiv
-                  if (FeatureFlags.isFramingLoggingEnabled()) {
-                    binding.cropDevOverlay.setVisibility(View.VISIBLE);
-                    // Nach Layout-Pass mappen, falls Größen noch 0 sind
-                    binding.cropDevOverlay.post(() -> updateDevOverlayForBitmap(safe));
-                  } else {
-                    try {
-                      binding.cropDevOverlay.setModelRect(null);
-                      binding.cropDevOverlay.setDebugText(null);
-                      binding.cropDevOverlay.setVisibility(View.GONE);
-                    } catch (Throwable ignore) {
-                      // Best-effort; failure is non-critical
-                    }
-                  }
-                }
-              }
-            });
-
+    cropViewModel.getImageBitmap().observe(getViewLifecycleOwner(), this::onImageBitmapChanged);
     cropViewModel
         .isImageCropped()
         .observe(
@@ -440,81 +153,8 @@ public class CropFragment extends Fragment {
     // React to rotation changes while in crop mode: rotate the original image and update previews
     cropViewModel
         .getUserRotationDegrees()
-        .observe(
-            getViewLifecycleOwner(),
-            degObj -> {
-              if (Boolean.TRUE.equals(cropViewModel.isImageCropped().getValue())) return;
-              Bitmap original = cropViewModel.getOriginalImageBitmap().getValue();
-              if (original == null) original = cropViewModel.getImageBitmap().getValue();
-              if (original == null) return;
-              int deg = degObj == null ? 0 : ((degObj % 360) + 360) % 360;
-              Bitmap safe = BitmapUtils.ensureDisplaySafe(original);
-              try {
-                if (deg != 0) {
-                  android.graphics.Matrix m = new android.graphics.Matrix();
-                  m.postRotate(deg);
-                  Bitmap rotated =
-                      android.graphics.Bitmap.createBitmap(
-                          safe, 0, 0, safe.getWidth(), safe.getHeight(), m, true);
-                  if (rotated != null) safe = rotated;
-                }
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-              // Update both the view and the VM bitmap; rotate trapezoid selection with the image
-              binding.imageToCrop.setImageBitmap(safe);
-              int delta = (deg - lastUserRotationDeg);
-              // Normalize delta to [-270, 270] equivalent CW degrees
-              delta = ((delta % 360) + 360) % 360;
-              try {
-                int correctedDelta =
-                    (360 - (delta % 360) + 360) % 360; // invert to match bitmap rotation direction
-                binding.trapezoidSelection.setImageBitmapWithRotation(safe, correctedDelta);
-              } catch (Throwable t) {
-                // Fallback: set normally if new API fails
-                binding.trapezoidSelection.setImageBitmap(safe);
-              }
-              lastUserRotationDeg = deg;
-              // Prevent the subsequent imageBitmap observer from re-initializing edges due to our
-              // own writeback
-              skipNextBitmapObserver = true;
-              cropViewModel.setImageBitmap(safe);
-              if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
-                applyPersistedReEditCornersIfNeeded();
-              }
-              tryUpdateMagnifierMapping();
-
-              // Dev-Overlay im Crop: nach Rotation neu mappen, wenn Flag aktiv
-              if (FeatureFlags.isFramingLoggingEnabled()) {
-                final Bitmap safeFinal = safe;
-                binding.cropDevOverlay.post(() -> updateDevOverlayForBitmap(safeFinal));
-              }
-            });
-
-    cameraViewModel
-        .getImageUri()
-        .observe(
-            getViewLifecycleOwner(),
-            uri -> {
-              if (uri == null) return;
-              if (Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue())) {
-                Bitmap preparedReEditBitmap = cropViewModel.getImageBitmap().getValue();
-                if (preparedReEditBitmap != null) {
-                  // FR #72 Re-Edit prepares the working bitmap itself from the persisted original
-                  // and the last accepted rotation. The camera URI observer can fire afterwards and
-                  // would otherwise overwrite the rotated crop preview with the unrotated original,
-                  // leaving the persisted (rotated) trapezoid on top of the wrong image.
-                  return;
-                }
-              }
-              // Do not reload the original image if we already have a cropped image.
-              Boolean alreadyCropped = cropViewModel.isImageCropped().getValue();
-              if (Boolean.TRUE.equals(alreadyCropped)) {
-                // Keep the current cropped bitmap in the CropViewModel.
-                return;
-              }
-              loadImageFromUri(uri);
-            });
+        .observe(getViewLifecycleOwner(), this::onUserRotationChanged);
+    cameraViewModel.getImageUri().observe(getViewLifecycleOwner(), this::onCapturedImageUriChanged);
 
     // Window Insets
     ViewCompat.setOnApplyWindowInsetsListener(
@@ -526,6 +166,352 @@ public class CropFragment extends Fragment {
         });
 
     return root;
+  }
+
+  /** FR #72 — whether the user re-entered CropFragment via the Export edit-overlay. */
+  private boolean isReEdit() {
+    return Boolean.TRUE.equals(cropViewModel.isCameFromExport().getValue());
+  }
+
+  private static int normalizeDegrees(Integer deg) {
+    return deg == null ? 0 : ((deg % 360) + 360) % 360;
+  }
+
+  /**
+   * FR #72 — Re-Edit entry from Export: the in-memory original image bitmap has typically been
+   * released by ExportFragment to save memory. Re-decode it from the on-disk capture (or shared
+   * URI) so performCrop has the same full-resolution source as in the first pass. The cropped flag
+   * must be cleared so the imageBitmap observer takes the crop-mode branch (instead of immediately
+   * navigating).
+   */
+  private void prepareReEditSource() {
+    try {
+      if (normalizeDegrees(cropViewModel.getLastAcceptedUserRotationDeg().getValue()) != 0) {
+        // Rebuild the Re-Edit working bitmap from a known unrotated baseline. Otherwise a
+        // retained userRotationDegrees value equal to the last accepted rotation can make the
+        // bitmap observer apply persisted corners to the freshly reloaded original before the
+        // rotation observer has recreated the accepted working orientation.
+        cropViewModel.setUserRotationDegrees(0);
+      }
+      reEditCornersRestored = false;
+      Bitmap original = cropViewModel.getOriginalImageBitmap().getValue();
+      if (original == null || original.isRecycled()) {
+        String path =
+            cameraViewModel != null && cameraViewModel.getImagePath() != null
+                ? cameraViewModel.getImagePath().getValue()
+                : null;
+        Uri u =
+            cameraViewModel != null && cameraViewModel.getImageUri() != null
+                ? cameraViewModel.getImageUri().getValue()
+                : null;
+        original = ImageLoader.decode(requireContext(), path, u);
+        if (original == null) {
+          android.util.Log.w(
+              TAG, "[FR72] Re-Edit: failed to reload original from path=" + path + " uri=" + u);
+          return;
+        }
+        cropViewModel.setOriginalImageBitmap(original);
+      }
+      // Reset cropped flag and write the original back as the working bitmap, so the bitmap
+      // observer shows the crop UI and the trapezoid view receives the unrotated source. The
+      // user rotation will be re-applied via the existing rotation observer.
+      cropViewModel.setImageCropped(false);
+      cropViewModel.setImageBitmap(original);
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, "[FR72] Re-Edit: reload failed: " + t.getMessage(), t);
+    }
+  }
+
+  private void setupTrapezoidSelection() {
+    // Pass the Hilt-injected DocQuadOrtRunner to the TrapezoidSelectionView
+    binding.trapezoidSelection.setDocQuadOrtRunner(docQuadOrtRunner);
+
+    // Hint binding: when at least one corner of the trapezoid leaves the original image
+    // rectangle (off-image), show a dedicated hint warning the user that the warped output
+    // may contain black borders. Otherwise restore the standard adjust-corners instruction.
+    // See docs/edge_drag_pan_zoom_concept.md §5.3.
+    binding.trapezoidSelection.setOnCornersChangedListener(
+        anyCornerOffImage -> {
+          if (binding == null) return;
+          binding.textCrop.setText(
+              anyCornerOffImage
+                  ? R.string.crop_hint_corner_off_image
+                  : R.string
+                      .adjust_the_trapezoid_corners_to_select_the_area_to_crop_then_tap_the_crop_button);
+        });
+
+    // Block the system Back gesture / Back press while a corner or edge drag is in progress.
+    // The callback is registered up-front but disabled, then enabled only for the duration of
+    // an active drag, so normal back navigation continues to work outside drag operations.
+    dragBackBlockCallback =
+        new OnBackPressedCallback(false) {
+          @Override
+          public void handleOnBackPressed() {
+            // Intentionally swallow back while dragging.
+          }
+        };
+    requireActivity()
+        .getOnBackPressedDispatcher()
+        .addCallback(getViewLifecycleOwner(), dragBackBlockCallback);
+    binding.trapezoidSelection.setOnDragStateChangedListener(
+        isDragging -> {
+          if (dragBackBlockCallback != null) {
+            dragBackBlockCallback.setEnabled(isDragging);
+          }
+        });
+
+    binding.trapezoidSelection.setOnViewTransformChangedListener(
+        this::syncImageWithOverlayTransform);
+  }
+
+  /**
+   * Pan/Zoom (Phase 2 step 2/4/5): keeps the underlying image_to_crop ImageView's render matrix in
+   * sync with TrapezoidSelectionView.viewMatrix so that the bitmap and overlay pan/zoom together.
+   * The flag stays default-off in releases — when off, this listener still fires once on
+   * registration with identity transform (and we restore fitCenter), so existing behaviour is
+   * unaffected. See docs/edge_drag_pan_zoom_concept.md §4.1.
+   */
+  private void syncImageWithOverlayTransform(
+      float scale, float tx, float ty, android.graphics.Matrix viewMatrix) {
+    if (binding == null) return;
+    android.widget.ImageView image = binding.imageToCrop;
+    boolean identity = Math.abs(scale - 1f) < 1e-4f && Math.abs(tx) < 1e-4f && Math.abs(ty) < 1e-4f;
+    if (!de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM || identity) {
+      // Identity (or feature off): restore default fitCenter rendering. This avoids any
+      // residual matrix from a previous interaction polluting the next bitmap load.
+      if (image.getScaleType() != android.widget.ImageView.ScaleType.FIT_CENTER) {
+        image.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        image.setImageMatrix(new android.graphics.Matrix());
+      }
+      // Drop any clip set during a previous zoom session so the unzoomed view returns
+      // to its normal (unclipped) rendering.
+      image.setClipBounds(null);
+      return;
+    }
+    // Confine the scaled bitmap rendering to the ImageView bounds so the parent
+    // ConstraintLayout's clipChildren="false" does not let the zoomed bitmap overflow
+    // into adjacent layout regions.
+    int vw = image.getWidth();
+    int vh = image.getHeight();
+    if (vw > 0 && vh > 0) {
+      image.setClipBounds(new android.graphics.Rect(0, 0, vw, vh));
+    }
+    // Compute baseFitMatrix that reproduces fitCenter for the current bitmap+view, then
+    // pre-concatenate viewMatrix so the bitmap moves with the overlay.
+    android.graphics.drawable.Drawable d = image.getDrawable();
+    if (d == null) return;
+    int dw = d.getIntrinsicWidth();
+    int dh = d.getIntrinsicHeight();
+    if (dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0) return;
+    android.graphics.Matrix base = new android.graphics.Matrix();
+    base.setRectToRect(
+        new android.graphics.RectF(0, 0, dw, dh),
+        new android.graphics.RectF(0, 0, vw, vh),
+        android.graphics.Matrix.ScaleToFit.CENTER);
+    // Final = viewMatrix · base (viewMatrix operates on view coordinates, base maps
+    // bitmap → view).
+    android.graphics.Matrix combined = new android.graphics.Matrix(viewMatrix);
+    combined.preConcat(base);
+    if (image.getScaleType() != android.widget.ImageView.ScaleType.MATRIX) {
+      image.setScaleType(android.widget.ImageView.ScaleType.MATRIX);
+    }
+    image.setImageMatrix(combined);
+  }
+
+  /**
+   * Back button: return to Camera for a fresh scan — except for the FR #72 Re-Edit flow, where Back
+   * must return to Export without losing the captured image, OCR result, etc.
+   */
+  private void onBackClicked() {
+    if (isReEdit()) {
+      cropViewModel.setCameFromExport(false);
+      cropViewModel.setReEditPageIndex(-1);
+      cropViewModel.setReEditPageId(null);
+      try {
+        boolean popped =
+            Navigation.findNavController(requireView()).popBackStack(R.id.navigation_export, false);
+        if (!popped) {
+          Navigation.findNavController(requireView()).navigate(R.id.navigation_export);
+        }
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+      return;
+    }
+    try {
+      // Reset state for a fresh scan
+      cropViewModel.setImageCropped(false);
+      cropViewModel.setUserRotationDegrees(0);
+      cropViewModel.setCaptureRotationDegrees(0);
+      // Clear current image references so Camera shows live preview
+      if (cameraViewModel != null) {
+        cameraViewModel.setImageUri(null);
+        cameraViewModel.setImagePath(null);
+      }
+    } catch (Throwable ignored) {
+      // Best-effort; failure is non-critical
+    }
+    // Navigate back to Camera: disable the shared-axis exit transition for this hop,
+    // the camera's SurfaceView preview must not be animated by view transitions.
+    setExitTransition(null);
+    NavOptions navOptions =
+        new NavOptions.Builder().setPopUpTo(R.id.navigation_camera, true).build();
+    Navigation.findNavController(requireView()).navigate(R.id.navigation_camera, null, navOptions);
+  }
+
+  private void onImageBitmapChanged(Bitmap bitmap) {
+    if (skipNextBitmapObserver) {
+      // Skip handling caused by our own rotation writeback to prevent retriggering edge
+      // detection
+      skipNextBitmapObserver = false;
+      return;
+    }
+    if (bitmap == null) return;
+    if (Boolean.TRUE.equals(cropViewModel.isImageCropped().getValue())) {
+      android.util.Log.d(
+          TAG,
+          "[CROP_LOG] imageBitmap observer: isCropped=true, navigating. bmp="
+              + bitmap.getWidth()
+              + "x"
+              + bitmap.getHeight());
+      navigateAfterCrop();
+      return;
+    }
+
+    showCropMode();
+    Bitmap safe = BitmapUtils.ensureDisplaySafe(bitmap);
+    binding.imageToCrop.setImageBitmap(safe);
+    // Gate the "already-cropped" fallback heuristic so it only runs for
+    // imported/shared images (gallery, share intent, PDF page) and never for
+    // live camera captures, where the heuristic must not interfere with
+    // genuine document-corner detection on the captured frame.
+    binding.trapezoidSelection.setPreCroppedHint(
+        cameraViewModel != null && cameraViewModel.isImageSourceImported());
+    binding.trapezoidSelection.setImageBitmap(safe);
+
+    if (isReEdit()) {
+      if (!restoreReEditShape()) return;
+      lastUserRotationDeg = normalizeDegrees(cropViewModel.getUserRotationDegrees().getValue());
+    } else {
+      lastUserRotationDeg = 0; // reset rotation baseline for selection sync
+    }
+    // Disable rotation while edge detection likely runs, then re-enable shortly
+    setRotationButtonsEnabled(false);
+    binding.trapezoidSelection.postDelayed(() -> setRotationButtonsEnabled(true), 600);
+    // Update hint inset to avoid overlapping the rotation bar
+    binding.getRoot().post(this::updateTrapezoidHintInset);
+    // With a new bitmap, recompute and wire the magnifier mapping
+    tryUpdateMagnifierMapping();
+
+    // Post-capture: announce detection summary once in Accessibility Mode
+    maybeAnnounceCropDetectionOnce(safe);
+    updateDevOverlay(safe);
+  }
+
+  /**
+   * FR #72 — Re-Edit: pre-populates the trapezoid corners from the previously accepted crop and
+   * applies the previously accepted user rotation, so the user re-enters the exact same shape they
+   * had on the first pass instead of starting from auto-detection. The corners are stored in
+   * coordinates of the rotated full-res source; we apply them directly because the displayed bitmap
+   * has the same aspect ratio (the trapezoid view scales image coords → view coords on its own).
+   *
+   * @return {@code false} if the working bitmap first has to be rebuilt in the accepted rotation;
+   *     the rotation observer then continues
+   */
+  private boolean restoreReEditShape() {
+    try {
+      Integer lastRot = cropViewModel.getLastAcceptedUserRotationDeg().getValue();
+      int lr = lastRot == null ? 0 : lastRot;
+      int cr = normalizeDegrees(cropViewModel.getUserRotationDegrees().getValue());
+      if (lr != cr) {
+        // First rebuild the working bitmap in the same orientation in which the corners were
+        // accepted. The persisted corners are already in that rotated source coordinate space,
+        // so applying them before this rotation would put a rotated trapezoid onto the wrong
+        // image.
+        reEditCornersRestored = false;
+        cropViewModel.setUserRotationDegrees(lr);
+        return false;
+      }
+      applyPersistedReEditCornersIfNeeded();
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, "[FR72] Re-Edit: corner pre-population failed: " + t.getMessage());
+    }
+    return true;
+  }
+
+  /** Dev-Overlay: zeige modelRect im Crop-Screen, wenn Logging-Flag aktiv. */
+  private void updateDevOverlay(Bitmap safe) {
+    if (FeatureFlags.isFramingLoggingEnabled()) {
+      binding.cropDevOverlay.setVisibility(View.VISIBLE);
+      // Nach Layout-Pass mappen, falls Größen noch 0 sind
+      binding.cropDevOverlay.post(() -> updateDevOverlayForBitmap(safe));
+      return;
+    }
+    try {
+      binding.cropDevOverlay.setModelRect(null);
+      binding.cropDevOverlay.setDebugText(null);
+      binding.cropDevOverlay.setVisibility(View.GONE);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+  }
+
+  /** Rotates the original image with the user rotation and keeps the trapezoid aligned with it. */
+  private void onUserRotationChanged(Integer degObj) {
+    if (Boolean.TRUE.equals(cropViewModel.isImageCropped().getValue())) return;
+    Bitmap original = cropViewModel.getOriginalImageBitmap().getValue();
+    if (original == null) original = cropViewModel.getImageBitmap().getValue();
+    if (original == null) return;
+    int deg = normalizeDegrees(degObj);
+    Bitmap safe = BitmapUtils.ensureDisplaySafe(original);
+    try {
+      if (deg != 0) {
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        m.postRotate(deg);
+        Bitmap rotated =
+            android.graphics.Bitmap.createBitmap(
+                safe, 0, 0, safe.getWidth(), safe.getHeight(), m, true);
+        if (rotated != null) safe = rotated;
+      }
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    // Update both the view and the VM bitmap; rotate trapezoid selection with the image
+    binding.imageToCrop.setImageBitmap(safe);
+    int delta = normalizeDegrees(deg - lastUserRotationDeg);
+    try {
+      int correctedDelta = (360 - delta) % 360; // invert to match bitmap rotation direction
+      binding.trapezoidSelection.setImageBitmapWithRotation(safe, correctedDelta);
+    } catch (Throwable t) {
+      // Fallback: set normally if new API fails
+      binding.trapezoidSelection.setImageBitmap(safe);
+    }
+    lastUserRotationDeg = deg;
+    // Prevent the subsequent imageBitmap observer from re-initializing edges due to our
+    // own writeback
+    skipNextBitmapObserver = true;
+    cropViewModel.setImageBitmap(safe);
+    if (isReEdit()) applyPersistedReEditCornersIfNeeded();
+    tryUpdateMagnifierMapping();
+
+    // Dev-Overlay im Crop: nach Rotation neu mappen, wenn Flag aktiv
+    if (FeatureFlags.isFramingLoggingEnabled()) {
+      final Bitmap safeFinal = safe;
+      binding.cropDevOverlay.post(() -> updateDevOverlayForBitmap(safeFinal));
+    }
+  }
+
+  private void onCapturedImageUriChanged(Uri uri) {
+    if (uri == null) return;
+    // FR #72 Re-Edit prepares the working bitmap itself from the persisted original and the last
+    // accepted rotation. The camera URI observer can fire afterwards and would otherwise overwrite
+    // the rotated crop preview with the unrotated original, leaving the persisted (rotated)
+    // trapezoid on top of the wrong image.
+    if (isReEdit() && cropViewModel.getImageBitmap().getValue() != null) return;
+    // Do not reload the original image if we already have a cropped image: keep the current
+    // cropped bitmap in the CropViewModel.
+    if (Boolean.TRUE.equals(cropViewModel.isImageCropped().getValue())) return;
+    loadImageFromUri(uri);
   }
 
   private boolean isAccessibilityModeEnabled() {
