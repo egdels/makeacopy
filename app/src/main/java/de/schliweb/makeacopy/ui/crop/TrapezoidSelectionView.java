@@ -1667,135 +1667,136 @@ public class TrapezoidSelectionView extends View {
     for (org.opencv.core.Point p : quad) {
       if (p == null) return false;
     }
+    QuadShape shape = new QuadShape(quad, imgW, imgH);
+    // A clean full-image rectangle (all 4 corners near their canonical positions) is never one of
+    // the degenerate shapes A, D or C.
+    boolean degenerate =
+        shape.nearCanonical < 4
+            && (shape.isEdgeHuggingDegenerate() || shape.isPinched() || shape.isHeavilySkewed());
+    return degenerate || shape.isInteriorMisdetection();
+  }
 
-    // For each corner, measure how close it sits to an image edge (in pixels) and how far
-    // it sits from its expected canonical corner (TL→(0,0), TR→(W,0), BR→(W,H), BL→(0,H)).
-    // If several corners hug image edges (typical for the detector running on an already
-    // pre-cropped image) but at least one corner sits far away from its expected canonical
-    // position, the resulting quad is degenerate (e.g. one corner stuck mid-edge cutting
-    // off a large portion of the image). In that case we treat the input as "already
-    // cropped" and use the full image as the initial selection.
-    double diag = Math.hypot(imgW, imgH);
-    double edgeThr = 0.04 * Math.min(imgW, imgH); // hug-edge tolerance
-    double farThr = 0.18 * diag; // far-from-canonical-corner threshold
+  /** The measurements of a detected quad that {@link #looksAlreadyCropped} decides on. */
+  private static final class QuadShape {
+    /** Corners that hug an image edge (typical for the detector on a pre-cropped image). */
+    final int hugEdge;
 
-    org.opencv.core.Point[] expected =
-        new org.opencv.core.Point[] {
-          new org.opencv.core.Point(0, 0),
-          new org.opencv.core.Point(imgW, 0),
-          new org.opencv.core.Point(imgW, imgH),
-          new org.opencv.core.Point(0, imgH)
-        };
-    int hugEdge = 0;
-    int farFromCanonical = 0;
-    int nearCanonical = 0;
-    for (int i = 0; i < 4; i++) {
-      double x = quad[i].x;
-      double y = quad[i].y;
-      double edgeDist = Math.min(Math.min(x, imgW - x), Math.min(y, imgH - y));
-      if (edgeDist <= edgeThr) hugEdge++;
-      double cornerDist = Math.hypot(x - expected[i].x, y - expected[i].y);
-      if (cornerDist <= 0.10 * diag) nearCanonical++;
-      if (cornerDist >= farThr) farFromCanonical++;
-    }
+    /** Corners far away from / near to their canonical corner TL→(0,0), TR→(W,0), … */
+    final int farFromCanonical;
 
-    // Trigger A (edge-hugging degenerate quad):
-    //  - at least 2 corners hug an image edge (the detector latched onto image borders), AND
-    //  - at least one corner is far from its expected canonical position (degenerate shape), AND
-    //  - the quad is not a clean full-image rectangle (all 4 corners near canonical positions).
-    if (hugEdge >= 2 && farFromCanonical >= 1 && nearCanonical < 4) return true;
+    final int nearCanonical;
 
-    // Trigger D (heavily degenerate trapezoid on a pre-cropped image):
-    // Independent of edge-hugging, if the detector returns a quad whose opposing sides differ
-    // dramatically in length (one pair of "parallel" sides is less than half the length of the
-    // other) AND the bounding box does not cover most of the image, the quad is clearly
-    // degenerate (e.g. one corner collapsed onto another, leaving a pinched/triangle-like
-    // shape). This pattern is typical for the detector running on an already-cropped photo
-    // where it cannot find a real document outline. Fall back to the full image rectangle.
-    {
-      double topLen0 = Math.hypot(quad[0].x - quad[1].x, quad[0].y - quad[1].y);
-      double botLen0 = Math.hypot(quad[3].x - quad[2].x, quad[3].y - quad[2].y);
-      double leftLen0 = Math.hypot(quad[0].x - quad[3].x, quad[0].y - quad[3].y);
-      double rightLen0 = Math.hypot(quad[1].x - quad[2].x, quad[1].y - quad[2].y);
-      double parH0 =
-          (Math.max(topLen0, botLen0) > 0)
-              ? Math.min(topLen0, botLen0) / Math.max(topLen0, botLen0)
-              : 0;
-      double parV0 =
-          (Math.max(leftLen0, rightLen0) > 0)
-              ? Math.min(leftLen0, rightLen0) / Math.max(leftLen0, rightLen0)
-              : 0;
-      double minXq = Double.POSITIVE_INFINITY, minYq = Double.POSITIVE_INFINITY;
-      double maxXq = Double.NEGATIVE_INFINITY, maxYq = Double.NEGATIVE_INFINITY;
+    /** Corners that sit well inside the image, away from every edge. */
+    final int wellInside;
+
+    /** Shorter/longer length of the opposing sides: top vs. bottom and left vs. right. */
+    final double parallelRatioH;
+
+    final double parallelRatioV;
+
+    /** Fraction of the image covered by the quad's bounding box. */
+    final double bboxCoverage;
+
+    QuadShape(org.opencv.core.Point[] quad, int imgW, int imgH) {
+      double diag = Math.hypot(imgW, imgH);
+      double edgeThr = 0.04 * Math.min(imgW, imgH); // hug-edge tolerance
+      double farThr = 0.18 * diag; // far-from-canonical-corner threshold
+      double interiorThr = 0.08 * Math.min(imgW, imgH); // "well inside" margin
+      double[] expectedX = {0, imgW, imgW, 0};
+      double[] expectedY = {0, 0, imgH, imgH};
+
+      int hug = 0;
+      int far = 0;
+      int near = 0;
+      int inside = 0;
+      double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY;
+      double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
       for (int i = 0; i < 4; i++) {
-        if (quad[i].x < minXq) minXq = quad[i].x;
-        if (quad[i].y < minYq) minYq = quad[i].y;
-        if (quad[i].x > maxXq) maxXq = quad[i].x;
-        if (quad[i].y > maxYq) maxYq = quad[i].y;
+        double x = quad[i].x;
+        double y = quad[i].y;
+        double edgeDist = Math.min(Math.min(x, imgW - x), Math.min(y, imgH - y));
+        if (edgeDist <= edgeThr) hug++;
+        double cornerDist = Math.hypot(x - expectedX[i], y - expectedY[i]);
+        if (cornerDist <= 0.10 * diag) near++;
+        if (cornerDist >= farThr) far++;
+        if (x >= interiorThr
+            && x <= imgW - interiorThr
+            && y >= interiorThr
+            && y <= imgH - interiorThr) {
+          inside++;
+        }
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
       }
-      double cov0 =
-          Math.max(0, maxXq - minXq) * Math.max(0, maxYq - minYq) / ((double) imgW * imgH);
-      if (Math.min(parH0, parV0) < 0.5 && cov0 < 0.60 && nearCanonical < 4) return true;
+      hugEdge = hug;
+      farFromCanonical = far;
+      nearCanonical = near;
+      wellInside = inside;
+      bboxCoverage =
+          Math.max(0, maxX - minX) * Math.max(0, maxY - minY) / ((double) imgW * (double) imgH);
+
+      double topLen = Math.hypot(quad[0].x - quad[1].x, quad[0].y - quad[1].y);
+      double botLen = Math.hypot(quad[3].x - quad[2].x, quad[3].y - quad[2].y);
+      double leftLen = Math.hypot(quad[0].x - quad[3].x, quad[0].y - quad[3].y);
+      double rightLen = Math.hypot(quad[1].x - quad[2].x, quad[1].y - quad[2].y);
+      parallelRatioH = shorterToLonger(topLen, botLen);
+      parallelRatioV = shorterToLonger(leftLen, rightLen);
     }
 
-    // Trigger C (heavily skewed quad on a pre-cropped image):
-    // If two or more corners sit far away from their expected canonical image corners AND at
-    // least one corner still hugs an image edge, the detected shape is heavily skewed and almost
-    // certainly a mis-detection on an already-cropped image (e.g. on a PDF page where the
-    // detector latched onto two image edges but the other two corners drifted far away from
-    // their canonical positions). The extra hug-edge requirement avoids triggering on normal
-    // photos where the document is fully inside the frame and every corner is naturally far
-    // from the image corners.
-    if (farFromCanonical >= 2 && hugEdge >= 1 && nearCanonical < 4) return true;
-
-    // Trigger B (interior mis-detection on an already-cropped image):
-    // The detector returned a small/medium quad fully inside the image, far away from every edge.
-    // On a real photo the document almost always touches or comes close to at least one image
-    // edge; if every corner sits well inside the image AND the quad's bounding box covers only a
-    // small/medium fraction of the image, the input is most likely already cropped to the document
-    // and the detector latched onto an interior feature (text block, figure, ...). Fall back to
-    // the full image rectangle so the user can fine-tune from a sensible default.
-    double interiorThr = 0.08 * Math.min(imgW, imgH); // "well inside" margin
-    int allInsideCount = 0;
-    double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY;
-    double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
-    for (int i = 0; i < 4; i++) {
-      double x = quad[i].x;
-      double y = quad[i].y;
-      if (x >= interiorThr
-          && x <= imgW - interiorThr
-          && y >= interiorThr
-          && y <= imgH - interiorThr) {
-        allInsideCount++;
-      }
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
+    private static double shorterToLonger(double a, double b) {
+      return (Math.max(a, b) > 0) ? Math.min(a, b) / Math.max(a, b) : 0;
     }
-    double bboxW = Math.max(0, maxX - minX);
-    double bboxH = Math.max(0, maxY - minY);
-    double bboxCoverage = (bboxW * bboxH) / ((double) imgW * (double) imgH);
-    if (allInsideCount != 4 || bboxCoverage >= 0.60) return false;
 
-    // Plausibility check: a well-shaped quad whose opposing sides are roughly the same length
-    // is most likely a genuine document detection (e.g. a centred document with margin), even
-    // if the bounding box covers only a small fraction of the image. Skip the fallback in that
-    // case so the detector result is preserved. Only flag clearly degenerate (non-rectangular)
-    // quads as interior misdetections.
-    double topLen = Math.hypot(quad[0].x - quad[1].x, quad[0].y - quad[1].y);
-    double botLen = Math.hypot(quad[3].x - quad[2].x, quad[3].y - quad[2].y);
-    double leftLen = Math.hypot(quad[0].x - quad[3].x, quad[0].y - quad[3].y);
-    double rightLen = Math.hypot(quad[1].x - quad[2].x, quad[1].y - quad[2].y);
-    double parRatioH =
-        (Math.max(topLen, botLen) > 0) ? Math.min(topLen, botLen) / Math.max(topLen, botLen) : 0;
-    double parRatioV =
-        (Math.max(leftLen, rightLen) > 0)
-            ? Math.min(leftLen, rightLen) / Math.max(leftLen, rightLen)
-            : 0;
-    // If both opposing-side ratios are close to 1 (rectangular-ish), consider the quad plausible
-    // and keep the detector result.
-    return !(parRatioH >= 0.85 && parRatioV >= 0.85);
+    /**
+     * Trigger A (edge-hugging degenerate quad): at least 2 corners hug an image edge (the detector
+     * latched onto image borders) AND at least one corner is far from its expected canonical
+     * position (degenerate shape, e.g. one corner stuck mid-edge cutting off a large portion of the
+     * image).
+     */
+    boolean isEdgeHuggingDegenerate() {
+      return hugEdge >= 2 && farFromCanonical >= 1;
+    }
+
+    /**
+     * Trigger D (heavily degenerate trapezoid on a pre-cropped image): independent of edge-hugging,
+     * the opposing sides differ dramatically in length (one pair of "parallel" sides is less than
+     * half the length of the other) AND the bounding box does not cover most of the image — e.g.
+     * one corner collapsed onto another, leaving a pinched/triangle-like shape. This pattern is
+     * typical for the detector running on an already-cropped photo where it cannot find a real
+     * document outline.
+     */
+    boolean isPinched() {
+      return Math.min(parallelRatioH, parallelRatioV) < 0.5 && bboxCoverage < 0.60;
+    }
+
+    /**
+     * Trigger C (heavily skewed quad on a pre-cropped image): two or more corners sit far away from
+     * their expected canonical image corners AND at least one corner still hugs an image edge (e.g.
+     * on a PDF page where the detector latched onto two image edges but the other two corners
+     * drifted far away). The hug-edge requirement avoids triggering on normal photos where the
+     * document is fully inside the frame and every corner is naturally far from the image corners.
+     */
+    boolean isHeavilySkewed() {
+      return farFromCanonical >= 2 && hugEdge >= 1;
+    }
+
+    /**
+     * Trigger B (interior mis-detection on an already-cropped image): a small/medium quad fully
+     * inside the image, far away from every edge. On a real photo the document almost always
+     * touches or comes close to at least one image edge; here the detector most likely latched onto
+     * an interior feature (text block, figure, ...).
+     *
+     * <p>Plausibility check: a well-shaped quad whose opposing sides are roughly the same length is
+     * most likely a genuine document detection (e.g. a centred document with margin), even if the
+     * bounding box covers only a small fraction of the image; only clearly non-rectangular quads
+     * are flagged.
+     */
+    boolean isInteriorMisdetection() {
+      if (wellInside != 4 || bboxCoverage >= 0.60) return false;
+      return !(parallelRatioH >= 0.85 && parallelRatioV >= 0.85);
+    }
   }
 
   static boolean isValidImageQuad(org.opencv.core.Point[] quad, int imgW, int imgH) {
