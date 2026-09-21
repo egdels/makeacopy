@@ -701,8 +701,10 @@ public class CropFragment extends Fragment {
    * present. - Performs perspective correction using OpenCV to generate a cropped bitmap. - Updates
    * the cropViewModel with the new cropped image and sets the cropped flag to true.
    */
+  private static final String CROP_LOG = "[CROP_LOG] ";
+
   private void performCrop() {
-    final String LP = "[CROP_LOG] ";
+    final String LP = CROP_LOG;
     // The image currently shown in the ImageView (display-safe, possibly scaled)
     Bitmap displayedBitmap = cropViewModel.getImageBitmap().getValue();
     if (displayedBitmap == null) {
@@ -711,39 +713,7 @@ public class CropFragment extends Fragment {
     }
     if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(requireContext());
 
-    // Use the full-resolution original, rotated by the current user rotation, as crop source.
-    // Rationale: The trapezoid selection and preview are shown with the user rotation applied.
-    // To ensure that the perspective correction matches what the user sees (and to avoid
-    // quality loss by re-rotating later), we bake the user rotation into the source used
-    // for cropping. originalImageBitmap itself remains unmodified and is only used as input here.
-    Bitmap fullResSource = null;
-    try {
-      Bitmap orig = cropViewModel.getOriginalImageBitmap().getValue();
-      Integer ur = cropViewModel.getUserRotationDegrees().getValue();
-      int userDeg = ur == null ? 0 : ((ur % 360) + 360) % 360;
-      if (orig != null && !orig.isRecycled()) {
-        if (userDeg != 0) {
-          android.graphics.Matrix m = new android.graphics.Matrix();
-          m.postRotate(userDeg);
-          fullResSource =
-              android.graphics.Bitmap.createBitmap(
-                  orig, 0, 0, orig.getWidth(), orig.getHeight(), m, true);
-          android.util.Log.d(
-              TAG, LP + "performCrop: applying user rotation " + userDeg + "° to full-res source");
-        } else {
-          fullResSource = orig;
-          android.util.Log.d(
-              TAG, LP + "performCrop: user rotation 0°, using original full-res source");
-        }
-      }
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
-    }
-    if (fullResSource == null) {
-      // Fallback: crop the currently displayed bitmap (might be scaled)
-      fullResSource = displayedBitmap;
-    }
-
+    Bitmap fullResSource = buildFullResCropSource(displayedBitmap);
     android.util.Log.d(
         TAG,
         LP
@@ -757,22 +727,8 @@ public class CropFragment extends Fragment {
             + fullResSource.getHeight());
 
     // 1) Get corners in displayed-bitmap image coordinates
-    org.opencv.core.Point[] imgCornersDisplay = null;
-    try {
-      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
-      imgCornersDisplay =
-          CoordinateTransformUtils.transformViewToImageCoordinates(
-              viewCorners, displayedBitmap, binding.imageToCrop);
-      android.util.Log.d(
-          TAG,
-          LP
-              + "performCrop: transformed corners (display)="
-              + (imgCornersDisplay != null
-                  ? java.util.Arrays.toString(imgCornersDisplay)
-                  : "null"));
-    } catch (Throwable t) {
-      android.util.Log.w(TAG, LP + "performCrop: corner transform failed: " + t.getMessage());
-    }
+    org.opencv.core.Point[] imgCornersDisplay =
+        selectedCornersInDisplayCoordinates(displayedBitmap);
     // Guard: if we have no valid corners, do not proceed to crop; avoid forwarding the original
     // image or warping with a degenerate quadrilateral.
     if (!TrapezoidSelectionView.isValidImageQuad(
@@ -794,11 +750,7 @@ public class CropFragment extends Fragment {
     if (fullResSource != displayedBitmap) {
       float sx = fullResSource.getWidth() / (float) displayedBitmap.getWidth();
       float sy = fullResSource.getHeight() / (float) displayedBitmap.getHeight();
-      cornersForSource = new org.opencv.core.Point[4];
-      for (int i = 0; i < 4; i++) {
-        cornersForSource[i] =
-            new org.opencv.core.Point(imgCornersDisplay[i].x * sx, imgCornersDisplay[i].y * sy);
-      }
+      cornersForSource = scalePoints(imgCornersDisplay, sx, sy);
       android.util.Log.d(
           TAG,
           LP
@@ -812,192 +764,278 @@ public class CropFragment extends Fragment {
       cornersForSource = imgCornersDisplay;
     }
 
-    // Issue #91: in curved mode, additionally transform the two on-curve midpoints (top/bottom
-    // edge) from view → displayed-image coordinates and scale them to full-res exactly like the
-    // corners above, then build the DewarpModel. If anything fails, dewarpModel stays null and
-    // the existing straight perspective-correction path below is used unchanged.
-    de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel = null;
-    if (binding.trapezoidSelection.isCurvedMode()) {
-      try {
-        org.opencv.core.Point[] midsView = binding.trapezoidSelection.getCurveMidpointsViewCoords();
-        org.opencv.core.Point[] midsDisplay =
-            CoordinateTransformUtils.transformViewToImageCoordinates(
-                midsView, displayedBitmap, binding.imageToCrop);
-        if (midsDisplay != null
-            && midsDisplay.length == 2
-            && midsDisplay[0] != null
-            && midsDisplay[1] != null) {
-          double sx = 1.0;
-          double sy = 1.0;
-          if (fullResSource != displayedBitmap) {
-            sx = fullResSource.getWidth() / (double) displayedBitmap.getWidth();
-            sy = fullResSource.getHeight() / (double) displayedBitmap.getHeight();
-          }
-          org.opencv.core.Point topMid =
-              new org.opencv.core.Point(midsDisplay[0].x * sx, midsDisplay[0].y * sy);
-          org.opencv.core.Point bottomMid =
-              new org.opencv.core.Point(midsDisplay[1].x * sx, midsDisplay[1].y * sy);
-          dewarpModel =
-              de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
-                  cornersForSource, topMid, bottomMid);
-          if (dewarpModel != null
-              && (estimatedTopEdgeProfile != null || estimatedBottomEdgeProfile != null)) {
-            // Issue #91 follow-up (corner accuracy): carry the traced edge SHAPE from the
-            // automatic estimation into the warp; the profiles are chord-normalized and get
-            // rescaled to the user's current curve-handle positions inside the model.
-            dewarpModel =
-                dewarpModel.withEdgeProfiles(estimatedTopEdgeProfile, estimatedBottomEdgeProfile);
-          }
-          if (dewarpModel != null && dewarpDepth != 0.0) {
-            // Issue #91 (Phase 3): apply the perspective-depth fine adjustment from the slider.
-            dewarpModel = dewarpModel.withDepth(dewarpDepth);
-          }
-          android.util.Log.d(
-              TAG,
-              LP
-                  + "performCrop: curved mode, topMid="
-                  + topMid
-                  + ", bottomMid="
-                  + bottomMid
-                  + ", depth="
-                  + dewarpDepth);
-        } else {
-          android.util.Log.w(
-              TAG, LP + "performCrop: curve midpoint transform invalid; falling back to straight");
-        }
-      } catch (Throwable t) {
-        android.util.Log.w(
-            TAG, LP + "performCrop: curved-mode midpoint transform failed, falling back: " + t);
-        dewarpModel = null;
-      }
-    }
+    // Issue #91: in curved mode build the DewarpModel. If anything fails, dewarpModel stays null
+    // and the existing straight perspective-correction path is used unchanged.
+    de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel =
+        binding.trapezoidSelection.isCurvedMode()
+            ? buildDewarpModel(displayedBitmap, fullResSource, cornersForSource)
+            : null;
 
     long t0 = android.os.SystemClock.uptimeMillis();
-    Bitmap croppedBitmap;
-    {
-      CropAspectRatio sel = CropPrefsHelper.getLastAspect(requireContext());
-      if (sel == CropAspectRatio.ORIGINAL) {
-        if (dewarpModel != null) {
-          // Issue #91: the legacy heuristic has no WarpMode counterpart; use AUTO_PROJECTIVE
-          // for dewarping so the curved selection is honored under aspect=ORIGINAL as well.
-          android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → dewarp AUTO_PROJECTIVE");
-          croppedBitmap =
-              OpenCVUtils.applyDewarp(
-                  fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
-        } else {
-          android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → legacy heuristic");
-          croppedBitmap =
-              OpenCVUtils.applyPerspectiveCorrectionLegacyHeuristic(
-                  fullResSource, cornersForSource);
-        }
-      } else {
-        Double ratio = CropPrefsHelper.resolveActiveRatio(requireContext());
-        if (ratio == null) {
-          android.util.Log.d(
-              TAG,
-              LP
-                  + "performCrop: aspect="
-                  + sel
-                  + " → AUTO_PROJECTIVE"
-                  + (dewarpModel != null ? " (dewarp)" : ""));
-          croppedBitmap =
-              dewarpModel != null
-                  ? OpenCVUtils.applyDewarp(
-                      fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null)
-                  : OpenCVUtils.applyPerspectiveCorrection(
-                      fullResSource, cornersForSource, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
-        } else {
-          android.util.Log.d(
-              TAG,
-              LP
-                  + "performCrop: aspect="
-                  + sel
-                  + " → FIXED_RATIO short/long="
-                  + String.format(java.util.Locale.US, "%.4f", ratio)
-                  + (dewarpModel != null ? " (dewarp)" : ""));
-          croppedBitmap =
-              dewarpModel != null
-                  ? OpenCVUtils.applyDewarp(
-                      fullResSource, dewarpModel, OpenCVUtils.WarpMode.FIXED_RATIO, ratio)
-                  : OpenCVUtils.applyPerspectiveCorrection(
-                      fullResSource, cornersForSource, OpenCVUtils.WarpMode.FIXED_RATIO, ratio);
-        }
-      }
-    }
+    Bitmap croppedBitmap = warp(fullResSource, cornersForSource, dewarpModel);
     long dt = android.os.SystemClock.uptimeMillis() - t0;
-    if (croppedBitmap != null) {
-      android.util.Log.d(
-          TAG,
-          LP
-              + "performCrop: cropped size="
-              + croppedBitmap.getWidth()
-              + "x"
-              + croppedBitmap.getHeight()
-              + ", took="
-              + dt
-              + "ms");
-      // Post-warp safety net: trim residual non-paper border (dark background remnants left
-      // when the crop trapezoid was slightly looser than the actual paper edges). This protects
-      // downstream OCR from artefacts caused by black borders along the page.
-      // TODO: Move to OCRFragement and OCRReviewFragment
-      /*try {
-        Bitmap trimmed = OpenCVUtils.trimNonPaperBorder(croppedBitmap);
-        if (trimmed != null && trimmed != croppedBitmap) {
-          android.util.Log.d(
-              TAG,
-              LP
-                  + "performCrop: post-warp border trim "
-                  + croppedBitmap.getWidth()
-                  + "x"
-                  + croppedBitmap.getHeight()
-                  + " → "
-                  + trimmed.getWidth()
-                  + "x"
-                  + trimmed.getHeight());
-          croppedBitmap = trimmed;
-        }
-      } catch (Throwable t) {
-        android.util.Log.w(TAG, LP + "performCrop: trimNonPaperBorder failed: " + t.getMessage());
-      }*/
-      // Hide/stop overlay to avoid further edge detection while we navigate away
-      try {
-        binding.trapezoidSelection.setVisibility(View.GONE);
-        binding.trapezoidSelection.setImageBitmap(null);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      // Prevent the imageBitmap observer from re-initializing edge detection for this write-back
-      skipNextBitmapObserver = true;
-      // Persist the accepted corners (in full-res source coords) and the user rotation that was
-      // baked into that source. This enables Re-Edit from the Export screen (FR #72): a later
-      // re-entry into CropFragment can restore exactly the same trapezoid by setting the same
-      // user rotation and applying these corners to the rebuilt full-res source.
-      try {
-        android.graphics.PointF[] accepted = new android.graphics.PointF[cornersForSource.length];
-        for (int i = 0; i < cornersForSource.length; i++) {
-          accepted[i] =
-              new android.graphics.PointF(
-                  (float) cornersForSource[i].x, (float) cornersForSource[i].y);
-        }
-        Integer urVal = cropViewModel.getUserRotationDegrees().getValue();
-        int urDeg = urVal == null ? 0 : urVal;
-        cropViewModel.setLastAcceptedCornersOriginal(accepted);
-        cropViewModel.setLastAcceptedUserRotationDeg(urDeg);
-      } catch (Throwable t) {
-        android.util.Log.w(TAG, LP + "performCrop: persisting accepted corners failed: " + t);
-      }
-      // Write cropped bitmap first, then mark as cropped so isImageCropped observer can navigate
-      // using the new bitmap
-      cropViewModel.setImageBitmap(croppedBitmap);
-      cropViewModel.setImageCropped(true);
-    } else {
+    if (croppedBitmap == null) {
       android.util.Log.w(
           TAG, LP + "performCrop: OpenCV returned null cropped bitmap (took=" + dt + "ms)");
       UIUtils.showToast(
           requireContext(),
           getString(R.string.error_displaying_image, "crop failed"),
           android.widget.Toast.LENGTH_SHORT);
+      return;
     }
+    android.util.Log.d(
+        TAG,
+        LP
+            + "performCrop: cropped size="
+            + croppedBitmap.getWidth()
+            + "x"
+            + croppedBitmap.getHeight()
+            + ", took="
+            + dt
+            + "ms");
+    onCropSucceeded(croppedBitmap, cornersForSource);
+  }
+
+  /**
+   * Use the full-resolution original, rotated by the current user rotation, as crop source.
+   * Rationale: The trapezoid selection and preview are shown with the user rotation applied. To
+   * ensure that the perspective correction matches what the user sees (and to avoid quality loss by
+   * re-rotating later), we bake the user rotation into the source used for cropping.
+   * originalImageBitmap itself remains unmodified and is only used as input here.
+   *
+   * @return the crop source; the displayed bitmap (might be scaled) when there is no original
+   */
+  private Bitmap buildFullResCropSource(Bitmap displayedBitmap) {
+    final String LP = CROP_LOG;
+    try {
+      Bitmap orig = cropViewModel.getOriginalImageBitmap().getValue();
+      Integer ur = cropViewModel.getUserRotationDegrees().getValue();
+      int userDeg = ur == null ? 0 : ((ur % 360) + 360) % 360;
+      if (orig != null && !orig.isRecycled()) {
+        if (userDeg == 0) {
+          android.util.Log.d(
+              TAG, LP + "performCrop: user rotation 0°, using original full-res source");
+          return orig;
+        }
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        m.postRotate(userDeg);
+        Bitmap rotated =
+            android.graphics.Bitmap.createBitmap(
+                orig, 0, 0, orig.getWidth(), orig.getHeight(), m, true);
+        android.util.Log.d(
+            TAG, LP + "performCrop: applying user rotation " + userDeg + "° to full-res source");
+        if (rotated != null) return rotated;
+      }
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    return displayedBitmap;
+  }
+
+  /** The trapezoid corners in displayed-bitmap image coordinates, or {@code null} on failure. */
+  private org.opencv.core.Point[] selectedCornersInDisplayCoordinates(Bitmap displayedBitmap) {
+    final String LP = CROP_LOG;
+    try {
+      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
+      org.opencv.core.Point[] imgCornersDisplay =
+          CoordinateTransformUtils.transformViewToImageCoordinates(
+              viewCorners, displayedBitmap, binding.imageToCrop);
+      android.util.Log.d(
+          TAG,
+          LP
+              + "performCrop: transformed corners (display)="
+              + (imgCornersDisplay != null
+                  ? java.util.Arrays.toString(imgCornersDisplay)
+                  : "null"));
+      return imgCornersDisplay;
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, LP + "performCrop: corner transform failed: " + t.getMessage());
+      return null;
+    }
+  }
+
+  @androidx.annotation.VisibleForTesting
+  static org.opencv.core.Point[] scalePoints(org.opencv.core.Point[] points, double sx, double sy) {
+    org.opencv.core.Point[] scaled = new org.opencv.core.Point[points.length];
+    for (int i = 0; i < points.length; i++) {
+      scaled[i] = new org.opencv.core.Point(points[i].x * sx, points[i].y * sy);
+    }
+    return scaled;
+  }
+
+  /**
+   * Issue #91: transforms the two on-curve midpoints (top/bottom edge) from view → displayed-image
+   * coordinates, scales them to full-res exactly like the corners and builds the DewarpModel.
+   *
+   * @return the model, or {@code null} to fall back to the straight perspective correction
+   */
+  private de.schliweb.makeacopy.utils.image.DewarpModel buildDewarpModel(
+      Bitmap displayedBitmap, Bitmap fullResSource, org.opencv.core.Point[] cornersForSource) {
+    final String LP = CROP_LOG;
+    de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel = null;
+    try {
+      org.opencv.core.Point[] midsView = binding.trapezoidSelection.getCurveMidpointsViewCoords();
+      org.opencv.core.Point[] midsDisplay =
+          CoordinateTransformUtils.transformViewToImageCoordinates(
+              midsView, displayedBitmap, binding.imageToCrop);
+      if (midsDisplay != null
+          && midsDisplay.length == 2
+          && midsDisplay[0] != null
+          && midsDisplay[1] != null) {
+        double sx = 1.0;
+        double sy = 1.0;
+        if (fullResSource != displayedBitmap) {
+          sx = fullResSource.getWidth() / (double) displayedBitmap.getWidth();
+          sy = fullResSource.getHeight() / (double) displayedBitmap.getHeight();
+        }
+        org.opencv.core.Point topMid =
+            new org.opencv.core.Point(midsDisplay[0].x * sx, midsDisplay[0].y * sy);
+        org.opencv.core.Point bottomMid =
+            new org.opencv.core.Point(midsDisplay[1].x * sx, midsDisplay[1].y * sy);
+        dewarpModel =
+            de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
+                cornersForSource, topMid, bottomMid);
+        if (dewarpModel != null
+            && (estimatedTopEdgeProfile != null || estimatedBottomEdgeProfile != null)) {
+          // Issue #91 follow-up (corner accuracy): carry the traced edge SHAPE from the
+          // automatic estimation into the warp; the profiles are chord-normalized and get
+          // rescaled to the user's current curve-handle positions inside the model.
+          dewarpModel =
+              dewarpModel.withEdgeProfiles(estimatedTopEdgeProfile, estimatedBottomEdgeProfile);
+        }
+        if (dewarpModel != null && dewarpDepth != 0.0) {
+          // Issue #91 (Phase 3): apply the perspective-depth fine adjustment from the slider.
+          dewarpModel = dewarpModel.withDepth(dewarpDepth);
+        }
+        android.util.Log.d(
+            TAG,
+            LP
+                + "performCrop: curved mode, topMid="
+                + topMid
+                + ", bottomMid="
+                + bottomMid
+                + ", depth="
+                + dewarpDepth);
+      } else {
+        android.util.Log.w(
+            TAG, LP + "performCrop: curve midpoint transform invalid; falling back to straight");
+      }
+    } catch (Throwable t) {
+      android.util.Log.w(
+          TAG, LP + "performCrop: curved-mode midpoint transform failed, falling back: " + t);
+      return null;
+    }
+    return dewarpModel;
+  }
+
+  /** Warps the source according to the selected aspect ratio (and the dewarp model, if any). */
+  private Bitmap warp(
+      Bitmap fullResSource,
+      org.opencv.core.Point[] cornersForSource,
+      de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel) {
+    final String LP = CROP_LOG;
+    CropAspectRatio sel = CropPrefsHelper.getLastAspect(requireContext());
+    if (sel == CropAspectRatio.ORIGINAL) {
+      if (dewarpModel != null) {
+        // Issue #91: the legacy heuristic has no WarpMode counterpart; use AUTO_PROJECTIVE
+        // for dewarping so the curved selection is honored under aspect=ORIGINAL as well.
+        android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → dewarp AUTO_PROJECTIVE");
+        return OpenCVUtils.applyDewarp(
+            fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+      } else {
+        android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → legacy heuristic");
+        return OpenCVUtils.applyPerspectiveCorrectionLegacyHeuristic(
+            fullResSource, cornersForSource);
+      }
+    } else {
+      Double ratio = CropPrefsHelper.resolveActiveRatio(requireContext());
+      if (ratio == null) {
+        android.util.Log.d(
+            TAG,
+            LP
+                + "performCrop: aspect="
+                + sel
+                + " → AUTO_PROJECTIVE"
+                + (dewarpModel != null ? " (dewarp)" : ""));
+        return dewarpModel != null
+            ? OpenCVUtils.applyDewarp(
+                fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null)
+            : OpenCVUtils.applyPerspectiveCorrection(
+                fullResSource, cornersForSource, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+      } else {
+        android.util.Log.d(
+            TAG,
+            LP
+                + "performCrop: aspect="
+                + sel
+                + " → FIXED_RATIO short/long="
+                + String.format(java.util.Locale.US, "%.4f", ratio)
+                + (dewarpModel != null ? " (dewarp)" : ""));
+        return dewarpModel != null
+            ? OpenCVUtils.applyDewarp(
+                fullResSource, dewarpModel, OpenCVUtils.WarpMode.FIXED_RATIO, ratio)
+            : OpenCVUtils.applyPerspectiveCorrection(
+                fullResSource, cornersForSource, OpenCVUtils.WarpMode.FIXED_RATIO, ratio);
+      }
+    }
+  }
+
+  private void onCropSucceeded(Bitmap croppedBitmap, org.opencv.core.Point[] cornersForSource) {
+    final String LP = CROP_LOG;
+    // Post-warp safety net: trim residual non-paper border (dark background remnants left
+    // when the crop trapezoid was slightly looser than the actual paper edges). This protects
+    // downstream OCR from artefacts caused by black borders along the page.
+    // TODO: Move to OCRFragement and OCRReviewFragment
+    /*try {
+      Bitmap trimmed = OpenCVUtils.trimNonPaperBorder(croppedBitmap);
+      if (trimmed != null && trimmed != croppedBitmap) {
+        android.util.Log.d(
+            TAG,
+            LP
+                + "performCrop: post-warp border trim "
+                + croppedBitmap.getWidth()
+                + "x"
+                + croppedBitmap.getHeight()
+                + " → "
+                + trimmed.getWidth()
+                + "x"
+                + trimmed.getHeight());
+        croppedBitmap = trimmed;
+      }
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, LP + "performCrop: trimNonPaperBorder failed: " + t.getMessage());
+    }*/
+    // Hide/stop overlay to avoid further edge detection while we navigate away
+    try {
+      binding.trapezoidSelection.setVisibility(View.GONE);
+      binding.trapezoidSelection.setImageBitmap(null);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    // Prevent the imageBitmap observer from re-initializing edge detection for this write-back
+    skipNextBitmapObserver = true;
+    // Persist the accepted corners (in full-res source coords) and the user rotation that was
+    // baked into that source. This enables Re-Edit from the Export screen (FR #72): a later
+    // re-entry into CropFragment can restore exactly the same trapezoid by setting the same
+    // user rotation and applying these corners to the rebuilt full-res source.
+    try {
+      android.graphics.PointF[] accepted = new android.graphics.PointF[cornersForSource.length];
+      for (int i = 0; i < cornersForSource.length; i++) {
+        accepted[i] =
+            new android.graphics.PointF(
+                (float) cornersForSource[i].x, (float) cornersForSource[i].y);
+      }
+      Integer urVal = cropViewModel.getUserRotationDegrees().getValue();
+      int urDeg = urVal == null ? 0 : urVal;
+      cropViewModel.setLastAcceptedCornersOriginal(accepted);
+      cropViewModel.setLastAcceptedUserRotationDeg(urDeg);
+    } catch (Throwable t) {
+      android.util.Log.w(TAG, LP + "performCrop: persisting accepted corners failed: " + t);
+    }
+    // Write cropped bitmap first, then mark as cropped so isImageCropped observer can navigate
+    // using the new bitmap
+    cropViewModel.setImageBitmap(croppedBitmap);
+    cropViewModel.setImageCropped(true);
   }
 
   /**
