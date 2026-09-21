@@ -708,125 +708,9 @@ public class OCRFragment extends Fragment {
   private String[] mapCodesToDisplayNames(String[] codes) {
     String[] out = new String[codes.length];
     for (int i = 0; i < codes.length; i++) {
-      out[i] = codeToDisplayName(codes[i]);
+      out[i] = OCRUtils.codeToDisplayName(requireContext(), codes[i]);
     }
     return out;
-  }
-
-  private String codeToDisplayName(String code) {
-    if (de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR) {
-      return switch (code) {
-        case "en" -> "English (Paddle)";
-        case "latin" -> "Latin script (Paddle)";
-        case "eslav" -> "East Slavic (Paddle)";
-        case "cyrillic" -> "Cyrillic script (Paddle)";
-        case "arabic" -> "Arabic script (Paddle)";
-        case "devanagari" -> "Devanagari script (Paddle)";
-        case "th" -> "Thai (Paddle)";
-        case "el" -> "Greek (Paddle)";
-        case "zh" -> "Chinese/Japanese/Korean (Paddle)";
-        default -> code + " (Paddle)";
-      };
-    }
-    // Map common Tesseract 3-letter codes to 2-letter BCP-47 where possible, for localization
-    String two;
-    switch (code) {
-      case "eng":
-        two = "en";
-        break;
-      case "deu":
-        two = "de";
-        break;
-      case "fra":
-        two = "fr";
-        break;
-      case "ita":
-        two = "it";
-        break;
-      case "spa":
-        two = "es";
-        break;
-      case "por":
-        two = "pt";
-        break;
-      case "nld":
-        two = "nl";
-        break;
-      case "pol":
-        two = "pl";
-        break;
-      case "ces":
-        two = "cs";
-        break;
-      case "slk":
-        two = "sk";
-        break;
-      case "hun":
-        two = "hu";
-        break;
-      case "ron":
-        two = "ro";
-        break;
-      case "dan":
-        two = "da";
-        break;
-      case "nor":
-        two = "no";
-        break;
-      case "swe":
-        two = "sv";
-        break;
-      case "rus":
-        two = "ru";
-        break;
-      case "tha":
-        two = "th";
-        break;
-      case "fas":
-        two = "fa";
-        break;
-      case "ara":
-        two = "ar";
-        break;
-      case "hin":
-        two = "hi";
-        break;
-      case "tur":
-        two = "tr";
-        break;
-      case "chi_sim":
-        return appendVariantLabel("Chinese (Simplified)", code);
-      case "chi_tra":
-        return appendVariantLabel("Chinese (Traditional)", code);
-      default:
-        // Fallback: try first two letters
-        if (code != null && code.length() >= 2) {
-          two = code.substring(0, 2);
-        } else {
-          two = "en";
-        }
-    }
-    String baseName;
-    try {
-      java.util.Locale loc = java.util.Locale.forLanguageTag(two);
-      baseName = loc.getDisplayLanguage(java.util.Locale.getDefault());
-    } catch (Throwable ignore) {
-      baseName = code;
-    }
-    return appendVariantLabel(baseName, code);
-  }
-
-  private String appendVariantLabel(String baseName, String code) {
-    String variant = determineModelVariant(code);
-    return baseName + " (" + variant + ")";
-  }
-
-  /**
-   * Determine whether the given language code uses the flavor's built-in Fast model or a higher
-   * quality model managed by the flavor-specific OCR model manager.
-   */
-  private String determineModelVariant(String code) {
-    return OcrModelManager.isUsingBestModel(requireContext(), code) ? "Best" : "Fast";
   }
 
   /** Refresh the language spinner after importing new models. */
@@ -1209,7 +1093,7 @@ public class OCRFragment extends Fragment {
                       return;
                     }
                     // Confirm deletion
-                    String display = codeToDisplayName(langCode);
+                    String display = OCRUtils.codeToDisplayName(requireContext(), langCode);
                     AlertDialog confirm =
                         new MaterialAlertDialogBuilder(requireContext())
                             .setTitle(R.string.ocr_delete_confirm_title)

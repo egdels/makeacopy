@@ -294,6 +294,30 @@ public class OCRUtilsTest {
     assertEquals("fra", multiLang.substring(multiLang.indexOf('+') + 1));
   }
 
+  // ==================== codeToBaseDisplayName Tests ====================
+
+  @Test
+  public void codeToBaseDisplayName_tesseractCode_isLocalizedLanguageName() {
+    org.junit.Assume.assumeFalse(de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR);
+    java.util.Locale previous = java.util.Locale.getDefault();
+    try {
+      java.util.Locale.setDefault(java.util.Locale.ENGLISH);
+      assertEquals("German", OCRUtils.codeToBaseDisplayName("deu"));
+      assertEquals("Norwegian", OCRUtils.codeToBaseDisplayName("nor"));
+      assertEquals("Chinese (Simplified)", OCRUtils.codeToBaseDisplayName("chi_sim"));
+      assertEquals("Chinese (Traditional)", OCRUtils.codeToBaseDisplayName("chi_tra"));
+    } finally {
+      java.util.Locale.setDefault(previous);
+    }
+  }
+
+  @Test
+  public void codeToBaseDisplayName_paddleCode_isPaddleModelName() {
+    org.junit.Assume.assumeTrue(de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR);
+    assertEquals("Latin script (Paddle)", OCRUtils.codeToBaseDisplayName("latin"));
+    assertEquals("xyz (Paddle)", OCRUtils.codeToBaseDisplayName("xyz"));
+  }
+
   // ==================== Helper Methods ====================
 
   private boolean containsLanguage(String[] languages, String lang) {
