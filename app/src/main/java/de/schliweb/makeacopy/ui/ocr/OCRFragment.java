@@ -116,7 +116,26 @@ public class OCRFragment extends Fragment {
     binding.ocrModelsHint.setVisibility(
         getResources().getBoolean(R.bool.show_ocr_models_hint) ? View.VISIBLE : View.GONE);
 
-    // If OCR was opened directly (skipping Crop), ensure we have a bitmap in CropViewModel
+    ensureBitmapWhenOpenedDirectly();
+    rememberInitialImage();
+
+    // Language helper (no initTesseract() here!)
+    langHelper = ocrHelperProvider.get();
+
+    registerTraineddataImportLauncher();
+    observeViewModels();
+    setupInsets(root);
+    setupBackNavigation();
+    setupActionButtons();
+
+    // Language selection
+    setupLanguageSpinner();
+
+    return root;
+  }
+
+  /** If OCR was opened directly (skipping Crop), ensure we have a bitmap in CropViewModel. */
+  private void ensureBitmapWhenOpenedDirectly() {
     try {
       if (cropViewModel.getImageBitmap().getValue() == null) {
         de.schliweb.makeacopy.ui.camera.CameraViewModel camVm =
@@ -132,9 +151,13 @@ public class OCRFragment extends Fragment {
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }
+  }
 
-    // On first entry, if we have an image and no OCR results yet, remember this image
-    // Do NOT reset if we already have OCR results (e.g., returning from Review screen)
+  /**
+   * On first entry, if we have an image and no OCR results yet, remember this image. Do NOT reset
+   * if we already have OCR results (e.g., returning from Review screen).
+   */
+  private void rememberInitialImage() {
     try {
       Bitmap cur = cropViewModel.getImageBitmap().getValue();
       if (cur != null) {
@@ -149,11 +172,10 @@ public class OCRFragment extends Fragment {
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }
+  }
 
-    // Language helper (no initTesseract() here!)
-    langHelper = ocrHelperProvider.get();
-
-    // Init SAF launcher for manual .traineddata import
+  /** Init SAF launcher for manual .traineddata import. */
+  private void registerTraineddataImportLauncher() {
     openTraineddataLauncher =
         registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -174,63 +196,10 @@ public class OCRFragment extends Fragment {
                 }
               }
             });
+  }
 
-    // State observer
-    ocrViewModel
-        .getState()
-        .observe(
-            getViewLifecycleOwner(),
-            state -> {
-              boolean canProceed = state.imageProcessed() && !state.processing();
-              // Haptic confirmation when OCR processing finishes
-              if (wasOcrProcessing && !state.processing() && state.imageProcessed()) {
-                HapticsUtils.vibrateOneShot(getContext(), 30L);
-              }
-              wasOcrProcessing = state.processing();
-              binding.buttonProcess.setEnabled(canProceed);
-              binding.buttonProcess.setText(R.string.next);
-
-              binding.textOcr.setText(
-                  state.processing()
-                      ? getString(R.string.processing_image)
-                      : (state.imageProcessed()
-                          ? getString(
-                              R.string.ocr_processing_complete_tap_the_button_to_proceed_to_export)
-                          : getString(R.string.no_image_processed_crop_an_image_first)));
-
-              // Use effective text (reviewed if available, otherwise original OCR)
-              String effectiveText = state.getEffectiveText();
-              binding.ocrResultText.setText(
-                  (effectiveText == null || effectiveText.isEmpty())
-                      ? getString(R.string.ocr_results_will_appear_here)
-                      : effectiveText);
-
-              // Enable review button only when OCR finished and we have words (and feature enabled)
-              if (!FeatureFlags.isOcrReviewEnabled()) {
-                // When feature is disabled, hide the review button completely
-                binding.buttonOcrReview.setVisibility(View.GONE);
-              } else {
-                boolean hasWords = state.words() != null && !state.words().isEmpty();
-                boolean enableReview = state.imageProcessed() && !state.processing() && hasWords;
-                binding.buttonOcrReview.setEnabled(enableReview);
-                binding.buttonOcrReview.setAlpha(enableReview ? 1f : 0.4f);
-                binding.buttonOcrReview.setVisibility(View.VISIBLE);
-              }
-
-              // Enable share button only when OCR finished and there is text to share
-              boolean hasText = effectiveText != null && !effectiveText.trim().isEmpty();
-              boolean enableShare = state.imageProcessed() && !state.processing() && hasText;
-              binding.buttonOcrShare.setEnabled(enableShare);
-              binding.buttonOcrShare.setAlpha(enableShare ? 1f : 0.4f);
-
-              // Disable settings (OCR options) button while processing is running
-              boolean processing = state.processing();
-              binding.buttonOcrOptions.setEnabled(!processing);
-              binding.buttonOcrOptions.setAlpha(processing ? 0.4f : 1f);
-
-              // Proceed to Export
-              binding.buttonProcess.setOnClickListener(v -> navigateToExport());
-            });
+  private void observeViewModels() {
+    ocrViewModel.getState().observe(getViewLifecycleOwner(), this::renderState);
 
     // Error events
     ocrViewModel
@@ -257,7 +226,59 @@ public class OCRFragment extends Fragment {
                 }
               }
             });
+  }
 
+  private void renderState(OCRViewModel.OcrUiState state) {
+    boolean finished = state.imageProcessed() && !state.processing();
+    // Haptic confirmation when OCR processing finishes
+    if (wasOcrProcessing && finished) {
+      HapticsUtils.vibrateOneShot(getContext(), 30L);
+    }
+    wasOcrProcessing = state.processing();
+    binding.buttonProcess.setEnabled(finished);
+    binding.buttonProcess.setText(R.string.next);
+
+    binding.textOcr.setText(
+        state.processing()
+            ? getString(R.string.processing_image)
+            : (state.imageProcessed()
+                ? getString(R.string.ocr_processing_complete_tap_the_button_to_proceed_to_export)
+                : getString(R.string.no_image_processed_crop_an_image_first)));
+
+    // Use effective text (reviewed if available, otherwise original OCR)
+    String effectiveText = state.getEffectiveText();
+    binding.ocrResultText.setText(
+        (effectiveText == null || effectiveText.isEmpty())
+            ? getString(R.string.ocr_results_will_appear_here)
+            : effectiveText);
+
+    // Enable review button only when OCR finished and we have words (and feature enabled)
+    if (!FeatureFlags.isOcrReviewEnabled()) {
+      // When feature is disabled, hide the review button completely
+      binding.buttonOcrReview.setVisibility(View.GONE);
+    } else {
+      boolean hasWords = state.words() != null && !state.words().isEmpty();
+      setEnabledWithAlpha(binding.buttonOcrReview, finished && hasWords);
+      binding.buttonOcrReview.setVisibility(View.VISIBLE);
+    }
+
+    // Enable share button only when OCR finished and there is text to share
+    boolean hasText = effectiveText != null && !effectiveText.trim().isEmpty();
+    setEnabledWithAlpha(binding.buttonOcrShare, finished && hasText);
+
+    // Disable settings (OCR options) button while processing is running
+    setEnabledWithAlpha(binding.buttonOcrOptions, !state.processing());
+
+    // Proceed to Export
+    binding.buttonProcess.setOnClickListener(v -> navigateToExport());
+  }
+
+  private static void setEnabledWithAlpha(View button, boolean enabled) {
+    button.setEnabled(enabled);
+    button.setAlpha(enabled ? 1f : 0.4f);
+  }
+
+  private void setupInsets(View root) {
     // Insets (status bar)
     ViewCompat.setOnApplyWindowInsetsListener(
         root,
@@ -278,71 +299,52 @@ public class OCRFragment extends Fragment {
           UIUtils.adjustMarginForSystemInsets(binding.buttonContainer, 12);
           return insets;
         });
+  }
 
-    // Back navigates to Crop reliably: try to pop back stack, otherwise navigate explicitly
-    binding.buttonBack.setOnClickListener(
-        v -> {
-          try {
-            // Prevent immediate auto-forward from Crop by resetting cropped state and restoring
-            // original
-            try {
-              cropViewModel.setImageCropped(false);
-              cropViewModel.setUserRotationDegrees(0);
-
-              Bitmap orig = cropViewModel.getOriginalImageBitmap().getValue();
-              if (orig != null) cropViewModel.setImageBitmap(orig);
-            } catch (Throwable ignoreSet) {
-              // Best-effort; failure is non-critical
-            }
-            androidx.navigation.NavController nav = Navigation.findNavController(requireView());
-            boolean popped = nav.popBackStack();
-            if (!popped) {
-              nav.navigate(R.id.navigation_crop);
-            }
-          } catch (Throwable ignore) {
-            try {
-              Navigation.findNavController(requireView()).navigate(R.id.navigation_crop);
-            } catch (Throwable ignored2) {
-              // Best-effort; failure is non-critical
-            }
-          }
-        });
-
-    // Also handle system back (gesture/hardware) the same way
+  /** The Back button and system back (gesture/hardware) both return to Crop the same way. */
+  private void setupBackNavigation() {
+    binding.buttonBack.setOnClickListener(v -> navigateBackToCrop());
     OnBackPressedCallback backCallback =
         new OnBackPressedCallback(true) {
           @Override
           public void handleOnBackPressed() {
-            try {
-              // Prevent immediate auto-forward from Crop by resetting cropped state and restoring
-              // original
-              try {
-                cropViewModel.setImageCropped(false);
-                cropViewModel.setUserRotationDegrees(0);
-
-                Bitmap orig = cropViewModel.getOriginalImageBitmap().getValue();
-                if (orig != null) cropViewModel.setImageBitmap(orig);
-              } catch (Throwable ignoreSet) {
-                // Best-effort; failure is non-critical
-              }
-              androidx.navigation.NavController nav = Navigation.findNavController(requireView());
-              boolean popped = nav.popBackStack();
-              if (!popped) {
-                nav.navigate(R.id.navigation_crop);
-              }
-            } catch (Throwable ignore) {
-              try {
-                Navigation.findNavController(requireView()).navigate(R.id.navigation_crop);
-              } catch (Throwable ignored2) {
-                // Best-effort; failure is non-critical
-              }
-            }
+            navigateBackToCrop();
           }
         };
     requireActivity()
         .getOnBackPressedDispatcher()
         .addCallback(getViewLifecycleOwner(), backCallback);
+  }
 
+  /** Navigates to Crop reliably: try to pop back stack, otherwise navigate explicitly. */
+  private void navigateBackToCrop() {
+    try {
+      // Prevent immediate auto-forward from Crop by resetting cropped state and restoring
+      // original
+      try {
+        cropViewModel.setImageCropped(false);
+        cropViewModel.setUserRotationDegrees(0);
+
+        Bitmap orig = cropViewModel.getOriginalImageBitmap().getValue();
+        if (orig != null) cropViewModel.setImageBitmap(orig);
+      } catch (Throwable ignoreSet) {
+        // Best-effort; failure is non-critical
+      }
+      androidx.navigation.NavController nav = Navigation.findNavController(requireView());
+      boolean popped = nav.popBackStack();
+      if (!popped) {
+        nav.navigate(R.id.navigation_crop);
+      }
+    } catch (Throwable ignore) {
+      try {
+        Navigation.findNavController(requireView()).navigate(R.id.navigation_crop);
+      } catch (Throwable ignored2) {
+        // Best-effort; failure is non-critical
+      }
+    }
+  }
+
+  private void setupActionButtons() {
     // OCR options (settings) icon above the button bar
     binding.buttonOcrOptions.setOnClickListener(v -> showOcrOptionsDialog());
     // Share recognized text directly with other apps
@@ -350,26 +352,21 @@ public class OCRFragment extends Fragment {
     // OCR Review icon (optional, feature-flagged)
     if (!FeatureFlags.isOcrReviewEnabled()) {
       binding.buttonOcrReview.setVisibility(View.GONE);
-    } else {
-      binding.buttonOcrReview.setVisibility(View.VISIBLE);
-      binding.buttonOcrReview.setOnClickListener(
-          v -> {
-            // Build OcrDoc from current OCR state and pass to Review VM
-            de.schliweb.makeacopy.ui.ocr.review.OcrReviewViewModel rv =
-                new ViewModelProvider(requireActivity())
-                    .get(de.schliweb.makeacopy.ui.ocr.review.OcrReviewViewModel.class);
-            OCRViewModel.OcrUiState s = ocrViewModel.getState().getValue();
-            de.schliweb.makeacopy.ui.ocr.review.model.OcrDoc doc =
-                de.schliweb.makeacopy.ui.ocr.review.model.OcrDocMapper.fromState(s);
-            rv.setDoc(doc);
-            Navigation.findNavController(requireView()).navigate(R.id.navigation_review);
-          });
+      return;
     }
-
-    // Language selection
-    setupLanguageSpinner();
-
-    return root;
+    binding.buttonOcrReview.setVisibility(View.VISIBLE);
+    binding.buttonOcrReview.setOnClickListener(
+        v -> {
+          // Build OcrDoc from current OCR state and pass to Review VM
+          de.schliweb.makeacopy.ui.ocr.review.OcrReviewViewModel rv =
+              new ViewModelProvider(requireActivity())
+                  .get(de.schliweb.makeacopy.ui.ocr.review.OcrReviewViewModel.class);
+          OCRViewModel.OcrUiState s = ocrViewModel.getState().getValue();
+          de.schliweb.makeacopy.ui.ocr.review.model.OcrDoc doc =
+              de.schliweb.makeacopy.ui.ocr.review.model.OcrDocMapper.fromState(s);
+          rv.setDoc(doc);
+          Navigation.findNavController(requireView()).navigate(R.id.navigation_review);
+        });
   }
 
   /**
