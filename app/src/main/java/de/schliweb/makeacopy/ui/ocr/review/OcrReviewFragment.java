@@ -17,14 +17,15 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.SeekBar;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import dagger.hilt.android.AndroidEntryPoint;
 import de.schliweb.makeacopy.BuildConfig;
@@ -34,6 +35,7 @@ import de.schliweb.makeacopy.ui.ocr.review.model.OcrDoc;
 import de.schliweb.makeacopy.ui.ocr.review.model.OcrDocReadingOrder;
 import de.schliweb.makeacopy.ui.ocr.review.view.MinimapView;
 import de.schliweb.makeacopy.ui.ocr.review.view.OcrOverlayView;
+import de.schliweb.makeacopy.ui.ocr.review.view.OcrTextLayerView;
 import de.schliweb.makeacopy.utils.ocr.DictionaryManager;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.OCRPostProcessor;
@@ -71,39 +73,11 @@ public class OcrReviewFragment extends Fragment {
     if (BuildConfig.DEBUG) Log.w(TAG, msg, t);
   }
 
-  /**
-   * Applies the given scale to various UI components, ensuring that the overlay, text layer, zoom
-   * bar, and zoom chip remain synchronized.
-   *
-   * @param s The scale factor to be applied.
-   * @param overlay The overlay view to apply the scale to.
-   * @param textLayer The text layer view to apply the scale to.
-   * @param zoomBar The zoom bar (seek bar) to update with the scaled value.
-   * @param chipZoom The chip component to display the scale percentage and update its content
-   *     description.
-   */
-  // Centralized scale/UI application to keep overlay, text layer, zoom bar and zoom chip in sync
-  private void applyScale(
-      float s,
-      OcrOverlayView overlay,
-      de.schliweb.makeacopy.ui.ocr.review.view.OcrTextLayerView textLayer,
-      android.widget.SeekBar zoomBar,
-      com.google.android.material.chip.Chip chipZoom) {
+  /** Centralized scale/UI application to keep overlay, text layer and zoom chip in sync. */
+  private void applyScale(float s) {
     if (overlay != null) overlay.setUserScale(s);
     if (textLayer != null) textLayer.setUserScale(s);
-    if (zoomBar != null) {
-      int prog = Math.min(200, Math.max(25, Math.round(s * 50f)));
-      zoomBar.setProgress(prog);
-    }
-    if (chipZoom != null) {
-      int pct = Math.round(s * 100f);
-      chipZoom.setText(pct + "%");
-      try {
-        chipZoom.setContentDescription(getString(R.string.cd_zoom_chip_open_menu));
-      } catch (Throwable t) {
-        dbgWarn("Updating zoom chip contentDescription (applyScale) failed", t);
-      }
-    }
+    updateLayoutZoomChip(s);
   }
 
   /**
@@ -251,19 +225,31 @@ public class OcrReviewFragment extends Fragment {
   private android.widget.TextView chipLow;
   private android.widget.TextView chipLang;
 
+  // View references bound in onCreateView and released in onDestroyView
+  @Nullable private OcrOverlayView overlay;
+  @Nullable private OcrTextLayerView textLayer;
+  @Nullable private OcrOverlayView documentOcrOverlay;
+  @Nullable private android.widget.ImageView documentImage;
+  @Nullable private com.google.android.material.chip.Chip chipZoom;
+  @Nullable private com.google.android.material.chip.Chip chipZoomDocument;
+  @Nullable private EditText textModeEditor;
+  @Nullable private View overlayContainer;
+  @Nullable private View textModeContainer;
+  @Nullable private View documentModeContainer;
+  @Nullable private View minimapCard;
+  // Only set when the minimap card placeholder exists
+  @Nullable private MinimapView minimap;
+
+  // True while the editor text is replaced programmatically (suppresses the write-back)
+  private boolean updatingEditor;
+  // Guard flag to prevent infinite recursion between overlay and documentOcrOverlay viewport
+  // listeners
+  private boolean syncingViewport;
+  private final Runnable applyEditorRunnable = this::applyEditorTextToDoc;
+
   /**
-   * Inflates the view for the fragment and initializes its components and observers. This method
-   * sets up the user interface, binds views to logic, and prepares document data handling. It also
-   * manages configuration settings for components like the toolbar, overlay, minimap, and segmented
-   * controls.
-   *
-   * @param inflater The LayoutInflater object that can be used to inflate any views in the
-   *     fragment.
-   * @param container The parent view that this fragment's UI should be attached to (if not null).
-   *     This value can be used to determine layout parameters for the inflated view.
-   * @param savedInstanceState If non-null, this fragment is being re-constructed from a previous
-   *     saved state as given here.
-   * @return The root View of the fragment's layout, or null if the inflater or container is null.
+   * Inflates the view for the fragment, binds its views and wires the toolbar, minimap, mode
+   * switch, text editor, viewport synchronisation and zoom chips.
    */
   @Nullable
   @Override
@@ -273,16 +259,45 @@ public class OcrReviewFragment extends Fragment {
       @Nullable Bundle savedInstanceState) {
     View root = inflater.inflate(R.layout.fragment_ocr_review, container, false);
     viewModel = new ViewModelProvider(requireActivity()).get(OcrReviewViewModel.class);
+    updatingEditor = false;
+    syncingViewport = false;
+    bindViews(root);
 
     // Top App Bar (chips live inside its action view)
-    com.google.android.material.appbar.MaterialToolbar toolbar =
-        root.findViewById(R.id.top_app_bar);
+    MaterialToolbar toolbar = root.findViewById(R.id.top_app_bar);
+    setupBackNavigation(toolbar);
+    setupMinimap(root);
+    bindStatusChips(toolbar);
+    viewModel.getDoc().observe(getViewLifecycleOwner(), this::onDocChanged);
+    setupBottomButtons(root);
+    setupModeSwitch(root);
+    setupTextEditorWriteBack();
+    setupViewportSync();
+    setupZoomChips();
+    scheduleInitialFit();
+    return root;
+  }
+
+  private void bindViews(View root) {
+    overlay = root.findViewById(R.id.ocr_overlay);
+    textLayer = root.findViewById(R.id.ocr_text_layer);
+    overlayContainer = root.findViewById(R.id.overlay_container);
+    textModeContainer = root.findViewById(R.id.text_mode_container);
+    textModeEditor = root.findViewById(R.id.text_mode_editor);
+    chipZoom = root.findViewById(R.id.chip_zoom);
+    // Document mode views
+    documentModeContainer = root.findViewById(R.id.document_mode_container);
+    documentImage = root.findViewById(R.id.document_image);
+    documentOcrOverlay = root.findViewById(R.id.document_ocr_overlay);
+    chipZoomDocument = root.findViewById(R.id.chip_zoom_document);
+  }
+
+  /** Routes the toolbar X and system back (gesture/hardware button) through the discard dialog. */
+  private void setupBackNavigation(@Nullable MaterialToolbar toolbar) {
     if (toolbar != null) {
       // Use handleBackAction() to show discard dialog if there are unsaved changes
       toolbar.setNavigationOnClickListener(v -> handleBackAction());
     }
-
-    // Handle system back (gesture/hardware button) the same way as X button
     androidx.activity.OnBackPressedCallback backCallback =
         new androidx.activity.OnBackPressedCallback(true) {
           @Override
@@ -293,229 +308,11 @@ public class OcrReviewFragment extends Fragment {
     requireActivity()
         .getOnBackPressedDispatcher()
         .addCallback(getViewLifecycleOwner(), backCallback);
-    OcrOverlayView overlay = root.findViewById(R.id.ocr_overlay);
-    de.schliweb.makeacopy.ui.ocr.review.view.OcrTextLayerView textLayer =
-        root.findViewById(R.id.ocr_text_layer);
-    SeekBar zoomBar = null;
-    View overlayContainer = root.findViewById(R.id.overlay_container);
-    View textModeContainer = root.findViewById(R.id.text_mode_container);
-    EditText textModeEditor = root.findViewById(R.id.text_mode_editor);
-    com.google.android.material.button.MaterialButtonToggleGroup segmented =
-        root.findViewById(R.id.segmented_group);
-    com.google.android.material.button.MaterialButton segLayout =
-        root.findViewById(R.id.seg_layout);
-    com.google.android.material.chip.Chip chipZoom = root.findViewById(R.id.chip_zoom);
+  }
 
-    // Document mode views
-    View documentModeContainer = root.findViewById(R.id.document_mode_container);
-    android.widget.ImageView documentImage = root.findViewById(R.id.document_image);
-    OcrOverlayView documentOcrOverlay = root.findViewById(R.id.document_ocr_overlay);
-    com.google.android.material.chip.Chip chipZoomDocument =
-        root.findViewById(R.id.chip_zoom_document);
-    // Minimap inside card placeholder
-    final android.view.ViewGroup minimapCard = root.findViewById(R.id.minimap_placeholder);
-    final MinimapView minimap = new MinimapView(requireContext());
-    if (minimapCard != null) {
-      // Ensure proper size inside card
-      android.view.ViewGroup.LayoutParams lp =
-          new android.view.ViewGroup.LayoutParams(
-              android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-              android.view.ViewGroup.LayoutParams.MATCH_PARENT);
-      minimap.setLayoutParams(lp);
-      try {
-        minimap.setContentDescription(getString(R.string.cd_minimap));
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      minimapCard.setClickable(true);
-      if (minimapCard instanceof android.widget.FrameLayout) {
-        minimapCard.addView(minimap);
-      } else if (minimapCard instanceof com.google.android.material.card.MaterialCardView) {
-        // MaterialCardView is a FrameLayout subclass; safe to cast
-        minimapCard.addView(minimap);
-      }
-      // Apply current visibility state
-      minimapCard.setVisibility(minimapVisible ? View.VISIBLE : View.GONE);
-      // Try to load thumbnail preview for minimap
-      updateMinimapThumbnail(minimap);
-      // Navigation from minimap back to overlay/text layer
-      minimap.setOnNavigateListener(
-          new MinimapView.OnNavigateListener() {
-            @Override
-            public void onCenterRequested(float contentCenterX, float contentCenterY) {
-              if (overlay == null) return;
-              OcrDoc d = null;
-              try {
-                d = viewModel.getDoc().getValue();
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-              if (d == null || d.imageSize == null) return;
-              int vw2 = overlay.getWidth();
-              int vh2 = overlay.getHeight();
-              if (vw2 <= 0 || vh2 <= 0) return;
-              float baseFit =
-                  Math.min(
-                      vw2 / Math.max(1f, (float) d.imageSize.w),
-                      vh2 / Math.max(1f, (float) d.imageSize.h));
-              float eff = baseFit * overlay.getUserScale();
-              float baseOffsetX2 = (vw2 - d.imageSize.w * eff) * 0.5f;
-              float baseOffsetY2 = (vh2 - d.imageSize.h * eff) * 0.5f;
-              float desiredUserOffsetX = (vw2 * 0.5f) - (baseOffsetX2 + contentCenterX * eff);
-              float desiredUserOffsetY = (vh2 * 0.5f) - (baseOffsetY2 + contentCenterY * eff);
-              overlay.setUserOffset(desiredUserOffsetX, desiredUserOffsetY);
-              if (textLayer != null)
-                textLayer.setUserOffset(desiredUserOffsetX, desiredUserOffsetY);
-            }
-
-            @Override
-            public void onToggleZoomRequested() {
-              float target;
-              OcrDoc d = null;
-              try {
-                d = viewModel.getDoc().getValue();
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-              if (d != null && d.imageSize != null) {
-                float padPx = dp(12f);
-                float fit = computeFitScale(overlay, d.imageSize.w, d.imageSize.h, padPx);
-                float cur = overlay != null ? overlay.getUserScale() : 1f;
-                // Toggle: if currently around FIT, go to 100%; else go to FIT
-                target = (Math.abs(cur - fit) < 0.05f) ? 1.0f : fit;
-              } else target = 1.0f;
-              applyScale(target, overlay, textLayer, zoomBar, chipZoom);
-              if (Math.abs(target - 1.0f) > 0.01f) {
-                centerViewport(overlay);
-                centerViewport(textLayer);
-              }
-            }
-          });
-    }
-    // Bind toolbar action view chips reliably using post()
-    if (toolbar != null) {
-      toolbar.post(
-          () -> {
-            try {
-              android.view.Menu menu = toolbar.getMenu();
-              android.view.MenuItem miStats =
-                  (menu != null) ? menu.findItem(R.id.action_status_chips) : null;
-              View statsView = miStats != null ? miStats.getActionView() : null;
-              this.chipWords = statsView != null ? statsView.findViewById(R.id.chip_words) : null;
-              this.chipLow = statsView != null ? statsView.findViewById(R.id.chip_low) : null;
-              this.chipLang = statsView != null ? statsView.findViewById(R.id.chip_lang) : null;
-              // Initial fill using current document, if available
-              OcrDoc docNow = null;
-              try {
-                docNow = viewModel.getDoc().getValue();
-              } catch (Throwable t) {
-                dbgWarn("Getting doc for initial status chips failed", t);
-              }
-              updateStatusChips(docNow);
-            } catch (Throwable t) {
-              dbgWarn("Binding toolbar status chips failed", t);
-            }
-          });
-    }
-
-    final boolean[] updatingEditor = {false};
-    // Guard flag to prevent infinite recursion between overlay and documentOcrOverlay viewport
-    // listeners
-    final boolean[] syncingViewport = {false};
-
-    viewModel
-        .getDoc()
-        .observe(
-            getViewLifecycleOwner(),
-            doc -> {
-              // Update minimap page size when document changes
-              if (doc != null && doc.imageSize != null) {
-                try {
-                  if (minimapCard != null) {
-                    // minimap variable exists in scope
-                    minimap.setPageSize(doc.imageSize.w, doc.imageSize.h);
-                    // Refresh thumbnail preview if available on disk
-                    updateMinimapThumbnail(minimap);
-                    // Provide simplified OCR boxes for optional minimap layer
-                    if (doc.words != null) {
-                      java.util.ArrayList<int[]> boxes =
-                          new java.util.ArrayList<>(doc.words.size());
-                      for (OcrDoc.Word w : doc.words) {
-                        if (w == null || w.b == null || w.b.length < 4) continue;
-                        boxes.add(new int[] {w.b[0], w.b[1], w.b[2], w.b[3]});
-                      }
-                      minimap.setOcrBoxes(boxes);
-                    } else {
-                      minimap.setOcrBoxes(null);
-                    }
-                    // Provide confidence heatmap (binned) based on word confidences
-                    try {
-                      int cols = 32, rows = 32;
-                      int n = cols * rows;
-                      int[] tot = new int[n];
-                      int[] low = new int[n];
-                      if (doc.words != null
-                          && doc.imageSize != null
-                          && doc.imageSize.w > 0
-                          && doc.imageSize.h > 0) {
-                        for (OcrDoc.Word w : doc.words) {
-                          if (w == null || w.b == null || w.b.length < 4) continue;
-                          float cx = w.b[0] + (w.b[2] * 0.5f);
-                          float cy = w.b[1] + (w.b[3] * 0.5f);
-                          int ix =
-                              (int) Math.floor((cx / Math.max(1f, (float) doc.imageSize.w)) * cols);
-                          int iy =
-                              (int) Math.floor((cy / Math.max(1f, (float) doc.imageSize.h)) * rows);
-                          if (ix < 0) ix = 0;
-                          if (iy < 0) iy = 0;
-                          if (ix >= cols) ix = cols - 1;
-                          if (iy >= rows) iy = rows - 1;
-                          int idx = iy * cols + ix;
-                          tot[idx]++;
-                          if (w.c <= 0.60f) low[idx]++;
-                        }
-                      }
-                      float[] vals = new float[n];
-                      for (int i = 0; i < n; i++) {
-                        vals[i] = (tot[i] > 0) ? (low[i] / (float) tot[i]) : 0f;
-                      }
-                      minimap.setHeatmap(cols, rows, vals);
-                    } catch (Throwable t) {
-                      dbgWarn("Updating minimap heatmap failed", t);
-                    }
-                  }
-                } catch (Throwable t) {
-                  dbgWarn("Updating minimap page size/boxes failed", t);
-                }
-              }
-              // Update status chips via single helper to keep logic DRY
-              updateStatusChips(doc);
-              if (overlay != null) overlay.setDoc(doc);
-              if (textLayer != null) textLayer.setDoc(doc);
-              if (textModeEditor != null) {
-                try {
-                  String text = buildFullText(doc);
-                  // Avoid resetting cursor if text is identical
-                  String current =
-                      textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
-                  if (!text.equals(current)) {
-                    updatingEditor[0] = true;
-                    textModeEditor.setText(text);
-                    textModeEditor.setSelection(textModeEditor.getText().length());
-                    updatingEditor[0] = false;
-                  }
-                } catch (Throwable t) {
-                  dbgWarn("Failed updating TextMode editor from doc", t);
-                  updatingEditor[0] = false;
-                }
-              }
-            });
-
-    // Bottom Button Container (BACK/SAVE) wiring
-    android.widget.Button buttonBack = root.findViewById(R.id.button_back);
-    android.widget.Button buttonSave = root.findViewById(R.id.button_save);
+  /** Bottom Button Container (BACK/SAVE) wiring. */
+  private void setupBottomButtons(View root) {
     View buttonContainer = root.findViewById(R.id.button_container);
-
     // Adjust button container margin for system navigation bar (like other fragments)
     if (buttonContainer != null) {
       UIUtils.adjustMarginForSystemInsets(buttonContainer, 12);
@@ -526,529 +323,574 @@ public class OcrReviewFragment extends Fragment {
             return insets;
           });
     }
+    android.widget.Button buttonBack = root.findViewById(R.id.button_back);
+    if (buttonBack != null) buttonBack.setOnClickListener(v -> handleBackAction());
+    android.widget.Button buttonSave = root.findViewById(R.id.button_save);
+    if (buttonSave != null) buttonSave.setOnClickListener(v -> handleSaveAction());
+  }
 
-    if (buttonBack != null) {
-      buttonBack.setOnClickListener(v -> handleBackAction());
+  // ---------------------------------------------------------------------------------------------
+  // Minimap
+  // ---------------------------------------------------------------------------------------------
+
+  /** Creates the minimap inside its card placeholder; without the card there is no minimap. */
+  private void setupMinimap(View root) {
+    minimapCard = root.findViewById(R.id.minimap_placeholder);
+    minimap = null;
+    if (!(minimapCard instanceof ViewGroup)) return;
+    ViewGroup card = (ViewGroup) minimapCard;
+
+    MinimapView view = new MinimapView(requireContext());
+    // Ensure proper size inside card
+    view.setLayoutParams(
+        new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    try {
+      view.setContentDescription(getString(R.string.cd_minimap));
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
     }
+    card.setClickable(true);
+    // MaterialCardView is a FrameLayout subclass
+    if (card instanceof android.widget.FrameLayout) card.addView(view);
+    // Apply current visibility state
+    card.setVisibility(minimapVisible ? View.VISIBLE : View.GONE);
+    // Try to load thumbnail preview for minimap
+    updateMinimapThumbnail(view);
+    // Navigation from minimap back to overlay/text layer
+    view.setOnNavigateListener(
+        new MinimapView.OnNavigateListener() {
+          @Override
+          public void onCenterRequested(float contentCenterX, float contentCenterY) {
+            centerOnContentPoint(contentCenterX, contentCenterY);
+          }
 
-    if (buttonSave != null) {
-      buttonSave.setOnClickListener(v -> handleSaveAction());
+          @Override
+          public void onToggleZoomRequested() {
+            toggleFitZoom();
+          }
+        });
+    minimap = view;
+  }
+
+  /** Pans overlay and text layer so that the given page coordinate sits in the viewport center. */
+  private void centerOnContentPoint(float contentCenterX, float contentCenterY) {
+    if (overlay == null) return;
+    OcrDoc d = currentDoc();
+    if (d == null || d.imageSize == null) return;
+    int vw = overlay.getWidth();
+    int vh = overlay.getHeight();
+    if (vw <= 0 || vh <= 0) return;
+    float baseFit =
+        Math.min(
+            vw / Math.max(1f, (float) d.imageSize.w), vh / Math.max(1f, (float) d.imageSize.h));
+    float eff = baseFit * overlay.getUserScale();
+    float baseOffsetX = (vw - d.imageSize.w * eff) * 0.5f;
+    float baseOffsetY = (vh - d.imageSize.h * eff) * 0.5f;
+    float userOffsetX = (vw * 0.5f) - (baseOffsetX + contentCenterX * eff);
+    float userOffsetY = (vh * 0.5f) - (baseOffsetY + contentCenterY * eff);
+    overlay.setUserOffset(userOffsetX, userOffsetY);
+    if (textLayer != null) textLayer.setUserOffset(userOffsetX, userOffsetY);
+  }
+
+  /** Toggle: if currently around FIT, go to 100%; else go to FIT. */
+  private void toggleFitZoom() {
+    float target = 1.0f;
+    Float fit = fitScale(overlay);
+    if (fit != null) {
+      float cur = overlay != null ? overlay.getUserScale() : 1f;
+      target = (Math.abs(cur - fit) < 0.05f) ? 1.0f : fit;
     }
+    applyScale(target);
+    if (Math.abs(target - 1.0f) > 0.01f) {
+      centerViewport(overlay);
+      centerViewport(textLayer);
+    }
+  }
 
-    final boolean[] updatingZoomBar = {false};
+  private void toggleMinimapVisibility() {
+    minimapVisible = !minimapVisible;
+    setVisible(minimapCard, minimapVisible);
+  }
 
-    // Segmented control: toggle between Layout, Text, and Document modes
-    if (segmented != null) {
-      com.google.android.material.button.MaterialButtonToggleGroup.OnButtonCheckedListener toggle =
-          (group, checkedId, isChecked) -> {
-            if (!isChecked) return; // react only when a button becomes checked
-            boolean showLayout = checkedId == R.id.seg_layout;
-            boolean showText = checkedId == R.id.seg_text;
-            boolean showDocument = checkedId == R.id.seg_document;
-
-            // Update container visibility for all three modes
-            if (overlayContainer != null)
-              overlayContainer.setVisibility(showLayout ? View.VISIBLE : View.GONE);
-            if (textModeContainer != null)
-              textModeContainer.setVisibility(showText ? View.VISIBLE : View.GONE);
-            if (documentModeContainer != null)
-              documentModeContainer.setVisibility(showDocument ? View.VISIBLE : View.GONE);
-
-            if (showLayout) {
-              // Sync zoom and position from Document overlay to Layout overlay when switching back
-              if (overlay != null && documentOcrOverlay != null) {
-                overlay.setUserScale(documentOcrOverlay.getUserScale());
-                overlay.setUserOffset(
-                    documentOcrOverlay.getUserOffsetX(), documentOcrOverlay.getUserOffsetY());
-                if (textLayer != null) {
-                  textLayer.setUserScale(documentOcrOverlay.getUserScale());
-                  textLayer.setUserOffset(
-                      documentOcrOverlay.getUserOffsetX(), documentOcrOverlay.getUserOffsetY());
-                }
-                // Update zoom chip to match
-                if (chipZoom != null) {
-                  int pct = Math.round(overlay.getUserScale() * 100f);
-                  chipZoom.setText(pct + "%");
-                }
-              }
-            }
-
-            if (showText && textModeEditor != null) {
-              // Sync text editor with current document when switching to text mode
-              try {
-                OcrDoc doc = viewModel.getDoc().getValue();
-                String text = buildFullText(doc);
-                String current =
-                    textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
-                if (!text.equals(current)) {
-                  updatingEditor[0] = true;
-                  textModeEditor.setText(text);
-                  textModeEditor.setSelection(textModeEditor.getText().length());
-                  updatingEditor[0] = false;
-                }
-              } catch (Throwable t) {
-                dbgWarn("Syncing text editor on mode switch failed", t);
-              }
-              textModeEditor.requestFocus();
-            }
-
-            if (showDocument) {
-              // Load and display the original document image with OCR overlay
-              try {
-                CropViewModel cvm =
-                    new ViewModelProvider(requireActivity()).get(CropViewModel.class);
-                Bitmap bmp = cvm != null ? cvm.getImageBitmap().getValue() : null;
-                if (bmp != null && !bmp.isRecycled() && documentImage != null) {
-                  // Apply user rotation if set
-                  Integer userRotDeg = cvm.getUserRotationDegrees().getValue();
-                  int rotDeg = (userRotDeg != null) ? userRotDeg : 0;
-                  Bitmap displayBmp = (rotDeg != 0) ? rotateBitmap(bmp, rotDeg) : bmp;
-                  documentImage.setImageBitmap(displayBmp);
-                }
-                // Sync OCR overlay with document
-                if (documentOcrOverlay != null) {
-                  OcrDoc doc = viewModel.getDoc().getValue();
-                  documentOcrOverlay.setDoc(doc);
-                  // In Document mode, show only boxes without text content
-                  documentOcrOverlay.setBoxesOnly(true);
-                  documentOcrOverlay.setOnWordTapListener(
-                      OcrReviewFragment.this::showInlineEditDialog);
-                  documentOcrOverlay.setOnWordLongPressListener(
-                      OcrReviewFragment.this::showContextMenu);
-                  // Sync zoom and position from Layout overlay to Document overlay
-                  if (overlay != null) {
-                    documentOcrOverlay.setUserScale(overlay.getUserScale());
-                    documentOcrOverlay.setUserOffset(
-                        overlay.getUserOffsetX(), overlay.getUserOffsetY());
-                  }
-                  // Update document image matrix to match the overlay transformation
-                  // Use post() to ensure the view has been laid out
-                  documentImage.post(
-                      () -> updateDocumentImageMatrix(documentImage, documentOcrOverlay));
-                  // Update document zoom chip to match
-                  if (chipZoomDocument != null) {
-                    int pct = Math.round(documentOcrOverlay.getUserScale() * 100f);
-                    chipZoomDocument.setText(pct + "%");
-                  }
-                }
-              } catch (Throwable t) {
-                dbgWarn("Loading document image failed", t);
-              }
-            }
-          };
-      segmented.addOnButtonCheckedListener(toggle);
-      // initialize depending on current checked
-      try {
-        int checked = segmented.getCheckedButtonId();
-        if (checked == View.NO_ID && segLayout != null && segLayout.isChecked())
-          checked = R.id.seg_layout;
-        toggle.onButtonChecked(segmented, checked, true);
-      } catch (Throwable t) {
-        dbgWarn("Initializing segmented control failed", t);
+  /** Feeds page size, thumbnail, simplified OCR boxes and the confidence heatmap to the minimap. */
+  private void updateMinimap(@NonNull MinimapView minimap, @NonNull OcrDoc doc) {
+    minimap.setPageSize(doc.imageSize.w, doc.imageSize.h);
+    // Refresh thumbnail preview if available on disk
+    updateMinimapThumbnail(minimap);
+    // Provide simplified OCR boxes for optional minimap layer
+    if (doc.words != null) {
+      java.util.ArrayList<int[]> boxes = new java.util.ArrayList<>(doc.words.size());
+      for (OcrDoc.Word w : doc.words) {
+        if (w == null || w.b == null || w.b.length < 4) continue;
+        boxes.add(new int[] {w.b[0], w.b[1], w.b[2], w.b[3]});
       }
+      minimap.setOcrBoxes(boxes);
+    } else {
+      minimap.setOcrBoxes(null);
     }
+    // Provide confidence heatmap (binned) based on word confidences
+    try {
+      int cols = 32, rows = 32;
+      minimap.setHeatmap(
+          cols,
+          rows,
+          MinimapHeatmap.lowConfidenceRatios(
+              doc.words, doc.imageSize.w, doc.imageSize.h, cols, rows));
+    } catch (Throwable t) {
+      dbgWarn("Updating minimap heatmap failed", t);
+    }
+  }
 
-    // Text Mode editor write-back (macro-edit) with debounce to avoid undo bloat
-    final Runnable applyEditorRunnable =
+  // ---------------------------------------------------------------------------------------------
+  // Document updates
+  // ---------------------------------------------------------------------------------------------
+
+  /** Bind toolbar action view chips reliably using post(). */
+  private void bindStatusChips(@Nullable MaterialToolbar toolbar) {
+    if (toolbar == null) return;
+    toolbar.post(
         () -> {
           try {
-            if (textModeEditor == null) return;
-            OcrDoc doc = viewModel.getDoc().getValue();
-            if (doc == null || doc.words == null || doc.words.isEmpty()) return;
-            String src =
-                textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
-            String trimmed = src.trim();
-            String[] tokens = trimmed.isEmpty() ? new String[0] : trimmed.split("\\s+");
-            int n = Math.min(doc.words.size(), tokens.length);
-            if (n == 0) return;
-            viewModel.markModified();
-            for (int i = 0; i < n; i++) {
-              OcrDoc.Word w = doc.words.get(i);
-              if (w != null) {
-                String nt = tokens[i];
-                if (!nt.equals(w.t)) {
-                  w.t = nt;
-                  w.e = true;
-                }
-              }
-            }
-            viewModel.setDoc(doc);
-            propagateAndAutosave();
+            android.view.Menu menu = toolbar.getMenu();
+            android.view.MenuItem miStats =
+                (menu != null) ? menu.findItem(R.id.action_status_chips) : null;
+            View statsView = miStats != null ? miStats.getActionView() : null;
+            this.chipWords = statsView != null ? statsView.findViewById(R.id.chip_words) : null;
+            this.chipLow = statsView != null ? statsView.findViewById(R.id.chip_low) : null;
+            this.chipLang = statsView != null ? statsView.findViewById(R.id.chip_lang) : null;
+            // Initial fill using current document, if available
+            updateStatusChips(currentDoc());
           } catch (Throwable t) {
-            dbgWarn("Applying editor changes failed", t);
+            dbgWarn("Binding toolbar status chips failed", t);
           }
-        };
-    if (textModeEditor != null) {
-      textModeEditor.addTextChangedListener(
-          new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+        });
+  }
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-              if (updatingEditor[0]) return;
-              if (textModeContainer != null && textModeContainer.getVisibility() != View.VISIBLE)
-                return;
-              editorHandler.removeCallbacks(applyEditorRunnable);
-              editorHandler.postDelayed(applyEditorRunnable, 250);
-            }
-          });
+  @Nullable
+  private OcrDoc currentDoc() {
+    try {
+      return viewModel.getDoc().getValue();
+    } catch (Throwable t) {
+      dbgWarn("Getting current doc failed", t);
+      return null;
     }
+  }
 
+  private void onDocChanged(@Nullable OcrDoc doc) {
+    if (doc != null && doc.imageSize != null && minimap != null) {
+      try {
+        updateMinimap(minimap, doc);
+      } catch (Throwable t) {
+        dbgWarn("Updating minimap page size/boxes failed", t);
+      }
+    }
+    // Update status chips via single helper to keep logic DRY
+    updateStatusChips(doc);
+    if (overlay != null) overlay.setDoc(doc);
+    if (textLayer != null) textLayer.setDoc(doc);
+    syncEditorFromDoc(doc);
+  }
+
+  /** Replaces the Text Mode editor content with the document text without triggering write-back. */
+  private void syncEditorFromDoc(@Nullable OcrDoc doc) {
+    if (textModeEditor == null) return;
+    try {
+      String text = buildFullText(doc);
+      // Avoid resetting cursor if text is identical
+      String current = textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
+      if (!text.equals(current)) {
+        updatingEditor = true;
+        textModeEditor.setText(text);
+        textModeEditor.setSelection(textModeEditor.getText().length());
+      }
+    } catch (Throwable t) {
+      dbgWarn("Syncing TextMode editor from doc failed", t);
+    } finally {
+      updatingEditor = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Mode switch (Layout / Text / Document)
+  // ---------------------------------------------------------------------------------------------
+
+  private void setupModeSwitch(View root) {
+    MaterialButtonToggleGroup segmented = root.findViewById(R.id.segmented_group);
+    if (segmented == null) return;
+    segmented.addOnButtonCheckedListener(
+        (group, checkedId, isChecked) -> {
+          if (isChecked) onModeChecked(checkedId); // react only when a button becomes checked
+        });
+    // initialize depending on current checked
+    try {
+      int checked = segmented.getCheckedButtonId();
+      MaterialButton segLayout = root.findViewById(R.id.seg_layout);
+      if (checked == View.NO_ID && segLayout != null && segLayout.isChecked()) {
+        checked = R.id.seg_layout;
+      }
+      onModeChecked(checked);
+    } catch (Throwable t) {
+      dbgWarn("Initializing segmented control failed", t);
+    }
+  }
+
+  private void onModeChecked(int checkedId) {
+    boolean showLayout = checkedId == R.id.seg_layout;
+    boolean showText = checkedId == R.id.seg_text;
+    boolean showDocument = checkedId == R.id.seg_document;
+
+    // Update container visibility for all three modes
+    setVisible(overlayContainer, showLayout);
+    setVisible(textModeContainer, showText);
+    setVisible(documentModeContainer, showDocument);
+
+    if (showLayout) syncLayoutFromDocumentOverlay();
+    if (showText && textModeEditor != null) {
+      // Sync text editor with current document when switching to text mode
+      syncEditorFromDoc(currentDoc());
+      textModeEditor.requestFocus();
+    }
+    if (showDocument) {
+      try {
+        showDocumentMode();
+      } catch (Throwable t) {
+        dbgWarn("Loading document image failed", t);
+      }
+    }
+  }
+
+  private static void setVisible(@Nullable View view, boolean visible) {
+    if (view != null) view.setVisibility(visible ? View.VISIBLE : View.GONE);
+  }
+
+  /** Sync zoom and position from Document overlay to Layout overlay when switching back. */
+  private void syncLayoutFromDocumentOverlay() {
+    if (overlay == null || documentOcrOverlay == null) return;
+    float scale = documentOcrOverlay.getUserScale();
+    float ox = documentOcrOverlay.getUserOffsetX();
+    float oy = documentOcrOverlay.getUserOffsetY();
+    overlay.setUserScale(scale);
+    overlay.setUserOffset(ox, oy);
+    if (textLayer != null) {
+      textLayer.setUserScale(scale);
+      textLayer.setUserOffset(ox, oy);
+    }
+    setZoomChipText(chipZoom, overlay.getUserScale());
+  }
+
+  /** Loads and displays the original document image with the OCR overlay (boxes only). */
+  private void showDocumentMode() {
+    CropViewModel cvm = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
+    Bitmap bmp = cvm.getImageBitmap().getValue();
+    if (bmp != null && !bmp.isRecycled() && documentImage != null) {
+      // Apply user rotation if set
+      Integer userRotDeg = cvm.getUserRotationDegrees().getValue();
+      int rotDeg = (userRotDeg != null) ? userRotDeg : 0;
+      documentImage.setImageBitmap((rotDeg != 0) ? rotateBitmap(bmp, rotDeg) : bmp);
+    }
+    if (documentOcrOverlay == null) return;
+    // Sync OCR overlay with document
+    documentOcrOverlay.setDoc(currentDoc());
+    // In Document mode, show only boxes without text content
+    documentOcrOverlay.setBoxesOnly(true);
+    documentOcrOverlay.setOnWordTapListener(this::showInlineEditDialog);
+    documentOcrOverlay.setOnWordLongPressListener(this::showContextMenu);
+    // Sync zoom and position from Layout overlay to Document overlay
+    if (overlay != null) {
+      documentOcrOverlay.setUserScale(overlay.getUserScale());
+      documentOcrOverlay.setUserOffset(overlay.getUserOffsetX(), overlay.getUserOffsetY());
+    }
+    // Update document image matrix to match the overlay transformation.
+    // Use post() to ensure the view has been laid out
+    final android.widget.ImageView image = documentImage;
+    final OcrOverlayView docOverlay = documentOcrOverlay;
+    if (image != null) image.post(() -> updateDocumentImageMatrix(image, docOverlay));
+    setZoomChipText(chipZoomDocument, documentOcrOverlay.getUserScale());
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Text Mode editor write-back
+  // ---------------------------------------------------------------------------------------------
+
+  /** Text Mode editor write-back (macro-edit) with debounce to avoid undo bloat. */
+  private void setupTextEditorWriteBack() {
+    if (textModeEditor == null) return;
+    textModeEditor.addTextChangedListener(
+        new android.text.TextWatcher() {
+          @Override
+          public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+          @Override
+          public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+          @Override
+          public void afterTextChanged(android.text.Editable s) {
+            if (updatingEditor) return;
+            if (textModeContainer != null && textModeContainer.getVisibility() != View.VISIBLE)
+              return;
+            editorHandler.removeCallbacks(applyEditorRunnable);
+            editorHandler.postDelayed(applyEditorRunnable, 250);
+          }
+        });
+  }
+
+  /** Writes the whitespace-separated editor tokens back onto the document words, in order. */
+  private void applyEditorTextToDoc() {
+    try {
+      if (textModeEditor == null) return;
+      OcrDoc doc = viewModel.getDoc().getValue();
+      if (doc == null || doc.words == null || doc.words.isEmpty()) return;
+      String src = textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
+      String trimmed = src.trim();
+      String[] tokens = trimmed.isEmpty() ? new String[0] : trimmed.split("\\s+");
+      int n = Math.min(doc.words.size(), tokens.length);
+      if (n == 0) return;
+      viewModel.markModified();
+      for (int i = 0; i < n; i++) {
+        OcrDoc.Word w = doc.words.get(i);
+        if (w != null && !tokens[i].equals(w.t)) {
+          w.t = tokens[i];
+          w.e = true;
+        }
+      }
+      viewModel.setDoc(doc);
+      propagateAndAutosave();
+    } catch (Throwable t) {
+      dbgWarn("Applying editor changes failed", t);
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Viewport synchronisation between Layout overlay, text layer, Document overlay and minimap
+  // ---------------------------------------------------------------------------------------------
+
+  private void setupViewportSync() {
     if (overlay != null) {
       overlay.setOnWordTapListener(this::showInlineEditDialog);
       overlay.setOnWordLongPressListener(this::showContextMenu);
-      overlay.setOnViewportChangedListener(
-          (scale, ox, oy) -> {
-            // Guard against infinite recursion with documentOcrOverlay
-            if (syncingViewport[0]) return;
-            syncingViewport[0] = true;
-            try {
-              // Update minimap viewport too (throttled via postOnAnimation)
-              if (minimapCard != null) {
-                overlay.postOnAnimation(
-                    () -> {
-                      try {
-                        minimap.setViewport(scale, ox, oy, overlay.getWidth(), overlay.getHeight());
-                      } catch (Throwable t) {
-                        dbgWarn("Updating minimap viewport failed", t);
-                      }
-                    });
-              }
-              // Sync text layer and zoom bar when user pans/zooms via gestures
-              if (textLayer != null) {
-                textLayer.setUserScale(scale);
-                textLayer.setUserOffset(ox, oy);
-              }
-              // Sync document overlay when user pans/zooms in layout mode
-              if (documentOcrOverlay != null) {
-                documentOcrOverlay.setUserScale(scale);
-                documentOcrOverlay.setUserOffset(ox, oy);
-              }
-              if (zoomBar != null) {
-                updatingZoomBar[0] = true;
-                int prog =
-                    Math.round(scale * 50f); // inverse of mapping below (progress 50 -> 1.0x)
-                if (prog < 25) prog = 25; // 0.5 min
-                if (prog > 200) prog = 200; // 4.0 max
-                zoomBar.setProgress(prog);
-                updatingZoomBar[0] = false;
-              }
-              if (chipZoom != null) {
-                try {
-                  int pct = Math.round(scale * 100f);
-                  chipZoom.setText(pct + "%");
-                  try {
-                    chipZoom.setContentDescription(getString(R.string.cd_zoom_chip_open_menu));
-                  } catch (Throwable t2) {
-                    dbgWarn("Updating zoom chip contentDescription failed", t2);
-                  }
-                } catch (Throwable t) {
-                  dbgWarn("Updating zoom chip text failed", t);
-                }
-              }
-              // Update document zoom chip too
-              if (chipZoomDocument != null) {
-                try {
-                  int pct = Math.round(scale * 100f);
-                  chipZoomDocument.setText(pct + "%");
-                } catch (Throwable t) {
-                  dbgWarn("Updating document zoom chip text failed", t);
-                }
-              }
-            } finally {
-              syncingViewport[0] = false;
-            }
-          });
+      overlay.setOnViewportChangedListener(this::onLayoutViewportChanged);
     }
-
-    // Document overlay viewport sync: when user pans/zooms in document mode, sync back to layout
-    // overlay
     if (documentOcrOverlay != null) {
-      documentOcrOverlay.setOnViewportChangedListener(
-          (scale, ox, oy) -> {
-            // Guard against infinite recursion with overlay
-            if (syncingViewport[0]) return;
-            syncingViewport[0] = true;
-            try {
-              // Sync layout overlay and text layer when user pans/zooms in document mode
-              if (overlay != null) {
-                overlay.setUserScale(scale);
-                overlay.setUserOffset(ox, oy);
-              }
-              if (textLayer != null) {
-                textLayer.setUserScale(scale);
-                textLayer.setUserOffset(ox, oy);
-              }
-              // Update document image matrix to match the overlay transformation
-              updateDocumentImageMatrix(documentImage, documentOcrOverlay);
-              // Update layout zoom chip
-              if (chipZoom != null) {
-                try {
-                  int pct = Math.round(scale * 100f);
-                  chipZoom.setText(pct + "%");
-                } catch (Throwable t) {
-                  dbgWarn("Updating layout zoom chip from document failed", t);
-                }
-              }
-              // Update document zoom chip
-              if (chipZoomDocument != null) {
-                try {
-                  int pct = Math.round(scale * 100f);
-                  chipZoomDocument.setText(pct + "%");
-                } catch (Throwable t) {
-                  dbgWarn("Updating document zoom chip failed", t);
-                }
-              }
-            } finally {
-              syncingViewport[0] = false;
-            }
-          });
+      documentOcrOverlay.setOnViewportChangedListener(this::onDocumentViewportChanged);
     }
+  }
 
-    // Zoom bar wiring: map 0..200 → userScale in [0.5 .. 4.0] (with min clamp at 0.5)
-    if (zoomBar != null) {
-      SeekBar.OnSeekBarChangeListener listener =
-          new SeekBar.OnSeekBarChangeListener() {
-            @SuppressWarnings("UnusedVariable") // fromUser required by SeekBar API
-            private void apply(int progress, boolean fromUser) {
-              if (updatingZoomBar[0]) return;
-              float s = progress / 50f; // 50 -> 1.0, 200 -> 4.0, 0 -> 0.0 (clamped below)
-              if (s < 0.5f) s = 0.5f;
-              if (textLayer != null) textLayer.setUserScale(s);
-              if (overlay != null) overlay.setUserScale(s);
-            }
-
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-              apply(progress, fromUser);
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-          };
-      zoomBar.setOnSeekBarChangeListener(listener);
-      // initialize
-      listener.onProgressChanged(zoomBar, zoomBar.getProgress(), false);
-      if (chipZoom != null) {
-        try {
-          chipZoom.setContentDescription(getString(R.string.cd_zoom_chip_open_menu));
-        } catch (Throwable t) {
-          dbgWarn("Updating zoom chip contentDescription (init) failed", t);
-        }
+  /** User panned/zoomed in Layout mode: sync minimap, text layer, Document overlay and chips. */
+  private void onLayoutViewportChanged(float scale, float ox, float oy) {
+    // Guard against infinite recursion with documentOcrOverlay
+    if (syncingViewport) return;
+    syncingViewport = true;
+    try {
+      // Update minimap viewport too (throttled via postOnAnimation)
+      final OcrOverlayView source = overlay;
+      final MinimapView map = minimap;
+      if (map != null && source != null) {
+        source.postOnAnimation(
+            () -> {
+              try {
+                map.setViewport(scale, ox, oy, source.getWidth(), source.getHeight());
+              } catch (Throwable t) {
+                dbgWarn("Updating minimap viewport failed", t);
+              }
+            });
       }
+      if (textLayer != null) {
+        textLayer.setUserScale(scale);
+        textLayer.setUserOffset(ox, oy);
+      }
+      if (documentOcrOverlay != null) {
+        documentOcrOverlay.setUserScale(scale);
+        documentOcrOverlay.setUserOffset(ox, oy);
+      }
+      updateLayoutZoomChip(scale);
+      setZoomChipText(chipZoomDocument, scale);
+    } finally {
+      syncingViewport = false;
     }
+  }
 
-    // Zoom chip: show popover with zoom levels and Fit actions
+  /** User panned/zoomed in Document mode: sync back to Layout overlay, text layer and chips. */
+  private void onDocumentViewportChanged(float scale, float ox, float oy) {
+    // Guard against infinite recursion with overlay
+    if (syncingViewport) return;
+    syncingViewport = true;
+    try {
+      if (overlay != null) {
+        overlay.setUserScale(scale);
+        overlay.setUserOffset(ox, oy);
+      }
+      if (textLayer != null) {
+        textLayer.setUserScale(scale);
+        textLayer.setUserOffset(ox, oy);
+      }
+      // Update document image matrix to match the overlay transformation
+      updateDocumentImageMatrix(documentImage, documentOcrOverlay);
+      setZoomChipText(chipZoom, scale);
+      setZoomChipText(chipZoomDocument, scale);
+    } finally {
+      syncingViewport = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Zoom
+  // ---------------------------------------------------------------------------------------------
+
+  private static final int ZOOM_ID_100 = 1;
+  private static final int ZOOM_ID_200 = 2;
+  private static final int ZOOM_ID_300 = 3;
+  private static final int ZOOM_ID_400 = 4;
+  private static final int ZOOM_ID_FIT = 5;
+  private static final int ZOOM_ID_TOGGLE_MINIMAP = 6;
+
+  /** Zoom chips: show popover with zoom levels and Fit actions. */
+  private void setupZoomChips() {
     if (chipZoom != null) {
       chipZoom.setOnClickListener(
           v -> {
-            androidx.appcompat.widget.PopupMenu pm =
-                new androidx.appcompat.widget.PopupMenu(requireContext(), v);
-            android.view.Menu m = pm.getMenu();
-            final int ID_100 = 1,
-                ID_200 = 2,
-                ID_300 = 3,
-                ID_400 = 4,
-                ID_FIT = 5,
-                ID_TOGGLE_MINIMAP = 6;
-            m.add(0, ID_100, 0, getString(R.string.zoom_100));
-            m.add(0, ID_200, 1, getString(R.string.zoom_200));
-            m.add(0, ID_300, 2, getString(R.string.zoom_300));
-            m.add(0, ID_400, 3, getString(R.string.zoom_400));
-            m.add(0, ID_FIT, 4, getString(R.string.zoom_fit));
+            androidx.appcompat.widget.PopupMenu pm = newZoomMenu(v);
             // Use simple English label if string resources are unavailable
-            m.add(0, ID_TOGGLE_MINIMAP, 5, (minimapVisible ? "Hide minimap" : "Show minimap"));
+            pm.getMenu()
+                .add(
+                    0, ZOOM_ID_TOGGLE_MINIMAP, 5, minimapVisible ? "Hide minimap" : "Show minimap");
             pm.setOnMenuItemClickListener(
                 item -> {
-                  int id = item.getItemId();
-                  float target = 1.0f;
-                  if (id == ID_100) target = 1.0f;
-                  else if (id == ID_200) target = 2.0f;
-                  else if (id == ID_300) target = 3.0f;
-                  else if (id == ID_400) target = 4.0f;
-                  else if (id == ID_FIT) {
-                    // Compute real fit-to-screen user scale with small padding
-                    OcrDoc d = null;
-                    try {
-                      d = viewModel.getDoc().getValue();
-                    } catch (Throwable t) {
-                      dbgWarn("Getting doc for FIT failed", t);
-                    }
-                    if (d != null && d.imageSize != null) {
-                      float padPx = dp(12f);
-                      float fit = computeFitScale(overlay, d.imageSize.w, d.imageSize.h, padPx);
-                      target = fit;
-                    } else {
-                      target = 1.0f;
-                    }
-                  }
-
-                  // Apply scale consistently across views and UI
-                  applyScale(target, overlay, textLayer, zoomBar, chipZoom);
-
-                  // Center viewport on FIT only
-                  if (id == ID_FIT) {
-                    centerViewport(overlay);
-                    centerViewport(textLayer);
-                  }
-                  if (id == ID_TOGGLE_MINIMAP) {
-                    try {
-                      minimapVisible = !minimapVisible;
-                      View card =
-                          getView() != null
-                              ? getView().findViewById(R.id.minimap_placeholder)
-                              : null;
-                      if (card != null)
-                        card.setVisibility(minimapVisible ? View.VISIBLE : View.GONE);
-                    } catch (Throwable ignore) {
-                      // Best-effort; failure is non-critical
-                    }
-                    return true;
-                  }
+                  applyLayoutZoom(item.getItemId());
                   return true;
                 });
             pm.show();
           });
     }
-
-    // Document mode zoom chip: show popover with zoom levels and Fit actions
     if (chipZoomDocument != null) {
       chipZoomDocument.setOnClickListener(
           v -> {
-            androidx.appcompat.widget.PopupMenu pm =
-                new androidx.appcompat.widget.PopupMenu(requireContext(), v);
-            android.view.Menu m = pm.getMenu();
-            final int ID_100 = 1, ID_200 = 2, ID_300 = 3, ID_400 = 4, ID_FIT = 5;
-            m.add(0, ID_100, 0, getString(R.string.zoom_100));
-            m.add(0, ID_200, 1, getString(R.string.zoom_200));
-            m.add(0, ID_300, 2, getString(R.string.zoom_300));
-            m.add(0, ID_400, 3, getString(R.string.zoom_400));
-            m.add(0, ID_FIT, 4, getString(R.string.zoom_fit));
+            androidx.appcompat.widget.PopupMenu pm = newZoomMenu(v);
             pm.setOnMenuItemClickListener(
                 item -> {
-                  int id = item.getItemId();
-                  float target = 1.0f;
-                  if (id == ID_100) target = 1.0f;
-                  else if (id == ID_200) target = 2.0f;
-                  else if (id == ID_300) target = 3.0f;
-                  else if (id == ID_400) target = 4.0f;
-                  else if (id == ID_FIT) {
-                    // Compute real fit-to-screen user scale with small padding
-                    OcrDoc d = null;
-                    try {
-                      d = viewModel.getDoc().getValue();
-                    } catch (Throwable t) {
-                      dbgWarn("Getting doc for FIT (document mode) failed", t);
-                    }
-                    if (d != null && d.imageSize != null) {
-                      float padPx = dp(12f);
-                      float fit =
-                          computeFitScale(documentOcrOverlay, d.imageSize.w, d.imageSize.h, padPx);
-                      target = fit;
-                    } else {
-                      target = 1.0f;
-                    }
-                  }
-
-                  // Apply scale to document overlay
-                  if (documentOcrOverlay != null) {
-                    documentOcrOverlay.setUserScale(target);
-                    // Center viewport on FIT only
-                    if (id == ID_FIT) {
-                      documentOcrOverlay.setUserOffset(0f, 0f);
-                    }
-                    // Update document image matrix to match
-                    updateDocumentImageMatrix(documentImage, documentOcrOverlay);
-                  }
-
-                  // Update document zoom chip text
-                  int pct = Math.round(target * 100f);
-                  chipZoomDocument.setText(pct + "%");
-
-                  // Sync to layout overlay and text layer for consistency when switching modes
-                  if (overlay != null) {
-                    overlay.setUserScale(target);
-                    if (id == ID_FIT) {
-                      overlay.setUserOffset(0f, 0f);
-                    }
-                  }
-                  if (textLayer != null) {
-                    textLayer.setUserScale(target);
-                    if (id == ID_FIT) {
-                      textLayer.setUserOffset(0f, 0f);
-                    }
-                  }
-                  // Update layout zoom chip too
-                  if (chipZoom != null) {
-                    chipZoom.setText(pct + "%");
-                  }
-
+                  applyDocumentZoom(item.getItemId());
                   return true;
                 });
             pm.show();
           });
     }
+  }
 
-    // One-time initial Fit after layout so start state sits perfectly
-    if (overlay != null) {
-      overlay.post(
-          () -> {
-            if (initialFitApplied) return;
-            OcrDoc d = null;
-            try {
-              d = viewModel.getDoc().getValue();
-            } catch (Throwable t) {
-              dbgWarn("Getting doc for initial FIT failed", t);
-            }
-            if (d == null || d.imageSize == null) return;
-            float padPx = dp(12f);
-            float target = computeFitScale(overlay, d.imageSize.w, d.imageSize.h, padPx);
-            // Apply scale consistently
-            applyScale(target, overlay, textLayer, zoomBar, chipZoom);
-            // Center viewport on initial FIT
-            centerViewport(overlay);
-            centerViewport(textLayer);
-            if (zoomBar != null) {
-              updatingZoomBar[0] = true;
-              zoomBar.setProgress(Math.round(target * 50f));
-              updatingZoomBar[0] = false;
-            }
-            if (chipZoom != null) {
-              try {
-                int pct = Math.round(target * 100f);
-                chipZoom.setText(pct + "%");
-                try {
-                  chipZoom.setContentDescription(getString(R.string.cd_zoom_chip_open_menu));
-                } catch (Throwable t2) {
-                  dbgWarn("Updating zoom chip contentDescription (initial fit) failed", t2);
-                }
-              } catch (Throwable t) {
-                dbgWarn("Updating zoom chip after initial fit failed", t);
-              }
-            }
-            try {
-              if (minimapCard != null)
-                minimap.setViewport(
-                    overlay.getUserScale(),
-                    overlay.getUserOffsetX(),
-                    overlay.getUserOffsetY(),
-                    overlay.getWidth(),
-                    overlay.getHeight());
-            } catch (Throwable t) {
-              dbgWarn("Minimap initial viewport failed", t);
-            }
-            initialFitApplied = true;
-          });
+  private androidx.appcompat.widget.PopupMenu newZoomMenu(View anchor) {
+    androidx.appcompat.widget.PopupMenu pm =
+        new androidx.appcompat.widget.PopupMenu(requireContext(), anchor);
+    android.view.Menu m = pm.getMenu();
+    m.add(0, ZOOM_ID_100, 0, getString(R.string.zoom_100));
+    m.add(0, ZOOM_ID_200, 1, getString(R.string.zoom_200));
+    m.add(0, ZOOM_ID_300, 2, getString(R.string.zoom_300));
+    m.add(0, ZOOM_ID_400, 3, getString(R.string.zoom_400));
+    m.add(0, ZOOM_ID_FIT, 4, getString(R.string.zoom_fit));
+    return pm;
+  }
+
+  /** Target user scale for a zoom menu item; anything that is not a zoom level resolves to 100%. */
+  private float zoomTargetFor(int itemId, @Nullable View fitContainer) {
+    return switch (itemId) {
+      case ZOOM_ID_200 -> 2.0f;
+      case ZOOM_ID_300 -> 3.0f;
+      case ZOOM_ID_400 -> 4.0f;
+      case ZOOM_ID_FIT -> {
+        Float fit = fitScale(fitContainer);
+        yield fit != null ? fit : 1.0f;
+      }
+      default -> 1.0f;
+    };
+  }
+
+  /**
+   * Real fit-to-screen user scale for the current document with small padding, or {@code null} when
+   * there is no document yet.
+   */
+  @Nullable
+  private Float fitScale(@Nullable View container) {
+    OcrDoc d = currentDoc();
+    if (d == null || d.imageSize == null) return null;
+    return computeFitScale(container, d.imageSize.w, d.imageSize.h, dp(12f));
+  }
+
+  private void applyLayoutZoom(int itemId) {
+    // Apply scale consistently across views and UI. Note: the minimap toggle also lands here and
+    // resets the zoom to 100% (behavior kept as is).
+    applyScale(zoomTargetFor(itemId, overlay));
+    // Center viewport on FIT only
+    if (itemId == ZOOM_ID_FIT) {
+      centerViewport(overlay);
+      centerViewport(textLayer);
     }
+    if (itemId == ZOOM_ID_TOGGLE_MINIMAP) toggleMinimapVisibility();
+  }
 
-    return root;
+  private void applyDocumentZoom(int itemId) {
+    float target = zoomTargetFor(itemId, documentOcrOverlay);
+    boolean fit = itemId == ZOOM_ID_FIT; // center viewport on FIT only
+    if (documentOcrOverlay != null) {
+      documentOcrOverlay.setUserScale(target);
+      if (fit) documentOcrOverlay.setUserOffset(0f, 0f);
+      // Update document image matrix to match
+      updateDocumentImageMatrix(documentImage, documentOcrOverlay);
+    }
+    setZoomChipText(chipZoomDocument, target);
+
+    // Sync to layout overlay and text layer for consistency when switching modes
+    if (overlay != null) {
+      overlay.setUserScale(target);
+      if (fit) overlay.setUserOffset(0f, 0f);
+    }
+    if (textLayer != null) {
+      textLayer.setUserScale(target);
+      if (fit) textLayer.setUserOffset(0f, 0f);
+    }
+    setZoomChipText(chipZoom, target);
+  }
+
+  private void setZoomChipText(@Nullable com.google.android.material.chip.Chip chip, float scale) {
+    if (chip == null) return;
+    try {
+      chip.setText(Math.round(scale * 100f) + "%");
+    } catch (Throwable t) {
+      dbgWarn("Updating zoom chip text failed", t);
+    }
+  }
+
+  private void updateLayoutZoomChip(float scale) {
+    if (chipZoom == null) return;
+    setZoomChipText(chipZoom, scale);
+    try {
+      chipZoom.setContentDescription(getString(R.string.cd_zoom_chip_open_menu));
+    } catch (Throwable t) {
+      dbgWarn("Updating zoom chip contentDescription failed", t);
+    }
+  }
+
+  /** One-time initial Fit after layout so start state sits perfectly. */
+  private void scheduleInitialFit() {
+    if (overlay == null) return;
+    overlay.post(
+        () -> {
+          if (initialFitApplied || overlay == null) return;
+          Float target = fitScale(overlay);
+          if (target == null) return;
+          applyScale(target);
+          centerViewport(overlay);
+          centerViewport(textLayer);
+          try {
+            if (minimap != null)
+              minimap.setViewport(
+                  overlay.getUserScale(),
+                  overlay.getUserOffsetX(),
+                  overlay.getUserOffsetY(),
+                  overlay.getWidth(),
+                  overlay.getHeight());
+          } catch (Throwable t) {
+            dbgWarn("Minimap initial viewport failed", t);
+          }
+          initialFitApplied = true;
+        });
   }
 
   /**
@@ -2198,6 +2040,18 @@ public class OcrReviewFragment extends Fragment {
     chipWords = null;
     chipLow = null;
     chipLang = null;
+    overlay = null;
+    textLayer = null;
+    documentOcrOverlay = null;
+    documentImage = null;
+    chipZoom = null;
+    chipZoomDocument = null;
+    textModeEditor = null;
+    overlayContainer = null;
+    textModeContainer = null;
+    documentModeContainer = null;
+    minimapCard = null;
+    minimap = null;
     // Recycle minimap bitmap to free memory
     try {
       if (minimapBitmap != null && !minimapBitmap.isRecycled()) {
@@ -2265,13 +2119,6 @@ public class OcrReviewFragment extends Fragment {
     try {
       com.google.android.material.button.MaterialButtonToggleGroup segmented =
           view.findViewById(R.id.segmented_group);
-      de.schliweb.makeacopy.ui.ocr.review.view.OcrOverlayView overlay =
-          view.findViewById(R.id.ocr_overlay);
-      de.schliweb.makeacopy.ui.ocr.review.view.OcrTextLayerView textLayer =
-          view.findViewById(R.id.ocr_text_layer);
-      android.widget.SeekBar zoomBar = null;
-      com.google.android.material.chip.Chip chipZoom = view.findViewById(R.id.chip_zoom);
-
       int mode = savedInstanceState.getInt(STATE_MODE, 0);
       if (segmented != null) {
         segmented.check(mode == 1 ? R.id.seg_text : R.id.seg_layout);
@@ -2282,17 +2129,12 @@ public class OcrReviewFragment extends Fragment {
       float oy = savedInstanceState.getFloat(STATE_OFF_Y, 0f);
       minimapVisible = savedInstanceState.getBoolean(STATE_MINIMAP_VISIBLE, true);
       // Apply minimap visibility to placeholder if present
-      try {
-        View card = view.findViewById(R.id.minimap_placeholder);
-        if (card != null) card.setVisibility(minimapVisible ? View.VISIBLE : View.GONE);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
+      setVisible(minimapCard, minimapVisible);
       if (!Float.isNaN(s)) {
         // Prevent the one-time auto-fit from overriding restored state
         initialFitApplied = true;
         // Apply scale consistently
-        applyScale(s, overlay, textLayer, zoomBar, chipZoom);
+        applyScale(s);
         // Restore pan offsets
         if (overlay != null) overlay.setUserOffset(ox, oy);
         if (textLayer != null) textLayer.setUserOffset(ox, oy);
