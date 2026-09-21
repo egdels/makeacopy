@@ -17,7 +17,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.CheckBox;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
@@ -114,281 +113,294 @@ public class ExportOptionsDialogFragment extends DialogFragment {
   public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
     Context ctx = requireContext();
     View view = getLayoutInflater().inflate(R.layout.dialog_export_options, null);
+    SharedPreferences prefs = ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
 
     CheckBox cbIncludeOcr = view.findViewById(R.id.dialog_checkbox_include_ocr);
-    RadioGroup cleanupModeGroup = view.findViewById(R.id.dialog_document_cleanup_group);
-    RadioButton rbCleanupOriginal = view.findViewById(R.id.dialog_document_cleanup_original);
-    RadioButton rbCleanupNatural = view.findViewById(R.id.dialog_document_cleanup_natural);
-    RadioButton rbCleanupEnhanced = view.findViewById(R.id.dialog_document_cleanup_enhanced);
-    RadioButton rbCleanupCleanText = view.findViewById(R.id.dialog_document_cleanup_clean_text);
-    View pdfGroup = view.findViewById(R.id.dialog_pdf_group);
-    RadioGroup pdfPresetGroup = view.findViewById(R.id.dialog_pdf_preset_group);
-    RadioButton rbHigh = view.findViewById(R.id.dialog_radio_pdf_high);
-    RadioButton rbStandard = view.findViewById(R.id.dialog_radio_pdf_standard);
-    RadioButton rbSmall = view.findViewById(R.id.dialog_radio_pdf_small);
-    RadioButton rbVerySmall = view.findViewById(R.id.dialog_radio_pdf_very_small);
+    cbIncludeOcr.setChecked(prefs.getBoolean("include_ocr", false));
+    restoreRadioSelections(ctx, view, prefs);
+    setupInboxMode(ctx, view);
 
-    View jpegGroup = view.findViewById(R.id.dialog_jpeg_group);
-    RadioGroup jpegModeGroup = view.findViewById(R.id.dialog_jpeg_mode_group);
-    RadioButton rbJpegNone = view.findViewById(R.id.dialog_radio_jpeg_none);
-    RadioButton rbJpegAuto = view.findViewById(R.id.dialog_radio_jpeg_auto);
-    RadioButton rbJpegBw = view.findViewById(R.id.dialog_radio_jpeg_bw_text);
-
-    RadioGroup pageFormatGroup = view.findViewById(R.id.dialog_page_format_group);
-    RadioButton rbPageFit = view.findViewById(R.id.dialog_radio_page_fit);
-    RadioButton rbPageA4 = view.findViewById(R.id.dialog_radio_page_a4);
-    RadioButton rbPageLetter = view.findViewById(R.id.dialog_radio_page_letter);
-    RadioButton rbPageLegal = view.findViewById(R.id.dialog_radio_page_legal);
-
-    RadioGroup pdfTextLayerModeGroup = view.findViewById(R.id.dialog_pdf_text_layer_mode_group);
-    RadioButton rbPdfTextLayerLineBased = view.findViewById(R.id.dialog_pdf_text_layer_line_based);
-    RadioButton rbPdfTextLayerWordPositioned =
-        view.findViewById(R.id.dialog_pdf_text_layer_word_positioned);
-
-    RadioGroup pdfBwModeGroup = view.findViewById(R.id.dialog_pdf_bw_mode_group);
-    RadioButton rbPdfBwNone = view.findViewById(R.id.dialog_pdf_bw_none);
-    RadioButton rbPdfGray = view.findViewById(R.id.dialog_pdf_grayscale);
-    RadioButton rbPdfBwRobust = view.findViewById(R.id.dialog_pdf_bw_robust);
-    RadioButton rbPdfBwClassic = view.findViewById(R.id.dialog_pdf_bw_classic);
-
-    SharedPreferences prefs = ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-    boolean includeOcr = prefs.getBoolean("include_ocr", false);
-    boolean exportAsJpeg = prefs.getBoolean("export_as_jpeg", false);
-    // Legacy booleans removed; selection now driven solely by pdf_bw_mode
-    String jpegModeSaved = prefs.getString("jpeg_mode", JpegExportOptions.Mode.NONE.name());
-    boolean jpegOutputGrayscale = prefs.getBoolean("jpeg_output_grayscale", false);
-    JpegExportOptions.Mode jpegMode;
-    try {
-      jpegMode = JpegExportOptions.Mode.valueOf(jpegModeSaved);
-    } catch (Exception e) {
-      jpegMode = JpegExportOptions.Mode.NONE;
-    }
-    String pdfBwModeSaved = prefs.getString("pdf_bw_mode", null);
-    DocumentCleanupMode savedCleanupMode = ExportPrefsHelper.resolveCleanupMode(ctx);
-    String presetSaved = prefs.getString("pdf_preset", null);
-    String pageFormatSaved = prefs.getString("page_format", PageFormat.FIT_TO_IMAGE.name());
-    PageFormat pageFormat = PageFormat.fromName(pageFormatSaved, PageFormat.FIT_TO_IMAGE);
-    PdfCreator.TextLayerMode textLayerMode = ExportPrefsHelper.resolveTextLayerMode(ctx);
-
-    cbIncludeOcr.setChecked(includeOcr);
     // Format (PDF/JPEG) is selected inline on the Export screen; the dialog only shows the
     // option groups matching the currently selected format.
-
-    if (savedCleanupMode == DocumentCleanupMode.NATURAL) rbCleanupNatural.setChecked(true);
-    else if (savedCleanupMode == DocumentCleanupMode.ENHANCED) rbCleanupEnhanced.setChecked(true);
-    else if (savedCleanupMode == DocumentCleanupMode.CLEAN_TEXT)
-      rbCleanupCleanText.setChecked(true);
-    else rbCleanupOriginal.setChecked(true);
-
-    // Initialize page format selection
-    if (pageFormat == PageFormat.FIT_TO_IMAGE) rbPageFit.setChecked(true);
-    else if (pageFormat == PageFormat.A4) rbPageA4.setChecked(true);
-    else if (pageFormat == PageFormat.US_LETTER) rbPageLetter.setChecked(true);
-    else if (pageFormat == PageFormat.LEGAL) rbPageLegal.setChecked(true);
-
-    if (textLayerMode == PdfCreator.TextLayerMode.WORD_POSITIONED) {
-      rbPdfTextLayerWordPositioned.setChecked(true);
-    } else {
-      rbPdfTextLayerLineBased.setChecked(true);
-    }
-
-    // pick default preset if none saved: High for single page, Standard for multi (ExportFragment
-    // will compute page count; here fallback Standard)
-    PdfQualityPreset preset =
-        presetSaved != null
-            ? PdfQualityPreset.fromName(presetSaved, PdfQualityPreset.STANDARD)
-            : PdfQualityPreset.STANDARD;
-    if (preset == PdfQualityPreset.HIGH) rbHigh.setChecked(true);
-    else if (preset == PdfQualityPreset.STANDARD) rbStandard.setChecked(true);
-    else if (preset == PdfQualityPreset.SMALL) rbSmall.setChecked(true);
-    else if (preset == PdfQualityPreset.VERY_SMALL) rbVerySmall.setChecked(true);
-
-    if (jpegMode == JpegExportOptions.Mode.BW_TEXT) {
-      rbJpegBw.setChecked(true);
-    } else if (jpegOutputGrayscale) {
-      rbJpegAuto.setChecked(true);
-    } else {
-      rbJpegNone.setChecked(true);
-    }
-
-    // Initialize PDF mode radios ("none" selected if no saved value)
-    if ("GRAYSCALE".equalsIgnoreCase(pdfBwModeSaved)) rbPdfGray.setChecked(true);
-    else if ("CLASSIC".equalsIgnoreCase(pdfBwModeSaved)
-        || "ROBUST".equalsIgnoreCase(pdfBwModeSaved)) rbPdfBwRobust.setChecked(true);
-    else rbPdfBwNone.setChecked(true);
-
-    // ── Inbox Mode UI ──
-    View inboxGroup = view.findViewById(R.id.dialog_inbox_group);
-    cbInboxEnabled = view.findViewById(R.id.dialog_checkbox_inbox_enabled);
-    inboxFolderLabel = view.findViewById(R.id.dialog_inbox_folder_label);
-    View btnInboxSelect = view.findViewById(R.id.dialog_button_inbox_select);
-    View btnInboxClear = view.findViewById(R.id.dialog_button_inbox_clear);
-
-    if (FeatureFlags.isInboxModeEnabled() && inboxGroup != null) {
-      inboxGroup.setVisibility(View.VISIBLE);
-      cbInboxEnabled.setChecked(ExportPrefsHelper.isInboxEnabled(ctx));
-      updateInboxFolderLabel();
-
-      cbInboxEnabled.setOnCheckedChangeListener(
-          (buttonView, isChecked) -> {
-            if (isChecked && ExportPrefsHelper.getInboxUri(ctx) == null) {
-              buttonView.setChecked(false);
-              android.widget.Toast.makeText(
-                      ctx, R.string.inbox_no_folder_selected, android.widget.Toast.LENGTH_SHORT)
-                  .show();
-              return;
-            }
-            ExportPrefsHelper.setInboxEnabled(ctx, isChecked);
-          });
-
-      if (btnInboxSelect != null) {
-        btnInboxSelect.setOnClickListener(v2 -> inboxFolderLauncher.launch(null));
-      }
-      if (btnInboxClear != null) {
-        btnInboxClear.setOnClickListener(
-            v2 -> {
-              ExportPrefsHelper.clearInbox(ctx);
-              cbInboxEnabled.setChecked(false);
-              updateInboxFolderLabel();
-            });
-      }
-
-      // Filename template spinner
-      android.widget.Spinner filenameSpinner =
-          view.findViewById(R.id.dialog_inbox_filename_spinner);
-      if (filenameSpinner != null) {
-        String[] templateLabels = {
-          getString(R.string.inbox_filename_date_scan),
-          getString(R.string.inbox_filename_date_time_scan),
-          getString(R.string.inbox_filename_date_only)
-        };
-        String[] templateValues = {"date_scan", "date_time_scan", "date_only"};
-        android.widget.ArrayAdapter<String> adapter =
-            new android.widget.ArrayAdapter<>(
-                ctx, android.R.layout.simple_spinner_item, templateLabels);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        filenameSpinner.setAdapter(adapter);
-
-        String current = ExportPrefsHelper.getInboxFilenameTemplate(ctx);
-        for (int i = 0; i < templateValues.length; i++) {
-          if (templateValues[i].equals(current)) {
-            filenameSpinner.setSelection(i);
-            break;
-          }
-        }
-        filenameSpinner.setOnItemSelectedListener(
-            new android.widget.AdapterView.OnItemSelectedListener() {
-              @Override
-              public void onItemSelected(
-                  android.widget.AdapterView<?> parent, View v, int pos, long id) {
-                ExportPrefsHelper.setInboxFilenameTemplate(ctx, templateValues[pos]);
-              }
-
-              @Override
-              public void onNothingSelected(android.widget.AdapterView<?> parent) {}
-            });
-      }
-
-      // Auto new scan checkbox
-      CheckBox cbAutoNewScan = view.findViewById(R.id.dialog_checkbox_inbox_auto_new_scan);
-      if (cbAutoNewScan != null) {
-        cbAutoNewScan.setChecked(ExportPrefsHelper.isInboxAutoNewScan(ctx));
-        cbAutoNewScan.setOnCheckedChangeListener(
-            (buttonView, isChecked) -> ExportPrefsHelper.setInboxAutoNewScan(ctx, isChecked));
-      }
-    }
-
-    // Visibility toggle between PDF and JPEG groups based on the inline format selection
-    updateGroups(exportAsJpeg, pdfGroup, jpegGroup);
-
-    // PDF color mode uses RadioGroup; mutual exclusivity is handled by the group.
-
-    // JPEG modes use RadioGroup; mutual exclusivity is handled by the group.
+    updateGroups(
+        prefs.getBoolean("export_as_jpeg", false),
+        view.findViewById(R.id.dialog_pdf_group),
+        view.findViewById(R.id.dialog_jpeg_group));
 
     return DialogUtils.createOptionsBottomSheet(
         ctx,
         getString(R.string.export_options_title),
         view,
-        () -> {
-          boolean incOcr = cbIncludeOcr.isChecked();
-          boolean asJpeg = ExportPrefsHelper.isExportAsJpeg(ctx);
+        () -> applySelections(ctx, view, prefs, cbIncludeOcr.isChecked()));
+  }
 
-          // determine jpeg mode from RadioGroup
-          JpegExportOptions.Mode mode = JpegExportOptions.Mode.NONE;
-          int jpegCheckedId = jpegModeGroup.getCheckedRadioButtonId();
-          boolean jpegGray = false;
-          if (jpegCheckedId == rbJpegAuto.getId()) {
-            jpegGray = true;
-          } else if (jpegCheckedId == rbJpegBw.getId()) {
-            mode = JpegExportOptions.Mode.BW_TEXT;
+  /**
+   * Pre-selects the radio buttons from the saved options. Mutual exclusivity is the groups' job.
+   */
+  private void restoreRadioSelections(Context ctx, View view, SharedPreferences prefs) {
+    // Legacy booleans removed; selection now driven solely by pdf_bw_mode
+    JpegExportOptions.Mode jpegMode;
+    try {
+      jpegMode =
+          JpegExportOptions.Mode.valueOf(
+              prefs.getString("jpeg_mode", JpegExportOptions.Mode.NONE.name()));
+    } catch (Exception e) {
+      jpegMode = JpegExportOptions.Mode.NONE;
+    }
+    String pageFormatSaved = prefs.getString("page_format", PageFormat.FIT_TO_IMAGE.name());
+    // pick default preset if none saved: High for single page, Standard for multi (ExportFragment
+    // will compute page count; here fallback Standard)
+    String presetSaved = prefs.getString("pdf_preset", null);
+    PdfQualityPreset preset =
+        presetSaved != null
+            ? PdfQualityPreset.fromName(presetSaved, PdfQualityPreset.STANDARD)
+            : PdfQualityPreset.STANDARD;
+
+    check(
+        view,
+        R.id.dialog_document_cleanup_group,
+        cleanupRadioId(ExportPrefsHelper.resolveCleanupMode(ctx)));
+    check(
+        view,
+        R.id.dialog_page_format_group,
+        pageFormatRadioId(PageFormat.fromName(pageFormatSaved, PageFormat.FIT_TO_IMAGE)));
+    check(
+        view,
+        R.id.dialog_pdf_text_layer_mode_group,
+        textLayerRadioId(ExportPrefsHelper.resolveTextLayerMode(ctx)));
+    check(view, R.id.dialog_pdf_preset_group, presetRadioId(preset));
+    check(
+        view,
+        R.id.dialog_jpeg_mode_group,
+        jpegRadioId(jpegMode, prefs.getBoolean("jpeg_output_grayscale", false)));
+    // "none" selected if no saved value
+    check(view, R.id.dialog_pdf_bw_mode_group, pdfBwRadioId(prefs.getString("pdf_bw_mode", null)));
+  }
+
+  /** Checks the radio button, or keeps the layout's default when there is none to check. */
+  private static void check(View view, int groupId, int radioId) {
+    if (radioId == View.NO_ID) return;
+    RadioGroup group = view.findViewById(groupId);
+    group.check(radioId);
+  }
+
+  private void setupInboxMode(Context ctx, View view) {
+    View inboxGroup = view.findViewById(R.id.dialog_inbox_group);
+    cbInboxEnabled = view.findViewById(R.id.dialog_checkbox_inbox_enabled);
+    inboxFolderLabel = view.findViewById(R.id.dialog_inbox_folder_label);
+    if (!FeatureFlags.isInboxModeEnabled() || inboxGroup == null) return;
+
+    inboxGroup.setVisibility(View.VISIBLE);
+    cbInboxEnabled.setChecked(ExportPrefsHelper.isInboxEnabled(ctx));
+    updateInboxFolderLabel();
+
+    cbInboxEnabled.setOnCheckedChangeListener(
+        (buttonView, isChecked) -> {
+          if (isChecked && ExportPrefsHelper.getInboxUri(ctx) == null) {
+            buttonView.setChecked(false);
+            android.widget.Toast.makeText(
+                    ctx, R.string.inbox_no_folder_selected, android.widget.Toast.LENGTH_SHORT)
+                .show();
+            return;
           }
-
-          // determine PDF color mode from RadioGroup (null = none/original)
-          String pdfBwMode = null;
-          int pdfBwCheckedId = pdfBwModeGroup.getCheckedRadioButtonId();
-          if (pdfBwCheckedId == rbPdfGray.getId()) pdfBwMode = "GRAYSCALE";
-          else if (pdfBwCheckedId == rbPdfBwClassic.getId()) pdfBwMode = "CLASSIC";
-          else if (pdfBwCheckedId == rbPdfBwRobust.getId()) pdfBwMode = "ROBUST";
-
-          DocumentCleanupMode cleanupMode = DocumentCleanupMode.ORIGINAL;
-          int cleanupCheckedId = cleanupModeGroup.getCheckedRadioButtonId();
-          if (cleanupCheckedId == rbCleanupNatural.getId()) {
-            cleanupMode = DocumentCleanupMode.NATURAL;
-          } else if (cleanupCheckedId == rbCleanupEnhanced.getId()) {
-            cleanupMode = DocumentCleanupMode.ENHANCED;
-          } else if (cleanupCheckedId == rbCleanupCleanText.getId()) {
-            cleanupMode = DocumentCleanupMode.CLEAN_TEXT;
-          }
-
-          // determine pdf preset
-          PdfQualityPreset sel = PdfQualityPreset.STANDARD;
-          int checkedId = pdfPresetGroup.getCheckedRadioButtonId();
-          if (checkedId == rbHigh.getId()) sel = PdfQualityPreset.HIGH;
-          else if (checkedId == rbSmall.getId()) sel = PdfQualityPreset.SMALL;
-          else if (checkedId == rbVerySmall.getId()) sel = PdfQualityPreset.VERY_SMALL;
-
-          // determine page format
-          PageFormat selFormat = PageFormat.FIT_TO_IMAGE;
-          int pageFormatCheckedId = pageFormatGroup.getCheckedRadioButtonId();
-          if (pageFormatCheckedId == rbPageA4.getId()) selFormat = PageFormat.A4;
-          else if (pageFormatCheckedId == rbPageLetter.getId()) selFormat = PageFormat.US_LETTER;
-          else if (pageFormatCheckedId == rbPageLegal.getId()) selFormat = PageFormat.LEGAL;
-
-          PdfCreator.TextLayerMode selTextLayerMode = PdfCreator.TextLayerMode.LINE_BASED;
-          int textLayerCheckedId = pdfTextLayerModeGroup.getCheckedRadioButtonId();
-          if (textLayerCheckedId == rbPdfTextLayerWordPositioned.getId()) {
-            selTextLayerMode = PdfCreator.TextLayerMode.WORD_POSITIONED;
-          }
-
-          // persist
-          SharedPreferences.Editor editor =
-              prefs
-                  .edit()
-                  .putBoolean("include_ocr", incOcr)
-                  .putBoolean("export_as_jpeg", asJpeg)
-                  .putString("jpeg_mode", mode.name())
-                  .putBoolean("jpeg_output_grayscale", jpegGray)
-                  .putString("document_cleanup_mode", cleanupMode.name())
-                  .putString("pdf_preset", sel.name())
-                  .putString("page_format", selFormat.name())
-                  .putString("pdf_text_layer_mode", selTextLayerMode.name());
-          if (pdfBwMode != null) editor.putString("pdf_bw_mode", pdfBwMode);
-          else editor.remove("pdf_bw_mode");
-          editor.apply();
-
-          Bundle result = new Bundle();
-          result.putBoolean(BUNDLE_INCLUDE_OCR, incOcr);
-          result.putBoolean(BUNDLE_EXPORT_AS_JPEG, asJpeg);
-          result.putString(BUNDLE_JPEG_MODE, mode.name());
-          result.putBoolean("jpeg_output_grayscale", jpegGray);
-          result.putString("document_cleanup_mode", cleanupMode.name());
-          if (pdfBwMode != null) result.putString("pdf_bw_mode", pdfBwMode);
-          else result.remove("pdf_bw_mode");
-          result.putString(BUNDLE_PDF_PRESET, sel.name());
-          result.putString(BUNDLE_PAGE_FORMAT, selFormat.name());
-          result.putString(BUNDLE_PDF_TEXT_LAYER_MODE, selTextLayerMode.name());
-          getParentFragmentManager().setFragmentResult(REQUEST_KEY, result);
+          ExportPrefsHelper.setInboxEnabled(ctx, isChecked);
         });
+
+    View btnInboxSelect = view.findViewById(R.id.dialog_button_inbox_select);
+    if (btnInboxSelect != null) {
+      btnInboxSelect.setOnClickListener(v2 -> inboxFolderLauncher.launch(null));
+    }
+    View btnInboxClear = view.findViewById(R.id.dialog_button_inbox_clear);
+    if (btnInboxClear != null) {
+      btnInboxClear.setOnClickListener(
+          v2 -> {
+            ExportPrefsHelper.clearInbox(ctx);
+            cbInboxEnabled.setChecked(false);
+            updateInboxFolderLabel();
+          });
+    }
+
+    setupInboxFilenameSpinner(ctx, view.findViewById(R.id.dialog_inbox_filename_spinner));
+
+    CheckBox cbAutoNewScan = view.findViewById(R.id.dialog_checkbox_inbox_auto_new_scan);
+    if (cbAutoNewScan != null) {
+      cbAutoNewScan.setChecked(ExportPrefsHelper.isInboxAutoNewScan(ctx));
+      cbAutoNewScan.setOnCheckedChangeListener(
+          (buttonView, isChecked) -> ExportPrefsHelper.setInboxAutoNewScan(ctx, isChecked));
+    }
+  }
+
+  private void setupInboxFilenameSpinner(Context ctx, android.widget.Spinner filenameSpinner) {
+    if (filenameSpinner == null) return;
+    String[] templateLabels = {
+      getString(R.string.inbox_filename_date_scan),
+      getString(R.string.inbox_filename_date_time_scan),
+      getString(R.string.inbox_filename_date_only)
+    };
+    String[] templateValues = {"date_scan", "date_time_scan", "date_only"};
+    android.widget.ArrayAdapter<String> adapter =
+        new android.widget.ArrayAdapter<>(
+            ctx, android.R.layout.simple_spinner_item, templateLabels);
+    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+    filenameSpinner.setAdapter(adapter);
+
+    String current = ExportPrefsHelper.getInboxFilenameTemplate(ctx);
+    for (int i = 0; i < templateValues.length; i++) {
+      if (templateValues[i].equals(current)) {
+        filenameSpinner.setSelection(i);
+        break;
+      }
+    }
+    filenameSpinner.setOnItemSelectedListener(
+        new android.widget.AdapterView.OnItemSelectedListener() {
+          @Override
+          public void onItemSelected(
+              android.widget.AdapterView<?> parent, View v, int pos, long id) {
+            ExportPrefsHelper.setInboxFilenameTemplate(ctx, templateValues[pos]);
+          }
+
+          @Override
+          public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+  }
+
+  /** Reads the dialog's selections, persists them and hands them to the Export screen. */
+  private void applySelections(
+      Context ctx, View view, SharedPreferences prefs, boolean includeOcr) {
+    boolean asJpeg = ExportPrefsHelper.isExportAsJpeg(ctx);
+    int jpegCheckedId = checkedId(view, R.id.dialog_jpeg_mode_group);
+    JpegExportOptions.Mode mode = jpegModeFor(jpegCheckedId);
+    boolean jpegGray = jpegCheckedId == R.id.dialog_radio_jpeg_auto;
+    // null = none/original
+    String pdfBwMode = pdfBwModeFor(checkedId(view, R.id.dialog_pdf_bw_mode_group));
+    DocumentCleanupMode cleanupMode =
+        cleanupModeFor(checkedId(view, R.id.dialog_document_cleanup_group));
+    PdfQualityPreset preset = presetFor(checkedId(view, R.id.dialog_pdf_preset_group));
+    PageFormat pageFormat = pageFormatFor(checkedId(view, R.id.dialog_page_format_group));
+    PdfCreator.TextLayerMode textLayerMode =
+        textLayerModeFor(checkedId(view, R.id.dialog_pdf_text_layer_mode_group));
+
+    // persist
+    SharedPreferences.Editor editor =
+        prefs
+            .edit()
+            .putBoolean("include_ocr", includeOcr)
+            .putBoolean("export_as_jpeg", asJpeg)
+            .putString("jpeg_mode", mode.name())
+            .putBoolean("jpeg_output_grayscale", jpegGray)
+            .putString("document_cleanup_mode", cleanupMode.name())
+            .putString("pdf_preset", preset.name())
+            .putString("page_format", pageFormat.name())
+            .putString("pdf_text_layer_mode", textLayerMode.name());
+    if (pdfBwMode != null) editor.putString("pdf_bw_mode", pdfBwMode);
+    else editor.remove("pdf_bw_mode");
+    editor.apply();
+
+    Bundle result = new Bundle();
+    result.putBoolean(BUNDLE_INCLUDE_OCR, includeOcr);
+    result.putBoolean(BUNDLE_EXPORT_AS_JPEG, asJpeg);
+    result.putString(BUNDLE_JPEG_MODE, mode.name());
+    result.putBoolean("jpeg_output_grayscale", jpegGray);
+    result.putString("document_cleanup_mode", cleanupMode.name());
+    if (pdfBwMode != null) result.putString("pdf_bw_mode", pdfBwMode);
+    result.putString(BUNDLE_PDF_PRESET, preset.name());
+    result.putString(BUNDLE_PAGE_FORMAT, pageFormat.name());
+    result.putString(BUNDLE_PDF_TEXT_LAYER_MODE, textLayerMode.name());
+    getParentFragmentManager().setFragmentResult(REQUEST_KEY, result);
+  }
+
+  private static int checkedId(View view, int groupId) {
+    RadioGroup group = view.findViewById(groupId);
+    return group.getCheckedRadioButtonId();
+  }
+
+  // ---- saved option <-> radio button (pure mappings) ----
+
+  static int cleanupRadioId(DocumentCleanupMode mode) {
+    if (mode == DocumentCleanupMode.NATURAL) return R.id.dialog_document_cleanup_natural;
+    if (mode == DocumentCleanupMode.ENHANCED) return R.id.dialog_document_cleanup_enhanced;
+    if (mode == DocumentCleanupMode.CLEAN_TEXT) return R.id.dialog_document_cleanup_clean_text;
+    return R.id.dialog_document_cleanup_original;
+  }
+
+  static DocumentCleanupMode cleanupModeFor(int radioId) {
+    if (radioId == R.id.dialog_document_cleanup_natural) return DocumentCleanupMode.NATURAL;
+    if (radioId == R.id.dialog_document_cleanup_enhanced) return DocumentCleanupMode.ENHANCED;
+    if (radioId == R.id.dialog_document_cleanup_clean_text) return DocumentCleanupMode.CLEAN_TEXT;
+    return DocumentCleanupMode.ORIGINAL;
+  }
+
+  /** Returns {@link View#NO_ID} for a format without a radio button. */
+  static int pageFormatRadioId(PageFormat format) {
+    if (format == PageFormat.FIT_TO_IMAGE) return R.id.dialog_radio_page_fit;
+    if (format == PageFormat.A4) return R.id.dialog_radio_page_a4;
+    if (format == PageFormat.US_LETTER) return R.id.dialog_radio_page_letter;
+    if (format == PageFormat.LEGAL) return R.id.dialog_radio_page_legal;
+    return View.NO_ID;
+  }
+
+  static PageFormat pageFormatFor(int radioId) {
+    if (radioId == R.id.dialog_radio_page_a4) return PageFormat.A4;
+    if (radioId == R.id.dialog_radio_page_letter) return PageFormat.US_LETTER;
+    if (radioId == R.id.dialog_radio_page_legal) return PageFormat.LEGAL;
+    return PageFormat.FIT_TO_IMAGE;
+  }
+
+  static int textLayerRadioId(PdfCreator.TextLayerMode mode) {
+    return mode == PdfCreator.TextLayerMode.WORD_POSITIONED
+        ? R.id.dialog_pdf_text_layer_word_positioned
+        : R.id.dialog_pdf_text_layer_line_based;
+  }
+
+  static PdfCreator.TextLayerMode textLayerModeFor(int radioId) {
+    return radioId == R.id.dialog_pdf_text_layer_word_positioned
+        ? PdfCreator.TextLayerMode.WORD_POSITIONED
+        : PdfCreator.TextLayerMode.LINE_BASED;
+  }
+
+  /** Returns {@link View#NO_ID} for a preset without a radio button. */
+  static int presetRadioId(PdfQualityPreset preset) {
+    if (preset == PdfQualityPreset.HIGH) return R.id.dialog_radio_pdf_high;
+    if (preset == PdfQualityPreset.STANDARD) return R.id.dialog_radio_pdf_standard;
+    if (preset == PdfQualityPreset.SMALL) return R.id.dialog_radio_pdf_small;
+    if (preset == PdfQualityPreset.VERY_SMALL) return R.id.dialog_radio_pdf_very_small;
+    return View.NO_ID;
+  }
+
+  static PdfQualityPreset presetFor(int radioId) {
+    if (radioId == R.id.dialog_radio_pdf_high) return PdfQualityPreset.HIGH;
+    if (radioId == R.id.dialog_radio_pdf_small) return PdfQualityPreset.SMALL;
+    if (radioId == R.id.dialog_radio_pdf_very_small) return PdfQualityPreset.VERY_SMALL;
+    return PdfQualityPreset.STANDARD;
+  }
+
+  /** "Grayscale" is not a JPEG mode of its own but mode NONE plus the grayscale output flag. */
+  static int jpegRadioId(JpegExportOptions.Mode mode, boolean outputGrayscale) {
+    if (mode == JpegExportOptions.Mode.BW_TEXT) return R.id.dialog_radio_jpeg_bw_text;
+    return outputGrayscale ? R.id.dialog_radio_jpeg_auto : R.id.dialog_radio_jpeg_none;
+  }
+
+  static JpegExportOptions.Mode jpegModeFor(int radioId) {
+    return radioId == R.id.dialog_radio_jpeg_bw_text
+        ? JpegExportOptions.Mode.BW_TEXT
+        : JpegExportOptions.Mode.NONE;
+  }
+
+  /** A saved CLASSIC is shown as "robust"; only an explicit choice of "classic" saves CLASSIC. */
+  static int pdfBwRadioId(String savedMode) {
+    if ("GRAYSCALE".equalsIgnoreCase(savedMode)) return R.id.dialog_pdf_grayscale;
+    if ("CLASSIC".equalsIgnoreCase(savedMode) || "ROBUST".equalsIgnoreCase(savedMode)) {
+      return R.id.dialog_pdf_bw_robust;
+    }
+    return R.id.dialog_pdf_bw_none;
+  }
+
+  /** Returns {@code null} for none/original. */
+  static String pdfBwModeFor(int radioId) {
+    if (radioId == R.id.dialog_pdf_grayscale) return "GRAYSCALE";
+    if (radioId == R.id.dialog_pdf_bw_classic) return "CLASSIC";
+    if (radioId == R.id.dialog_pdf_bw_robust) return "ROBUST";
+    return null;
   }
 
   private void updateGroups(boolean exportJpeg, View pdfGroup, View jpegGroup) {
