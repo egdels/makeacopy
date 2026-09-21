@@ -135,4 +135,56 @@ public class DbPostProcessorTest {
         List<Quad> quads = pp.process(prob);
         assertEquals("Region mit Höhenstruktur bleibt erhalten", 1, quads.size());
     }
+
+    @Test
+    public void boxHygiene_dropsComponentsBelowMinAreaOrMinSide() {
+        // minArea=20, minSide=3: 4×4 (16 px) ist zu klein, 10×2 zu flach, 5×4 (20 px) bleibt.
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0, 20, 3);
+        float[][] prob = makeProb(64, 32);
+        fillRect(prob, 2, 2, 4, 4, 0.9f);
+        fillRect(prob, 20, 2, 10, 2, 0.9f);
+        fillRect(prob, 40, 20, 5, 4, 0.9f);
+
+        List<Quad> quads = pp.process(prob);
+        assertEquals(1, quads.size());
+        assertTrue(containsPoint(quads.get(0), 42.0, 22.0));
+    }
+
+    @Test
+    public void connectivity_isFourNeighbourhood() {
+        // Zwei Rechtecke, die sich nur diagonal an einer Ecke berühren, sind ZWEI Komponenten;
+        // ein L aus zwei Rechtecken mit gemeinsamer Kante ist EINE.
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0, 1, 1);
+        float[][] diagonal = makeProb(32, 32);
+        fillRect(diagonal, 2, 2, 4, 4, 0.9f);
+        fillRect(diagonal, 6, 6, 4, 4, 0.9f);
+        assertEquals(2, pp.process(diagonal).size());
+
+        float[][] lShape = makeProb(32, 32);
+        fillRect(lShape, 2, 2, 4, 10, 0.9f);
+        fillRect(lShape, 6, 8, 8, 4, 0.9f);
+        List<Quad> quads = pp.process(lShape);
+        assertEquals(1, quads.size());
+        // Bounding-Box des ganzen L: x 2..14, y 2..12
+        assertEquals(2.0, quads.get(0).minX(), 1e-9);
+        assertEquals(14.0, quads.get(0).maxX(), 1e-9);
+        assertEquals(2.0, quads.get(0).minY(), 1e-9);
+        assertEquals(12.0, quads.get(0).maxY(), 1e-9);
+    }
+
+    @Test
+    public void unclip_growsTheBoxByAreaTimesRatioOverPerimeter() {
+        // 20×10-Box, ratio 1.5: D = 200 * 0.5 / 60 = 1.666…
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.5, 1, 1);
+        float[][] prob = makeProb(64, 64);
+        fillRect(prob, 10, 20, 20, 10, 0.9f);
+
+        List<Quad> quads = pp.process(prob);
+        assertEquals(1, quads.size());
+        double d = 200.0 * 0.5 / 60.0;
+        assertEquals(10.0 - d, quads.get(0).minX(), 1e-9);
+        assertEquals(30.0 + d, quads.get(0).maxX(), 1e-9);
+        assertEquals(20.0 - d, quads.get(0).minY(), 1e-9);
+        assertEquals(30.0 + d, quads.get(0).maxY(), 1e-9);
+    }
 }

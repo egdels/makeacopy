@@ -181,101 +181,134 @@ final class DbPostProcessor {
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 if (!bin[y][x] || visited[y][x]) continue;
-
-                // BFS für eine Komponente
-                int minX = x, maxX = x, minY = y, maxY = y;
-                int count = 0;
-                double sumProb = 0.0;
-                // Per-Zeile Ink-Pixel-Anzahl für vertikale Ink-Variance (Stripe-Filter).
-                // Sparse via HashMap, weil Komponenten typischerweise schmal in y sind.
-                java.util.HashMap<Integer, Integer> rowInk = new java.util.HashMap<>();
-                Deque<int[]> queue = new ArrayDeque<>();
-                queue.add(new int[] {x, y});
-                visited[y][x] = true;
-                while (!queue.isEmpty()) {
-                    int[] p = queue.poll();
-                    int px = p[0], py = p[1];
-                    count++;
-                    sumProb += prob[py][px];
-                    rowInk.merge(py, 1, Integer::sum);
-                    if (px < minX) minX = px;
-                    if (px > maxX) maxX = px;
-                    if (py < minY) minY = py;
-                    if (py > maxY) maxY = py;
-                    // 4-Nachbarschaft
-                    if (px + 1 < w && bin[py][px + 1] && !visited[py][px + 1]) {
-                        visited[py][px + 1] = true;
-                        queue.add(new int[] {px + 1, py});
-                    }
-                    if (px - 1 >= 0 && bin[py][px - 1] && !visited[py][px - 1]) {
-                        visited[py][px - 1] = true;
-                        queue.add(new int[] {px - 1, py});
-                    }
-                    if (py + 1 < h && bin[py + 1][px] && !visited[py + 1][px]) {
-                        visited[py + 1][px] = true;
-                        queue.add(new int[] {px, py + 1});
-                    }
-                    if (py - 1 >= 0 && bin[py - 1][px] && !visited[py - 1][px]) {
-                        visited[py - 1][px] = true;
-                        queue.add(new int[] {px, py - 1});
-                    }
-                }
-
-                if (count <= 0) continue;
-                double meanProb = sumProb / count;
-                if (meanProb < boxThresh) continue;
-                // Box-Hygiene: Mindestfläche und Mindestseitenlänge.
-                if (count < minArea) continue;
-                int boxW = maxX - minX + 1;
-                int boxH = maxY - minY + 1;
-                if (boxW < minSide || boxH < minSide) continue;
-
-                // Schritt-2-Stripe-Filter (Layout-Rekonstruktion v2):
-                // Verwerfe extrem flache, langgezogene Komponenten ohne vertikale
-                // Ink-Variance — typisch für CMYK-Farbbalken am Druckrand. Greift nur,
-                // wenn Aspect Ratio sehr groß UND Höhenstruktur arm ist.
-                double aspect = (double) boxW / Math.max(1, boxH);
-                if (aspect > maxAspectRatio) {
-                    double mean = 0.0;
-                    for (int yy = minY; yy <= maxY; yy++) {
-                        Integer rc = rowInk.get(yy);
-                        if (rc != null) mean += rc;
-                    }
-                    mean /= boxH;
-                    double variance = 0.0;
-                    for (int yy = minY; yy <= maxY; yy++) {
-                        Integer rc = rowInk.get(yy);
-                        double d0 = ((rc != null) ? rc : 0) - mean;
-                        variance += d0 * d0;
-                    }
-                    variance /= boxH;
-                    // Variance / mean^2 als dimensionsloses Maß für relative Schwankung
-                    // der Zeilenfüllung — bei homogenen Streifen ≈ 0.
-                    double normVar = mean > 0 ? variance / (mean * mean) : 0.0;
-                    if (normVar < minVerticalInkVariance) continue;
-                }
-
-                // Paddle-konformes Unclip: D = area * (ratio - 1) / perimeter, isotrop.
-                // Im Gegensatz zur multiplikativen Halbachsen-Skalierung wächst die Box hier
-                // nur um wenige Pixel, statt um Faktor `unclipRatio` zu explodieren. Dadurch
-                // verschmelzen benachbarte Zeilen seltener zu einem Riesen-Quad.
-                double area = (double) boxW * boxH;
-                double perimeter = 2.0 * (boxW + boxH);
-                double d =
-                        perimeter > 0
-                                ? area * Math.max(0.0, unclipRatio - 1.0) / perimeter
-                                : 0.0;
-
-                double x0 = minX - d;
-                double x1 = maxX + 1 + d;
-                double y0 = minY - d;
-                double y1 = maxY + 1 + d;
-
-                double[] xs = new double[] {x0, x1, x1, x0};
-                double[] ys = new double[] {y0, y0, y1, y1};
-                result.add(new Quad(xs, ys, meanProb));
+                Component c = floodFill(prob, bin, visited, x, y);
+                if (isPlausibleTextBox(c)) result.add(unclip(c));
             }
         }
         return result;
+    }
+
+    /** Eine zusammenhängende Komponente der binären Maske samt Statistik. */
+    private static final class Component {
+        int minX, maxX, minY, maxY;
+        int count = 0;
+        double sumProb = 0.0;
+        // Per-Zeile Ink-Pixel-Anzahl für vertikale Ink-Variance (Stripe-Filter).
+        // Sparse via HashMap, weil Komponenten typischerweise schmal in y sind.
+        final java.util.HashMap<Integer, Integer> rowInk = new java.util.HashMap<>();
+
+        Component(int x, int y) {
+            minX = maxX = x;
+            minY = maxY = y;
+        }
+
+        void add(int px, int py, float p) {
+            count++;
+            sumProb += p;
+            rowInk.merge(py, 1, Integer::sum);
+            if (px < minX) minX = px;
+            if (px > maxX) maxX = px;
+            if (py < minY) minY = py;
+            if (py > maxY) maxY = py;
+        }
+
+        int boxW() {
+            return maxX - minX + 1;
+        }
+
+        int boxH() {
+            return maxY - minY + 1;
+        }
+
+        double meanProb() {
+            return sumProb / count;
+        }
+    }
+
+    /** BFS über die 4-Nachbarschaft; markiert alle Pixel der Komponente als besucht. */
+    private static Component floodFill(
+            float[][] prob, boolean[][] bin, boolean[][] visited, int startX, int startY) {
+        final int h = bin.length;
+        final int w = bin[0].length;
+        Component c = new Component(startX, startY);
+        Deque<int[]> queue = new ArrayDeque<>();
+        queue.add(new int[] {startX, startY});
+        visited[startY][startX] = true;
+        while (!queue.isEmpty()) {
+            int[] p = queue.poll();
+            int px = p[0], py = p[1];
+            c.add(px, py, prob[py][px]);
+            visit(bin, visited, queue, px + 1, py, w, h);
+            visit(bin, visited, queue, px - 1, py, w, h);
+            visit(bin, visited, queue, px, py + 1, w, h);
+            visit(bin, visited, queue, px, py - 1, w, h);
+        }
+        return c;
+    }
+
+    private static void visit(
+            boolean[][] bin, boolean[][] visited, Deque<int[]> queue, int x, int y, int w, int h) {
+        if (x < 0 || x >= w || y < 0 || y >= h) return;
+        if (!bin[y][x] || visited[y][x]) return;
+        visited[y][x] = true;
+        queue.add(new int[] {x, y});
+    }
+
+    private boolean isPlausibleTextBox(Component c) {
+        if (c.count <= 0) return false;
+        if (c.meanProb() < boxThresh) return false;
+        // Box-Hygiene: Mindestfläche und Mindestseitenlänge.
+        if (c.count < minArea) return false;
+        if (c.boxW() < minSide || c.boxH() < minSide) return false;
+        return !isHomogeneousStripe(c);
+    }
+
+    /**
+     * Schritt-2-Stripe-Filter (Layout-Rekonstruktion v2): Erkennt extrem flache, langgezogene
+     * Komponenten ohne vertikale Ink-Variance — typisch für CMYK-Farbbalken am Druckrand. Greift
+     * nur, wenn Aspect Ratio sehr groß UND Höhenstruktur arm ist.
+     */
+    private boolean isHomogeneousStripe(Component c) {
+        int boxH = c.boxH();
+        double aspect = (double) c.boxW() / Math.max(1, boxH);
+        if (aspect <= maxAspectRatio) return false;
+        double mean = 0.0;
+        for (int yy = c.minY; yy <= c.maxY; yy++) {
+            Integer rc = c.rowInk.get(yy);
+            if (rc != null) mean += rc;
+        }
+        mean /= boxH;
+        double variance = 0.0;
+        for (int yy = c.minY; yy <= c.maxY; yy++) {
+            Integer rc = c.rowInk.get(yy);
+            double d0 = ((rc != null) ? rc : 0) - mean;
+            variance += d0 * d0;
+        }
+        variance /= boxH;
+        // Variance / mean^2 als dimensionsloses Maß für relative Schwankung
+        // der Zeilenfüllung — bei homogenen Streifen ≈ 0.
+        double normVar = mean > 0 ? variance / (mean * mean) : 0.0;
+        return normVar < minVerticalInkVariance;
+    }
+
+    /**
+     * Paddle-konformes Unclip: D = area * (ratio - 1) / perimeter, isotrop. Im Gegensatz zur
+     * multiplikativen Halbachsen-Skalierung wächst die Box hier nur um wenige Pixel, statt um
+     * Faktor `unclipRatio` zu explodieren. Dadurch verschmelzen benachbarte Zeilen seltener zu
+     * einem Riesen-Quad.
+     */
+    private Quad unclip(Component c) {
+        double area = (double) c.boxW() * c.boxH();
+        double perimeter = 2.0 * (c.boxW() + c.boxH());
+        double d = perimeter > 0 ? area * Math.max(0.0, unclipRatio - 1.0) / perimeter : 0.0;
+
+        double x0 = c.minX - d;
+        double x1 = c.maxX + 1 + d;
+        double y0 = c.minY - d;
+        double y1 = c.maxY + 1 + d;
+
+        double[] xs = new double[] {x0, x1, x1, x0};
+        double[] ys = new double[] {y0, y0, y1, y1};
+        return new Quad(xs, ys, c.meanProb());
     }
 }
