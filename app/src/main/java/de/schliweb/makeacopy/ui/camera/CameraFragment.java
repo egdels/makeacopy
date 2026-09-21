@@ -36,6 +36,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
+import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AlertDialog;
 import androidx.camera.camera2.interop.Camera2Interop;
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
@@ -250,7 +251,6 @@ public class CameraFragment extends Fragment implements SensorEventListener {
   // Let both ScreenReader and Debug-Overlay follow the exact same cadence:
   // we persist the last hint emitted by the AccessibilityGuidanceController.
   private volatile GuidanceHint lastGuidanceEventHint = null;
-  private volatile long lastGuidanceEventTs = 0L;
 
   // Model-free distance estimation via autofocus (Camera2 API)
   // Value in diopters (1/meters). 0 or negative means unavailable.
@@ -2991,14 +2991,12 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     }
     // Reset last event for overlay cadence
     lastGuidanceEventHint = null;
-    lastGuidanceEventTs = 0L;
   }
 
   private void clearA11yGuidanceController() {
     a11yGuidanceController = null;
     a11yStateMachine = null;
     lastGuidanceEventHint = null;
-    lastGuidanceEventTs = 0L;
   }
 
   /**
@@ -3138,9 +3136,6 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       if ((!wantCorners && !wantFocusQuality) || binding == null || !isAdded()) return;
 
       long now = System.currentTimeMillis();
-      // Orientation for this frame processing: initial defaults, set if available later
-      int orientBucketLocal = -1; // 0 or 90
-      double orientConfLocal = -1.0;
       if (now - lastAnalysisTs < 180) return; // ~5–6 FPS
       lastAnalysisTs = now;
 
@@ -3170,53 +3165,17 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       if (bmp == null) return;
 
       // Capture bitmap dimensions for any deferred/lambda usage.
-      // (bmp itself is not effectively-final anymore because we recycle it in finally.)
+      // (bmp itself is not effectively-final because we recycle it in finally.)
       final int bmpW = bmp.getWidth();
       final int bmpH = bmp.getHeight();
 
-      // Init CV once
-      if (!OpenCVUtils.isInitialized()) {
-        try {
-          OpenCVUtils.init(requireContext().getApplicationContext());
-        } catch (Exception e) {
-          Log.w(TAG, "OpenCV init failed", e);
-        }
-      }
+      ensureOpenCvInitialized();
 
-      // DocQuad is the standard detector with OpenCV as fallback.
-      // Cache the detector so DocQuad runner/throttle actually persist across frames.
       // Skip corner detection entirely when only the focus-quality indicator needs frames:
       // the sharpness measurement then simply uses the full frame as ROI.
-      org.opencv.core.Point[] detectedPts = null;
-      boolean detectedValid = false;
-      if (wantCorners) {
-        de.schliweb.makeacopy.ml.corners.CornerDetector liveDetector = cachedLiveCornerDetector;
-        if (liveDetector == null || !cachedLiveCornerDetectorFlag) {
-          liveDetector =
-              de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forLive(
-                  requireContext(), docQuadOrtRunner);
-          cachedLiveCornerDetector = liveDetector;
-          cachedLiveCornerDetectorFlag = true;
-        }
-
-        de.schliweb.makeacopy.ml.corners.DetectionResult r =
-            liveDetector.detect(bmp, requireContext());
-        if (r != null
-            && r.success
-            && r.cornersOriginalTLTRBRBL != null
-            && r.cornersOriginalTLTRBRBL.length == 4) {
-          detectedPts = new org.opencv.core.Point[4];
-          for (int i = 0; i < 4; i++) {
-            detectedPts[i] =
-                new org.opencv.core.Point(
-                    r.cornersOriginalTLTRBRBL[i][0], r.cornersOriginalTLTRBRBL[i][1]);
-          }
-          detectedValid = true;
-        }
-      }
-      final org.opencv.core.Point[] pts = detectedPts;
-      final boolean hasValid = detectedValid;
       // Live-DocQuad liefert aktuell keinen Score (Determinismus/Performance).
+      final org.opencv.core.Point[] pts = wantCorners ? detectLiveCorners(bmp) : null;
+      final boolean hasValid = pts != null;
 
       // Map bitmap coords to overlay coords (PreviewView with FIT_CENTER) when valid.
       // The detection bitmap is built from the FULL analysis buffer, but the PreviewView (sharing
@@ -3227,244 +3186,34 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       android.graphics.PointF[] viewPts =
           hasValid ? mapToOverlayPoints(pts, bmpW, bmpH, analysisCropUpright) : null;
 
-      // Live focus-quality (sharpness) measurement — user-toggleable in the camera options.
-      // Reuses this already throttled analysis pass and the small upright bitmap: no extra
-      // pipeline, no copies.
-      if (wantFocusQuality) {
-        measureFocusQuality(bmp, hasValid ? pts : null, now);
-      } else if (lastFocusQualitySegments != -1) {
-        // Self-healing: the indicator was disabled (e.g. via camera options) while corner
-        // detection keeps the analyzer running — make sure stale indicator UI is hidden.
-        lastFocusQualitySegments = -1;
-        runOnUiThreadSafe(this::resetFocusQualityIndicator);
-      }
+      updateFocusQuality(wantFocusQuality, bmp, pts, now);
 
       // Optional: Evaluate FramingEngine (logging and/or accessibility guidance)
       boolean wantFraming =
           FeatureFlags.isFramingLoggingEnabled()
               || (FeatureFlags.isA11yGuidanceEnabled() && isAccessibilityModeEnabled());
-      FramingResult fr = null;
-      android.graphics.RectF fbRectForOverlay = null;
-      if (wantFraming) {
-        try {
-          android.graphics.PointF[] quad = null;
-          if (hasValid) {
-            quad = new android.graphics.PointF[4];
-            for (int i = 0; i < 4; i++) {
-              quad[i] = new android.graphics.PointF((float) pts[i].x, (float) pts[i].y);
-            }
-          }
-          android.graphics.RectF fbRect = OpenCVUtils.getFallbackRectF(bmpW, bmpH);
-          FramingEngine.Input feIn = new FramingEngine.Input(bmpW, bmpH, quad, fbRect);
-          fr = new FramingEngine().evaluate(feIn);
-          fbRectForOverlay = fbRect;
-          if (FeatureFlags.isFramingLoggingEnabled()) {
-            Log.d("Framing", "FramingResult=" + fr);
-          }
-          // Estimate orientation once (shared for A11y & overlay)
-          try {
-            OpenCVUtils.OrientationEstimate est = OpenCVUtils.estimateTextOrientation(bmp);
-            orientBucketLocal = (est.bucketDeg() == 90) ? 90 : 0;
-            orientConfLocal = est.confidence();
-          } catch (Exception e) {
-            Log.d(TAG, "estimateTextOrientation failed", e);
-          }
-
-          // A11y guidance using new state machine (concept-based implementation)
-          // Ensure state machine exists so overlay can mirror cadence even without a screen reader
-          if (a11yStateMachine == null) {
-            initA11yGuidanceController();
-          }
-          if (a11yStateMachine != null) {
-            // Convert detected points to PointF array for state machine
-            android.graphics.PointF[] quadForA11y = null;
-            if (hasValid && pts != null && pts.length == 4) {
-              quadForA11y = new android.graphics.PointF[4];
-              for (int i = 0; i < 4; i++) {
-                quadForA11y[i] = new android.graphics.PointF((float) pts[i].x, (float) pts[i].y);
-              }
-            }
-
-            // Optional: inject orientation hint into FramingResult if no document
-            FramingResult frForA11y = fr;
-            if (fr != null && !fr.hasDocument && orientConfLocal >= 0.30) {
-              GuidanceHint oriHint =
-                  (orientBucketLocal == 90)
-                      ? GuidanceHint.ORIENTATION_LANDSCAPE_TIP
-                      : GuidanceHint.ORIENTATION_PORTRAIT_TIP;
-              frForA11y =
-                  new FramingResult(
-                      fr.quality,
-                      fr.dxNorm,
-                      fr.dyNorm,
-                      fr.scaleRatio,
-                      fr.tiltHorizontal,
-                      fr.tiltVertical,
-                      oriHint,
-                      false);
-            }
-
-            // Process frame through state machine (with model-free focus distance)
-            final FramingResult finalFrForA11y = frForA11y;
-            final android.graphics.PointF[] finalQuadForA11y = quadForA11y;
-            final float focusDist = lastFocusDistanceDiopters; // model-free distance signal
-            a11yStateMachine.onFrame(
-                finalQuadForA11y,
-                bmpW,
-                bmpH,
-                finalFrForA11y,
-                focusDist,
-                now,
-                (event, state) -> {
-                  // Map event to GuidanceHint for compatibility
-                  GuidanceHint hint = mapEventToHint(event);
-                  if (hint == null) return;
-
-                  // Update shared cadence state for overlay
-                  lastGuidanceEventHint = hint;
-                  lastGuidanceEventTs = now;
-
-                  // Optional: emit debug log for QA when framing logging is enabled
-                  if (BuildConfig.FEATURE_FRAMING_LOGGING) {
-                    A11yStateMachine.DebugInfo dbg = a11yStateMachine.getDebugInfo();
-                    Log.d(
-                        TAG,
-                        "[A11Y_STATE] event="
-                            + event
-                            + ", state="
-                            + state
-                            + ", hint="
-                            + hint
-                            + ", ts="
-                            + now
-                            + ", debug="
-                            + dbg);
-                  }
-
-                  // Optional micro haptic for central hints (A11y mode only)
-                  maybeVibrateForHint(hint);
-
-                  // Only announce via TTS when accessibility mode is enabled
-                  if (isAccessibilityModeEnabled()) {
-                    int resId = mapHintToRes(hint);
-                    if (resId != 0) {
-                      runOnUiThreadSafe(() -> announce(resId));
-                    }
-                  }
-                });
-          }
-        } catch (Exception ignored) {
-          // Best-effort; failure is non-critical
-        }
-      }
+      final FramingEval framing =
+          wantFraming ? evaluateFraming(bmp, pts, bmpW, bmpH, now) : FramingEval.NONE;
 
       // Removed: direct one‑shot announcement for orientation. Orientation now flows into the
-      // central guidance path (see above), including hysteresis/rate limiting.
+      // central guidance path (see evaluateFraming), including hysteresis/rate limiting.
 
-      // --- Jitter reduction & hysteresis for the corner preview ---
-      if (hasValid && viewPts != null) {
-        consecutiveValidFrames++;
-        consecutiveInvalidFrames = 0;
-        // Init filter
-        if (lastFilteredCorners == null) {
-          lastFilteredCorners = new android.graphics.PointF[4];
-          for (int i = 0; i < 4; i++)
-            lastFilteredCorners[i] = new android.graphics.PointF(viewPts[i].x, viewPts[i].y);
-        } else {
-          // Apply EMA to each coordinate
-          for (int i = 0; i < 4; i++) {
-            float fx = lastFilteredCorners[i].x;
-            float fy = lastFilteredCorners[i].y;
-            float nx = CORNER_EMA_ALPHA * viewPts[i].x + (1f - CORNER_EMA_ALPHA) * fx;
-            float ny = CORNER_EMA_ALPHA * viewPts[i].y + (1f - CORNER_EMA_ALPHA) * fy;
-            lastFilteredCorners[i].x = nx;
-            lastFilteredCorners[i].y = ny;
-          }
-        }
-      } else {
-        consecutiveInvalidFrames++;
-        consecutiveValidFrames = 0;
-      }
+      smoothOverlayCorners(viewPts);
 
-      // Compute score EMA only when a value exists
       // Use FramingEngine quality (0..1) instead of det.score() which is always 0.0 for DocQuad
-      double rawScore = (fr != null) ? fr.quality : 0.0;
-      if (hasValid) {
-        if (lastScoreEma < 0) lastScoreEma = rawScore;
-        else lastScoreEma = SCORE_EMA_ALPHA * rawScore + (1.0 - SCORE_EMA_ALPHA) * lastScoreEma;
-      }
+      double rawScore = (framing.result() != null) ? framing.result().quality : 0.0;
+      // Compute score EMA only when a value exists
+      if (hasValid) updateScoreEma(rawScore);
 
       // UI update: overlay and score with hysteresis
-      final FramingResult frUi = fr;
-      final android.graphics.RectF fbRectUi = fbRectForOverlay;
-      final int orientBucketForUi = orientBucketLocal;
-      final double orientConfForUi = orientConfLocal;
       runOnUiThreadSafe(
           () -> {
             if (binding == null) return;
-
-            // Show visible corner preview only when the user enabled visual analysis
-            if (analysisEnabled) {
-              boolean shouldShow =
-                  (consecutiveValidFrames >= OVERLAY_SHOW_AFTER_VALID)
-                      || binding.cornerOverlay.getVisibility() == View.VISIBLE;
-              if (hasValid && lastFilteredCorners != null && shouldShow) {
-                binding.cornerOverlay.setCorners(lastFilteredCorners);
-              } else {
-                // Only hide after enough consecutive invalid frames
-                if (consecutiveInvalidFrames >= OVERLAY_HIDE_AFTER_INVALID) {
-                  binding.cornerOverlay.setCorners(null);
-                  lastFilteredCorners = null;
-                }
-              }
-            } else {
-              // Visual analysis off → do not draw corners
-              binding.cornerOverlay.setCorners(null);
-            }
-
-            // Dev overlay: modelRect + metrics when logging flag is active
-            if (FeatureFlags.isFramingLoggingEnabled() && frUi != null && fbRectUi != null) {
-              android.graphics.RectF viewRect = mapToOverlayRect(fbRectUi, bmpW, bmpH);
-              binding.cornerOverlay.setModelRect(viewRect);
-              // Compact debug text in percentages, 1 decimal place
-              // Orientation was already estimated above → just display here
-              // IMPORTANT: Overlay hint must follow the same rhythm as the screen reader.
-              // Therefore, we display the last hint emitted by the AccessibilityGuidanceController.
-              GuidanceHint hintToShow = lastGuidanceEventHint;
-              String dbg =
-                  String.format(
-                      Locale.US,
-                      "q=%.2f\nΔx=%.2f Δy=%.2f\nscale=%.2f\ntiltH=%.2f tiltV=%.2f\nori=%s conf=%s\nhint=%s",
-                      frUi.quality,
-                      frUi.dxNorm,
-                      frUi.dyNorm,
-                      frUi.scaleRatio,
-                      frUi.tiltHorizontal,
-                      frUi.tiltVertical,
-                      (orientBucketForUi >= 0 ? (orientBucketForUi + "°") : "-"),
-                      (orientConfForUi >= 0
-                          ? String.format(Locale.US, "%.2f", orientConfForUi)
-                          : "-"),
-                      hintToShow != null ? hintToShow.name() : "-");
-              binding.cornerOverlay.setDebugText(dbg);
-            } else {
-              binding.cornerOverlay.setModelRect(null);
-              binding.cornerOverlay.setDebugText(null);
-            }
+            renderCornerOverlay(hasValid);
+            renderFramingDevOverlay(framing, bmpW, bmpH);
           });
 
-      // Accessibility feedback when framing is stable and good
-      if (isAccessibilityModeEnabled()) {
-        // Use the smoothed score for stability logic when available
-        lastScore = (lastScoreEma >= 0 ? lastScoreEma : rawScore);
-        if (isStableFor(5, 0.8)) {
-          maybeSignalGoodFraming();
-        }
-      } else {
-        // Reset counters when mode is off
-        lastScore = 0.0;
-        stableCount = 0;
-      }
+      updateGoodFramingFeedback(rawScore);
     } catch (Exception e) {
       Log.w(TAG, "analyzeFrameForCorners failed: " + e.getMessage(), e);
     } finally {
@@ -3479,6 +3228,309 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       }
       image.close();
     }
+  }
+
+  /** Init CV once. */
+  private void ensureOpenCvInitialized() {
+    if (OpenCVUtils.isInitialized()) return;
+    try {
+      OpenCVUtils.init(requireContext().getApplicationContext());
+    } catch (Exception e) {
+      Log.w(TAG, "OpenCV init failed", e);
+    }
+  }
+
+  /**
+   * Live focus-quality (sharpness) measurement — user-toggleable in the camera options. Reuses the
+   * already throttled analysis pass and the small upright bitmap: no extra pipeline, no copies.
+   */
+  private void updateFocusQuality(
+      boolean wantFocusQuality, Bitmap bmp, @Nullable org.opencv.core.Point[] pts, long now) {
+    if (wantFocusQuality) {
+      measureFocusQuality(bmp, pts, now);
+    } else if (lastFocusQualitySegments != -1) {
+      // Self-healing: the indicator was disabled (e.g. via camera options) while corner
+      // detection keeps the analyzer running — make sure stale indicator UI is hidden.
+      lastFocusQualitySegments = -1;
+      runOnUiThreadSafe(this::resetFocusQualityIndicator);
+    }
+  }
+
+  private void updateScoreEma(double rawScore) {
+    if (lastScoreEma < 0) lastScoreEma = rawScore;
+    else lastScoreEma = SCORE_EMA_ALPHA * rawScore + (1.0 - SCORE_EMA_ALPHA) * lastScoreEma;
+  }
+
+  /** Accessibility feedback when framing is stable and good. */
+  private void updateGoodFramingFeedback(double rawScore) {
+    if (!isAccessibilityModeEnabled()) {
+      // Reset counters when mode is off
+      lastScore = 0.0;
+      stableCount = 0;
+      return;
+    }
+    // Use the smoothed score for stability logic when available
+    lastScore = (lastScoreEma >= 0 ? lastScoreEma : rawScore);
+    if (isStableFor(5, 0.8)) {
+      maybeSignalGoodFraming();
+    }
+  }
+
+  /**
+   * Runs the live corner detector. DocQuad is the standard detector with OpenCV as fallback; the
+   * detector is cached so DocQuad runner/throttle actually persist across frames.
+   *
+   * @return the four corners (TL, TR, BR, BL) in bitmap coordinates, or {@code null} if no document
+   *     was found
+   */
+  @Nullable
+  private org.opencv.core.Point[] detectLiveCorners(Bitmap bmp) {
+    de.schliweb.makeacopy.ml.corners.CornerDetector liveDetector = cachedLiveCornerDetector;
+    if (liveDetector == null || !cachedLiveCornerDetectorFlag) {
+      liveDetector =
+          de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forLive(
+              requireContext(), docQuadOrtRunner);
+      cachedLiveCornerDetector = liveDetector;
+      cachedLiveCornerDetectorFlag = true;
+    }
+
+    de.schliweb.makeacopy.ml.corners.DetectionResult r = liveDetector.detect(bmp, requireContext());
+    if (r == null
+        || !r.success
+        || r.cornersOriginalTLTRBRBL == null
+        || r.cornersOriginalTLTRBRBL.length != 4) {
+      return null;
+    }
+    org.opencv.core.Point[] pts = new org.opencv.core.Point[4];
+    for (int i = 0; i < 4; i++) {
+      pts[i] =
+          new org.opencv.core.Point(
+              r.cornersOriginalTLTRBRBL[i][0], r.cornersOriginalTLTRBRBL[i][1]);
+    }
+    return pts;
+  }
+
+  @Nullable
+  private static android.graphics.PointF[] toPointFs(@Nullable org.opencv.core.Point[] pts) {
+    if (pts == null || pts.length != 4) return null;
+    android.graphics.PointF[] quad = new android.graphics.PointF[4];
+    for (int i = 0; i < 4; i++) {
+      quad[i] = new android.graphics.PointF((float) pts[i].x, (float) pts[i].y);
+    }
+    return quad;
+  }
+
+  /**
+   * FramingEngine evaluation of one analyzed frame.
+   *
+   * @param result the framing result, or {@code null} if framing was not evaluated or failed
+   * @param fallbackRect the model rect the framing was evaluated against (dev overlay)
+   * @param orientBucket estimated text orientation, 0 or 90; -1 if unknown
+   * @param orientConf confidence of the orientation estimate; -1 if unknown
+   */
+  private record FramingEval(
+      @Nullable FramingResult result,
+      @Nullable android.graphics.RectF fallbackRect,
+      int orientBucket,
+      double orientConf) {
+    static final FramingEval NONE = new FramingEval(null, null, -1, -1.0);
+  }
+
+  /** Evaluates the FramingEngine for this frame and feeds the accessibility guidance. */
+  private FramingEval evaluateFraming(
+      Bitmap bmp, @Nullable org.opencv.core.Point[] pts, int bmpW, int bmpH, long now) {
+    FramingResult fr;
+    android.graphics.RectF fbRect;
+    try {
+      fbRect = OpenCVUtils.getFallbackRectF(bmpW, bmpH);
+      fr =
+          new FramingEngine().evaluate(new FramingEngine.Input(bmpW, bmpH, toPointFs(pts), fbRect));
+      if (FeatureFlags.isFramingLoggingEnabled()) {
+        Log.d("Framing", "FramingResult=" + fr);
+      }
+    } catch (Exception ignored) {
+      return FramingEval.NONE;
+    }
+    // Estimate orientation once (shared for A11y & overlay)
+    int orientBucket = -1; // 0 or 90
+    double orientConf = -1.0;
+    try {
+      OpenCVUtils.OrientationEstimate est = OpenCVUtils.estimateTextOrientation(bmp);
+      orientBucket = (est.bucketDeg() == 90) ? 90 : 0;
+      orientConf = est.confidence();
+    } catch (Exception e) {
+      Log.d(TAG, "estimateTextOrientation failed", e);
+    }
+    try {
+      feedA11yGuidance(pts, bmpW, bmpH, fr, orientBucket, orientConf, now);
+    } catch (Exception ignored) {
+      // Best-effort; failure is non-critical
+    }
+    return new FramingEval(fr, fbRect, orientBucket, orientConf);
+  }
+
+  /** A11y guidance using the state machine (concept-based implementation). */
+  private void feedA11yGuidance(
+      @Nullable org.opencv.core.Point[] pts,
+      int bmpW,
+      int bmpH,
+      @Nullable FramingResult fr,
+      int orientBucket,
+      double orientConf,
+      long now) {
+    // Ensure state machine exists so overlay can mirror cadence even without a screen reader
+    if (a11yStateMachine == null) {
+      initA11yGuidanceController();
+    }
+    if (a11yStateMachine == null) return;
+
+    // Process frame through state machine (with model-free focus distance)
+    a11yStateMachine.onFrame(
+        toPointFs(pts),
+        bmpW,
+        bmpH,
+        withOrientationHint(fr, orientBucket, orientConf),
+        lastFocusDistanceDiopters, // model-free distance signal
+        now,
+        (event, state) -> onA11yGuidanceEvent(event, state, now));
+  }
+
+  /** Optional: inject an orientation hint into the FramingResult if there is no document. */
+  @VisibleForTesting
+  @Nullable
+  static FramingResult withOrientationHint(
+      @Nullable FramingResult fr, int orientBucket, double orientConf) {
+    if (fr == null || fr.hasDocument || orientConf < 0.30) return fr;
+    GuidanceHint oriHint =
+        (orientBucket == 90)
+            ? GuidanceHint.ORIENTATION_LANDSCAPE_TIP
+            : GuidanceHint.ORIENTATION_PORTRAIT_TIP;
+    return new FramingResult(
+        fr.quality,
+        fr.dxNorm,
+        fr.dyNorm,
+        fr.scaleRatio,
+        fr.tiltHorizontal,
+        fr.tiltVertical,
+        oriHint,
+        false);
+  }
+
+  private void onA11yGuidanceEvent(
+      A11yStateMachine.Event event, A11yStateMachine.State state, long now) {
+    // Map event to GuidanceHint for compatibility
+    GuidanceHint hint = mapEventToHint(event);
+    if (hint == null) return;
+
+    // Update shared cadence state for overlay
+    lastGuidanceEventHint = hint;
+
+    // Optional: emit debug log for QA when framing logging is enabled
+    if (BuildConfig.FEATURE_FRAMING_LOGGING) {
+      A11yStateMachine.DebugInfo dbg = a11yStateMachine.getDebugInfo();
+      Log.d(
+          TAG,
+          "[A11Y_STATE] event="
+              + event
+              + ", state="
+              + state
+              + ", hint="
+              + hint
+              + ", ts="
+              + now
+              + ", debug="
+              + dbg);
+    }
+
+    // Optional micro haptic for central hints (A11y mode only)
+    maybeVibrateForHint(hint);
+
+    // Only announce via TTS when accessibility mode is enabled
+    if (isAccessibilityModeEnabled()) {
+      int resId = mapHintToRes(hint);
+      if (resId != 0) {
+        runOnUiThreadSafe(() -> announce(resId));
+      }
+    }
+  }
+
+  /**
+   * Jitter reduction & hysteresis for the corner preview: counts consecutive valid/invalid frames
+   * and applies an EMA to the overlay corners.
+   *
+   * @param viewPts corners in overlay coordinates, or {@code null} if this frame has no valid quad
+   */
+  private void smoothOverlayCorners(@Nullable android.graphics.PointF[] viewPts) {
+    if (viewPts == null) {
+      consecutiveInvalidFrames++;
+      consecutiveValidFrames = 0;
+      return;
+    }
+    consecutiveValidFrames++;
+    consecutiveInvalidFrames = 0;
+    if (lastFilteredCorners == null) {
+      // Init filter
+      lastFilteredCorners = new android.graphics.PointF[4];
+      for (int i = 0; i < 4; i++) {
+        lastFilteredCorners[i] = new android.graphics.PointF(viewPts[i].x, viewPts[i].y);
+      }
+      return;
+    }
+    // Apply EMA to each coordinate
+    for (int i = 0; i < 4; i++) {
+      android.graphics.PointF f = lastFilteredCorners[i];
+      f.x = CORNER_EMA_ALPHA * viewPts[i].x + (1f - CORNER_EMA_ALPHA) * f.x;
+      f.y = CORNER_EMA_ALPHA * viewPts[i].y + (1f - CORNER_EMA_ALPHA) * f.y;
+    }
+  }
+
+  /** UI thread: shows the smoothed corner preview with show/hide hysteresis. */
+  private void renderCornerOverlay(boolean hasValid) {
+    // Show visible corner preview only when the user enabled visual analysis
+    if (!analysisEnabled) {
+      binding.cornerOverlay.setCorners(null);
+      return;
+    }
+    boolean shouldShow =
+        (consecutiveValidFrames >= OVERLAY_SHOW_AFTER_VALID)
+            || binding.cornerOverlay.getVisibility() == View.VISIBLE;
+    if (hasValid && lastFilteredCorners != null && shouldShow) {
+      binding.cornerOverlay.setCorners(lastFilteredCorners);
+    } else if (consecutiveInvalidFrames >= OVERLAY_HIDE_AFTER_INVALID) {
+      // Only hide after enough consecutive invalid frames
+      binding.cornerOverlay.setCorners(null);
+      lastFilteredCorners = null;
+    }
+  }
+
+  /** UI thread: dev overlay with modelRect + metrics when the logging flag is active. */
+  private void renderFramingDevOverlay(FramingEval framing, int bmpW, int bmpH) {
+    FramingResult fr = framing.result();
+    if (!FeatureFlags.isFramingLoggingEnabled() || fr == null || framing.fallbackRect() == null) {
+      binding.cornerOverlay.setModelRect(null);
+      binding.cornerOverlay.setDebugText(null);
+      return;
+    }
+    binding.cornerOverlay.setModelRect(mapToOverlayRect(framing.fallbackRect(), bmpW, bmpH));
+    // Compact debug text. IMPORTANT: Overlay hint must follow the same rhythm as the screen
+    // reader. Therefore, we display the last hint emitted by the AccessibilityGuidanceController.
+    GuidanceHint hintToShow = lastGuidanceEventHint;
+    String dbg =
+        String.format(
+            Locale.US,
+            "q=%.2f\nΔx=%.2f Δy=%.2f\nscale=%.2f\ntiltH=%.2f tiltV=%.2f\nori=%s conf=%s\nhint=%s",
+            fr.quality,
+            fr.dxNorm,
+            fr.dyNorm,
+            fr.scaleRatio,
+            fr.tiltHorizontal,
+            fr.tiltVertical,
+            (framing.orientBucket() >= 0 ? (framing.orientBucket() + "°") : "-"),
+            (framing.orientConf() >= 0
+                ? String.format(Locale.US, "%.2f", framing.orientConf())
+                : "-"),
+            hintToShow != null ? hintToShow.name() : "-");
+    binding.cornerOverlay.setDebugText(dbg);
   }
 
   private android.graphics.RectF mapToOverlayRect(android.graphics.RectF src, int bmpW, int bmpH) {
