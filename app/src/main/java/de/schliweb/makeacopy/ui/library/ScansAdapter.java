@@ -234,38 +234,52 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
     ScanEntity e = items.get(position);
     String title = (e.title != null && !e.title.isEmpty()) ? e.title : e.id;
     h.title.setText(title);
-    String dateStr =
-        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-            .format(new Date(e.createdAt));
-    String baseSubtitle = dateStr + " • " + Math.max(1, e.pageCount) + " page(s)";
     // Show base metadata in subtitle (date/pages)
-    h.subtitle.setText(baseSubtitle);
+    h.subtitle.setText(baseSubtitle(e));
     // Show OCR full-text match info on its own line (separate TextView)
     bindOcrMatch(h, e.id);
-    // Show collection membership on its own line (separate TextView)
-    List<String> cols = memberships.get(e.id);
-    if (h.membership != null) {
-      if (cols != null && !cols.isEmpty()) {
-        String mem = formatMembership(h.itemView, cols);
-        if (mem != null && !mem.isEmpty()) {
-          h.membership.setText(mem);
-          h.membership.setVisibility(View.VISIBLE);
-        } else {
-          h.membership.setText("");
-          h.membership.setVisibility(View.GONE);
-        }
-      } else {
-        h.membership.setText("");
-        h.membership.setVisibility(View.GONE);
-      }
-    }
+    bindMembership(h, e.id);
 
     // Multi-select checkbox: visible only in selection mode
     if (h.checkbox != null) {
       h.checkbox.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
       h.checkbox.setChecked(e.id != null && selectedIds.contains(e.id));
     }
+    bindClicks(h, e);
+    bindThumbnail(h, e);
+    checkReadabilityAsync(h, e);
+  }
 
+  /** Date and page count, e.g. "21.09.2026, 14:30 • 3 page(s)". */
+  private static String baseSubtitle(ScanEntity e) {
+    String dateStr =
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            .format(new Date(e.createdAt));
+    return dateStr + " • " + Math.max(1, e.pageCount) + " page(s)";
+  }
+
+  /** Prefer explicit coverPath; fall back to first export URI when coverPath is missing. */
+  private static String coverKey(ScanEntity e) {
+    return (e.coverPath != null && !e.coverPath.isEmpty())
+        ? e.coverPath
+        : FileUtils.firstUriFromJson(e.exportPathsJson);
+  }
+
+  /** Show collection membership on its own line (separate TextView). */
+  private void bindMembership(@NonNull VH h, String scanId) {
+    if (h.membership == null) return;
+    List<String> cols = memberships.get(scanId);
+    String mem = (cols != null && !cols.isEmpty()) ? formatMembership(h.itemView, cols) : null;
+    if (mem != null && !mem.isEmpty()) {
+      h.membership.setText(mem);
+      h.membership.setVisibility(View.VISIBLE);
+    } else {
+      h.membership.setText("");
+      h.membership.setVisibility(View.GONE);
+    }
+  }
+
+  private void bindClicks(@NonNull VH h, ScanEntity e) {
     if (selectionMode) {
       View.OnClickListener toggle =
           v -> {
@@ -301,102 +315,74 @@ public class ScansAdapter extends RecyclerView.Adapter<ScansAdapter.VH> {
           }
           return false;
         });
+  }
 
+  private void bindThumbnail(@NonNull VH h, ScanEntity e) {
     // Set placeholder first
     h.thumb.setImageResource(android.R.drawable.ic_menu_report_image);
     h.thumb.setAlpha(1f);
-    // Prefer explicit coverPath; fall back to first export URI when coverPath is missing
-    String key =
-        (e.coverPath != null && !e.coverPath.isEmpty())
-            ? e.coverPath
-            : FileUtils.firstUriFromJson(e.exportPathsJson);
-    if (key != null && !key.isEmpty()) {
-      Bitmap cached = thumbCache.get(key);
-      if (cached != null && !cached.isRecycled()) {
-        h.thumb.setImageBitmap(cached);
-      } else {
-        // async load
-        loader.submit(
-            () -> {
-              Bitmap bmp = loadThumb(h.thumb, key);
-              if (bmp != null) {
-                synchronized (thumbCache) {
-                  thumbCache.put(key, bmp);
+    String key = coverKey(e);
+    if (key == null || key.isEmpty()) return;
+    Bitmap cached = thumbCache.get(key);
+    if (cached != null && !cached.isRecycled()) {
+      h.thumb.setImageBitmap(cached);
+      return;
+    }
+    // async load
+    loader.submit(
+        () -> {
+          Bitmap bmp = loadThumb(h.thumb, key);
+          if (bmp == null) return;
+          synchronized (thumbCache) {
+            thumbCache.put(key, bmp);
+          }
+          // Bind back on UI thread if holder is still valid
+          android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+          main.post(
+              () -> {
+                int pos = h.getBindingAdapterPosition();
+                if (pos == RecyclerView.NO_POSITION) return;
+                if (key.equals(coverKey(items.get(pos)))) {
+                  h.thumb.setImageBitmap(bmp);
                 }
-                // Bind back on UI thread if holder is still valid
-                android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
-                main.post(
-                    () -> {
-                      int pos = h.getBindingAdapterPosition();
-                      if (pos != RecyclerView.NO_POSITION) {
-                        ScanEntity cur = items.get(pos);
-                        String curKey =
-                            (cur.coverPath != null && !cur.coverPath.isEmpty())
-                                ? cur.coverPath
-                                : FileUtils.firstUriFromJson(cur.exportPathsJson);
-                        if (curKey != null && curKey.equals(key)) {
-                          h.thumb.setImageBitmap(bmp);
-                        }
-                      }
-                    });
-              }
-            });
+              });
+        });
+  }
+
+  /** Async readability check of the primary export URI to annotate subtitle and guard clicks. */
+  private void checkReadabilityAsync(@NonNull VH h, ScanEntity e) {
+    final String primary = FileUtils.firstUriFromJson(e.exportPathsJson);
+    if (primary == null || primary.isEmpty()) {
+      unreadableMap.put(e.id, false);
+      return;
+    }
+    loader.submit(
+        () -> {
+          boolean readable = FileUtils.isUriReadable(h.itemView.getContext(), primary);
+          unreadableMap.put(e.id, !readable);
+          android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+          main.post(() -> bindReadability(h, e.id, readable));
+        });
+  }
+
+  /** Re-binds the rows that depend on readability, if the holder still shows the same scan. */
+  private void bindReadability(@NonNull VH h, String scanId, boolean readable) {
+    int pos = h.getBindingAdapterPosition();
+    if (pos == RecyclerView.NO_POSITION) return;
+    ScanEntity cur = items.get(pos);
+    if (cur == null || !cur.id.equals(scanId)) return;
+    bindOcrMatch(h, cur.id);
+    String sub = baseSubtitle(cur);
+    if (!readable) {
+      sub = sub + " • " + h.itemView.getContext().getString(R.string.missing_file);
+      try {
+        h.thumb.setAlpha(0.7f);
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
       }
     }
-
-    // Async readability check of the primary export URI to annotate subtitle and guard clicks
-    final String primary = FileUtils.firstUriFromJson(e.exportPathsJson);
-    if (primary != null && !primary.isEmpty()) {
-      loader.submit(
-          () -> {
-            boolean readable = FileUtils.isUriReadable(h.itemView.getContext(), primary);
-            unreadableMap.put(e.id, !readable);
-            android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
-            main.post(
-                () -> {
-                  int pos = h.getBindingAdapterPosition();
-                  if (pos != RecyclerView.NO_POSITION) {
-                    ScanEntity cur = items.get(pos);
-                    if (cur != null && cur.id.equals(e.id)) {
-                      String dateStrCur =
-                          DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                              .format(new Date(cur.createdAt));
-                      String base = dateStrCur + " • " + Math.max(1, cur.pageCount) + " page(s)";
-                      bindOcrMatch(h, cur.id);
-                      List<String> colsCur = memberships.get(cur.id);
-                      String sub = base;
-                      if (!readable) {
-                        sub =
-                            sub + " • " + h.itemView.getContext().getString(R.string.missing_file);
-                        try {
-                          h.thumb.setAlpha(0.7f);
-                        } catch (Throwable ignore) {
-                          // Best-effort; failure is non-critical
-                        }
-                      }
-                      h.subtitle.setText(sub);
-                      if (h.membership != null) {
-                        if (colsCur != null && !colsCur.isEmpty()) {
-                          String mem = formatMembership(h.itemView, colsCur);
-                          if (mem != null && !mem.isEmpty()) {
-                            h.membership.setText(mem);
-                            h.membership.setVisibility(View.VISIBLE);
-                          } else {
-                            h.membership.setText("");
-                            h.membership.setVisibility(View.GONE);
-                          }
-                        } else {
-                          h.membership.setText("");
-                          h.membership.setVisibility(View.GONE);
-                        }
-                      }
-                    }
-                  }
-                });
-          });
-    } else {
-      unreadableMap.put(e.id, false);
-    }
+    h.subtitle.setText(sub);
+    bindMembership(h, cur.id);
   }
 
   @Override
