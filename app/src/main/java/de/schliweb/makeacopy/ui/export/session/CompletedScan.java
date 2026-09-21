@@ -175,4 +175,28 @@ public record CompletedScan(
         NO_PDF_PAGE,
         null);
   }
+
+  /**
+   * Returns a copy with the given OCR artifact and page status; all other fields are preserved
+   * (including the multi-page metadata {@code sourceType}/{@code pdfPageIndex}).
+   */
+  public CompletedScan withOcr(
+      @Nullable String ocrTextPath, @Nullable String ocrFormat, @Nullable String pageStatus) {
+    return new CompletedScan(
+        id,
+        filePath,
+        rotationDeg,
+        ocrTextPath,
+        ocrFormat,
+        thumbPath,
+        createdAt,
+        widthPx,
+        heightPx,
+        inMemoryBitmap,
+        schemaVersion,
+        orientationMode,
+        sourceType,
+        pdfPageIndex,
+        pageStatus);
+  }
 }

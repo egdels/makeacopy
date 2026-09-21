@@ -12,7 +12,6 @@ package de.schliweb.makeacopy.ui.ocr;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -38,7 +37,6 @@ import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.databinding.FragmentOcrBinding;
 import de.schliweb.makeacopy.ui.crop.CropViewModel;
 import de.schliweb.makeacopy.utils.image.ImageLoader;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.ocr.*;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
@@ -740,43 +738,6 @@ public class OCRFragment extends Fragment {
     }
   }
 
-  /**
-   * Heuristic for the adaptive Quick→Robust switch: returns true when the input bitmap shows
-   * strongly uneven illumination (shadow/lighting gradient typical for phone photos), where global
-   * Otsu in Quick mode would likely clip and lose text.
-   *
-   * <p>The actual decision logic lives in {@link
-   * de.schliweb.makeacopy.utils.ocr.UnevenLightingPolicy} so it can be unit-tested without an
-   * Android device. This method only handles bitmap downsampling and pixel extraction.
-   */
-  private static boolean hasUnevenLighting(android.graphics.Bitmap b) {
-    if (b == null || b.isRecycled()) return false;
-    try {
-      int w = b.getWidth();
-      int h = b.getHeight();
-      if (w < 4 || h < 4) return false;
-      // Downsample to keep this cheap regardless of input size.
-      int target = 192;
-      int longSide = Math.max(w, h);
-      double scale = longSide > target ? (double) target / (double) longSide : 1.0;
-      int dw = Math.max(4, (int) Math.round(w * scale));
-      int dh = Math.max(4, (int) Math.round(h * scale));
-      android.graphics.Bitmap small =
-          (dw == w && dh == h) ? b : android.graphics.Bitmap.createScaledBitmap(b, dw, dh, true);
-      try {
-        int n = dw * dh;
-        int[] px = new int[n];
-        small.getPixels(px, 0, dw, 0, 0, dw, dh);
-        return de.schliweb.makeacopy.utils.ocr.UnevenLightingPolicy.isUneven(px, dw, dh);
-      } finally {
-        if (small != b && !small.isRecycled()) small.recycle();
-      }
-    } catch (Throwable t) {
-      // On any failure, be conservative and do not trigger the adaptive switch.
-      return false;
-    }
-  }
-
   private int getSelectedOcrMode() {
     if (de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR) {
       return OCR_MODE_PADDLE;
@@ -1261,657 +1222,359 @@ public class OCRFragment extends Fragment {
     ocrCancelled.set(false);
 
     try {
-      runningOcr =
-          ocrExecutor.submit(
-              () -> {
-                final String LP = "[OCR_LOG] ";
-                long t0 = System.nanoTime();
-                OCRHelper localHelper = null;
-                try {
-                  Log.d(TAG, LP + "BG thread=" + Thread.currentThread().getName());
-                  // Prepare bitmap (orientation corrections)
-                  Log.d(TAG, LP + "Preparing image for OCR - orientation handling");
-                  Bitmap src = imageBitmap;
-
-                  // Note: We ignore capture/EXIF rotation here because the app is locked to
-                  // portrait
-                  // (AndroidManifest: android:screenOrientation="portrait") and handles
-                  // configChanges for orientation/screenSize/screenLayout. In this setup,
-                  // getCaptureRotationDegrees() is effectively always 0 and evaluating it adds no
-                  // value.
-                  // If orientation handling changes in the future, restore compensation here if
-                  // needed.
-                  Bitmap srcNoCaptureRotation = src; // alias for clarity
-                  src = srcNoCaptureRotation;
-
-                  // Apply user-requested rotation (after crop, before OCR)
-                  int userDeg = 0;
-                  Integer ur = cropViewModel.getUserRotationDegrees().getValue();
-                  if (ur != null) userDeg = ((ur % 360) + 360) % 360;
-                  if (userDeg != 0) {
-                    src = rotateBitmap(src, userDeg);
-                  }
-
-                  // We will try OCR in 90° steps (0, 90, 180, 270) to guard against wrong user
-                  // rotation
-                  // Start with current src (already including userDeg). For each attempt, rotate
-                  // extra and pick best by meanConfidence, then by text length.
-
-                  if (ocrCancelled.get()) {
-                    Log.w(TAG, LP + "Cancelled before OCR init");
-                    postError("Cancelled");
-                    return;
-                  }
-
-                  // Fresh Tesseract per job
-                  localHelper = ocrHelperProvider.get();
-                  // 1 job = 1 engine instance. No automatic reinitialization per run.
-                  try {
-                    localHelper.setReinitPerRun(false);
-                  } catch (Throwable ignore) {
-                    // Best-effort; failure is non-critical
-                  }
-
-                  String lang = ocrViewModel.getLanguage().getValue();
-                  if (lang == null || lang.isEmpty()) lang = "eng";
-                  Log.d(TAG, LP + "Language requested=" + lang);
-
-                  try {
-                    // Ensure language is set BEFORE init so Tesseract loads the correct traineddata
-                    localHelper.setLanguage(lang);
-                  } catch (Throwable t) {
-                    Log.e(TAG, LP + "Failed to set language " + lang, t);
-                  }
-
-                  // Detect if Best model is used and configure OCRHelper accordingly BEFORE init
-                  try {
-                    boolean useBest = OcrModelManager.isUsingBestModel(requireContext(), lang);
-                    localHelper.setUseBestModelSettings(useBest);
-                    Log.d(TAG, LP + "Best model settings enabled=" + useBest + " for lang=" + lang);
-                  } catch (Throwable t) {
-                    Log.w(TAG, LP + "Failed to detect/set Best model settings", t);
-                  }
-
-                  try {
-                    android.content.SharedPreferences p =
-                        requireContext()
-                            .getSharedPreferences(
-                                "export_options", android.content.Context.MODE_PRIVATE);
-                    boolean paddleBestOcr =
-                        de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR
-                            && p.getBoolean(BUNDLE_PADDLE_BEST_OCR, false);
-                    localHelper.setPaddleHighQualityDetectionEnabled(paddleBestOcr);
-                    Log.d(TAG, LP + "Paddle best OCR enabled=" + paddleBestOcr);
-                  } catch (Throwable t) {
-                    Log.w(TAG, LP + "Failed to detect/set Paddle best OCR", t);
-                  }
-
-                  long tInit0 = System.nanoTime();
-                  boolean initOk = false;
-                  try {
-                    initOk = localHelper.initTesseract();
-                  } catch (Throwable t) {
-                    Log.e(TAG, LP + "initTesseract threw", t);
-                  }
-                  Log.d(
-                      TAG,
-                      LP
-                          + "Tesseract init ok="
-                          + initOk
-                          + ", took="
-                          + ((System.nanoTime() - tInit0) / 1_000_000L)
-                          + "ms");
-                  if (!initOk) {
-                    postError("Engine not initialized");
-                    return;
-                  }
-
-                  // Tune Tesseract PSM based on recognition mode (Robust benefits from PSM_AUTO)
-                  try {
-                    int prepMode = getSelectedOcrMode();
-                    OcrPageSegmentationMode psm =
-                        (prepMode == OCR_MODE_ROBUST)
-                            ? OcrPageSegmentationMode.AUTO
-                            : OcrPageSegmentationMode.SINGLE_BLOCK;
-                    localHelper.setPageSegmentationMode(psm);
-                  } catch (Throwable ignore) {
-                    // Best-effort; failure is non-critical
-                  }
-
-                  // Try OCR rotations only when Auto‑Rotate is enabled. Otherwise, use current
-                  // orientation only.
-                  boolean allowOcrAutoRotate = false;
-                  boolean useLayoutAnalysis = false;
-                  try {
-                    android.content.SharedPreferences p =
-                        requireContext()
-                            .getSharedPreferences(
-                                "export_options", android.content.Context.MODE_PRIVATE);
-                    allowOcrAutoRotate = p.getBoolean(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false);
-                    // Layout analysis requires both feature flag AND user preference
-                    useLayoutAnalysis =
-                        FeatureFlags.isLayoutAnalysisEnabled()
-                            && p.getBoolean(BUNDLE_LAYOUT_ANALYSIS, false);
-                  } catch (Throwable ignore) {
-                    // Best-effort; failure is non-critical
-                  }
-                  final boolean layoutAnalysisEnabled = useLayoutAnalysis;
-
-                  // When disabled, restrict to a single attempt at the current orientation
-                  // (extra=0)
-                  int[] extraRots =
-                      allowOcrAutoRotate ? new int[] {0, 90, 180, 270} : new int[] {0};
-                  OCRHelper.OcrResultWords bestResult = null;
-                  OCRViewModel.OcrTransform bestTx = null;
-                  int bestRot = 0;
-                  // Result of the 0° attempt, kept for the vertical-layout guard below.
-                  OCRHelper.OcrResultWords zeroResult = null;
-                  OCRViewModel.OcrTransform zeroTx = null;
-
-                  for (int extra : extraRots) {
-                    if (ocrCancelled.get()) {
-                      Log.w(TAG, LP + "Cancelled before OCR run (extraRot=" + extra + ")");
-                      postError("Cancelled");
-                      return;
-                    }
-
-                    Bitmap rotated = (extra == 0) ? src : rotateBitmap(src, extra);
-
-                    // Apply selected recognition mode (preprocessing).
-                    // Adaptive behavior:
-                    //   1) QUICK + uneven lighting  -> upgrade to ROBUST (Quick is now a wrapper
-                    //      around the robust grayscale pipeline anyway, but the explicit upgrade
-                    //      keeps the intent clear and also activates path (2)).
-                    //   2) ROBUST + uneven lighting -> additionally trigger the Sauvola/Retinex
-                    //      binary branch (binaryOutput=true) at the page level AND for every
-                    //      region in the layout-analysis path (via OCRHelper.setForceBinaryRobust).
-                    //      Otsu clipping on heavy shadows is the dominant failure mode for
-                    //      grayscale-only preprocessing on phone photos; the binary branch with
-                    //      Sauvola/Retinex is the correct response.
-                    // ORIGINAL is always honored as-is.
-                    int mode = getSelectedOcrMode();
-                    int effectiveMode = mode;
-                    boolean unevenLighting = hasUnevenLighting(rotated);
-                    if (mode == OCR_MODE_QUICK && unevenLighting) {
-                      effectiveMode = OCR_MODE_ROBUST;
-                      Log.d(
-                          TAG,
-                          LP
-                              + "Adaptive: QUICK -> ROBUST (uneven lighting detected, extraRot="
-                              + extra
-                              + ")");
-                    }
-                    boolean forceBinary = (effectiveMode == OCR_MODE_ROBUST) && unevenLighting;
-                    if (forceBinary) {
-                      Log.d(
-                          TAG,
-                          LP
-                              + "Adaptive: ROBUST forces binary preprocessing (uneven lighting,"
-                              + " extraRot="
-                              + extra
-                              + ")");
-                    }
-
-                    Bitmap inputForOcr;
-                    if (effectiveMode == OCR_MODE_ORIGINAL || effectiveMode == OCR_MODE_PADDLE) {
-                      // PADDLE: skip preprocessing entirely; the Paddle engine consumes the
-                      // original (rotated) bitmap. If the engine cannot be initialized at
-                      // runtime, OCRHelper transparently falls back to Tesseract on the same
-                      // un-preprocessed bitmap, matching ORIGINAL behavior.
-                      inputForOcr = rotated;
-                    } else if (effectiveMode == OCR_MODE_QUICK) {
-                      inputForOcr = OpenCVUtils.prepareForOCRQuick(rotated);
-                    } else { // OCR_MODE_ROBUST
-                      // Default: grayscale output preserves fine details and holes in letters
-                      // (e.g. 'o'), avoiding over-aggressive binarization artifacts that can
-                      // cause substitutions like 'Oktober' → 'Okteber'. When the adaptive
-                      // heuristic detects uneven lighting we switch to the binary Sauvola/Retinex
-                      // branch which handles shadows much better.
-                      inputForOcr =
-                          OpenCVUtils.prepareForOCR(rotated, /*binaryOutput*/ forceBinary);
-                    }
-                    // Keep region-OCR (layout analysis path) in sync with the page-level mode and
-                    // the adaptive binary trigger.
-                    try {
-                      localHelper.setRecognitionMode(effectiveMode);
-                      localHelper.setForceBinaryRobust(forceBinary);
-                    } catch (Throwable ignore) {
-                      // Best-effort; failure is non-critical
-                    }
-                    if (inputForOcr == null) {
-                      Log.w(
-                          TAG,
-                          "prepareForOCR returned null (extraRot=" + extra + "), skipping attempt");
-                      continue;
-                    }
-
-                    OCRViewModel.OcrTransform tx =
-                        new OCRViewModel.OcrTransform(
-                            rotated.getWidth(),
-                            rotated.getHeight(),
-                            inputForOcr.getWidth(),
-                            inputForOcr.getHeight(),
-                            inputForOcr.getWidth() / (float) rotated.getWidth(),
-                            inputForOcr.getHeight() / (float) rotated.getHeight(),
-                            0,
-                            0);
-                    Log.d(
-                        TAG,
-                        LP
-                            + "Transform: src="
-                            + tx.srcW()
-                            + "x"
-                            + tx.srcH()
-                            + ", dst="
-                            + tx.dstW()
-                            + "x"
-                            + tx.dstH()
-                            + ", sx="
-                            + tx.scaleX()
-                            + ", sy="
-                            + tx.scaleY());
-
-                    // Run OCR (use layout analysis if enabled)
-                    OCRHelper.OcrResultWords r;
-                    if (layoutAnalysisEnabled) {
-                      OCRHelper.OcrResultWithLayout layoutResult =
-                          localHelper.runOcrWithLayout(inputForOcr);
-                      // Collect all words from all regions, preserving layout structure
-                      List<RecognizedWord> allWords = new ArrayList<>();
-                      int regionIdx = 1;
-                      for (OCRHelper.RegionOcrResult regionResult : layoutResult.regionResults) {
-                        if (regionResult.ocrResult() != null
-                            && regionResult.ocrResult().words != null) {
-                          for (RecognizedWord w : regionResult.ocrResult().words) {
-                            w.setBlockId(regionIdx);
-                          }
-                          allWords.addAll(regionResult.ocrResult().words);
-                        }
-                        regionIdx++;
-                      }
-                      r =
-                          new OCRHelper.OcrResultWords(
-                              layoutResult.text, layoutResult.meanConfidence, allWords);
-
-                      // Full-page fallback: if layout analysis produced too few words or a
-                      // very low mean confidence, the page was likely mis-segmented (false
-                      // table detection, sparse-text PSM on the main body, …). Run one
-                      // additional full-page OCR pass with PSM=AUTO and keep whichever
-                      // result has more recognized words. This is a no-op cost on
-                      // documents where layout analysis works well, since the trigger
-                      // (OcrFallbackPolicy) does not fire there.
-                      int laWords0 = r.words != null ? r.words.size() : 0;
-                      int laConf0 = r.meanConfidence != null ? r.meanConfidence : 0;
-                      if (de.schliweb.makeacopy.utils.ocr.OcrFallbackPolicy
-                          .shouldRunFullPageFallback(laWords0, laConf0)) {
-                        Log.d(
-                            TAG,
-                            LP
-                                + "Layout-analysis poor (words="
-                                + laWords0
-                                + ", meanConf="
-                                + laConf0
-                                + "), running full-page fallback OCR");
-                        OCRHelper.OcrResultWords fb = localHelper.runOcrWithRetry(inputForOcr);
-                        if (fb != null) {
-                          int fbWords = fb.words != null ? fb.words.size() : 0;
-                          int fbConf = fb.meanConfidence != null ? fb.meanConfidence : 0;
-                          // Prefer the fallback if it found more words OR a clearly higher
-                          // mean confidence. Word count is the dominant signal because the
-                          // problem the fallback solves is "too few words".
-                          boolean fbBetter =
-                              fbWords > laWords0 || (fbWords >= laWords0 && fbConf > laConf0 + 1);
-                          Log.d(
-                              TAG,
-                              LP
-                                  + "Fallback result: words="
-                                  + fbWords
-                                  + ", meanConf="
-                                  + fbConf
-                                  + ", taken="
-                                  + fbBetter);
-                          if (fbBetter) {
-                            r = fb;
-                          }
-                        }
-                      }
-                    } else {
-                      r = localHelper.runOcrWithRetry(inputForOcr);
-                    }
-
-                    if (ocrCancelled.get()) {
-                      Log.w(TAG, LP + "Cancelled after OCR run (extraRot=" + extra + ")");
-                      postError("Cancelled");
-                      return;
-                    }
-
-                    // Keep the 0° attempt for the vertical-layout guard after the loop.
-                    if (extra == 0) {
-                      zeroResult = r;
-                      zeroTx = tx;
-                    }
-
-                    // Early-exit: if the first attempt (extra=0) is already strong enough, skip
-                    // other rotations. Decision delegated to OcrEarlyExitPolicy so the gate is
-                    // unit-testable and tuned against real production samples.
-                    if (extra == 0) {
-                      int mc0 = (r.meanConfidence != null ? r.meanConfidence : 0);
-                      int wc0 = (r.words != null ? r.words.size() : 0);
-                      int tl0 = (r.text != null ? r.text.length() : 0);
-                      if (de.schliweb.makeacopy.utils.ocr.OcrEarlyExitPolicy.shouldExit(
-                          mc0, wc0, tl0)) {
-                        bestResult = r;
-                        bestTx = tx;
-                        bestRot = 0;
-                        Log.d(
-                            TAG,
-                            LP
-                                + "Early-exit: meanConf="
-                                + mc0
-                                + " (>= "
-                                + de.schliweb.makeacopy.utils.ocr.OcrEarlyExitPolicy
-                                    .DEFAULT_MIN_MEAN_CONF
-                                + "), words="
-                                + wc0
-                                + " (>= "
-                                + de.schliweb.makeacopy.utils.ocr.OcrEarlyExitPolicy
-                                    .DEFAULT_MIN_WORDS
-                                + "), textLen="
-                                + tl0
-                                + " (>= "
-                                + de.schliweb.makeacopy.utils.ocr.OcrEarlyExitPolicy
-                                    .DEFAULT_MIN_TEXT_LEN
-                                + "), skipping further rotations");
-                        break;
-                      }
-                    }
-
-                    // Choose best deterministically:
-                    // 1) content presence (words/text)
-                    // 2) mean confidence
-                    // 3) content size (words count, then text length)
-                    boolean take;
-                    if (bestResult == null) {
-                      take = true;
-                    } else {
-                      boolean hasWords = r.words != null && !r.words.isEmpty();
-                      boolean hasText = r.text != null && !r.text.trim().isEmpty();
-                      boolean hasContent = hasWords || hasText;
-
-                      boolean bestHasWords =
-                          bestResult.words != null && !bestResult.words.isEmpty();
-                      boolean bestHasText =
-                          bestResult.text != null && !bestResult.text.trim().isEmpty();
-                      boolean bestHasContent = bestHasWords || bestHasText;
-
-                      if (hasContent != bestHasContent) {
-                        take = hasContent; // non-empty beats empty
-                      } else {
-                        float mc = (r.meanConfidence != null ? r.meanConfidence : 0f);
-                        float bestMc =
-                            (bestResult.meanConfidence != null ? bestResult.meanConfidence : 0f);
-                        if (mc > bestMc + 0.01f) { // small epsilon
-                          take = true;
-                        } else if (Math.abs(mc - bestMc) <= 0.01f) {
-                          int wc = (r.words != null ? r.words.size() : 0);
-                          int bestWc = (bestResult.words != null ? bestResult.words.size() : 0);
-                          if (wc != bestWc) {
-                            take = wc > bestWc;
-                          } else {
-                            int len = (r.text != null ? r.text.length() : 0);
-                            int bestLen = (bestResult.text != null ? bestResult.text.length() : 0);
-                            take = len > bestLen;
-                          }
-                        } else {
-                          take = false;
-                        }
-                      }
-                    }
-
-                    if (take) {
-                      bestResult = r;
-                      bestTx = tx;
-                      bestRot = extra;
-                    }
-                  }
-
-                  // Vertical-layout guard: for genuinely vertical documents (CJK top-to-bottom
-                  // columns) the 90°/270° attempts can "win" by confidence because vertical
-                  // columns then look like horizontal lines to the detector — but the page is
-                  // correctly oriented. When the 0° attempt already produced content whose
-                  // boxes are predominantly tall, prefer the 0° result and do not rotate.
-                  if (zeroResult != null && zeroTx != null) {
-                    boolean zeroHasContent =
-                        (zeroResult.words != null && !zeroResult.words.isEmpty())
-                            || (zeroResult.text != null && !zeroResult.text.trim().isEmpty());
-                    if (de.schliweb.makeacopy.utils.ocr.VerticalTextLayoutPolicy
-                        .shouldPreferZeroRotation(bestRot, zeroHasContent, zeroResult.words)) {
-                      Log.i(
-                          TAG,
-                          LP
-                              + "Vertical text layout detected at 0°; overriding auto-rotate"
-                              + " (was extra="
-                              + bestRot
-                              + "°)");
-                      bestResult = zeroResult;
-                      bestTx = zeroTx;
-                      bestRot = 0;
-                    }
-                  }
-
-                  if (bestResult == null || bestTx == null) {
-                    postError("OCR failed (no result)");
-                    return;
-                  }
-
-                  // Push transform of best attempt to VM on UI thread
-                  OCRViewModel.OcrTransform finalTx = bestTx;
-                  final int bestRotFinal = bestRot;
-                  final boolean finalAllowOcrAutoRotate = allowOcrAutoRotate;
-                  runOnUiThreadSafe(
-                      () -> {
-                        ocrViewModel.setTransform(finalTx);
-                        try {
-                          // Store best OCR rotation (relative extra rotation) for optional export
-                          // alignment
-                          if (cropViewModel != null) {
-                            // Only persist the computed rotation if the feature is enabled;
-                            // otherwise reset to 0
-                            cropViewModel.setBestOcrRotationDegrees(
-                                finalAllowOcrAutoRotate ? bestRotFinal : 0);
-                          }
-                        } catch (Throwable ignore) {
-                          // Best-effort; failure is non-critical
-                        }
-                      });
-
-                  long durMs = (System.nanoTime() - t0) / 1_000_000L;
-                  // Never persist UI placeholder strings as OCR output.
-                  // Persist only real OCR output; use "" when OCR returned nothing.
-                  String ocrText =
-                      (bestResult.text == null || bestResult.text.trim().isEmpty())
-                          ? ""
-                          : bestResult.text;
-                  List<RecognizedWord> ocrWords =
-                      (bestResult.words != null) ? bestResult.words : new ArrayList<>();
-
-                  // Apply post-processing to correct common OCR errors (including dictionary-based
-                  // correction)
-                  // Only if the option is enabled (default: ON)
-                  boolean postProcessingEnabled = true;
-                  try {
-                    android.content.SharedPreferences pp =
-                        requireContext()
-                            .getSharedPreferences(
-                                "export_options", android.content.Context.MODE_PRIVATE);
-                    postProcessingEnabled = pp.getBoolean(BUNDLE_OCR_POST_PROCESSING, true);
-                  } catch (Throwable ignore) {
-                    // Best-effort; failure is non-critical
-                  }
-                  boolean selectedPaddleMode = getSelectedOcrMode() == OCR_MODE_PADDLE;
-                  if (postProcessingEnabled && !selectedPaddleMode) {
-                    try {
-                      // Process words with dictionary - this is the single source of truth
-                      ocrWords =
-                          OCRPostProcessor.processWithDictionary(ocrWords, lang, dictionaryManager);
-                      // Derive text from processed words instead of processing text separately
-                      ocrText =
-                          OCRPostProcessor.wordsToText(
-                              ocrWords, MultiColumnOcrPrefs.isEnabled(requireContext()));
-                      if (ocrText == null || ocrText.trim().isEmpty()) ocrText = "";
-                      // Log quality statistics
-                      OCRPostProcessor.OcrQualityStats stats =
-                          OCRPostProcessor.analyzeQuality(ocrWords);
-                      Log.d(TAG, LP + "OCR Quality: " + stats);
-                    } catch (Throwable t) {
-                      Log.w(TAG, LP + "Post-processing failed", t);
-                    }
-                  } else {
-                    Log.d(
-                        TAG,
-                        LP
-                            + (selectedPaddleMode
-                                ? "OCR post-processing skipped for PaddleOCR"
-                                : "OCR post-processing disabled by user preference"));
-                    // Even without post-processing, derive text from words for consistency
-                    ocrText =
-                        OCRPostProcessor.wordsToText(
-                            ocrWords, MultiColumnOcrPrefs.isEnabled(requireContext()));
-                    if (ocrText == null || ocrText.trim().isEmpty()) ocrText = "";
-                  }
-
-                  // Create final variables for lambda
-                  final String finalText = ocrText;
-                  final List<RecognizedWord> words = ocrWords;
-
-                  int appliedExtraRot = bestRot; // for logging only
-                  Integer bestMeanConf = bestResult.meanConfidence;
-                  boolean bestHasWords = bestResult.words != null && !bestResult.words.isEmpty();
-                  boolean bestHasText =
-                      bestResult.text != null && !bestResult.text.trim().isEmpty();
-                  boolean bestHasContent = bestHasWords || bestHasText;
-                  Log.d(
-                      TAG,
-                      LP
-                          + "Best rotation extra="
-                          + appliedExtraRot
-                          + "°, meanConf="
-                          + bestMeanConf
-                          + ", hasContent="
-                          + bestHasContent
-                          + ", words="
-                          + (bestResult.words != null ? bestResult.words.size() : 0)
-                          + ", textLen="
-                          + (bestResult.text == null ? 0 : bestResult.text.length()));
-
-                  final Integer meanConfFinal = bestMeanConf;
-                  runOnUiThreadSafe(
-                      () -> {
-                        ocrViewModel.setWords(words);
-                        ocrViewModel.finishSuccess(finalText, words, durMs, meanConfFinal, finalTx);
-                        // If Auto‑Rotate is enabled, show the found rotation to the user
-                        try {
-                          android.content.SharedPreferences p =
-                              requireContext()
-                                  .getSharedPreferences(
-                                      "export_options", android.content.Context.MODE_PRIVATE);
-                          boolean apply = p.getBoolean(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false);
-                          // UX guard: never show a high confidence score for an empty OCR result.
-                          // Determine content based on the final values persisted to the ViewModel.
-                          boolean hasWordsFinal = words != null && !words.isEmpty();
-                          boolean hasTextFinal = finalText != null && !finalText.trim().isEmpty();
-                          boolean hasContentFinal = hasWordsFinal || hasTextFinal;
-                          int score =
-                              hasContentFinal ? (meanConfFinal != null ? meanConfFinal : -1) : -1;
-
-                          // UX hint: If no text was detected, show a neutral toast once per OCR
-                          // run.
-                          // In this case we also suppress any score/rotation toast to avoid
-                          // multiple toasts.
-                          if (!hasContentFinal) {
-                            UIUtils.showToast(
-                                requireContext(),
-                                getString(R.string.ocr_no_text_detected),
-                                Toast.LENGTH_SHORT);
-                            return;
-                          }
-                          // When enabled, also apply the detected rotation to the current scan for
-                          // export,
-                          // respecting the unified rotation model (apply in-memory; persist will
-                          // bake).
-                          if (apply) {
-                            try {
-                              // Add bestRotFinal to the current user rotation in CropViewModel
-                              if (cropViewModel != null) {
-                                Integer cur = null;
-                                try {
-                                  cur = cropViewModel.getUserRotationDegrees().getValue();
-                                } catch (Throwable ignore) {
-                                  // Best-effort; failure is non-critical
-                                }
-                                int curDeg = (cur == null) ? 0 : cur.intValue();
-                                int newDeg = ((curDeg + bestRotFinal) % 360 + 360) % 360;
-                                try {
-                                  cropViewModel.setUserRotationDegrees(newDeg);
-                                } catch (Throwable ignore) {
-                                  // Best-effort; failure is non-critical
-                                }
-                                // We have applied the OCR suggestion; clear the helper to avoid
-                                // re-applying later.
-                                try {
-                                  cropViewModel.setBestOcrRotationDegrees(0);
-                                } catch (Throwable ignore) {
-                                  // Best-effort; failure is non-critical
-                                }
-                              }
-                            } catch (Throwable ignore) {
-                              // Best-effort; failure is non-critical
-                            }
-                          }
-                          if (apply) {
-                            // If we know the score, show rotation + score combined; otherwise, show
-                            // rotation only.
-                            if (score >= 0) {
-                              UIUtils.showToast(
-                                  requireContext(),
-                                  getString(
-                                      R.string.ocr_found_rotation_with_score, bestRotFinal, score),
-                                  Toast.LENGTH_SHORT);
-                            } else {
-                              UIUtils.showToast(
-                                  requireContext(),
-                                  getString(R.string.ocr_found_rotation, bestRotFinal),
-                                  Toast.LENGTH_SHORT);
-                            }
-                          } else if (score >= 0) {
-                            // Auto‑Rotate not applied, but still useful to show the OCR score.
-                            UIUtils.showToast(
-                                requireContext(),
-                                getString(R.string.ocr_score, score),
-                                Toast.LENGTH_SHORT);
-                          }
-                        } catch (Throwable ignore) {
-                          // Best-effort; failure is non-critical
-                        }
-                      });
-
-                } catch (Throwable e) {
-                  Log.e(TAG, "performOCR: Unexpected error", e);
-                  postError(e.getMessage() != null ? e.getMessage() : e.toString());
-                } finally {
-                  // Release Tesseract in the same thread that used it
-                  try {
-                    if (localHelper != null) localHelper.shutdown();
-                    Log.d(TAG, LP + "Tesseract shutdown complete");
-                  } catch (Throwable ignored) {
-                    // Best-effort; failure is non-critical
-                  }
-                }
-              });
+      runningOcr = ocrExecutor.submit(() -> runOcrJob(imageBitmap));
     } catch (java.util.concurrent.RejectedExecutionException ex) {
       UIUtils.showToast(requireContext(), "OCR service is shutting down", Toast.LENGTH_SHORT);
       Log.w(TAG, "performOCR: RejectedExecutionException (executor shutting down)", ex);
       ocrViewModel.finishError("Executor shutdown");
+    }
+  }
+
+  private static final String LP = "[OCR_LOG] ";
+
+  /** Background part of {@link #performOCR()}; runs on the OCR executor thread. */
+  private void runOcrJob(Bitmap imageBitmap) {
+    long t0 = System.nanoTime();
+    OCRHelper localHelper = null;
+    try {
+      Log.d(TAG, LP + "BG thread=" + Thread.currentThread().getName());
+      // Prepare bitmap (orientation corrections)
+      Log.d(TAG, LP + "Preparing image for OCR - orientation handling");
+
+      // Note: We ignore capture/EXIF rotation here because the app is locked to portrait
+      // (AndroidManifest: android:screenOrientation="portrait") and handles configChanges for
+      // orientation/screenSize/screenLayout. In this setup, getCaptureRotationDegrees() is
+      // effectively always 0 and evaluating it adds no value. If orientation handling changes in
+      // the future, restore compensation here if needed.
+
+      // Apply user-requested rotation (after crop, before OCR)
+      Integer ur = cropViewModel.getUserRotationDegrees().getValue();
+      Bitmap src = OcrRecognitionPipeline.rotateBitmap(imageBitmap, ur != null ? ur : 0);
+
+      if (ocrCancelled.get()) {
+        throw new OcrRecognitionPipeline.CancelledException("Cancelled before OCR init");
+      }
+
+      // Fresh Tesseract per job
+      localHelper = ocrHelperProvider.get();
+      String lang = ocrViewModel.getLanguage().getValue();
+      if (lang == null || lang.isEmpty()) lang = "eng";
+      configureHelper(localHelper, lang);
+      if (!initEngine(localHelper)) {
+        postError("Engine not initialized");
+        return;
+      }
+
+      // Tune Tesseract PSM based on recognition mode (Robust benefits from PSM_AUTO)
+      int prepMode = getSelectedOcrMode();
+      try {
+        OcrPageSegmentationMode psm =
+            (prepMode == OCR_MODE_ROBUST)
+                ? OcrPageSegmentationMode.AUTO
+                : OcrPageSegmentationMode.SINGLE_BLOCK;
+        localHelper.setPageSegmentationMode(psm);
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+
+      // Try OCR rotations (0, 90, 180, 270) only when Auto‑Rotate is enabled, to guard against
+      // wrong user rotation. Otherwise, use the current orientation only. Layout analysis requires
+      // both feature flag AND user preference.
+      boolean allowOcrAutoRotate = readExportPref(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false);
+      boolean useLayoutAnalysis =
+          FeatureFlags.isLayoutAnalysisEnabled() && readExportPref(BUNDLE_LAYOUT_ANALYSIS, false);
+      OcrRecognitionPipeline.Outcome outcome =
+          OcrRecognitionPipeline.recognizeBestRotation(
+              localHelper,
+              src,
+              new OcrRecognitionPipeline.Options(prepMode, allowOcrAutoRotate, useLayoutAnalysis),
+              ocrCancelled::get);
+
+      OcrRecognitionPipeline.Attempt best = preferZeroRotationForVerticalText(outcome);
+      if (best == null) {
+        postError("OCR failed (no result)");
+        return;
+      }
+      OCRHelper.OcrResultWords bestResult = best.result();
+      Log.d(
+          TAG,
+          LP
+              + "Best rotation extra="
+              + best.extraRotation()
+              + "°, meanConf="
+              + bestResult.meanConfidence
+              + ", hasContent="
+              + OcrRecognitionPipeline.hasContent(bestResult)
+              + ", words="
+              + (bestResult.words != null ? bestResult.words.size() : 0)
+              + ", textLen="
+              + (bestResult.text == null ? 0 : bestResult.text.length()));
+
+      // Push transform of best attempt to VM on UI thread
+      OCRViewModel.OcrTransform tx = toTransform(best);
+      // Only persist the computed rotation (relative extra rotation, for optional export
+      // alignment) if the feature is enabled; otherwise reset to 0
+      final int bestRotToStore = allowOcrAutoRotate ? best.extraRotation() : 0;
+      runOnUiThreadSafe(
+          () -> {
+            ocrViewModel.setTransform(tx);
+            try {
+              if (cropViewModel != null) cropViewModel.setBestOcrRotationDegrees(bestRotToStore);
+            } catch (Throwable ignore) {
+              // Best-effort; failure is non-critical
+            }
+          });
+
+      long durMs = (System.nanoTime() - t0) / 1_000_000L;
+      ProcessedOcr processed = postProcess(bestResult, lang, prepMode == OCR_MODE_PADDLE);
+      runOnUiThreadSafe(
+          () -> {
+            ocrViewModel.setWords(processed.words());
+            ocrViewModel.finishSuccess(
+                processed.text(), processed.words(), durMs, bestResult.meanConfidence, tx);
+            try {
+              showResultFeedback(processed, bestResult.meanConfidence, best.extraRotation());
+            } catch (Throwable ignore) {
+              // Best-effort; failure is non-critical
+            }
+          });
+
+    } catch (OcrRecognitionPipeline.CancelledException c) {
+      Log.w(TAG, LP + c.getMessage());
+      postError("Cancelled");
+    } catch (Throwable e) {
+      Log.e(TAG, "performOCR: Unexpected error", e);
+      postError(e.getMessage() != null ? e.getMessage() : e.toString());
+    } finally {
+      // Release Tesseract in the same thread that used it
+      try {
+        if (localHelper != null) localHelper.shutdown();
+        Log.d(TAG, LP + "Tesseract shutdown complete");
+      } catch (Throwable ignored) {
+        // Best-effort; failure is non-critical
+      }
+    }
+  }
+
+  /** Reads a boolean from the export-options preferences; returns {@code def} on any failure. */
+  private boolean readExportPref(String key, boolean def) {
+    try {
+      return requireContext()
+          .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+          .getBoolean(key, def);
+    } catch (Throwable ignore) {
+      return def;
+    }
+  }
+
+  /** Applies language, Best/Fast model and Paddle settings; must run BEFORE engine init. */
+  private void configureHelper(OCRHelper helper, String lang) {
+    // 1 job = 1 engine instance. No automatic reinitialization per run.
+    try {
+      helper.setReinitPerRun(false);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+
+    Log.d(TAG, LP + "Language requested=" + lang);
+    try {
+      // Ensure language is set BEFORE init so Tesseract loads the correct traineddata
+      helper.setLanguage(lang);
+    } catch (Throwable t) {
+      Log.e(TAG, LP + "Failed to set language " + lang, t);
+    }
+
+    // Detect if Best model is used and configure OCRHelper accordingly BEFORE init
+    try {
+      boolean useBest = OcrModelManager.isUsingBestModel(requireContext(), lang);
+      helper.setUseBestModelSettings(useBest);
+      Log.d(TAG, LP + "Best model settings enabled=" + useBest + " for lang=" + lang);
+    } catch (Throwable t) {
+      Log.w(TAG, LP + "Failed to detect/set Best model settings", t);
+    }
+
+    try {
+      boolean paddleBestOcr =
+          de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR
+              && readExportPref(BUNDLE_PADDLE_BEST_OCR, false);
+      helper.setPaddleHighQualityDetectionEnabled(paddleBestOcr);
+      Log.d(TAG, LP + "Paddle best OCR enabled=" + paddleBestOcr);
+    } catch (Throwable t) {
+      Log.w(TAG, LP + "Failed to detect/set Paddle best OCR", t);
+    }
+  }
+
+  private boolean initEngine(OCRHelper helper) {
+    long tInit0 = System.nanoTime();
+    boolean initOk = false;
+    try {
+      initOk = helper.initTesseract();
+    } catch (Throwable t) {
+      Log.e(TAG, LP + "initTesseract threw", t);
+    }
+    Log.d(
+        TAG,
+        LP
+            + "Tesseract init ok="
+            + initOk
+            + ", took="
+            + ((System.nanoTime() - tInit0) / 1_000_000L)
+            + "ms");
+    return initOk;
+  }
+
+  /**
+   * Vertical-layout guard: for genuinely vertical documents (CJK top-to-bottom columns) the
+   * 90°/270° attempts can "win" by confidence because vertical columns then look like horizontal
+   * lines to the detector — but the page is correctly oriented. When the 0° attempt already
+   * produced content whose boxes are predominantly tall, prefer the 0° result and do not rotate.
+   *
+   * @return the attempt to use, or {@code null} if there is none
+   */
+  private static OcrRecognitionPipeline.Attempt preferZeroRotationForVerticalText(
+      OcrRecognitionPipeline.Outcome outcome) {
+    OcrRecognitionPipeline.Attempt best = outcome.best();
+    OcrRecognitionPipeline.Attempt zero = outcome.zero();
+    if (best == null || zero == null) return best;
+    if (!de.schliweb.makeacopy.utils.ocr.VerticalTextLayoutPolicy.shouldPreferZeroRotation(
+        best.extraRotation(),
+        OcrRecognitionPipeline.hasContent(zero.result()),
+        zero.result().words)) {
+      return best;
+    }
+    Log.i(
+        TAG,
+        LP
+            + "Vertical text layout detected at 0°; overriding auto-rotate (was extra="
+            + best.extraRotation()
+            + "°)");
+    return zero;
+  }
+
+  /** Coordinate transform between the rotated source and the preprocessed OCR input. */
+  private static OCRViewModel.OcrTransform toTransform(OcrRecognitionPipeline.Attempt a) {
+    OCRViewModel.OcrTransform tx =
+        new OCRViewModel.OcrTransform(
+            a.srcWidth(),
+            a.srcHeight(),
+            a.inputWidth(),
+            a.inputHeight(),
+            a.inputWidth() / (float) a.srcWidth(),
+            a.inputHeight() / (float) a.srcHeight(),
+            0,
+            0);
+    Log.d(
+        TAG,
+        LP
+            + "Transform: src="
+            + tx.srcW()
+            + "x"
+            + tx.srcH()
+            + ", dst="
+            + tx.dstW()
+            + "x"
+            + tx.dstH()
+            + ", sx="
+            + tx.scaleX()
+            + ", sy="
+            + tx.scaleY());
+    return tx;
+  }
+
+  /** Final OCR output as persisted to the ViewModel. */
+  private record ProcessedOcr(String text, List<RecognizedWord> words) {}
+
+  /**
+   * Applies post-processing to correct common OCR errors (including dictionary-based correction) if
+   * the option is enabled (default: ON) and the run did not use PaddleOCR.
+   *
+   * <p>Never persists UI placeholder strings as OCR output: only real OCR output, or "" when OCR
+   * returned nothing.
+   */
+  private ProcessedOcr postProcess(
+      OCRHelper.OcrResultWords bestResult, String lang, boolean selectedPaddleMode) {
+    String ocrText =
+        (bestResult.text == null || bestResult.text.trim().isEmpty()) ? "" : bestResult.text;
+    List<RecognizedWord> ocrWords =
+        (bestResult.words != null) ? bestResult.words : new ArrayList<>();
+
+    if (readExportPref(BUNDLE_OCR_POST_PROCESSING, true) && !selectedPaddleMode) {
+      try {
+        // Process words with dictionary - this is the single source of truth
+        ocrWords = OCRPostProcessor.processWithDictionary(ocrWords, lang, dictionaryManager);
+        // Derive text from processed words instead of processing text separately
+        ocrText = wordsToText(ocrWords);
+        // Log quality statistics
+        OCRPostProcessor.OcrQualityStats stats = OCRPostProcessor.analyzeQuality(ocrWords);
+        Log.d(TAG, LP + "OCR Quality: " + stats);
+      } catch (Throwable t) {
+        Log.w(TAG, LP + "Post-processing failed", t);
+      }
+    } else {
+      Log.d(
+          TAG,
+          LP
+              + (selectedPaddleMode
+                  ? "OCR post-processing skipped for PaddleOCR"
+                  : "OCR post-processing disabled by user preference"));
+      // Even without post-processing, derive text from words for consistency
+      ocrText = wordsToText(ocrWords);
+    }
+    return new ProcessedOcr(ocrText, ocrWords);
+  }
+
+  private String wordsToText(List<RecognizedWord> words) {
+    String text =
+        OCRPostProcessor.wordsToText(words, MultiColumnOcrPrefs.isEnabled(requireContext()));
+    return (text == null || text.trim().isEmpty()) ? "" : text;
+  }
+
+  /**
+   * UI thread: tells the user what OCR found. With Auto‑Rotate enabled this also applies the
+   * detected rotation to the current scan. Shows at most one toast per OCR run.
+   */
+  private void showResultFeedback(ProcessedOcr processed, Integer meanConf, int bestRot) {
+    // UX guard: never show a score or rotation for an empty OCR result. Content is determined
+    // from the final values persisted to the ViewModel.
+    if (!OcrRecognitionPipeline.hasContent(processed.text(), processed.words())) {
+      UIUtils.showToast(
+          requireContext(), getString(R.string.ocr_no_text_detected), Toast.LENGTH_SHORT);
+      return;
+    }
+    int score = meanConf != null ? meanConf : -1;
+    if (readExportPref(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false)) {
+      applyDetectedRotation(bestRot);
+      // If we know the score, show rotation + score combined; otherwise, show rotation only.
+      UIUtils.showToast(
+          requireContext(),
+          score >= 0
+              ? getString(R.string.ocr_found_rotation_with_score, bestRot, score)
+              : getString(R.string.ocr_found_rotation, bestRot),
+          Toast.LENGTH_SHORT);
+    } else if (score >= 0) {
+      // Auto‑Rotate not applied, but still useful to show the OCR score.
+      UIUtils.showToast(requireContext(), getString(R.string.ocr_score, score), Toast.LENGTH_SHORT);
+    }
+  }
+
+  /**
+   * Applies the detected rotation to the current scan for export, respecting the unified rotation
+   * model (apply in-memory; persist will bake).
+   */
+  private void applyDetectedRotation(int bestRot) {
+    if (cropViewModel == null) return;
+    try {
+      Integer cur = cropViewModel.getUserRotationDegrees().getValue();
+      int curDeg = (cur == null) ? 0 : cur;
+      cropViewModel.setUserRotationDegrees(((curDeg + bestRot) % 360 + 360) % 360);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    // We have applied the OCR suggestion; clear the helper to avoid re-applying later.
+    try {
+      cropViewModel.setBestOcrRotationDegrees(0);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
     }
   }
 
@@ -1951,22 +1614,5 @@ public class OCRFragment extends Fragment {
     super.onDestroy();
     // Fragment is going away for good: now it's safe to shut down the executor
     ocrExecutor.shutdown();
-  }
-
-  /**
-   * Rotates the given Bitmap by the specified degree in a clockwise direction. If the degrees are a
-   * multiple of 360, the original Bitmap is returned unchanged.
-   *
-   * @param src The Bitmap to be rotated. Must not be null.
-   * @param degreesCW The number of degrees to rotate the Bitmap clockwise. Values outside the range
-   *     [0, 360) will be normalized.
-   * @return A new rotated Bitmap object, or the original Bitmap if no rotation is applied.
-   */
-  private static Bitmap rotateBitmap(Bitmap src, int degreesCW) {
-    int deg = ((degreesCW % 360) + 360) % 360;
-    if (deg == 0) return src;
-    Matrix m = new Matrix();
-    m.postRotate(deg);
-    return Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), m, true);
   }
 }
