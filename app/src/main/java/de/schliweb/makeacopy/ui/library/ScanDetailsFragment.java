@@ -455,6 +455,20 @@ public class ScanDetailsFragment extends Fragment {
     }
     String title = (e.title != null && !e.title.isEmpty()) ? e.title : e.id;
     titleView.setText(title);
+
+    // Check export URI readability to decide action enablement and hint
+    android.net.Uri exportUri = getPrimaryExportUri();
+    boolean canOpen = exportUri != null && FileUtils.isUriReadable(requireContext(), exportUri);
+    subtitleView.setText(buildSubtitle(e, exportUri, canOpen));
+    if (buttonShare != null) buttonShare.setEnabled(canOpen);
+    if (buttonOpenInExport != null) buttonOpenInExport.setEnabled(canOpen);
+    bindRestoreAccessButton(exportUri, canOpen);
+    bindPreview(e, canOpen);
+    showLoading(false);
+  }
+
+  /** Date • page count, plus folder, file name and a "missing file" hint where they apply. */
+  private String buildSubtitle(@NonNull ScanEntity e, android.net.Uri exportUri, boolean canOpen) {
     @SuppressWarnings("JavaUtilDate") // DateFormat requires Date
     String dateStr =
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
@@ -463,122 +477,110 @@ public class ScanDetailsFragment extends Fragment {
         getString(
             R.string.collection_items_count,
             Math.max(1, e.pageCount)); // reuse format: "%1$d item(s)"
-
-    // Check export URI readability to decide action enablement and hint
-    android.net.Uri exportUri = getPrimaryExportUri();
-    boolean canOpen = exportUri != null && FileUtils.isUriReadable(requireContext(), exportUri);
-    // Derive a human-friendly folder/location of the primary export for metadata display
-    String folder = deriveParentFolderDisplay(exportUri);
     StringBuilder subtitle = new StringBuilder();
     subtitle.append(dateStr).append(" • ").append(meta);
+    // Derive a human-friendly folder/location of the primary export for metadata display
+    String folder = deriveParentFolderDisplay(exportUri);
     if (folder != null && !folder.trim().isEmpty()) {
       subtitle.append(" • ").append("Folder: ").append(folder);
     }
     // Include file name in metadata when available
-    try {
-      String fileName = null;
-      if (exportUri != null) {
-        try {
-          fileName = FileUtils.getDisplayNameFromUri(requireContext(), exportUri);
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-        if (fileName == null || fileName.trim().isEmpty()) {
-          try {
-            fileName = exportUri.getLastPathSegment();
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-        }
-      }
-      if (fileName != null && !fileName.trim().isEmpty()) {
-        subtitle.append(" • ").append("File: ").append(fileName);
-      }
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
+    String fileName = exportFileName(exportUri);
+    if (fileName != null && !fileName.trim().isEmpty()) {
+      subtitle.append(" • ").append("File: ").append(fileName);
     }
     if (!canOpen) {
       subtitle.append(" • ").append(getString(R.string.missing_file));
     }
-    subtitleView.setText(subtitle.toString());
-    if (buttonShare != null) buttonShare.setEnabled(canOpen);
-    if (buttonOpenInExport != null) buttonOpenInExport.setEnabled(canOpen);
-    // Offer to restore access via SAF picker when the primary export is unreadable
-    if (buttonRestoreAccess != null) {
-      if (!canOpen) {
-        buttonRestoreAccess.setVisibility(View.VISIBLE);
-        buttonRestoreAccess.setOnClickListener(
-            v -> {
-              String[] types;
-              android.net.Uri pri = exportUri;
-              if (pri != null && isLikelyPdfUri(pri)) {
-                types = new String[] {"application/pdf"};
-              } else {
-                types = new String[] {"image/*", "application/pdf", "application/zip", "*/*"};
-              }
-              try {
-                restoreAccessLauncher.launch(types);
-              } catch (Throwable t) {
-                UIUtils.showToast(
-                    requireContext(), R.string.picker_failed, android.widget.Toast.LENGTH_SHORT);
-              }
-            });
-      } else {
-        buttonRestoreAccess.setVisibility(View.GONE);
-      }
-    }
+    return subtitle.toString();
+  }
 
-    // Load a document preview between title/meta and the bottom action container
-    // For CompletedScanEntry (single pages in the special collection), prioritize the
-    // original/export URI
-    // over the (low-res) cover/thumbnail to avoid blurry previews. For normal finished documents,
-    // keep the previous behavior: prefer coverPath for speed, then fall back to export URI.
-    String source;
-    boolean isCompletedScanEntry = false;
+  /** The export's display name, falling back to the last URI path segment. */
+  @Nullable
+  private String exportFileName(@Nullable android.net.Uri exportUri) {
+    if (exportUri == null) return null;
+    String fileName = null;
     try {
-      String sm = e.sourceMetaJson;
-      isCompletedScanEntry = (sm != null && sm.contains("\"CompletedScanEntry\""));
+      fileName = FileUtils.getDisplayNameFromUri(requireContext(), exportUri);
     } catch (Throwable ignore) {
-      isCompletedScanEntry = false;
+      // Best-effort; failure is non-critical
     }
-    if (isCompletedScanEntry) {
-      source = FileUtils.firstUriFromJson(e.exportPathsJson);
-      if (source == null || source.isEmpty()) {
-        source = e.coverPath; // fallback if no export/original available
+    if (fileName == null || fileName.trim().isEmpty()) {
+      try {
+        fileName = exportUri.getLastPathSegment();
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
       }
-    } else {
-      source =
-          (e.coverPath != null && !e.coverPath.isEmpty())
-              ? e.coverPath
-              : FileUtils.firstUriFromJson(e.exportPathsJson);
     }
+    return fileName;
+  }
+
+  /** Offer to restore access via SAF picker when the primary export is unreadable. */
+  private void bindRestoreAccessButton(@Nullable android.net.Uri exportUri, boolean canOpen) {
+    if (buttonRestoreAccess == null) return;
+    if (canOpen) {
+      buttonRestoreAccess.setVisibility(View.GONE);
+      return;
+    }
+    buttonRestoreAccess.setVisibility(View.VISIBLE);
+    buttonRestoreAccess.setOnClickListener(
+        v -> {
+          String[] types;
+          if (exportUri != null && isLikelyPdfUri(exportUri)) {
+            types = new String[] {"application/pdf"};
+          } else {
+            types = new String[] {"image/*", "application/pdf", "application/zip", "*/*"};
+          }
+          try {
+            restoreAccessLauncher.launch(types);
+          } catch (Throwable t) {
+            UIUtils.showToast(
+                requireContext(), R.string.picker_failed, android.widget.Toast.LENGTH_SHORT);
+          }
+        });
+  }
+
+  /** Load a document preview between title/meta and the bottom action container. */
+  private void bindPreview(@NonNull ScanEntity e, boolean canOpen) {
     android.net.Uri primaryUri = getPrimaryExportUri();
-    boolean showPdfPager = false;
-    if (primaryUri != null) {
-      // Decide if this looks like a PDF
-      boolean looksPdf = isLikelyPdfUri(primaryUri);
-      if (!looksPdf) {
-        try {
-          String mime = requireContext().getContentResolver().getType(primaryUri);
-          looksPdf =
-              (mime != null
-                  && ("application/pdf".equalsIgnoreCase(mime)
-                      || mime.toLowerCase(java.util.Locale.ROOT).contains("pdf")));
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-      }
-      if (looksPdf && canOpen) {
-        showPdfPager = true;
-        setupPdfPreview(primaryUri);
-      }
+    if (primaryUri != null && canOpen && looksLikePdf(primaryUri)) {
+      setupPdfPreview(primaryUri);
+      return;
     }
-    if (!showPdfPager) {
-      // Fallback to static preview (image or cover); hide pager
-      if (previewNavRow != null) previewNavRow.setVisibility(View.GONE);
-      loadPreviewAsync(source);
+    // Fallback to static preview (image or cover); hide pager
+    if (previewNavRow != null) previewNavRow.setVisibility(View.GONE);
+    loadPreviewAsync(staticPreviewSource(e));
+  }
+
+  /**
+   * For CompletedScanEntry (single pages in the special collection), prioritize the original/export
+   * URI over the (low-res) cover/thumbnail to avoid blurry previews. For normal finished documents,
+   * prefer coverPath for speed, then fall back to export URI.
+   */
+  private static String staticPreviewSource(@NonNull ScanEntity e) {
+    String sm = e.sourceMetaJson;
+    boolean isCompletedScanEntry = sm != null && sm.contains("\"CompletedScanEntry\"");
+    if (isCompletedScanEntry) {
+      String source = FileUtils.firstUriFromJson(e.exportPathsJson);
+      // fallback if no export/original available
+      return (source == null || source.isEmpty()) ? e.coverPath : source;
     }
-    showLoading(false);
+    return (e.coverPath != null && !e.coverPath.isEmpty())
+        ? e.coverPath
+        : FileUtils.firstUriFromJson(e.exportPathsJson);
+  }
+
+  /** Decides by name first and asks the content resolver for the MIME type otherwise. */
+  private boolean looksLikePdf(@NonNull android.net.Uri uri) {
+    if (isLikelyPdfUri(uri)) return true;
+    try {
+      String mime = requireContext().getContentResolver().getType(uri);
+      return mime != null
+          && ("application/pdf".equalsIgnoreCase(mime)
+              || mime.toLowerCase(java.util.Locale.ROOT).contains("pdf"));
+    } catch (Throwable ignore) {
+      return false;
+    }
   }
 
   private String makeSingleUriArrayJson(@NonNull android.net.Uri uri) {
