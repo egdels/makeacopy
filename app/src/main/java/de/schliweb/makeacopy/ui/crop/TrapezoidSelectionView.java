@@ -498,13 +498,7 @@ public class TrapezoidSelectionView extends View {
   // Public toggles for edge-glide configuration
   // === Edge-glide state & config ===
   @Getter @Setter private boolean edgeGlideEnabled = false; // default OFF; user/dev configurable
-  private boolean isEdgeGlide = false; // true while pointer is gliding along left/right edge
-  private boolean edgeGlidePending = false; // true while waiting for engage delay
-  private long edgeGlideEligibleSinceMs = 0L; // timestamp when first became eligible to engage
-  private boolean edgeGlideLockLeft =
-      true; // which edge is locked when gliding (true=left, false=right)
-  private float glideY = 0f; // accumulated Y while locked to edge
-  private float lastRawY = Float.NaN; // last rawY for delta computation
+  private final EdgeGlideTracker edgeGlide = new EdgeGlideTracker();
   // Configurable epsilons/delay
   private float edgeSnapEnterEpsDp = 3f; // enter threshold in dp (soft)
   private int edgeGlideEngageDelayMs = 120; // engage delay in ms
@@ -2680,7 +2674,7 @@ public class TrapezoidSelectionView extends View {
     }
 
     // Draw edge-glide state text
-    if (isEdgeGlide) {
+    if (edgeGlide.isGliding()) {
       Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
       tp.setColor(Color.WHITE);
       tp.setTextSize(36f);
@@ -2837,48 +2831,8 @@ public class TrapezoidSelectionView extends View {
 
   @Override
   public boolean onTouchEvent(MotionEvent event) {
-    // Pan/Zoom gesture detection (Phase 2 step 2/4). Pinch‑Zoom and double‑tap are wired to a
-    // shared ScaleGestureDetector + GestureDetector. They short‑circuit the corner/edge drag
-    // path while a multi‑touch gesture is in progress and are inert when the feature flag is
-    // off. Detectors are fed in raw view coordinates (NOT mapped through viewMatrix) — they
-    // operate in the same coordinate system as the canvas before our concat.
-    if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM) {
-      boolean wasPinch = inPinchGesture;
-      if (scaleDetector != null) {
-        scaleDetector.onTouchEvent(event);
-      }
-      if (tapDetector != null) {
-        tapDetector.onTouchEvent(event);
-      }
-      // If a pinch just started, cancel any in‑flight single‑pointer drag (corner, edge or
-      // pan) so the trapezoid / view does not jump when the second finger arrives. We
-      // synthesise an ACTION_CANCEL by clearing the per‑drag state and notifying listeners.
-      if (!wasPinch && inPinchGesture) {
-        if (activeCornerIndex != -1 || activeEdgeIndex != -1 || isPanning) {
-          activeCornerIndex = -1;
-          activeEdgeIndex = -1;
-          isPanning = false;
-          lastPanRawX = Float.NaN;
-          lastPanRawY = Float.NaN;
-          isDraggingWithMagnifier = false;
-          if (magnifier != null) {
-            try {
-              magnifier.dismiss();
-            } catch (Throwable ignore) {
-              // Best-effort
-            }
-          }
-          isUserAdjusting = false;
-          notifyDragStateChanged(false);
-          updateSystemGestureExclusion();
-          invalidate();
-        }
-      }
-      // While a pinch is active, swallow further events so that ACTION_MOVE doesn't drag a
-      // corner.
-      if (inPinchGesture) {
-        return true;
-      }
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM && handleZoomGestures(event)) {
+      return true;
     }
 
     // Pan/Zoom: route raw event coordinates through the view transform so that all
@@ -2890,483 +2844,449 @@ public class TrapezoidSelectionView extends View {
 
     switch (event.getAction()) {
       case MotionEvent.ACTION_DOWN:
-        // Prime exclusion even before we know if a handle is active
-        updateSystemGestureExclusion();
-        if (debugLogsEnabled) {
-          Log.d(
-              TAG,
-              "ACTION_DOWN x="
-                  + x
-                  + ", y="
-                  + y
-                  + ", rawX="
-                  + event.getRawX()
-                  + ", rawY="
-                  + event.getRawY());
-        }
-        // Curved mode (Issue #91): check the two curve midpoint handles first so they win over
-        // the underlying top/bottom edge hit areas.
-        if (curvedMode) {
-          int curveIdx = findCurveHandleIndex(x, y);
-          if (curveIdx != -1) {
-            activeCurveHandleIndex = curveIdx;
-            userHasEdited = true;
-            isUserAdjusting = true;
-            cancelAdjustIdle();
-            try {
-              getParent().requestDisallowInterceptTouchEvent(true);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-            updateSystemGestureExclusion();
-            notifyDragStateChanged(true);
-            invalidate();
-            if (debugLogsEnabled) {
-              Log.d(TAG, "ACTION_DOWN curve handle hit, index=" + curveIdx);
-            }
-            return true;
-          }
-        }
-
-        // Check if a corner was touched
-        activeCornerIndex = findCornerIndex(x, y);
-        if (activeCornerIndex != -1) {
-          // Mark that user has edited corners (suppresses DocQuad re-init)
-          userHasEdited = true;
-          // Mark that the user is adjusting and cancel any pending idle-clear
-          isUserAdjusting = true;
-          cancelAdjustIdle();
-          // Prevent parents (e.g., ViewPager/ScrollView) from intercepting during drag
-          try {
-            getParent().requestDisallowInterceptTouchEvent(true);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-
-          // Edge-glide initial state
-          isEdgeGlide = false;
-          edgeGlidePending = false;
-          edgeGlideEligibleSinceMs = 0L;
-          lastRawY = event.getRawY();
-          glideY = corners[activeCornerIndex].y;
-
-          // Expand gesture exclusion while dragging
-          updateSystemGestureExclusion();
-
-          // Initialize and show magnifier if enabled and source is set.
-          // Magnifier expects coordinates in the source view's coordinate space (i.e. the
-          // on-screen overlay/source view). Pass the *raw* event coordinates here, NOT the
-          // post-mapTouchToLocal values: under Pan/Zoom, the local frame is the unscaled
-          // pre-viewMatrix space, while the source view is currently rendered with
-          // viewMatrix · baseFitMatrix, so its visible content matches the raw screen position.
-          ensureMagnifier();
-          if (magnifier != null) {
-            PointF src = toSourceCoords(event.getX(), event.getY());
-            try {
-              magnifier.show(src.x, src.y);
-            } catch (Throwable t) {
-              Log.w(TAG, "magnifier.show failed: " + t.getMessage());
-            }
-            isDraggingWithMagnifier = true;
-          }
-          notifyDragStateChanged(true);
-          invalidate();
-          return true;
-        }
-
-        // No corner hit → check for edge hit (parallel-translation drag).
-        if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_EDGE_DRAG) {
-          int edgeIdx = findEdgeHitIndex(x, y);
-          if (edgeIdx != -1) {
-            activeEdgeIndex = edgeIdx;
-            userHasEdited = true;
-            isUserAdjusting = true;
-            cancelAdjustIdle();
-            try {
-              getParent().requestDisallowInterceptTouchEvent(true);
-            } catch (Throwable ignore) {
-              // Best-effort
-            }
-            // Snapshot corner state and edge geometry at touch-down.
-            for (int i = 0; i < 4; i++) {
-              edgeAnchorXs[i] = corners[i].x;
-              edgeAnchorYs[i] = corners[i].y;
-            }
-            int a = edgeIdx;
-            int b = (edgeIdx + 1) % 4;
-            edgeAnchorMidX = 0.5f * (edgeAnchorXs[a] + edgeAnchorXs[b]);
-            edgeAnchorMidY = 0.5f * (edgeAnchorYs[a] + edgeAnchorYs[b]);
-            float[] n = CropEdgeGeometry.outwardUnitNormal(edgeAnchorXs, edgeAnchorYs, edgeIdx);
-            edgeAnchorNx = n[0];
-            edgeAnchorNy = n[1];
-            updateSystemGestureExclusion();
-            notifyDragStateChanged(true);
-            // A11y: announce edge-drag start so TalkBack users get audible feedback.
-            if (de.schliweb.makeacopy.BuildConfig.FEATURE_A11Y_GUIDANCE) {
-              announceEdgeDragForA11y();
-            }
-            invalidate();
-            if (debugLogsEnabled) {
-              Log.d(TAG, "ACTION_DOWN edge hit, edgeIndex=" + edgeIdx);
-            }
-            return true;
-          }
-        }
-
-        // No corner and no edge hit. If Pan/Zoom is enabled and the view is currently zoomed,
-        // start an implicit pan: subsequent ACTION_MOVE events translate the viewMatrix.
-        // See docs/edge_drag_pan_zoom_concept.md §4.2.
-        if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM
-            && viewTransform.getScale() > CropViewTransform.MIN_SCALE + 1e-4f) {
-          isPanning = true;
-          lastPanRawX = event.getRawX();
-          lastPanRawY = event.getRawY();
-          try {
-            getParent().requestDisallowInterceptTouchEvent(true);
-          } catch (Throwable ignore) {
-            // Best-effort
-          }
-          updateSystemGestureExclusion();
-          // Report drag-state so the host fragment's OnBackPressedCallback also blocks back.
-          notifyDragStateChanged(true);
-          if (debugLogsEnabled) {
-            Log.d(TAG, "ACTION_DOWN pan start, scale=" + viewTransform.getScale());
-          }
-          return true;
-        }
-
-        invalidate();
-        // When Pan/Zoom is enabled we MUST return true so that subsequent ACTION_MOVE/UP and the
-        // ACTION_DOWN of a second tap reach this view. Otherwise Android short-circuits the
-        // gesture stream after the initial DOWN, which silently disables the double-tap and
-        // pinch-zoom detectors. (Concept §4.3, §4.4.)
-        if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM) {
-          return true;
-        }
-        return false;
-
+        return onTouchDown(event, x, y);
       case MotionEvent.ACTION_MOVE:
-        // Move the active corner
-        if (activeCornerIndex != -1) {
-          // Still adjusting while dragging; ensure idle-clear is cancelled
-          isUserAdjusting = true;
-          cancelAdjustIdle();
-          // Keep parents from intercepting during drag and keep gesture exclusion updated
-          try {
-            getParent().requestDisallowInterceptTouchEvent(true);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-          updateSystemGestureExclusion();
-
-          // Edge-glide handling along left/right image edges
-          RectF img = getDisplayedImageRectF(getWidth(), getHeight());
-          float tx = x;
-          float ty = y;
-          if (img != null) {
-            // Soft Edge-Glide: only engage when the pointer is actually OUTSIDE the image rect
-            // by more than the enter epsilon. While inside, never force-lock X to the edge.
-            if (edgeGlideEnabled) {
-              float enterEps = edgeSnapEnterEpsPx();
-              float exitEps = edgeSnapExitEpsPx();
-
-              boolean outsideLeft = x < (img.left - enterEps);
-              boolean outsideRight = x > (img.right + enterEps);
-              boolean insideWithMargin = x >= (img.left + exitEps) && x <= (img.right - exitEps);
-
-              long now = android.os.SystemClock.uptimeMillis();
-
-              if (isEdgeGlide) {
-                // While gliding, keep X locked to the chosen edge and accumulate Y by rawY deltas
-                float lockX = edgeGlideLockLeft ? img.left : img.right;
-                if (!Float.isNaN(lastRawY)) {
-                  float dy = event.getRawY() - lastRawY;
-                  glideY += dy;
-                }
-                lastRawY = event.getRawY();
-                tx = lockX;
-                ty = glideY;
-
-                // Exit gliding when clearly back inside (beyond exit hysteresis)
-                if (insideWithMargin) {
-                  isEdgeGlide = false;
-                  edgeGlidePending = false;
-                  edgeGlideEligibleSinceMs = 0L;
-                  if (debugLogsEnabled) Log.d(TAG, "Exit edge-glide (back inside), x=" + x);
-                }
-              } else {
-                // Not yet gliding. Consider eligibility only if really outside.
-                boolean eligible = outsideLeft || outsideRight;
-                if (eligible) {
-                  // Start or continue pending timer
-                  if (!edgeGlidePending) {
-                    edgeGlidePending = true;
-                    edgeGlideEligibleSinceMs = now;
-                    edgeGlideLockLeft = outsideLeft; // remember which edge we will lock to
-                    if (debugLogsEnabled)
-                      Log.d(
-                          TAG,
-                          "Edge-glide eligible ("
-                              + (outsideLeft ? "left" : "right")
-                              + ") starting delay at x="
-                              + x);
-                  }
-                  // Engage after delay
-                  if (edgeGlidePending
-                      && (now - edgeGlideEligibleSinceMs) >= edgeGlideEngageDelayMs) {
-                    isEdgeGlide = true;
-                    edgeGlidePending = false;
-                    glideY = corners[activeCornerIndex].y; // start from current handle y
-                    lastRawY = event.getRawY();
-                    if (debugLogsEnabled)
-                      Log.d(
-                          TAG,
-                          "Enter edge-glide after delay ("
-                              + (edgeGlideLockLeft ? "left" : "right")
-                              + ") at x="
-                              + x);
-                    // Lock immediately on engage
-                    float lockX = edgeGlideLockLeft ? img.left : img.right;
-                    tx = lockX;
-                    ty = glideY;
-                  }
-                } else {
-                  // No longer eligible -> cancel pending
-                  if (edgeGlidePending) {
-                    edgeGlidePending = false;
-                    edgeGlideEligibleSinceMs = 0L;
-                    if (debugLogsEnabled)
-                      Log.d(TAG, "Cancel edge-glide pending (pointer not outside), x=" + x);
-                  }
-                }
-              }
-            }
-          }
-
-          // Snap-to-Right-Angle: nudge near-axis adjacent edges onto 0°/90° (FR #72 companion).
-          float[] snapped = applyRightAngleSnap(activeCornerIndex, tx, ty);
-          tx = snapped[0];
-          ty = snapped[1];
-
-          // Use updateCorner to maintain both absolute and relative coordinates
-          updateCorner(activeCornerIndex, tx, ty);
-
-          // Update magnifier position if active. Use raw event coordinates so the magnifier
-          // shows the on-screen content under the finger; under Pan/Zoom this is what the
-          // source view actually renders (viewMatrix · baseFitMatrix), whereas tx/ty are in
-          // the unscaled pre-viewMatrix local frame and would yield the wrong source area.
-          if (isDraggingWithMagnifier && magnifier != null) {
-            PointF src = toSourceCoords(event.getX(), event.getY());
-            try {
-              magnifier.show(src.x, src.y);
-            } catch (Throwable t) {
-              Log.w(TAG, "magnifier.show(move) failed: " + t.getMessage());
-            }
-          }
-
-          // Log the updated corner position
-          if (debugLogsEnabled) {
-            Log.d(
-                TAG,
-                "MOVE activeCorner="
-                    + activeCornerIndex
-                    + ", x/y=("
-                    + x
-                    + ","
-                    + y
-                    + "), tx/ty=("
-                    + tx
-                    + ","
-                    + ty
-                    + ")"
-                    + ", rel=("
-                    + relativeCorners[activeCornerIndex][0]
-                    + ","
-                    + relativeCorners[activeCornerIndex][1]
-                    + ")"
-                    + (isEdgeGlide ? " [edge-glide]" : ""));
-          }
-
-          invalidate();
-          return true;
-        }
-
-        // Curved mode (Issue #91): drag the active curve midpoint handle along the chord normal.
-        if (activeCurveHandleIndex != -1) {
-          isUserAdjusting = true;
-          cancelAdjustIdle();
-          try {
-            getParent().requestDisallowInterceptTouchEvent(true);
-          } catch (Throwable ignore) {
-            // Best-effort
-          }
-          updateCurveHandleFromTouch(activeCurveHandleIndex, x, y);
-          invalidate();
-          return true;
-        }
-
-        // Edge drag (parallel translation): apply only the orthogonal
-        // component of the finger motion to both endpoints of the active edge.
-        if (activeEdgeIndex != -1) {
-          isUserAdjusting = true;
-          cancelAdjustIdle();
-          try {
-            getParent().requestDisallowInterceptTouchEvent(true);
-          } catch (Throwable ignore) {
-            // Best-effort
-          }
-          updateSystemGestureExclusion();
-
-          CropEdgeGeometry.EdgeTranslation res =
-              CropEdgeGeometry.applyEdgeTranslation(
-                  edgeAnchorXs,
-                  edgeAnchorYs,
-                  activeEdgeIndex,
-                  edgeAnchorMidX,
-                  edgeAnchorMidY,
-                  edgeAnchorNx,
-                  edgeAnchorNy,
-                  x,
-                  y);
-          if (res.applied) {
-            // Update both endpoints via updateCorner so absolute, relative, and
-            // gesture-exclusion state stay in sync. updateCorner soft-clamps to
-            // image bounds (with off-screen tolerance) when feasible.
-            int a = activeEdgeIndex;
-            int b = (activeEdgeIndex + 1) % 4;
-            updateCorner(a, res.xs[a], res.ys[a]);
-            updateCorner(b, res.xs[b], res.ys[b]);
-          }
-          if (debugLogsEnabled) {
-            Log.d(
-                TAG,
-                "MOVE edge="
-                    + activeEdgeIndex
-                    + ", applied="
-                    + res.applied
-                    + ", dxOrth="
-                    + res.dxOrth
-                    + ", dyOrth="
-                    + res.dyOrth);
-          }
-          invalidate();
-          return true;
-        }
-        // Implicit Pan (Phase 2 step 3): translate viewMatrix by raw delta while panning.
-        // Translation is clamped so that the mapped image rect still overlaps the view by
-        // at least PAN_MIN_VIEW_OVERLAP in each axis (see §4.2 of the concept doc).
-        if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM && isPanning) {
-          float rawX = event.getRawX();
-          float rawY = event.getRawY();
-          if (!Float.isNaN(lastPanRawX) && !Float.isNaN(lastPanRawY)) {
-            float dx = rawX - lastPanRawX;
-            float dy = rawY - lastPanRawY;
-            if (dx != 0f || dy != 0f) {
-              viewTransform.postTranslate(dx, dy);
-              // Clamp against the displayed image rect (in local coords) for the soft 10 %
-              // overlap rule. We use the bitmap rect as displayed under fitCenter — same
-              // domain that overlayToSource is built on.
-              RectF img = getDisplayedImageRectF(getWidth(), getHeight());
-              if (img != null) {
-                viewTransform.clampTranslateToView(
-                    img.left,
-                    img.top,
-                    img.right,
-                    img.bottom,
-                    getWidth(),
-                    getHeight(),
-                    PAN_MIN_VIEW_OVERLAP);
-              }
-              syncViewMatrixFromTransform();
-              notifyViewTransformChanged();
-              invalidate();
-            }
-          }
-          lastPanRawX = rawX;
-          lastPanRawY = rawY;
-          return true;
-        }
+        if (onTouchMove(event, x, y)) return true;
         break;
-
       case MotionEvent.ACTION_UP:
       case MotionEvent.ACTION_CANCEL:
-        if (debugLogsEnabled) {
-          Log.d(
-              TAG,
-              (event.getAction() == MotionEvent.ACTION_UP ? "ACTION_UP" : "ACTION_CANCEL")
-                  + " activeCorner="
-                  + activeCornerIndex
-                  + ", x="
-                  + x
-                  + ", y="
-                  + y
-                  + ", rawX="
-                  + event.getRawX()
-                  + ", rawY="
-                  + event.getRawY());
-        }
-        // Release the active corner
-        if (activeCornerIndex != -1) {
-          // Ensure relative coordinates are updated when touch ends
-          updateCorner(
-              activeCornerIndex, corners[activeCornerIndex].x, corners[activeCornerIndex].y);
-          Log.d(
-              TAG,
-              "Touch released, final corner "
-                  + activeCornerIndex
-                  + " position: "
-                  + "("
-                  + corners[activeCornerIndex].x
-                  + ","
-                  + corners[activeCornerIndex].y
-                  + ")");
-        }
-        // Dismiss magnifier if shown
-        if (magnifier != null && isDraggingWithMagnifier) {
-          try {
-            magnifier.dismiss();
-          } catch (Throwable t) {
-            Log.w(TAG, "magnifier.dismiss failed: " + t.getMessage());
-          }
-        }
-        // Allow parents to intercept again and shrink gesture exclusion back to normal
-        try {
-          getParent().requestDisallowInterceptTouchEvent(false);
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-        isDraggingWithMagnifier = false;
-        activeCornerIndex = -1;
-        // Reset edge-drag state
-        activeEdgeIndex = -1;
-        // Reset curve-handle drag state (Issue #91)
-        activeCurveHandleIndex = -1;
-        // Reset implicit Pan state and snap residual zoom on lift.
-        if (isPanning) {
-          isPanning = false;
-          lastPanRawX = Float.NaN;
-          lastPanRawY = Float.NaN;
-          // After a pan ends, scale itself didn't change, but if the user happened to
-          // pinch-out and then released without crossing the snap threshold, this catches
-          // the residual case.
-          maybeSnapToIdentity();
-        }
-        notifyDragStateChanged(false);
-        // Reset edge-glide state
-        isEdgeGlide = false;
-        edgeGlidePending = false;
-        edgeGlideEligibleSinceMs = 0L;
-        lastRawY = Float.NaN;
-        // Reset Snap-to-Right-Angle highlight & state on touch end (FR #72 companion).
-        resetRightAngleSnapState();
-        // Keep user-adjusting true for a short idle window to suppress auto re-detection
-        scheduleAdjustIdleClear();
-        updateSystemGestureExclusion();
-        invalidate();
+        onTouchEnd(event, x, y);
         break;
     }
 
     return super.onTouchEvent(event);
+  }
+
+  /**
+   * Pan/Zoom gesture detection (Phase 2 step 2/4). Pinch‑Zoom and double‑tap are wired to a shared
+   * ScaleGestureDetector + GestureDetector. They short‑circuit the corner/edge drag path while a
+   * multi‑touch gesture is in progress. Detectors are fed in raw view coordinates (NOT mapped
+   * through viewMatrix) — they operate in the same coordinate system as the canvas before our
+   * concat.
+   *
+   * @return {@code true} while a pinch is active, so that ACTION_MOVE doesn't drag a corner
+   */
+  private boolean handleZoomGestures(MotionEvent event) {
+    boolean wasPinch = inPinchGesture;
+    if (scaleDetector != null) {
+      scaleDetector.onTouchEvent(event);
+    }
+    if (tapDetector != null) {
+      tapDetector.onTouchEvent(event);
+    }
+    // If a pinch just started, cancel any in‑flight single‑pointer drag (corner, edge or
+    // pan) so the trapezoid / view does not jump when the second finger arrives. We
+    // synthesise an ACTION_CANCEL by clearing the per‑drag state and notifying listeners.
+    boolean dragInFlight = activeCornerIndex != -1 || activeEdgeIndex != -1 || isPanning;
+    if (!wasPinch && inPinchGesture && dragInFlight) {
+      activeCornerIndex = -1;
+      activeEdgeIndex = -1;
+      isPanning = false;
+      lastPanRawX = Float.NaN;
+      lastPanRawY = Float.NaN;
+      isDraggingWithMagnifier = false;
+      if (magnifier != null) {
+        try {
+          magnifier.dismiss();
+        } catch (Throwable ignore) {
+          // Best-effort
+        }
+      }
+      isUserAdjusting = false;
+      notifyDragStateChanged(false);
+      updateSystemGestureExclusion();
+      invalidate();
+    }
+    return inPinchGesture;
+  }
+
+  /** Keeps parents (e.g., ViewPager/ScrollView) from intercepting during a drag. */
+  private void disallowParentIntercept(boolean disallow) {
+    try {
+      getParent().requestDisallowInterceptTouchEvent(disallow);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+  }
+
+  /**
+   * Marks that the user is adjusting the selection: cancels any pending idle-clear and keeps
+   * parents from intercepting the drag.
+   */
+  private void keepUserAdjusting() {
+    isUserAdjusting = true;
+    cancelAdjustIdle();
+    disallowParentIntercept(true);
+  }
+
+  private boolean onTouchDown(MotionEvent event, float x, float y) {
+    // Prime exclusion even before we know if a handle is active
+    updateSystemGestureExclusion();
+    if (debugLogsEnabled) {
+      Log.d(
+          TAG,
+          "ACTION_DOWN x="
+              + x
+              + ", y="
+              + y
+              + ", rawX="
+              + event.getRawX()
+              + ", rawY="
+              + event.getRawY());
+    }
+    // Curved mode (Issue #91): check the two curve midpoint handles first so they win over
+    // the underlying top/bottom edge hit areas.
+    if (curvedMode && startCurveHandleDrag(x, y)) return true;
+    if (startCornerDrag(event, x, y)) return true;
+    // No corner hit → check for edge hit (parallel-translation drag).
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_EDGE_DRAG && startEdgeDrag(x, y)) {
+      return true;
+    }
+    // No corner and no edge hit. If Pan/Zoom is enabled and the view is currently zoomed,
+    // start an implicit pan: subsequent ACTION_MOVE events translate the viewMatrix.
+    // See docs/edge_drag_pan_zoom_concept.md §4.2.
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM
+        && viewTransform.getScale() > CropViewTransform.MIN_SCALE + 1e-4f) {
+      startPan(event);
+      return true;
+    }
+
+    invalidate();
+    // When Pan/Zoom is enabled we MUST return true so that subsequent ACTION_MOVE/UP and the
+    // ACTION_DOWN of a second tap reach this view. Otherwise Android short-circuits the
+    // gesture stream after the initial DOWN, which silently disables the double-tap and
+    // pinch-zoom detectors. (Concept §4.3, §4.4.)
+    return de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM;
+  }
+
+  private boolean startCurveHandleDrag(float x, float y) {
+    int curveIdx = findCurveHandleIndex(x, y);
+    if (curveIdx == -1) return false;
+    activeCurveHandleIndex = curveIdx;
+    userHasEdited = true;
+    keepUserAdjusting();
+    updateSystemGestureExclusion();
+    notifyDragStateChanged(true);
+    invalidate();
+    if (debugLogsEnabled) {
+      Log.d(TAG, "ACTION_DOWN curve handle hit, index=" + curveIdx);
+    }
+    return true;
+  }
+
+  private boolean startCornerDrag(MotionEvent event, float x, float y) {
+    activeCornerIndex = findCornerIndex(x, y);
+    if (activeCornerIndex == -1) return false;
+    // Mark that user has edited corners (suppresses DocQuad re-init)
+    userHasEdited = true;
+    keepUserAdjusting();
+    edgeGlide.start(event.getRawY(), corners[activeCornerIndex].y);
+
+    // Expand gesture exclusion while dragging
+    updateSystemGestureExclusion();
+
+    // Initialize and show magnifier if enabled and source is set.
+    // Magnifier expects coordinates in the source view's coordinate space (i.e. the
+    // on-screen overlay/source view). Pass the *raw* event coordinates here, NOT the
+    // post-mapTouchToLocal values: under Pan/Zoom, the local frame is the unscaled
+    // pre-viewMatrix space, while the source view is currently rendered with
+    // viewMatrix · baseFitMatrix, so its visible content matches the raw screen position.
+    ensureMagnifier();
+    if (magnifier != null) {
+      PointF src = toSourceCoords(event.getX(), event.getY());
+      try {
+        magnifier.show(src.x, src.y);
+      } catch (Throwable t) {
+        Log.w(TAG, "magnifier.show failed: " + t.getMessage());
+      }
+      isDraggingWithMagnifier = true;
+    }
+    notifyDragStateChanged(true);
+    invalidate();
+    return true;
+  }
+
+  private boolean startEdgeDrag(float x, float y) {
+    int edgeIdx = findEdgeHitIndex(x, y);
+    if (edgeIdx == -1) return false;
+    activeEdgeIndex = edgeIdx;
+    userHasEdited = true;
+    keepUserAdjusting();
+    // Snapshot corner state and edge geometry at touch-down.
+    for (int i = 0; i < 4; i++) {
+      edgeAnchorXs[i] = corners[i].x;
+      edgeAnchorYs[i] = corners[i].y;
+    }
+    int a = edgeIdx;
+    int b = (edgeIdx + 1) % 4;
+    edgeAnchorMidX = 0.5f * (edgeAnchorXs[a] + edgeAnchorXs[b]);
+    edgeAnchorMidY = 0.5f * (edgeAnchorYs[a] + edgeAnchorYs[b]);
+    float[] n = CropEdgeGeometry.outwardUnitNormal(edgeAnchorXs, edgeAnchorYs, edgeIdx);
+    edgeAnchorNx = n[0];
+    edgeAnchorNy = n[1];
+    updateSystemGestureExclusion();
+    notifyDragStateChanged(true);
+    // A11y: announce edge-drag start so TalkBack users get audible feedback.
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_A11Y_GUIDANCE) {
+      announceEdgeDragForA11y();
+    }
+    invalidate();
+    if (debugLogsEnabled) {
+      Log.d(TAG, "ACTION_DOWN edge hit, edgeIndex=" + edgeIdx);
+    }
+    return true;
+  }
+
+  private void startPan(MotionEvent event) {
+    isPanning = true;
+    lastPanRawX = event.getRawX();
+    lastPanRawY = event.getRawY();
+    disallowParentIntercept(true);
+    updateSystemGestureExclusion();
+    // Report drag-state so the host fragment's OnBackPressedCallback also blocks back.
+    notifyDragStateChanged(true);
+    if (debugLogsEnabled) {
+      Log.d(TAG, "ACTION_DOWN pan start, scale=" + viewTransform.getScale());
+    }
+  }
+
+  /**
+   * @return {@code true} if the move was consumed by an active drag or pan
+   */
+  private boolean onTouchMove(MotionEvent event, float x, float y) {
+    if (activeCornerIndex != -1) {
+      dragActiveCorner(event, x, y);
+      return true;
+    }
+    // Curved mode (Issue #91): drag the active curve midpoint handle along the chord normal.
+    if (activeCurveHandleIndex != -1) {
+      keepUserAdjusting();
+      updateCurveHandleFromTouch(activeCurveHandleIndex, x, y);
+      invalidate();
+      return true;
+    }
+    if (activeEdgeIndex != -1) {
+      dragActiveEdge(x, y);
+      return true;
+    }
+    if (de.schliweb.makeacopy.BuildConfig.FEATURE_CROP_PAN_ZOOM && isPanning) {
+      panTo(event.getRawX(), event.getRawY());
+      return true;
+    }
+    return false;
+  }
+
+  private void dragActiveCorner(MotionEvent event, float x, float y) {
+    // Still adjusting while dragging; keep gesture exclusion updated
+    keepUserAdjusting();
+    updateSystemGestureExclusion();
+
+    // Soft Edge-Glide along left/right image edges
+    float[] target = {x, y};
+    RectF img = getDisplayedImageRectF(getWidth(), getHeight());
+    if (img != null && edgeGlideEnabled) {
+      edgeGlide.onMove(
+          x,
+          event.getRawY(),
+          img.left,
+          img.right,
+          edgeSnapEnterEpsPx(),
+          edgeSnapExitEpsPx(),
+          android.os.SystemClock.uptimeMillis(),
+          edgeGlideEngageDelayMs,
+          corners[activeCornerIndex].y,
+          target);
+    }
+
+    // Snap-to-Right-Angle: nudge near-axis adjacent edges onto 0°/90° (FR #72 companion).
+    float[] snapped = applyRightAngleSnap(activeCornerIndex, target[0], target[1]);
+    float tx = snapped[0];
+    float ty = snapped[1];
+
+    // Use updateCorner to maintain both absolute and relative coordinates
+    updateCorner(activeCornerIndex, tx, ty);
+
+    // Update magnifier position if active. Use raw event coordinates so the magnifier
+    // shows the on-screen content under the finger; under Pan/Zoom this is what the
+    // source view actually renders (viewMatrix · baseFitMatrix), whereas tx/ty are in
+    // the unscaled pre-viewMatrix local frame and would yield the wrong source area.
+    if (isDraggingWithMagnifier && magnifier != null) {
+      PointF src = toSourceCoords(event.getX(), event.getY());
+      try {
+        magnifier.show(src.x, src.y);
+      } catch (Throwable t) {
+        Log.w(TAG, "magnifier.show(move) failed: " + t.getMessage());
+      }
+    }
+
+    if (debugLogsEnabled) {
+      Log.d(
+          TAG,
+          "MOVE activeCorner="
+              + activeCornerIndex
+              + ", x/y=("
+              + x
+              + ","
+              + y
+              + "), tx/ty=("
+              + tx
+              + ","
+              + ty
+              + ")"
+              + ", rel=("
+              + relativeCorners[activeCornerIndex][0]
+              + ","
+              + relativeCorners[activeCornerIndex][1]
+              + ")"
+              + (edgeGlide.isGliding() ? " [edge-glide]" : ""));
+    }
+
+    invalidate();
+  }
+
+  /**
+   * Edge drag (parallel translation): applies only the orthogonal component of the finger motion to
+   * both endpoints of the active edge.
+   */
+  private void dragActiveEdge(float x, float y) {
+    keepUserAdjusting();
+    updateSystemGestureExclusion();
+
+    CropEdgeGeometry.EdgeTranslation res =
+        CropEdgeGeometry.applyEdgeTranslation(
+            edgeAnchorXs,
+            edgeAnchorYs,
+            activeEdgeIndex,
+            edgeAnchorMidX,
+            edgeAnchorMidY,
+            edgeAnchorNx,
+            edgeAnchorNy,
+            x,
+            y);
+    if (res.applied) {
+      // Update both endpoints via updateCorner so absolute, relative, and
+      // gesture-exclusion state stay in sync. updateCorner soft-clamps to
+      // image bounds (with off-screen tolerance) when feasible.
+      int a = activeEdgeIndex;
+      int b = (activeEdgeIndex + 1) % 4;
+      updateCorner(a, res.xs[a], res.ys[a]);
+      updateCorner(b, res.xs[b], res.ys[b]);
+    }
+    if (debugLogsEnabled) {
+      Log.d(
+          TAG,
+          "MOVE edge="
+              + activeEdgeIndex
+              + ", applied="
+              + res.applied
+              + ", dxOrth="
+              + res.dxOrth
+              + ", dyOrth="
+              + res.dyOrth);
+    }
+    invalidate();
+  }
+
+  /**
+   * Implicit Pan (Phase 2 step 3): translates viewMatrix by the raw delta while panning.
+   * Translation is clamped so that the mapped image rect still overlaps the view by at least
+   * PAN_MIN_VIEW_OVERLAP in each axis (see §4.2 of the concept doc).
+   */
+  private void panTo(float rawX, float rawY) {
+    if (!Float.isNaN(lastPanRawX) && !Float.isNaN(lastPanRawY)) {
+      float dx = rawX - lastPanRawX;
+      float dy = rawY - lastPanRawY;
+      if (dx != 0f || dy != 0f) {
+        viewTransform.postTranslate(dx, dy);
+        // Clamp against the displayed image rect (in local coords) for the soft 10 %
+        // overlap rule. We use the bitmap rect as displayed under fitCenter — same
+        // domain that overlayToSource is built on.
+        RectF img = getDisplayedImageRectF(getWidth(), getHeight());
+        if (img != null) {
+          viewTransform.clampTranslateToView(
+              img.left,
+              img.top,
+              img.right,
+              img.bottom,
+              getWidth(),
+              getHeight(),
+              PAN_MIN_VIEW_OVERLAP);
+        }
+        syncViewMatrixFromTransform();
+        notifyViewTransformChanged();
+        invalidate();
+      }
+    }
+    lastPanRawX = rawX;
+    lastPanRawY = rawY;
+  }
+
+  /** ACTION_UP / ACTION_CANCEL: releases whatever was being dragged and resets the drag state. */
+  private void onTouchEnd(MotionEvent event, float x, float y) {
+    if (debugLogsEnabled) {
+      Log.d(
+          TAG,
+          (event.getAction() == MotionEvent.ACTION_UP ? "ACTION_UP" : "ACTION_CANCEL")
+              + " activeCorner="
+              + activeCornerIndex
+              + ", x="
+              + x
+              + ", y="
+              + y
+              + ", rawX="
+              + event.getRawX()
+              + ", rawY="
+              + event.getRawY());
+    }
+    // Release the active corner
+    if (activeCornerIndex != -1) {
+      // Ensure relative coordinates are updated when touch ends
+      updateCorner(activeCornerIndex, corners[activeCornerIndex].x, corners[activeCornerIndex].y);
+      Log.d(
+          TAG,
+          "Touch released, final corner "
+              + activeCornerIndex
+              + " position: "
+              + "("
+              + corners[activeCornerIndex].x
+              + ","
+              + corners[activeCornerIndex].y
+              + ")");
+    }
+    // Dismiss magnifier if shown
+    if (magnifier != null && isDraggingWithMagnifier) {
+      try {
+        magnifier.dismiss();
+      } catch (Throwable t) {
+        Log.w(TAG, "magnifier.dismiss failed: " + t.getMessage());
+      }
+    }
+    // Allow parents to intercept again and shrink gesture exclusion back to normal
+    disallowParentIntercept(false);
+    isDraggingWithMagnifier = false;
+    activeCornerIndex = -1;
+    // Reset edge-drag state
+    activeEdgeIndex = -1;
+    // Reset curve-handle drag state (Issue #91)
+    activeCurveHandleIndex = -1;
+    // Reset implicit Pan state and snap residual zoom on lift.
+    if (isPanning) {
+      isPanning = false;
+      lastPanRawX = Float.NaN;
+      lastPanRawY = Float.NaN;
+      // After a pan ends, scale itself didn't change, but if the user happened to
+      // pinch-out and then released without crossing the snap threshold, this catches
+      // the residual case.
+      maybeSnapToIdentity();
+    }
+    notifyDragStateChanged(false);
+    edgeGlide.reset();
+    // Reset Snap-to-Right-Angle highlight & state on touch end (FR #72 companion).
+    resetRightAngleSnapState();
+    // Keep user-adjusting true for a short idle window to suppress auto re-detection
+    scheduleAdjustIdleClear();
+    updateSystemGestureExclusion();
+    invalidate();
   }
 
   @Override
