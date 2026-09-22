@@ -1,5 +1,6 @@
 MakeACopy 4.7.0
 * New: manual dewarping for curved book pages in the crop screen.
 * New: multi-page workflow – import several PDF pages, batch OCR, memory-friendly export; unfinished documents survive a restart.
+* New: re-crop any page of a multi-page document from its original photo.
 * Corner detection: about 9× faster; retrained model is far better with tilted documents.
-* Completed translations for crop-editing hints.
+* Fixed: a separate TXT file is only exported when OCR found text; the camera options no longer switch it on.
