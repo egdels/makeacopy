@@ -3417,6 +3417,33 @@ public class TrapezoidSelectionView extends View {
   }
 
   /**
+   * Sets the tangential (along-the-chord) offsets of the two curve handles, the counterpart of
+   * {@link #setCurveOffsetFractions(double, double)} for {@link #curveTangentFrac}. Used to restore
+   * an accepted curved selection on Re-Edit; values are clamped to ±{@link
+   * #CURVE_MAX_TANGENT_FRAC}.
+   *
+   * @param topFrac signed tangential fraction for the top edge (positive towards corner 1)
+   * @param bottomFrac signed tangential fraction for the bottom edge (positive towards corner 2)
+   */
+  public void setCurveTangentFractions(double topFrac, double bottomFrac) {
+    curveTangentFrac[0] =
+        Math.max(-CURVE_MAX_TANGENT_FRAC, Math.min(CURVE_MAX_TANGENT_FRAC, (float) topFrac));
+    curveTangentFrac[1] =
+        Math.max(-CURVE_MAX_TANGENT_FRAC, Math.min(CURVE_MAX_TANGENT_FRAC, (float) bottomFrac));
+    invalidate();
+  }
+
+  /** Returns {@code {top, bottom}} perpendicular curve offsets as set by the user or estimator. */
+  public float[] getCurveOffsetFractions() {
+    return new float[] {curveOffsetFrac[0], curveOffsetFrac[1]};
+  }
+
+  /** Returns {@code {top, bottom}} tangential curve-handle offsets. */
+  public float[] getCurveTangentFractions() {
+    return new float[] {curveTangentFrac[0], curveTangentFrac[1]};
+  }
+
+  /**
    * Computes the current on-curve handle position of the top ({@code which == 0}) or bottom ({@code
    * which == 1}) edge. The position is derived from the corners on every call: chord midpoint plus
    * {@link #curveOffsetFrac} times the chord length along the chord's unit normal, plus {@link

@@ -17,6 +17,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import de.schliweb.makeacopy.utils.image.DewarpState;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -31,7 +32,8 @@ import lombok.experimental.UtilityClass;
 
 /**
  * Keeps the crop source of a page next to its persisted page image: a byte copy of the original
- * (un-cropped) capture plus the accepted trapezoid corners and user rotation.
+ * (un-cropped) capture plus the accepted trapezoid corners, user rotation and, for a curved
+ * selection (issue #91), its dewarp settings.
  *
  * <p>The persisted {@code page.jpg} is already perspective-corrected, so re-editing it can only cut
  * the page down further. With the crop source, ANY page of a multi-page document can be re-cropped
@@ -59,8 +61,14 @@ public final class CropSourceStore {
    */
   private static final long STALE_TMP_MILLIS = TimeUnit.HOURS.toMillis(1);
 
-  /** The original image of a page together with the crop that produced its page image. */
-  public record CropSource(String originalPath, PointF[] corners, int userRotationDeg) {}
+  /**
+   * The original image of a page together with the crop that produced its page image.
+   *
+   * @param dewarp the curved-selection settings of the crop (issue #91), or {@code null} for a
+   *     straight trapezoid
+   */
+  public record CropSource(
+      String originalPath, PointF[] corners, int userRotationDeg, DewarpState dewarp) {}
 
   /**
    * Stores the crop source for a page. The original is copied byte for byte (no re-encoding), so
@@ -71,6 +79,7 @@ public final class CropSourceStore {
    * @param srcUri URI of the original image, used when there is no readable path (nullable)
    * @param corners accepted corners in coordinates of the rotated full-res original
    * @param userRotationDeg user rotation that was baked into the crop source
+   * @param dewarp curved-selection settings of the crop, or {@code null} for a straight trapezoid
    * @return whether both the original and the crop parameters were stored
    */
   public static boolean save(
@@ -79,9 +88,10 @@ public final class CropSourceStore {
       String srcPath,
       Uri srcUri,
       PointF[] corners,
-      int userRotationDeg) {
+      int userRotationDeg,
+      DewarpState dewarp) {
     if (ctx == null || pageId == null) return false;
-    String json = toJson(toArray(corners), userRotationDeg);
+    String json = toJson(toArray(corners), userRotationDeg, dewarp);
     if (json == null) return false;
     File dir = scanDir(ctx, pageId);
     if (!dir.exists() && !dir.mkdirs()) return false;
@@ -100,11 +110,11 @@ public final class CropSourceStore {
    * a stored original the parameters would be meaningless, so nothing is written then.
    */
   public static boolean updateCrop(
-      Context ctx, String pageId, PointF[] corners, int userRotationDeg) {
+      Context ctx, String pageId, PointF[] corners, int userRotationDeg, DewarpState dewarp) {
     if (ctx == null || pageId == null) return false;
     File dir = scanDir(ctx, pageId);
     if (!isUsableFile(new File(dir, ORIGINAL_FILE))) return false;
-    String json = toJson(toArray(corners), userRotationDeg);
+    String json = toJson(toArray(corners), userRotationDeg, dewarp);
     if (json == null) return false;
     try {
       writeUtf8(new File(dir, CROP_FILE), json);
@@ -198,7 +208,8 @@ public final class CropSourceStore {
       if (flat == null) return null;
       PointF[] corners = new PointF[4];
       for (int i = 0; i < 4; i++) corners[i] = new PointF(flat[2 * i], flat[2 * i + 1]);
-      return new CropSource(original.getAbsolutePath(), corners, rotationFromJson(json));
+      return new CropSource(
+          original.getAbsolutePath(), corners, rotationFromJson(json), dewarpFromJson(json));
     } catch (IOException e) {
       Log.w(TAG, "load: failed for page " + pageId, e);
       return null;
@@ -211,9 +222,11 @@ public final class CropSourceStore {
    * Serializes the crop parameters.
    *
    * @param corners eight floats: x0, y0, … x3, y3
+   * @param dewarp curved-selection settings, or {@code null} for a straight trapezoid; a state with
+   *     non-finite values is dropped (the crop is stored as straight) rather than rejected
    * @return the JSON document, or {@code null} for anything but four finite corners
    */
-  static String toJson(float[] corners, int userRotationDeg) {
+  static String toJson(float[] corners, int userRotationDeg, DewarpState dewarp) {
     if (corners == null || corners.length != 8) return null;
     JsonArray arr = new JsonArray();
     for (int i = 0; i < 4; i++) {
@@ -228,10 +241,68 @@ public final class CropSourceStore {
       arr.add(pt);
     }
     JsonObject o = new JsonObject();
-    o.addProperty("version", 1);
+    o.addProperty("version", 2);
     o.addProperty("userRotationDeg", normalizeDeg(userRotationDeg));
     o.add("corners", arr);
+    if (dewarp != null && dewarp.isFinite()) o.add("dewarp", dewarpToJson(dewarp));
     return o.toString();
+  }
+
+  private static JsonObject dewarpToJson(DewarpState d) {
+    JsonObject o = new JsonObject();
+    o.addProperty("topOffsetFrac", d.topOffsetFrac());
+    o.addProperty("bottomOffsetFrac", d.bottomOffsetFrac());
+    o.addProperty("topTangentFrac", d.topTangentFrac());
+    o.addProperty("bottomTangentFrac", d.bottomTangentFrac());
+    o.addProperty("depth", d.depth());
+    if (d.topProfile() != null) o.add("topProfile", profileToJson(d.topProfile()));
+    if (d.bottomProfile() != null) o.add("bottomProfile", profileToJson(d.bottomProfile()));
+    return o;
+  }
+
+  private static JsonArray profileToJson(double[] profile) {
+    JsonArray arr = new JsonArray();
+    for (double v : profile) arr.add(v);
+    return arr;
+  }
+
+  /**
+   * Returns the curved-selection settings, or {@code null} when the crop is a straight trapezoid
+   * (no {@code dewarp} object, e.g. a version 1 document) or the object is unusable. A broken
+   * dewarp object degrades to a straight crop rather than invalidating the corners.
+   */
+  static DewarpState dewarpFromJson(String json) {
+    try {
+      JsonElement el = JsonParser.parseString(json).getAsJsonObject().get("dewarp");
+      if (el == null || !el.isJsonObject()) return null;
+      JsonObject o = el.getAsJsonObject();
+      DewarpState state =
+          new DewarpState(
+              o.get("topOffsetFrac").getAsDouble(),
+              o.get("bottomOffsetFrac").getAsDouble(),
+              optionalDouble(o, "topTangentFrac"),
+              optionalDouble(o, "bottomTangentFrac"),
+              optionalDouble(o, "depth"),
+              profileFromJson(o.get("topProfile")),
+              profileFromJson(o.get("bottomProfile")));
+      return state.isFinite() ? state : null;
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
+  private static double optionalDouble(JsonObject o, String key) {
+    JsonElement el = o.get(key);
+    return el == null || el.isJsonNull() ? 0.0 : el.getAsDouble();
+  }
+
+  private static double[] profileFromJson(JsonElement el) {
+    if (el == null || !el.isJsonArray()) return null;
+    JsonArray arr = el.getAsJsonArray();
+    if (arr.isEmpty()) return null;
+    double[] out = new double[arr.size()];
+    for (int i = 0; i < out.length; i++) out[i] = arr.get(i).getAsDouble();
+    return out;
   }
 
   /** Returns the eight corner floats, or {@code null} when the document is not a valid crop. */

@@ -2369,6 +2369,7 @@ public class ExportFragment extends Fragment {
     cropViewModel.setUserRotationDegrees(0);
     cropViewModel.setLastAcceptedUserRotationDeg(source.userRotationDeg());
     cropViewModel.setLastAcceptedCornersOriginal(source.corners());
+    cropViewModel.setLastAcceptedDewarp(source.dewarp());
     cropViewModel.setOriginalImageBitmap(original);
     cropViewModel.setImageCropped(false);
     cropViewModel.setImageBitmap(original);
@@ -2411,6 +2412,7 @@ public class ExportFragment extends Fragment {
     cropViewModel.setUserRotationDegrees(0);
     cropViewModel.setLastAcceptedUserRotationDeg(0);
     cropViewModel.setLastAcceptedCornersOriginal(null);
+    cropViewModel.setLastAcceptedDewarp(null);
     cropViewModel.setOriginalImageBitmap(src);
     cropViewModel.setImageCropped(false);
     cropViewModel.setImageBitmap(src);
@@ -2547,6 +2549,8 @@ public class ExportFragment extends Fragment {
             : null;
     final Integer acceptedRotation = cropViewModel.getLastAcceptedUserRotationDeg().getValue();
     final int rotationAtCall = acceptedRotation != null ? acceptedRotation : 0;
+    final de.schliweb.makeacopy.utils.image.DewarpState dewarpAtCall =
+        cornersAtCall != null ? cropViewModel.getLastAcceptedDewarp() : null;
     final String originalPathAtCall = capturedImagePath();
     final Uri originalUriAtCall = capturedImageUri();
     new Thread(
@@ -2560,7 +2564,8 @@ public class ExportFragment extends Fragment {
                       originalPathAtCall,
                       originalUriAtCall,
                       cornersAtCall,
-                      rotationAtCall);
+                      rotationAtCall,
+                      dewarpAtCall);
                 }
                 // Persist scan (page.jpg, thumb.jpg, and optional OCR artifacts) and insert into
                 // registry

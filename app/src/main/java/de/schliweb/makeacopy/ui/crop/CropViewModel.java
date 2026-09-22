@@ -242,6 +242,14 @@ public class CropViewModel extends BaseViewModel {
     lastAcceptedUserRotationDeg.setValue(((deg % 360) + 360) % 360);
   }
 
+  /**
+   * Issue #91: the curved-selection settings (curve handles, edge profiles, depth) that were active
+   * when {@link #lastAcceptedCornersOriginal} were accepted, or {@code null} when the crop was a
+   * straight trapezoid. Travels with the corners so a Re-Edit rebuilds the very same shape instead
+   * of a straight one; persisted per page through {@code CropSourceStore}.
+   */
+  @Setter @Getter private de.schliweb.makeacopy.utils.image.DewarpState lastAcceptedDewarp;
+
   /** True when CropFragment was entered via the Re-Edit overlay in ExportFragment. */
   public LiveData<Boolean> isCameFromExport() {
     return cameFromExport;

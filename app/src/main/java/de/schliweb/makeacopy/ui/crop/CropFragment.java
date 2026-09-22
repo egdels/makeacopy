@@ -35,6 +35,7 @@ import de.schliweb.makeacopy.databinding.FragmentCropBinding;
 import de.schliweb.makeacopy.ui.camera.CameraViewModel;
 import de.schliweb.makeacopy.utils.image.BitmapUtils;
 import de.schliweb.makeacopy.utils.image.CoordinateTransformUtils;
+import de.schliweb.makeacopy.utils.image.DewarpState;
 import de.schliweb.makeacopy.utils.image.ImageLoader;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
@@ -175,6 +176,15 @@ public class CropFragment extends Fragment {
 
   private static int normalizeDegrees(Integer deg) {
     return deg == null ? 0 : ((deg % 360) + 360) % 360;
+  }
+
+  /** Returns {@code src} rotated clockwise by {@code deg}, or {@code src} itself for 0°. */
+  private static Bitmap rotateBitmap(Bitmap src, int deg) {
+    if (src == null || deg == 0) return src;
+    android.graphics.Matrix m = new android.graphics.Matrix();
+    m.postRotate(deg);
+    Bitmap rotated = Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), m, true);
+    return rotated != null ? rotated : src;
   }
 
   /**
@@ -681,6 +691,7 @@ public class CropFragment extends Fragment {
       binding.trapezoidSelection.setCornersFromImageCoordinates(pts);
       reEditCornersRestored = true;
       android.util.Log.d(TAG, "[FR72] Re-Edit: pre-populated trapezoid from persisted corners");
+      restoreAcceptedDewarpState(cropViewModel.getLastAcceptedDewarp());
     } catch (Throwable t) {
       android.util.Log.w(TAG, "[FR72] Re-Edit: corner pre-population failed: " + t.getMessage());
     }
@@ -793,7 +804,55 @@ public class CropFragment extends Fragment {
             + ", took="
             + dt
             + "ms");
-    onCropSucceeded(croppedBitmap, cornersForSource);
+    // The state is only worth keeping when the crop really went through the dewarp path; a
+    // curved mode whose model could not be built produced a straight crop.
+    onCropSucceeded(
+        croppedBitmap, cornersForSource, dewarpModel != null ? currentDewarpState() : null);
+  }
+
+  /**
+   * Issue #91: snapshot of the curved-selection settings the user sees right now (curve handles,
+   * estimated edge profiles, depth), in the same chord-relative terms that {@link
+   * #buildDewarpModel} feeds into the model. Stored with the accepted corners so a Re-Edit rebuilds
+   * the identical curved shape.
+   */
+  private DewarpState currentDewarpState() {
+    float[] offsets = binding.trapezoidSelection.getCurveOffsetFractions();
+    float[] tangents = binding.trapezoidSelection.getCurveTangentFractions();
+    return new DewarpState(
+        offsets[0],
+        offsets[1],
+        tangents[0],
+        tangents[1],
+        dewarpDepth,
+        estimatedTopEdgeProfile,
+        estimatedBottomEdgeProfile);
+  }
+
+  /**
+   * Issue #91: re-applies an accepted curved selection on Re-Edit, the counterpart of the corner
+   * restore. Deliberately bypasses the toggle-button handler: that one starts a fresh automatic
+   * curve estimation, which would overwrite the restored handles with a possibly different shape.
+   *
+   * @param state the accepted settings, or {@code null} for a straight crop (nothing to do)
+   */
+  private void restoreAcceptedDewarpState(DewarpState state) {
+    if (state == null || binding == null) return;
+    // Invalidate any estimation still running so it cannot clobber the restored state later
+    curveEstimationGeneration.incrementAndGet();
+    TrapezoidSelectionView view = binding.trapezoidSelection;
+    view.setCurvedMode(true); // resets the handles; set them afterwards
+    view.setCurveOffsetFractions(state.topOffsetFrac(), state.bottomOffsetFrac());
+    view.setCurveTangentFractions(state.topTangentFrac(), state.bottomTangentFrac());
+    applyCurvedToggleVisuals(true);
+    estimatedTopEdgeProfile = state.topProfile();
+    estimatedBottomEdgeProfile = state.bottomProfile();
+    // setProgress quantizes the depth through onProgressChanged; keep the exact accepted value
+    binding.cropDepthSlider.setProgress(
+        (int) Math.round(state.depth() * DEPTH_SLIDER_NEUTRAL) + DEPTH_SLIDER_NEUTRAL);
+    dewarpDepth = state.depth();
+    showDepthSlider(true);
+    android.util.Log.d(TAG, "[FR72] Re-Edit: restored curved selection, depth=" + dewarpDepth);
   }
 
   /**
@@ -980,7 +1039,8 @@ public class CropFragment extends Fragment {
     }
   }
 
-  private void onCropSucceeded(Bitmap croppedBitmap, org.opencv.core.Point[] cornersForSource) {
+  private void onCropSucceeded(
+      Bitmap croppedBitmap, org.opencv.core.Point[] cornersForSource, DewarpState acceptedDewarp) {
     final String LP = CROP_LOG;
     // Post-warp safety net: trim residual non-paper border (dark background remnants left
     // when the crop trapezoid was slightly looser than the actual paper edges). This protects
@@ -1029,6 +1089,7 @@ public class CropFragment extends Fragment {
       int urDeg = urVal == null ? 0 : urVal;
       cropViewModel.setLastAcceptedCornersOriginal(accepted);
       cropViewModel.setLastAcceptedUserRotationDeg(urDeg);
+      cropViewModel.setLastAcceptedDewarp(acceptedDewarp);
     } catch (Throwable t) {
       android.util.Log.w(TAG, LP + "performCrop: persisting accepted corners failed: " + t);
     }
@@ -1275,6 +1336,7 @@ public class CropFragment extends Fragment {
         cropViewModel.getLastAcceptedCornersOriginal().getValue();
     final int acceptedRotation =
         normalizeDegrees(cropViewModel.getLastAcceptedUserRotationDeg().getValue());
+    final DewarpState acceptedDewarp = cropViewModel.getLastAcceptedDewarp();
     final boolean fromOriginal = cropViewModel.isReEditFromOriginal();
     new Thread(
             () -> {
@@ -1285,7 +1347,7 @@ public class CropFragment extends Fragment {
                 if (fromOriginal) {
                   // No-op for pages without a stored original
                   de.schliweb.makeacopy.utils.export.CropSourceStore.updateCrop(
-                      appContext, id, acceptedCorners, acceptedRotation);
+                      appContext, id, acceptedCorners, acceptedRotation, acceptedDewarp);
                 } else {
                   // Edited on the cropped page image: a stored original (that could not be used)
                   // and its corners no longer reproduce this page
@@ -1402,8 +1464,9 @@ public class CropFragment extends Fragment {
    * Wires up the Curved-edges toggle button (Issue #91). Clicking flips the curved mode of the
    * trapezoid selection via {@link TrapezoidSelectionView#setCurvedMode(boolean)}. The button uses
    * {@link View#setSelected(boolean)} plus a tint change for visual feedback (same pattern as the
-   * Snap-to-Right-Angle toggle) and announces the new state for accessibility. The mode is
-   * intentionally not persisted in this MVP; it resets when the fragment is recreated.
+   * Snap-to-Right-Angle toggle) and announces the new state for accessibility. The mode starts off
+   * on a fresh fragment; an accepted curved crop is brought back on Re-Edit through {@link
+   * #restoreAcceptedDewarpState}.
    */
   private void setupCurvedToggleButton() {
     if (binding == null) return;
@@ -1447,8 +1510,9 @@ public class CropFragment extends Fragment {
   /**
    * Current perspective-depth fine adjustment in {@code [-1, 1]} (Issue #91, Phase 3); {@code 0} =
    * neutral. Applied to the {@link de.schliweb.makeacopy.utils.image.DewarpModel} via {@code
-   * withDepth} in {@link #performCrop()} when curved mode is active. Intentionally not persisted
-   * (MVP); resets when the fragment is recreated or the curved mode is toggled.
+   * withDepth} in {@link #performCrop()} when curved mode is active. Resets when the fragment is
+   * recreated or the curved mode is toggled; an accepted value comes back on Re-Edit as part of the
+   * {@link DewarpState}.
    */
   private double dewarpDepth = 0.0;
 
@@ -1586,6 +1650,11 @@ public class CropFragment extends Fragment {
     final double depth = dewarpDepth;
     final double[] topProfile = estimatedTopEdgeProfile;
     final double[] bottomProfile = estimatedBottomEdgeProfile;
+    // The warp maps corner 0 to the output's top-left. After a user rotation the corners keep
+    // their indices (only their positions rotate), so the warp result comes out in the UNROTATED
+    // orientation — exactly like the real crop, which Export/OCR rotate afterwards. The preview
+    // replaces the rotated image on screen, so it has to be rotated the same way here.
+    final int userDeg = normalizeDegrees(cropViewModel.getUserRotationDegrees().getValue());
     final int generation = depthPreviewRenderGeneration.incrementAndGet();
     final View postTarget = binding.trapezoidSelection;
 
@@ -1605,6 +1674,13 @@ public class CropFragment extends Fragment {
                   preview =
                       OpenCVUtils.applyDewarp(
                           displayedBitmap, model, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+                  if (preview != null && preview != displayedBitmap && userDeg != 0) {
+                    Bitmap rotated = rotateBitmap(preview, userDeg);
+                    if (rotated != preview) {
+                      preview.recycle();
+                      preview = rotated;
+                    }
+                  }
                 }
               } catch (Throwable t) {
                 android.util.Log.w(TAG, "renderDepthPreview: render failed: " + t);
