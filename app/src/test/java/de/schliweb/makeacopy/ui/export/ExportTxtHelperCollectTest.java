@@ -65,4 +65,28 @@ public class ExportTxtHelperCollectTest {
     assertEquals("\n\n\n\n", text);
     assertFalse(ExportTxtHelper.hasOcrText(text));
   }
+
+  @Test
+  public void singlePage_withoutInMemoryText_usesTheTextPersistedByBackgroundOcr() throws IOException {
+    // "Skip OCR" in the scan flow, OCR run later from the export screen: the result only exists in
+    // the page's files, the OCR view model stays empty
+    File text = write(tmp.newFolder("bg"), "text.txt", "found later");
+    CompletedScan page = page("bg", text.getAbsolutePath(), "plain");
+    assertEquals(
+        "found later",
+        ExportTxtHelper.collectOcrText(java.util.Collections.singletonList(page), null, null));
+    assertEquals(
+        "found later",
+        ExportTxtHelper.collectOcrText(java.util.Collections.singletonList(page), "", null));
+  }
+
+  @Test
+  public void singlePage_prefersTheInMemoryText() throws IOException {
+    File text = write(tmp.newFolder("mem"), "text.txt", "stale");
+    CompletedScan page = page("mem", text.getAbsolutePath(), "plain");
+    assertEquals(
+        "reviewed",
+        ExportTxtHelper.collectOcrText(
+            java.util.Collections.singletonList(page), "reviewed", null));
+  }
 }

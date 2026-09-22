@@ -84,8 +84,12 @@ final class ExportTxtHelper {
       Bitmap currentPreviewBitmap) {
     boolean isMulti = pages != null && pages.size() > 1;
 
-    // Single-page: Just use current in-memory OCR text if present
-    if (!isMulti) return currentText;
+    // Single-page: the in-memory OCR text, or — when OCR was skipped in the scan flow and run
+    // later from the export screen — the text the background job persisted for the page
+    if (!isMulti) {
+      if (currentText != null && !currentText.isEmpty()) return currentText;
+      return (pages != null && pages.size() == 1) ? readPersistedPageText(pages.get(0)) : null;
+    }
 
     // Multi-page: concatenate per-page OCR from registry
     StringBuilder sb = new StringBuilder();
