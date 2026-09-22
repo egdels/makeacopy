@@ -923,6 +923,10 @@ public class ExportFragment extends Fragment {
     // controlled by the dialog.
     // Refresh OCR badge overlay on the preview (mirrors filmstrip badge state).
     updatePreviewOcrBadge();
+    // A page edited in a resumed document (no capture path in CameraViewModel) is only editable
+    // through its persisted page.jpg, whose path arrives with this observer once the async
+    // re-persist finished. Without this refresh the Edit overlay stays hidden after a Re-Edit.
+    updateEditCropOverlayVisibility();
     // Session 3: keep the persistent DocumentSession snapshot in sync with the runtime
     // page list (ordered page ids) on every add/addAll/remove/move/update.
     syncDocumentSessionAsync(pages);
