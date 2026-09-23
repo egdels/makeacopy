@@ -72,10 +72,12 @@ public class LineCoverageTest {
 
   @Test
   public void ocrLinesWithoutCounterpart_countAsExtra() {
-    String ocr = String.join("\n", GT) + "\n---- ----\nCMYK 0 0 0 0\nab";
+    String ocr = String.join("\n", GT) + "\n---- ----\nCMYK 000 111 222\nab\n" + GT.get(0) + " " + GT.get(3);
     LineCoverage.Report r = LineCoverage.compare(GT, ocr);
     assertEquals(0, r.missing());
-    assertEquals(1, r.extra()); // "CMYK 0 0 0 0"; "---- ----" and "ab" are too short after normalisation
+    // "CMYK 000 111 222" is junk; "---- ----" and "ab" have no word of three letters; the row
+    // that joins two reference lines consists of known words and is not junk.
+    assertEquals(1, r.extra());
   }
 
   @Test

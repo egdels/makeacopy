@@ -53,7 +53,7 @@ public final class LineCoverage {
       int intact,
       int intactInRows,
       List<String> extraLines) {
-    /** OCR lines (of the intact text) that match no reference line: junk from rules, bars, noise. */
+    /** OCR lines whose words are mostly unknown to the reference: junk from rules, bars, noise. */
     public int extra() {
       return extraLines.size();
     }
@@ -118,13 +118,26 @@ public final class LineCoverage {
       if (inRows) intactInRows++;
       results.add(new LineResult(ref, sim, present, isIntact, inRows, m.text()));
     }
-    // Extra lines: OCR lines of the intact text that resemble no reference line at all.
-    String gtBlob = normalize(String.join("", referenceLines));
+    // Extra lines: OCR lines whose words are mostly unknown to the reference (junk from rules,
+    // colour bars, noise). Judged by words, not by line similarity, so that a row which joins
+    // two columns' lines does not count as junk.
+    java.util.Set<String> vocabulary = new java.util.HashSet<>();
+    for (String ref : referenceLines) {
+      for (String w : ref.split("\\s+")) {
+        String n = normalize(w);
+        if (n.length() >= MIN_LINE_CHARS) vocabulary.add(n);
+      }
+    }
     List<String> extra = new ArrayList<>();
     for (String l : ocrLines) {
-      String n = normalize(l);
-      if (n.length() < MIN_LINE_CHARS) continue;
-      if (bestWindow(n, gtBlob).similarity() < PRESENT_RATIO) extra.add(l);
+      int known = 0, total = 0;
+      for (String w : l.split("\\s+")) {
+        String n = normalize(w);
+        if (n.length() < MIN_LINE_CHARS) continue;
+        total++;
+        if (vocabulary.contains(n)) known++;
+      }
+      if (total > 0 && known * 2 < total) extra.add(l);
     }
     return new Report(results, checked, missing, intact, intactInRows, extra);
   }

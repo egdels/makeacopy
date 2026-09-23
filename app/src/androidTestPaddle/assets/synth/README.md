@@ -11,7 +11,10 @@ The pages: `synth_lorem_columns` (three justified columns, line numbers), `synth
 `synth_big_glyphs` (huge digits over captions), `synth_wide_gaps` (one wide column, three or four
 words per justified line, so the recogniser drops the spaces), `synth_rules_bars` (two columns with a
 colour bar, rules, underlines and a ruled table: non-text must not become text), `synth_faint_print`
-(black, light grey and very light grey text on toned paper: faint lines must not be lost).
+(black, light grey and very light grey text on toned paper: faint lines must not be lost),
+`synth_centered_column` (a justified column beside a centred verse column: the gutter has a straight
+edge on the justified side, which is enough to keep it), `synth_subheadings` (three columns with sub-headings over two of
+them, one reaching only 20 px into the second column: still a band separator).
 
 Each `<name>.png` comes with `<name>.gt.txt`: the drawn text lines, one per line, in
 drawing order (column by column). `SyntheticPageRegressionTest` runs the pages through

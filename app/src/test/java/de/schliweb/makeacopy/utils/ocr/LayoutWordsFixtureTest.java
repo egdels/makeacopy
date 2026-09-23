@@ -29,8 +29,9 @@ import org.junit.Test;
  * {@code SyntheticPageRegressionTest}) and counts the reference lines that come out intact. No
  * recogniser involved: this pins the layout layer on its own, on real geometry.
  *
- * <p>The floors are the counts measured when the rules were introduced; recognition errors in
- * the dumps ("1Opellentesque", "unc") keep them below the line totals.
+ * <p>The floors are the counts measured with the detector unclipping like the reference (commit
+ * "Unclip DB boxes by area times ratio over perimeter"); the drop-cap page misses one line
+ * because its two-line initial and the first body line are one reference line apart.
  */
 public class LayoutWordsFixtureTest {
 
@@ -51,7 +52,7 @@ public class LayoutWordsFixtureTest {
     assertTrue(lines.get(0).startsWith("01Lorem ipsum"));
     assertTrue(indexOfLine(lines, "Er hörte") > indexOfLine(lines, "ipsum primis"));
     assertTrue(indexOfLine(lines, "One one") > indexOfLine(lines, "Ausweg."));
-    assertAtLeastIntact(p, 66);
+    assertAtLeastIntact(p, 69);
   }
 
   @Test
@@ -59,7 +60,7 @@ public class LayoutWordsFixtureTest {
     Page p = load("synth_headline_split");
     List<String> lines = p.lines();
     assertEquals("Fähre: Welche Fahrten fallen in dieser Woche aus?", lines.get(0));
-    assertAtLeastIntact(p, 45);
+    assertAtLeastIntact(p, 51);
   }
 
   @Test
@@ -69,7 +70,30 @@ public class LayoutWordsFixtureTest {
     List<String> lines = p.lines();
     assertTrue(lines.contains("E s war ein ruhiger Abend im Hafen, als die alte"));
     assertTrue(indexOfLine(lines, "Die neue Fähre") > indexOfLine(lines, "Aufenthaltsraum"));
-    assertAtLeastIntact(p, 43);
+    assertAtLeastIntact(p, 59);
+  }
+
+  @Test
+  public void centeredColumn_isReadAsTwoColumns() throws Exception {
+    Page p = load("synth_centered_column");
+    assertEquals("justified column and centred verse column", 2, p.segments().size());
+    List<String> lines = p.lines();
+    assertTrue(indexOfLine(lines, "Am Kai die alte") > indexOfLine(lines, "Minuten statt vierzig"));
+    assertAtLeastIntact(p, 40);
+  }
+
+  @Test
+  public void subheadings_separateTheBandsEvenWithAShortOverhang() throws Exception {
+    Page p = load("synth_subheadings");
+    List<String> lines = p.lines();
+    int h1 = indexOfLine(lines, "Die letzte Fahrt");
+    int h2 = indexOfLine(lines, "Was aus dem alten");
+    // band 1 (all three columns) before heading 1, band 2 between the headings, band 3 after
+    assertTrue(indexOfLine(lines, "gesteuert hatte") < h1);
+    assertTrue(indexOfLine(lines, "Verkauf nach.") > h1);
+    assertTrue(indexOfLine(lines, "Abendfahrten angeboten") < h2);
+    assertTrue(indexOfLine(lines, "Die Reederei rechnet") > h2);
+    assertAtLeastIntact(p, 74);
   }
 
   // ---------------------------------------------------------------------------------------

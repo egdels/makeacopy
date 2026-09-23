@@ -98,6 +98,18 @@ public class SyntheticPageRegressionTest {
     assertNoLineLost("synth_faint_print");
   }
 
+  /** A centred verse column beside a justified column is still a column. */
+  @Test
+  public void centeredColumn_noLineLost() throws Exception {
+    assertNoLineLost("synth_centered_column");
+  }
+
+  /** Sub-headings over two of three columns separate the page into bands, even with a short overhang. */
+  @Test
+  public void subheadings_noLineLost() throws Exception {
+    assertNoLineLost("synth_subheadings");
+  }
+
   /** Huge glyphs are a known detector limit: measured and logged, the captions must survive. */
   @Test
   public void bigGlyphs_captionsSurvive() throws Exception {

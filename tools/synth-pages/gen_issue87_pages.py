@@ -13,6 +13,10 @@ Mimics the geometry of the reporter's samples with own text:
                       and a small ruled table -> non-text elements must not become text
   7. faint_print    : the same text in black, light grey and very light grey on toned paper ->
                       the box threshold must not lose faint lines the reference keeps
+  8. centered_column: a justified column beside a centred verse column -> a column whose rows
+                      share a centre instead of a left edge is still a column
+  9. subheadings    : three columns with sub-headings over two of them, one reaching only
+                      20 px into the second column -> such a heading is still a separator
 """
 import os, random, re, sys
 from PIL import Image, ImageDraw, ImageFont
@@ -323,6 +327,89 @@ def faint_print(out):
         y += 120
     im.save(out)
 
+VERSE = ("Am Kai die alte Fähre liegt / im Abendlicht, das leise wiegt / die Wellen an der Mauer Stein / "
+         "und keiner will der Letzte sein / der Kapitän hebt seine Hand / drei Hornstöße bis an den Strand / "
+         "die Möwen ziehen ihren Kreis / der Sommer war noch nie so heiß / nun schweigt das alte Dieselherz / "
+         "es bleibt der Blick, es bleibt der Schmerz / und morgen früh, so heißt es hier / fährt schon die neue über's Meer / "
+         "mit Strom und Glas und leisem Gang / und einem Deck für Fahrrad, Kind und Sang / doch wer das alte Schiff gekannt / "
+         "der winkt ihm nach vom Ufersand").split(" / ")
+
+def centered_column(out):
+    # Left: justified body text. Right: a verse, every line centred in its column. The column
+    # policy validates gutters by aligned row starts; a centred column has none, so it must be
+    # recognised by its common centre instead.
+    W, H = 2302, 3465
+    im = page(W, H); d = ImageDraw.Draw(im)
+    fb = font(SERIF, 44); pitch = 75
+    left, right, cw = 110, 1210, 1020
+    draw_justified(d, left, 330, cw, (ARTICLE + " " + ARTICLE_2).split()[:200], fb, pitch)
+    fi = font(SERIF_I, 44)
+    y = 330
+    for line in VERSE:
+        gt_line(line)
+        tw = d.textlength(line, font=fi)
+        d.text((right + (cw - tw) / 2, y), line, font=fi, fill=0)
+        y += pitch
+    im.save(out)
+
+def subheadings(out):
+    # Three columns; two bold sub-headings, each spanning two columns. The first ends only 30 px
+    # past the gutter between columns 1 and 2 (less than a line height), the second reaches well
+    # into column 3. Both must separate the page into bands: text above them (column by
+    # column), the heading, text below.
+    W, H = 2302, 3465
+    im = page(W, H); d = ImageDraw.Draw(im)
+    fb = font(SERIF, 44); pitch = 75
+    fh = font(SANS_B, 60)
+    cols = [110, 850, 1590]; cw = 600
+    y0 = 330
+    words = (ARTICLE + " " + ARTICLE_2 + " " + GERMAN_1 + " " + GERMAN_2).split()
+    # band 1: 8 lines per column
+    i = 0
+    y_band1_end = y0 + 8 * pitch
+    for c in cols:
+        lines = wrap(words[i:], fb, cw, d)[:8]
+        flat = [w for lw in lines for w in lw]
+        draw_justified(d, c, y0, cw, flat, fb, pitch, justify_last=True)
+        i += len(flat)
+    # heading 1 over columns 1-2, ending 30 px past the gutter (gutter = 710..850)
+    y = y_band1_end + 40
+    h1 = "Die letzte Fahrt der Fähre"
+    # size the heading so that it reaches 20 px into column 2's text area: the shortest
+    # overhang that still says "this line belongs to two columns" (a heading ending inside the
+    # gutter is not distinguishable from a long body line by geometry)
+    target = cols[1] + 20 - cols[0]
+    size = 40
+    while d.textlength(h1, font=font(SANS_B, size + 1)) <= target and size < 120:
+        size += 1
+    fh1 = font(SANS_B, size)
+    gt_line(h1)
+    d.text((cols[0], y), h1, font=fh1, fill=0)
+    y += 110
+    # band 2: 8 lines per column
+    y_band2 = y
+    for c in cols:
+        lines = wrap(words[i:], fb, cw, d)[:8]
+        flat = [w for lw in lines for w in lw]
+        draw_justified(d, c, y_band2, cw, flat, fb, pitch, justify_last=True)
+        i += len(flat)
+    y = y_band2 + 8 * pitch + 40
+    # heading 2 over columns 2-3, reaching well into column 3
+    h2 = "Was aus dem alten Schiff wird"
+    gt_line(h2)
+    d.text((cols[1], y), h2, font=fh, fill=0)
+    y += 110
+    # band 3: 8 lines per column
+    y_band3 = y
+    for c in cols:
+        lines = wrap(words[i:], fb, cw, d)[:8]
+        flat = [w for lw in lines for w in lw]
+        draw_justified(d, c, y_band3, cw, flat, fb, pitch, justify_last=True)
+        i += len(flat)
+    print("heading1 right edge:", cols[0] + d.textlength(h1, font=fh1), "gutter1 centre:", (cols[0] + cw + cols[1]) / 2)
+    print("heading2 right edge:", cols[1] + d.textlength(h2, font=fh), "gutter2 centre:", (cols[1] + cw + cols[2]) / 2)
+    im.save(out)
+
 def big_glyphs(out):
     # like the "37 %" sample: 795x587 photo-ish crop, huge digits over three caption lines
     W, H = 795, 587
@@ -343,7 +430,8 @@ if __name__ == "__main__":
     for fn, name in [(lorem_columns, "synth_lorem_columns"), (dropcap_footer, "synth_dropcap_footer"),
                      (headline_split, "synth_headline_split"), (big_glyphs, "synth_big_glyphs"),
                      (wide_gaps, "synth_wide_gaps"), (rules_bars, "synth_rules_bars"),
-                     (faint_print, "synth_faint_print")]:
+                     (faint_print, "synth_faint_print"), (centered_column, "synth_centered_column"),
+                     (subheadings, "synth_subheadings")]:
         GT.clear()
         fn(os.path.join(outdir, name + ".png"))
         with open(os.path.join(outdir, name + ".gt.txt"), "w", encoding="utf-8") as fh:
