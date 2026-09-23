@@ -86,7 +86,6 @@ public final class MultiColumnLayoutPolicy {
    */
   private static final int MAX_BAND_DEPTH = 2;
 
-
   /**
    * Maximum horizontal gap between two boxes of the same row to be merged into one line fragment,
    * as factor of the median box height. Word gaps are well below one line height, the gutter
@@ -96,23 +95,23 @@ public final class MultiColumnLayoutPolicy {
   private static final float WORD_MERGE_GAP_FACTOR = 1.0f;
 
   /**
-   * A box counts as crossing a gutter when it reaches beyond the gutter's coverage valley into
-   * the text area of both neighbouring columns, by at least this factor of the median box height
-   * on each side. A line box that merely protrudes into the gutter (the detector's boxes are not
-   * pixel-exact) is not a headline spanning two columns; treating it as a separator would cut
-   * the page into bands of a few rows whose column analysis then has too little evidence and
-   * finds word gaps instead of gutters. A sub-heading that ends inside the gutter is, by the
-   * same token, not recognisable as a separator by geometry.
+   * A box counts as crossing a gutter when it reaches beyond the gutter's coverage valley into the
+   * text area of both neighbouring columns, by at least this factor of the median box height on
+   * each side. A line box that merely protrudes into the gutter (the detector's boxes are not
+   * pixel-exact) is not a headline spanning two columns; treating it as a separator would cut the
+   * page into bands of a few rows whose column analysis then has too little evidence and finds word
+   * gaps instead of gutters. A sub-heading that ends inside the gutter is, by the same token, not
+   * recognisable as a separator by geometry.
    */
   public static final float CROSSING_MIN_EXTENT_FACTOR = 0.25f;
 
   /**
-   * A gutter is kept only when it has a straight edge: in at least this fraction of the rows
-   * with text on that side, the boxes directly left of it end at a common x, or the boxes
-   * directly right of it start at a common x (within {@link #ALIGN_TOLERANCE_FACTOR} median
-   * heights). Justified and left-aligned columns are straight on both sides, a centred column is
-   * straight on its neighbour's side. The word gaps of a wide justified single column also line
-   * up into coverage valleys, but they are ragged on both sides, so those gutters are discarded.
+   * A gutter is kept only when it has a straight edge: in at least this fraction of the rows with
+   * text on that side, the boxes directly left of it end at a common x, or the boxes directly right
+   * of it start at a common x (within {@link #ALIGN_TOLERANCE_FACTOR} median heights). Justified
+   * and left-aligned columns are straight on both sides, a centred column is straight on its
+   * neighbour's side. The word gaps of a wide justified single column also line up into coverage
+   * valleys, but they are ragged on both sides, so those gutters are discarded.
    */
   public static final float ALIGNED_ROW_FRACTION = 0.6f;
 
@@ -221,7 +220,8 @@ public final class MultiColumnLayoutPolicy {
     float medianHeight = heights[n / 2];
     float width = Math.max(1f, maxRight - minLeft);
     List<Float> centres = new ArrayList<>();
-    for (float[] v : findColumnValleys(all, lefts, tops, rights, bottoms, minLeft, width, medianHeight)) {
+    for (float[] v :
+        findColumnValleys(all, lefts, tops, rights, bottoms, minLeft, width, medianHeight)) {
       centres.add(0.5f * (v[0] + v[1]));
     }
     return centres;
@@ -515,8 +515,8 @@ public final class MultiColumnLayoutPolicy {
    * gutters.
    */
   /**
-   * Gutters of the band as coverage valleys {@code {start, end}} in x, left to right. The extents matter
-   * for the crossing test.
+   * Gutters of the band as coverage valleys {@code {start, end}} in x, left to right. The extents
+   * matter for the crossing test.
    */
   private static List<float[]> findColumnValleys(
       List<Integer> band,
@@ -654,7 +654,9 @@ public final class MultiColumnLayoutPolicy {
             if (centerX >= from && centerX < gutter && (Float.isNaN(endLeft) || r[i] > endLeft)) {
               endLeft = r[i];
             }
-            if (centerX >= gutter && centerX < to && (Float.isNaN(startRight) || l[i] < startRight)) {
+            if (centerX >= gutter
+                && centerX < to
+                && (Float.isNaN(startRight) || l[i] < startRight)) {
               startRight = l[i];
             }
           }
@@ -688,7 +690,9 @@ public final class MultiColumnLayoutPolicy {
     return best;
   }
 
-  /** Visual rows of the given boxes, top-to-bottom, members left-to-right (indices into the arrays). */
+  /**
+   * Visual rows of the given boxes, top-to-bottom, members left-to-right (indices into the arrays).
+   */
   private static List<List<Integer>> rowsOf(
       List<Integer> subset, float[] lefts, float[] tops, float[] rights, float[] bottoms) {
     int m = subset.size();

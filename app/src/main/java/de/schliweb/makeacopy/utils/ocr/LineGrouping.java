@@ -17,12 +17,12 @@ import java.util.List;
  * Groups text boxes (words or line fragments) into visual lines by vertical position.
  *
  * <p>One rule for the whole app: two boxes share a line when their vertical anchors lie within
- * {@link #LINE_TOLERANCE_FACTOR} times the line height of each other. The line height is the
- * height of the boxes involved, capped at {@link #TALL_BOX_FACTOR} times the page's median box
- * height, so that a single tall box cannot widen the tolerance beyond the line pitch. A box that
- * is taller than that cap (a drop cap, a headline word next to body text) is anchored at the line
- * its top edge starts, not at its geometric centre, because that is the line it belongs to for
- * reading: a two-line drop cap "E" reads with "s war ein ...", not with the line below.
+ * {@link #LINE_TOLERANCE_FACTOR} times the line height of each other. The line height is the height
+ * of the boxes involved, capped at {@link #TALL_BOX_FACTOR} times the page's median box height, so
+ * that a single tall box cannot widen the tolerance beyond the line pitch. A box that is taller
+ * than that cap (a drop cap, a headline word next to body text) is anchored at the line its top
+ * edge starts, not at its geometric centre, because that is the line it belongs to for reading: a
+ * two-line drop cap "E" reads with "s war ein ...", not with the line below.
  *
  * <p>Pure Java, no Android dependencies, so the JVM tests cover it and the layout policies can
  * share it.
