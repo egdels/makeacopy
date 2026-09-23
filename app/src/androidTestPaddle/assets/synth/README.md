@@ -9,7 +9,9 @@ content.
 The pages: `synth_lorem_columns` (three justified columns, line numbers), `synth_dropcap_footer`
 (two columns, drop cap, footer), `synth_headline_split` (bold headline over three columns),
 `synth_big_glyphs` (huge digits over captions), `synth_wide_gaps` (one wide column, three or four
-words per justified line, so the recogniser drops the spaces).
+words per justified line, so the recogniser drops the spaces), `synth_rules_bars` (two columns with a
+colour bar, rules, underlines and a ruled table: non-text must not become text), `synth_faint_print`
+(black, light grey and very light grey text on toned paper: faint lines must not be lost).
 
 Each `<name>.png` comes with `<name>.gt.txt`: the drawn text lines, one per line, in
 drawing order (column by column). `SyntheticPageRegressionTest` runs the pages through

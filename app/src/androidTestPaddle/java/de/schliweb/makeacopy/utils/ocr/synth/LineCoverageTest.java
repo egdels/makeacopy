@@ -71,6 +71,14 @@ public class LineCoverageTest {
   }
 
   @Test
+  public void ocrLinesWithoutCounterpart_countAsExtra() {
+    String ocr = String.join("\n", GT) + "\n---- ----\nCMYK 0 0 0 0\nab";
+    LineCoverage.Report r = LineCoverage.compare(GT, ocr);
+    assertEquals(0, r.missing());
+    assertEquals(1, r.extra()); // "CMYK 0 0 0 0"; "---- ----" and "ab" are too short after normalisation
+  }
+
+  @Test
   public void shortReferenceLines_areSkipped() {
     LineCoverage.Report r = LineCoverage.compare(Arrays.asList("E", "37 %", "abc"), "abc");
     assertEquals(1, r.checked()); // "37 %" normalises to "37" and is skipped like "E"

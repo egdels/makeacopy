@@ -1,0 +1,411 @@
+{
+ "source": "synth_faint_print.png",
+ "language": "latin",
+ "words": [
+  {
+   "text": "Es war ein ruhiger Abend im Hafen, als die alte Fähre zum letzten Mal ablegte. Seit vierzig Jahren hatte sie",
+   "confidence": 0.99442,
+   "polygon": [
+    [
+     195,
+     251
+    ],
+    [
+     2104,
+     254
+    ],
+    [
+     2104,
+     304
+    ],
+    [
+     195,
+     301
+    ]
+   ]
+  },
+  {
+   "text": "die kleine Insel mit dem Festland verbunden, bei Sturm und bei Flaute, im Sommer voller Ausflügler und",
+   "confidence": 0.993982,
+   "polygon": [
+    [
+     195,
+     322
+    ],
+    [
+     2102,
+     328
+    ],
+    [
+     2102,
+     379
+    ],
+    [
+     195,
+     373
+    ]
+   ]
+  },
+  {
+   "text": "im Winter fast leer. Nun sollte ein neues Schiff ihren Dienst übernehmen, schneller, größer und mit einem",
+   "confidence": 0.986815,
+   "polygon": [
+    [
+     195,
+     401
+    ],
+    [
+     2102,
+     404
+    ],
+    [
+     2102,
+     451
+    ],
+    [
+     195,
+     448
+    ]
+   ]
+  },
+  {
+   "text": "Elektroantrieb, der leiser ist als das alte Dieselaggregat. Viele Inselbewohner standen am Kai und winkten,",
+   "confidence": 0.989432,
+   "polygon": [
+    [
+     195,
+     476
+    ],
+    [
+     2102,
+     477
+    ],
+    [
+     2102,
+     527
+    ],
+    [
+     195,
+     526
+    ]
+   ]
+  },
+  {
+   "text": "einige",
+   "confidence": 0.999971,
+   "polygon": [
+    [
+     194,
+     554
+    ],
+    [
+     314,
+     554
+    ],
+    [
+     314,
+     606
+    ],
+    [
+     194,
+     606
+    ]
+   ]
+  },
+  {
+   "text": "hatten Tränen in den Augen. Der Kapitän, der die Fähre seit zwei Jahrzehnten gesteuert hatte, ließ das Horn",
+   "confidence": 0.993832,
+   "polygon": [
+    [
+     194,
+     749
+    ],
+    [
+     2102,
+     749
+    ],
+    [
+     2102,
+     796
+    ],
+    [
+     194,
+     796
+    ]
+   ]
+  },
+  {
+   "text": "dreimal ertönen. Dann verschwand das Schiff langsam im Abendlicht. Was aus der alten Fähre wird, ist",
+   "confidence": 0.992377,
+   "polygon": [
+    [
+     197,
+     821
+    ],
+    [
+     2106,
+     821
+    ],
+    [
+     2106,
+     871
+    ],
+    [
+     197,
+     871
+    ]
+   ]
+  },
+  {
+   "text": "noch nicht entschieden. Ein Verein möchte sie als Museumsschiff erhalten, die Reederei denkt über einen",
+   "confidence": 0.990141,
+   "polygon": [
+    [
+     197,
+     899
+    ],
+    [
+     2100,
+     899
+    ],
+    [
+     2100,
+     943
+    ],
+    [
+     197,
+     943
+    ]
+   ]
+  },
+  {
+   "text": "Verkauf nach. Die Gemeinde will in den kommenden Wochen mit allen Beteiligten sprechen und eine",
+   "confidence": 0.992577,
+   "polygon": [
+    [
+     196,
+     971
+    ],
+    [
+     2106,
+     972
+    ],
+    [
+     2106,
+     1023
+    ],
+    [
+     196,
+     1022
+    ]
+   ]
+  },
+  {
+   "text": "Lösung finden, die der Geschichte des",
+   "confidence": 0.997401,
+   "polygon": [
+    [
+     196,
+     1049
+    ],
+    [
+     877,
+     1045
+    ],
+    [
+     877,
+     1092
+    ],
+    [
+     196,
+     1096
+    ]
+   ]
+  },
+  {
+   "text": "Die neue Fähre bietet Platz für dreihundert Fahrgäste und zwanzig Fahrzeuge. Sie braucht für die Überfahrt",
+   "confidence": 0.993181,
+   "polygon": [
+    [
+     193,
+     1240
+    ],
+    [
+     2107,
+     1239
+    ],
+    [
+     2107,
+     1293
+    ],
+    [
+     193,
+     1294
+    ]
+   ]
+  },
+  {
+   "text": "nur noch fünfundzwanzig Minuten statt vierzig. An Bord gibt es einen Aufenthaltsraum mit großen",
+   "confidence": 0.990547,
+   "polygon": [
+    [
+     192,
+     1317
+    ],
+    [
+     2104,
+     1315
+    ],
+    [
+     2104,
+     1369
+    ],
+    [
+     192,
+     1371
+    ]
+   ]
+  },
+  {
+   "text": "Fenstern, eine kleine Küche und Platz für Fahrräder. Der Fahrplan bleibt vorerst unverändert, im Sommer",
+   "confidence": 0.992373,
+   "polygon": [
+    [
+     196,
+     1395
+    ],
+    [
+     2103,
+     1395
+    ],
+    [
+     2103,
+     1439
+    ],
+    [
+     196,
+     1439
+    ]
+   ]
+  },
+  {
+   "text": "sollen zusätzliche",
+   "confidence": 0.994058,
+   "polygon": [
+    [
+     196,
+     1467
+    ],
+    [
+     534,
+     1467
+    ],
+    [
+     534,
+     1512
+    ],
+    [
+     196,
+     1512
+    ]
+   ]
+  },
+  {
+   "text": "Abendfahrten angeboten werden. Die Reederei rechnet",
+   "confidence": 0.987771,
+   "polygon": [
+    [
+     523,
+     1468
+    ],
+    [
+     1612,
+     1468
+    ],
+    [
+     1612,
+     1518
+    ],
+    [
+     523,
+     1518
+    ]
+   ]
+  },
+  {
+   "text": "damit dass die Zahl der",
+   "confidence": 0.996087,
+   "polygon": [
+    [
+     1607,
+     1469
+    ],
+    [
+     2103,
+     1467
+    ],
+    [
+     2103,
+     1511
+    ],
+    [
+     1607,
+     1513
+    ]
+   ]
+  },
+  {
+   "text": "-",
+   "confidence": 0.297428,
+   "polygon": [
+    [
+     1595,
+     1483
+    ],
+    [
+     1614,
+     1483
+    ],
+    [
+     1614,
+     1501
+    ],
+    [
+     1595,
+     1501
+    ]
+   ]
+  },
+  {
+   "text": "Fahrgäste in den ersten Jahren deutlich steigen wird. Kritiker bemängeln, dass die",
+   "confidence": 0.993471,
+   "polygon": [
+    [
+     197,
+     1544
+    ],
+    [
+     1642,
+     1544
+    ],
+    [
+     1642,
+     1591
+    ],
+    [
+     197,
+     1591
+    ]
+   ]
+  }
+ ],
+ "model": {
+  "modelId": "latin_PP-OCRv5_mobile_rec",
+  "modelVersion": "PP-OCRv5",
+  "modelSha256": "53cdc8b481a7394bb108f96d0fb3432b0a8f392e22c7d18f06dbb2d42b8b25f9",
+  "detectionModelId": "PP-OCRv5_mobile_det",
+  "detectionModelSha256": "afa1820cb16c1fd0dad589d0f8b389139061c1ef6d68019685fd07be997dda5b",
+  "paddleVersion": "3.7.0",
+  "workerVersion": "0.1.0"
+ }
+}

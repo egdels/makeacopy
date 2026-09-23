@@ -9,6 +9,10 @@ Mimics the geometry of the reporter's samples with own text:
   4. big_glyphs     : huge "37 %" over three small caption lines -> detector fragments
   5. wide_gaps      : one wide justified column with three or four words per line -> the
                       recogniser drops the spaces, the word splitter must place them by position
+  6. rules_bars     : two columns with a CMYK colour bar, rules between paragraphs, underlines
+                      and a small ruled table -> non-text elements must not become text
+  7. faint_print    : the same text in black, light grey and very light grey on toned paper ->
+                      the box threshold must not lose faint lines the reference keeps
 """
 import os, random, re, sys
 from PIL import Image, ImageDraw, ImageFont
@@ -99,7 +103,7 @@ def wrap(words, f, width, draw):
     if cur: lines.append(cur)
     return lines
 
-def draw_justified(draw, x, y, width, words, f, pitch, justify_last=False, prefix_numbers=False):
+def draw_justified(draw, x, y, width, words, f, pitch, justify_last=False, prefix_numbers=False, fill=0):
     """Draws justified lines; returns y after the last line and the number of lines."""
     lines = wrap(words, f, width, draw)
     n = 0
@@ -109,13 +113,13 @@ def draw_justified(draw, x, y, width, words, f, pitch, justify_last=False, prefi
         last = (i == len(lines) - 1)
         gt_line(" ".join(lw))
         if last and not justify_last or len(lw) == 1:
-            draw.text((x, y), " ".join(lw), font=f, fill=0)
+            draw.text((x, y), " ".join(lw), font=f, fill=fill)
         else:
             total = sum(draw.textlength(w, font=f) for w in lw)
             gap = (width - total) / (len(lw) - 1)
             cx = x
             for w in lw:
-                draw.text((cx, y), w, font=f, fill=0)
+                draw.text((cx, y), w, font=f, fill=fill)
                 cx += draw.textlength(w, font=f) + gap
         y += pitch; n += 1
     return y, n
@@ -253,6 +257,72 @@ def wide_gaps(out):
         n += 1
     im.save(out)
 
+def rules_bars(out):
+    # Two justified columns (like a magazine page) plus the non-text elements that the old
+    # stripe filter was meant to swallow: a CMYK colour bar, hairline rules between paragraphs,
+    # underlined words and a small ruled table. Reference lines are the text lines only.
+    W, H = 2302, 3465
+    im = Image.new("RGB", (W, H), (255, 255, 255)); d = ImageDraw.Draw(im)
+    # colour bar across the top (print control strip)
+    colours = [(0, 174, 239), (236, 0, 140), (255, 241, 0), (35, 31, 32), (128, 128, 128),
+               (0, 174, 239), (236, 0, 140), (255, 241, 0), (35, 31, 32), (200, 200, 200)]
+    x = 110
+    for c in colours:
+        d.rectangle([x, 120, x + 190, 200], fill=c)
+        x += 200
+    fb = font(SERIF, 44); pitch = 75
+    left, right, cw = 110, 1210, 1020
+    # left column: paragraphs separated by rules, one underlined phrase per paragraph
+    y = 330
+    paras = [ARTICLE.split()[:60], ARTICLE.split()[60:120], ARTICLE_2.split()[:50]]
+    for i, words in enumerate(paras):
+        y_before = y
+        y, n = draw_justified(d, left, y, cw, words, fb, pitch)
+        # underline the first word of the paragraph
+        w0 = words[0]
+        d.line([(left, y_before + 52), (left + d.textlength(w0, font=fb), y_before + 52)], fill=0, width=3)
+        y += 30
+        d.line([(left, y), (left + cw, y)], fill=0, width=3)
+        y += 45
+    # right column: text, then a ruled table with short entries, then text
+    yr, _ = draw_justified(d, right, 330, cw, GERMAN_1.split()[:45], fb, pitch)
+    yr += 40
+    rows = [("Fahrt", "Abfahrt", "Dauer"), ("Morgens", "06:30", "25 min"), ("Mittags", "12:15", "25 min"), ("Abends", "19:40", "30 min")]
+    cell_w = cw // 3
+    for ri, row in enumerate(rows):
+        yy = yr + ri * 90
+        d.line([(right, yy), (right + cw, yy)], fill=0, width=3)
+        for ci, cell in enumerate(row):
+            gt_line(cell)
+            d.text((right + ci * cell_w + 20, yy + 20), cell, font=fb, fill=0)
+    d.line([(right, yr + len(rows) * 90), (right + cw, yr + len(rows) * 90)], fill=0, width=3)
+    for ci in range(4):
+        d.line([(right + ci * cell_w, yr), (right + ci * cell_w, yr + len(rows) * 90)], fill=0, width=3)
+    yr += len(rows) * 90 + 60
+    draw_justified(d, right, yr, cw, GERMAN_1.split()[45:] + GERMAN_2.split()[:40], fb, pitch)
+    # bottom colour bar
+    x = 110
+    for c in colours:
+        d.rectangle([x, H - 200, x + 190, H - 120], fill=c)
+        x += 200
+    im.save(out)
+
+def faint_print(out):
+    # One column, three blocks of the same layout in black, light grey and very light grey on
+    # toned paper: faint lines that the reference pipeline still detects must not be lost.
+    W, H = 2302, 3465
+    paper = (238, 234, 224)
+    im = Image.new("RGB", (W, H), paper); d = ImageDraw.Draw(im)
+    fb = font(SERIF, 44); pitch = 75
+    x, cw = 200, 1900
+    y = 250
+    blocks = [((20, 20, 20), ARTICLE.split()[:70]), ((150, 148, 144), ARTICLE.split()[70:140]),
+              ((196, 193, 188), ARTICLE_2.split()[:70])]
+    for fill, words in blocks:
+        y, _ = draw_justified(d, x, y, cw, words, fb, pitch, fill=fill)
+        y += 120
+    im.save(out)
+
 def big_glyphs(out):
     # like the "37 %" sample: 795x587 photo-ish crop, huge digits over three caption lines
     W, H = 795, 587
@@ -272,7 +342,8 @@ if __name__ == "__main__":
     os.makedirs(outdir, exist_ok=True)
     for fn, name in [(lorem_columns, "synth_lorem_columns"), (dropcap_footer, "synth_dropcap_footer"),
                      (headline_split, "synth_headline_split"), (big_glyphs, "synth_big_glyphs"),
-                     (wide_gaps, "synth_wide_gaps")]:
+                     (wide_gaps, "synth_wide_gaps"), (rules_bars, "synth_rules_bars"),
+                     (faint_print, "synth_faint_print")]:
         GT.clear()
         fn(os.path.join(outdir, name + ".png"))
         with open(os.path.join(outdir, name + ".gt.txt"), "w", encoding="utf-8") as fh:

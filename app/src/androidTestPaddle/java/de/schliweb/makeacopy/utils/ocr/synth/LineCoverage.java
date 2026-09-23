@@ -47,7 +47,17 @@ public final class LineCoverage {
 
   /** Aggregate over all reference lines of a page. */
   public record Report(
-      List<LineResult> lines, int checked, int missing, int intact, int intactInRows) {
+      List<LineResult> lines,
+      int checked,
+      int missing,
+      int intact,
+      int intactInRows,
+      List<String> extraLines) {
+    /** OCR lines (of the intact text) that match no reference line: junk from rules, bars, noise. */
+    public int extra() {
+      return extraLines.size();
+    }
+
     public List<LineResult> missingLines() {
       List<LineResult> out = new ArrayList<>();
       for (LineResult r : lines) if (!r.present()) out.add(r);
@@ -56,7 +66,7 @@ public final class LineCoverage {
 
     public String summary() {
       return "checked=" + checked + " missing=" + missing + " intact=" + intact
-          + " intactInRows=" + intactInRows;
+          + " intactInRows=" + intactInRows + " extra=" + extraLines.size();
     }
   }
 
@@ -108,7 +118,15 @@ public final class LineCoverage {
       if (inRows) intactInRows++;
       results.add(new LineResult(ref, sim, present, isIntact, inRows, m.text()));
     }
-    return new Report(results, checked, missing, intact, intactInRows);
+    // Extra lines: OCR lines of the intact text that resemble no reference line at all.
+    String gtBlob = normalize(String.join("", referenceLines));
+    List<String> extra = new ArrayList<>();
+    for (String l : ocrLines) {
+      String n = normalize(l);
+      if (n.length() < MIN_LINE_CHARS) continue;
+      if (bestWindow(n, gtBlob).similarity() < PRESENT_RATIO) extra.add(l);
+    }
+    return new Report(results, checked, missing, intact, intactInRows, extra);
   }
 
   /** Lower-cases and keeps only letters and digits, so spacing and punctuation do not count. */

@@ -84,6 +84,20 @@ public class SyntheticPageRegressionTest {
     assertNoLineLost("synth_wide_gaps");
   }
 
+  /** Colour bars, rules, underlines and table lines must neither cost text lines nor become text. */
+  @Test
+  public void rulesBars_noLineLost_noJunk() throws Exception {
+    LineCoverage.Report app = assertNoLineLost("synth_rules_bars");
+    for (String l : app.extraLines()) Log.i(TAG, "synth_rules_bars EXTRA [" + l + "]");
+    assertTrue("junk lines from non-text elements: " + app.extraLines(), app.extra() <= 2);
+  }
+
+  /** Faint print: the app must keep every line the reference pipeline detects. */
+  @Test
+  public void faintPrint_noLineLost() throws Exception {
+    assertNoLineLost("synth_faint_print");
+  }
+
   /** Huge glyphs are a known detector limit: measured and logged, the captions must survive. */
   @Test
   public void bigGlyphs_captionsSurvive() throws Exception {
@@ -95,7 +109,7 @@ public class SyntheticPageRegressionTest {
     }
   }
 
-  private void assertNoLineLost(String name) throws Exception {
+  private LineCoverage.Report assertNoLineLost(String name) throws Exception {
     LineCoverage.Report app = runApp(name);
     LineCoverage.Report ref = runReference(name);
     Set<String> tolerated = new HashSet<>();
@@ -116,6 +130,7 @@ public class SyntheticPageRegressionTest {
           .append(r.bestMatch());
     }
     assertEquals(msg.toString(), 0, lost);
+    return app;
   }
 
   private LineCoverage.Report runApp(String name) throws Exception {
