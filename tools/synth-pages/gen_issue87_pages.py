@@ -7,6 +7,8 @@ Mimics the geometry of the reporter's samples with own text:
                       left column ending level with the right column's footer -> line merge + band
   3. headline_split : three columns under a long bold headline with wide word gaps -> split headline
   4. big_glyphs     : huge "37 %" over three small caption lines -> detector fragments
+  5. wide_gaps      : one wide justified column with three or four words per line -> the
+                      recogniser drops the spaces, the word splitter must place them by position
 """
 import os, random, re, sys
 from PIL import Image, ImageDraw, ImageFont
@@ -224,6 +226,33 @@ def headline_split(out):
     draw_justified(d, cols[2][0], 330, 380, cap, fc, 60)
     im.save(out)
 
+def wide_gaps(out):
+    # One 1400 px column, 3-4 words per justified line: gaps of several word widths. Line
+    # numbers glued to the first word as on the reporter's page ("01Lorem").
+    W, H = 2000, 2480
+    im = page(W, H); d = ImageDraw.Draw(im)
+    f = font(SERIF, 49); pitch = 72
+    words = (GERMAN_2 + " " + LOREM).split()
+    x, y, cw = 300, 250, 1400
+    i = 0
+    n = 0
+    while i < len(words) and y < H - 200:
+        k = 3 + (n % 2)  # alternate 3 and 4 words per line
+        lw = words[i:i + k]
+        if n < 10:
+            lw = [f"{n+1:02d}{lw[0]}"] + lw[1:]
+        gt_line(" ".join(lw))
+        total = sum(d.textlength(w, font=f) for w in lw)
+        gap = (cw - total) / (len(lw) - 1)
+        cx = x
+        for w in lw:
+            d.text((cx, y), w, font=f, fill=0)
+            cx += d.textlength(w, font=f) + gap
+        i += k
+        y += pitch
+        n += 1
+    im.save(out)
+
 def big_glyphs(out):
     # like the "37 %" sample: 795x587 photo-ish crop, huge digits over three caption lines
     W, H = 795, 587
@@ -242,7 +271,8 @@ if __name__ == "__main__":
     outdir = sys.argv[1] if len(sys.argv) > 1 else HERE
     os.makedirs(outdir, exist_ok=True)
     for fn, name in [(lorem_columns, "synth_lorem_columns"), (dropcap_footer, "synth_dropcap_footer"),
-                     (headline_split, "synth_headline_split"), (big_glyphs, "synth_big_glyphs")]:
+                     (headline_split, "synth_headline_split"), (big_glyphs, "synth_big_glyphs"),
+                     (wide_gaps, "synth_wide_gaps")]:
         GT.clear()
         fn(os.path.join(outdir, name + ".png"))
         with open(os.path.join(outdir, name + ".gt.txt"), "w", encoding="utf-8") as fh:

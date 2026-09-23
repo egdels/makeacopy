@@ -38,10 +38,16 @@ public final class LineCoverage {
 
   /** Result for one reference line. */
   public record LineResult(
-      String reference, double similarity, boolean present, boolean intact, String bestMatch) {}
+      String reference,
+      double similarity,
+      boolean present,
+      boolean intact,
+      boolean intactInRows,
+      String bestMatch) {}
 
   /** Aggregate over all reference lines of a page. */
-  public record Report(List<LineResult> lines, int checked, int missing, int intact) {
+  public record Report(
+      List<LineResult> lines, int checked, int missing, int intact, int intactInRows) {
     public List<LineResult> missingLines() {
       List<LineResult> out = new ArrayList<>();
       for (LineResult r : lines) if (!r.present()) out.add(r);
@@ -49,7 +55,8 @@ public final class LineCoverage {
     }
 
     public String summary() {
-      return "checked=" + checked + " missing=" + missing + " intact=" + intact;
+      return "checked=" + checked + " missing=" + missing + " intact=" + intact
+          + " intactInRows=" + intactInRows;
     }
   }
 
@@ -67,9 +74,11 @@ public final class LineCoverage {
 
   /**
    * Same, but with separate texts for the two questions. Presence is judged on {@code
-   * presenceText}, which should keep every line's words contiguous (the single-flow text, where
+   * presenceText}, which should keep every line's words contiguous (a geometric row sort, where
    * a row just concatenates the columns); intactness on {@code intactText}, the text the user
-   * gets (multi-column reading order), whose layout logic may scatter a line's words.
+   * gets (multi-column reading order), whose layout logic may scatter a line's words. {@code
+   * intactInRows} counts the lines that are intact in {@code presenceText}: on a single-column
+   * page that isolates the detector, the recogniser and the word splitter from the layout logic.
    */
   public static Report compare(List<String> referenceLines, String presenceText, String intactText) {
     String blob = normalize(presenceText);
@@ -78,8 +87,13 @@ public final class LineCoverage {
       String t = collapseSpaces(l);
       if (!t.isEmpty()) ocrLines.add(t);
     }
+    List<String> rowLines = new ArrayList<>();
+    for (String l : presenceText.split("\n", -1)) {
+      String t = collapseSpaces(l);
+      if (!t.isEmpty()) rowLines.add(t);
+    }
     List<LineResult> results = new ArrayList<>();
-    int checked = 0, missing = 0, intact = 0;
+    int checked = 0, missing = 0, intact = 0, intactInRows = 0;
     for (String ref : referenceLines) {
       String n = normalize(ref);
       if (n.length() < MIN_LINE_CHARS) continue;
@@ -88,11 +102,13 @@ public final class LineCoverage {
       double sim = m.similarity();
       boolean present = sim >= PRESENT_RATIO;
       boolean isIntact = ocrLines.contains(collapseSpaces(ref));
+      boolean inRows = rowLines.contains(collapseSpaces(ref));
       if (!present) missing++;
       if (isIntact) intact++;
-      results.add(new LineResult(ref, sim, present, isIntact, m.text()));
+      if (inRows) intactInRows++;
+      results.add(new LineResult(ref, sim, present, isIntact, inRows, m.text()));
     }
-    return new Report(results, checked, missing, intact);
+    return new Report(results, checked, missing, intact, intactInRows);
   }
 
   /** Lower-cases and keeps only letters and digits, so spacing and punctuation do not count. */

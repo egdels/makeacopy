@@ -77,6 +77,13 @@ public class SyntheticPageRegressionTest {
     assertNoLineLost("synth_headline_split");
   }
 
+  /** Wide justified gaps: the recogniser tends to drop the spaces, the word splitter must not
+   * scramble the line when it puts them back. */
+  @Test
+  public void wideGaps_noLineLost() throws Exception {
+    assertNoLineLost("synth_wide_gaps");
+  }
+
   /** Huge glyphs are a known detector limit: measured and logged, the captions must survive. */
   @Test
   public void bigGlyphs_captionsSurvive() throws Exception {
@@ -149,6 +156,19 @@ public class SyntheticPageRegressionTest {
       String multiColumn = OCRPostProcessor.wordsToText(words, true);
       LineCoverage.Report report = LineCoverage.compare(gt, rowText, multiColumn);
       Log.i(TAG, name + " app " + report.summary());
+      // Diagnostics: every non-intact reference line next to the closest multi-column OCR line.
+      List<String> ocrLines = new ArrayList<>();
+      for (String l : multiColumn.split("\n")) if (!l.trim().isEmpty()) ocrLines.add(l.trim());
+      for (LineCoverage.LineResult r : report.lines()) {
+        if (r.intact()) continue;
+        String best = "";
+        double bestSim = -1;
+        for (String l : ocrLines) {
+          double sim = LineCoverage.similarity(LineCoverage.normalize(r.reference()), LineCoverage.normalize(l));
+          if (sim > bestSim) { bestSim = sim; best = l; }
+        }
+        Log.i(TAG, name + " NOT-INTACT [" + r.reference() + "]  ~  [" + best + "]");
+      }
       return report;
     } finally {
       helper.close();
