@@ -21,9 +21,12 @@ import java.util.List;
  * based on predefined thresholds and filtering criteria.
  *
  * The primary purpose of this class is to determine bounding areas of connected components
- * by analyzing the probability map and filtering results based on characteristics such as
- * area, aspect ratio, and ink variance. It includes built-in filtering to discard noisy
- * components, such as stray dots or undesired horizontal strips (e.g., CMYK color bars).
+ * by analyzing the probability map and filtering results the way the PaddleOCR reference
+ * post-processing does: by box score and minimum size only. Earlier versions also rejected
+ * flat, homogeneous components as "stripes" (colour bars, rules); that filter had to go because
+ * the DB kernel of a long text line is exactly such a flat, filled bar (8-9 px high at the
+ * detector's working resolution, more than 40 times wider than high), so whole lines of
+ * justified body text vanished from the result (GitHub issue #87).
  *
  * Key features and steps in the processing workflow include:
  * - Binary thresholding to create a mask of probable areas.
@@ -39,8 +42,6 @@ import java.util.List;
  * - boxThresh: Minimum mean probability for each bounding box to be considered valid.
  * - minArea: Minimum pixel area for connected components to prevent noise.
  * - minSide: Minimum width or height for bounding boxes to avoid fragmentation.
- * - maxAspectRatio: Upper limit for aspect ratio to discard extremely flat components.
- * - minVerticalInkVariance: Minimum variance in vertical ink density to identify stripes.
  *
  * The {@code process} method serves as the entry point for extracting valid quads from the input
  * probability map. The output is a list of {@code Quad} objects, which represent the detected
@@ -59,7 +60,21 @@ final class DbPostProcessor {
      * detections.
      */
     static final double DEFAULT_DB_THRESH = 0.3;
-    static final double DEFAULT_BOX_THRESH = 0.5;
+
+    /**
+     * Box score of the PP-OCRv5 mobile detection model's own inference configuration ({@code
+     * DBPostProcess: box_thresh 0.6}), so that the app accepts boxes the way the reference
+     * pipeline does.
+     */
+    static final double DEFAULT_BOX_THRESH = 0.6;
+
+    /**
+     * Unclip ratio. The reference configuration says 1.5, but it grows a contour polygon whereas
+     * this class grows the axis-aligned bounding box of the flood-filled component, so the
+     * numbers are not interchangeable: with 1.5 the vertical Japanese book photo of {@code
+     * JapaneseVerticalEvalTest} loses glyphs at the column edges (CER 0.049 instead of 0). 1.6 is
+     * the value the vertical CJK path was tuned with.
+     */
     static final double DEFAULT_UNCLIP_RATIO = 1.6;
     /**
      * Defines the minimum area threshold for regions to be considered during
@@ -72,35 +87,11 @@ final class DbPostProcessor {
     static final int DEFAULT_MIN_AREA = 16;
     static final int DEFAULT_MIN_SIDE = 3;
 
-    /**
-     * Represents the default maximum aspect ratio allowed for detected text boxes.
-     * This value is used to filter out detections with extreme aspect ratios that are
-     * unlikely to represent valid text regions.
-     *
-     * A higher value allows for more elongated text boxes, whereas a lower value
-     * enforces stricter aspect ratio constraints.
-     */
-    static final double DEFAULT_MAX_ASPECT_RATIO = 40.0;
-
-    /**
-     * Specifies the default minimum vertical ink variance threshold used in text detection or
-     * processing algorithms. This threshold helps determine the minimum acceptable variance
-     * in the distribution of vertical ink (e.g., pixel intensity or feature density) along the
-     * vertical axis to qualify as valid text components.
-     *
-     * A smaller value of this threshold allows for more tolerance in detecting elements with
-     * less consistent vertical stroke patterns, whereas a larger value imposes stricter
-     * constraints for vertical uniformity.
-     */
-    static final double DEFAULT_MIN_VERTICAL_INK_VARIANCE = 0.05;
-
     private final double dbThresh;
     private final double boxThresh;
     private final double unclipRatio;
     private final int minArea;
     private final int minSide;
-    private final double maxAspectRatio;
-    private final double minVerticalInkVariance;
 
     DbPostProcessor() {
         this(
@@ -121,31 +112,11 @@ final class DbPostProcessor {
             double unclipRatio,
             int minArea,
             int minSide) {
-        this(
-                dbThresh,
-                boxThresh,
-                unclipRatio,
-                minArea,
-                minSide,
-                DEFAULT_MAX_ASPECT_RATIO,
-                DEFAULT_MIN_VERTICAL_INK_VARIANCE);
-    }
-
-    DbPostProcessor(
-            double dbThresh,
-            double boxThresh,
-            double unclipRatio,
-            int minArea,
-            int minSide,
-            double maxAspectRatio,
-            double minVerticalInkVariance) {
         this.dbThresh = dbThresh;
         this.boxThresh = boxThresh;
         this.unclipRatio = unclipRatio;
         this.minArea = minArea;
         this.minSide = minSide;
-        this.maxAspectRatio = maxAspectRatio;
-        this.minVerticalInkVariance = minVerticalInkVariance;
     }
 
     /**
@@ -193,9 +164,6 @@ final class DbPostProcessor {
         int minX, maxX, minY, maxY;
         int count = 0;
         double sumProb = 0.0;
-        // Per-Zeile Ink-Pixel-Anzahl für vertikale Ink-Variance (Stripe-Filter).
-        // Sparse via HashMap, weil Komponenten typischerweise schmal in y sind.
-        final java.util.HashMap<Integer, Integer> rowInk = new java.util.HashMap<>();
 
         Component(int x, int y) {
             minX = maxX = x;
@@ -205,7 +173,6 @@ final class DbPostProcessor {
         void add(int px, int py, float p) {
             count++;
             sumProb += p;
-            rowInk.merge(py, 1, Integer::sum);
             if (px < minX) minX = px;
             if (px > maxX) maxX = px;
             if (py < minY) minY = py;
@@ -259,37 +226,9 @@ final class DbPostProcessor {
         if (c.meanProb() < boxThresh) return false;
         // Box-Hygiene: Mindestfläche und Mindestseitenlänge.
         if (c.count < minArea) return false;
-        if (c.boxW() < minSide || c.boxH() < minSide) return false;
-        return !isHomogeneousStripe(c);
+        return c.boxW() >= minSide && c.boxH() >= minSide;
     }
 
-    /**
-     * Schritt-2-Stripe-Filter (Layout-Rekonstruktion v2): Erkennt extrem flache, langgezogene
-     * Komponenten ohne vertikale Ink-Variance — typisch für CMYK-Farbbalken am Druckrand. Greift
-     * nur, wenn Aspect Ratio sehr groß UND Höhenstruktur arm ist.
-     */
-    private boolean isHomogeneousStripe(Component c) {
-        int boxH = c.boxH();
-        double aspect = (double) c.boxW() / Math.max(1, boxH);
-        if (aspect <= maxAspectRatio) return false;
-        double mean = 0.0;
-        for (int yy = c.minY; yy <= c.maxY; yy++) {
-            Integer rc = c.rowInk.get(yy);
-            if (rc != null) mean += rc;
-        }
-        mean /= boxH;
-        double variance = 0.0;
-        for (int yy = c.minY; yy <= c.maxY; yy++) {
-            Integer rc = c.rowInk.get(yy);
-            double d0 = ((rc != null) ? rc : 0) - mean;
-            variance += d0 * d0;
-        }
-        variance /= boxH;
-        // Variance / mean^2 als dimensionsloses Maß für relative Schwankung
-        // der Zeilenfüllung — bei homogenen Streifen ≈ 0.
-        double normVar = mean > 0 ? variance / (mean * mean) : 0.0;
-        return normVar < minVerticalInkVariance;
-    }
 
     /**
      * Paddle-konformes Unclip: D = area * (ratio - 1) / perimeter, isotrop. Im Gegensatz zur

@@ -98,42 +98,39 @@ public class DbPostProcessorTest {
     }
 
     @Test
-    public void stripeFilter_dropsFlatHomogeneousStripe() {
-        // Schmaler 1500×12-Streifen mit homogener Probability (~CMYK-Farbbalken).
-        // Aspect = 125 > 25, jede Zeile vollständig gefüllt → Variance = 0 → wird verworfen.
+    public void flatFilledKernel_isKeptLikeInTheReference() {
+        // Der DB-Kern einer langen Blocksatzzeile: 366×9 bei Letterbox 1536 (Aspect ≈ 41),
+        // vollständig gefüllt. Der frühere Streifenfilter hat genau solche Komponenten als
+        // Farbbalken verworfen und damit ganze Textzeilen verloren (GitHub #87); die Referenz
+        // filtert nur nach Score und Mindestgröße.
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
+        float[][] prob = makeProb(400, 32);
+        fillRect(prob, 20, 12, 366, 9, 0.9f);
+
+        List<Quad> quads = pp.process(prob);
+        assertEquals("flacher Textzeilen-Kern bleibt erhalten", 1, quads.size());
+    }
+
+    @Test
+    public void veryFlatWideComponent_isKeptLikeInTheReference() {
+        // 1500×12 mit homogener Probability (früher als „CMYK-Farbbalken" verworfen). Die
+        // Referenz kennt keinen solchen Filter; eine seitenbreite Textzeile sieht identisch aus.
         DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
         float[][] prob = makeProb(1600, 32);
         fillRect(prob, 50, 10, 1500, 12, 0.9f);
 
         List<Quad> quads = pp.process(prob);
-        assertTrue("Streifen muss gefiltert werden, war: " + quads.size(), quads.isEmpty());
+        assertEquals("keine Aspect-/Varianz-Filterung mehr", 1, quads.size());
     }
 
     @Test
-    public void stripeFilter_keepsNormalTextLine() {
-        // Normale Textzeile 300×30: aspect=10 < 25 → Filter greift gar nicht.
+    public void normalTextLine_isKept() {
         DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
         float[][] prob = makeProb(400, 64);
         fillRect(prob, 50, 16, 300, 30, 0.9f);
 
         List<Quad> quads = pp.process(prob);
         assertEquals("Normale Textzeile bleibt erhalten", 1, quads.size());
-    }
-
-    @Test
-    public void stripeFilter_keepsLongLineWithVerticalInkVariance() {
-        // Lange, schmale Region mit echter vertikaler Struktur (ein „Hahnenkamm" — Rect mit
-        // Glyph-ähnlichen Auf-/Absteigern in einigen Zeilen). Aspect groß, aber Variance hoch.
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
-        float[][] prob = makeProb(1600, 32);
-        // Basisband 1500×6 (kompakt) + dünne Auswüchse oben in nur einer Spalten-Region.
-        fillRect(prob, 50, 12, 1500, 6, 0.9f);
-        // In den Zeilen 8..11 nur einen Bruchteil der Spalten füllen → variable Zeilenfüllung.
-        for (int xx = 60; xx < 200; xx++) {
-            for (int yy = 8; yy < 12; yy++) prob[yy][xx] = 0.9f;
-        }
-        List<Quad> quads = pp.process(prob);
-        assertEquals("Region mit Höhenstruktur bleibt erhalten", 1, quads.size());
     }
 
     @Test
