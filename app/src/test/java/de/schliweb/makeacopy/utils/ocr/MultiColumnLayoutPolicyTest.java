@@ -415,4 +415,64 @@ public class MultiColumnLayoutPolicyTest {
     assertEquals(10, segments.get(1).length);
     assertEquals(15, segments.get(2).length);
   }
+
+  @Test
+  public void headingReachingIntoTheNextColumn_separatesTheBands() {
+    // Two columns [0,400] and [500,900]; between two bands a heading that spans column 1 and
+    // reaches 20 px into column 2's text area (past the gutter's far edge).
+    List<float[]> boxes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      boxes.add(new float[] {0, i * 40, 400, 30 + i * 40});
+      boxes.add(new float[] {500, i * 40, 900, 30 + i * 40});
+    }
+    boxes.add(new float[] {0, 230, 520, 270}); // heading
+    for (int i = 0; i < 5; i++) {
+      boxes.add(new float[] {0, 300 + i * 40, 400, 330 + i * 40});
+      boxes.add(new float[] {500, 300 + i * 40, 900, 330 + i * 40});
+    }
+    List<int[]> segments = group(boxes.toArray(new float[0][]), false);
+    // band 1 columns, heading, band 2 columns
+    assertEquals(5, segments.size());
+    assertArrayEquals(new int[] {0, 2, 4, 6, 8}, segments.get(0));
+    assertArrayEquals(new int[] {1, 3, 5, 7, 9}, segments.get(1));
+    assertArrayEquals(new int[] {10}, segments.get(2));
+    assertArrayEquals(new int[] {11, 13, 15, 17, 19}, segments.get(3));
+    assertArrayEquals(new int[] {12, 14, 16, 18, 20}, segments.get(4));
+  }
+
+  @Test
+  public void headingEndingInsideTheGutter_isNotASeparator() {
+    // The same page, but the heading ends at 450, inside the gutter: by geometry it is a long
+    // line of column 1, and the page stays two plain columns (documented limitation).
+    List<float[]> boxes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      boxes.add(new float[] {0, i * 40, 400, 30 + i * 40});
+      boxes.add(new float[] {500, i * 40, 900, 30 + i * 40});
+    }
+    boxes.add(new float[] {0, 230, 450, 270});
+    for (int i = 0; i < 5; i++) {
+      boxes.add(new float[] {0, 300 + i * 40, 400, 330 + i * 40});
+      boxes.add(new float[] {500, 300 + i * 40, 900, 330 + i * 40});
+    }
+    List<int[]> segments = group(boxes.toArray(new float[0][]), false);
+    assertEquals(2, segments.size());
+    assertEquals(11, segments.get(0).length);
+    assertEquals(10, segments.get(1).length);
+  }
+
+  @Test
+  public void centredColumnBesideAJustifiedOne_isStillTwoColumns() {
+    // Column 1 justified [0,400]; column 2 centred on x=700 with line widths 120..360. The
+    // gutter has a straight left edge (column 1's right edge), which is enough.
+    List<float[]> boxes = new ArrayList<>();
+    int[] widths = {200, 360, 120, 300, 160, 340, 240, 280};
+    for (int i = 0; i < widths.length; i++) {
+      boxes.add(new float[] {0, i * 40, 400, 30 + i * 40});
+      boxes.add(new float[] {700 - widths[i] / 2f, i * 40, 700 + widths[i] / 2f, 30 + i * 40});
+    }
+    List<int[]> segments = group(boxes.toArray(new float[0][]), false);
+    assertEquals(2, segments.size());
+    assertArrayEquals(new int[] {0, 2, 4, 6, 8, 10, 12, 14}, segments.get(0));
+    assertArrayEquals(new int[] {1, 3, 5, 7, 9, 11, 13, 15}, segments.get(1));
+  }
 }

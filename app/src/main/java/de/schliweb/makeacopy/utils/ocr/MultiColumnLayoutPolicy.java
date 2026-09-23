@@ -96,24 +96,27 @@ public final class MultiColumnLayoutPolicy {
   private static final float WORD_MERGE_GAP_FACTOR = 1.0f;
 
   /**
-   * A box counts as crossing a gutter only when it extends at least this factor of the median box
-   * height beyond the gutter on both sides. A line box that merely protrudes a few pixels into
-   * the gutter (the detector's boxes are not pixel-exact) is not a headline spanning two columns;
-   * treating it as a separator would cut the page into bands of a few rows whose column analysis
-   * then has too little evidence and finds word gaps instead of gutters.
+   * A box counts as crossing a gutter when it reaches beyond the gutter's coverage valley into
+   * the text area of both neighbouring columns, by at least this factor of the median box height
+   * on each side. A line box that merely protrudes into the gutter (the detector's boxes are not
+   * pixel-exact) is not a headline spanning two columns; treating it as a separator would cut
+   * the page into bands of a few rows whose column analysis then has too little evidence and
+   * finds word gaps instead of gutters. A sub-heading that ends inside the gutter is, by the
+   * same token, not recognisable as a separator by geometry.
    */
-  public static final float CROSSING_MIN_EXTENT_FACTOR = 1.0f;
+  public static final float CROSSING_MIN_EXTENT_FACTOR = 0.25f;
 
   /**
-   * A region between two gutters is a column only when its rows start at a common left edge: in
-   * at least this fraction of the rows the region's leftmost box begins within {@link
-   * #ALIGN_TOLERANCE_FACTOR} median heights of the same x. The word gaps of a wide justified
-   * single column also line up into coverage valleys, but the "columns" they would create have
-   * ragged starts, so the gutter is discarded.
+   * A gutter is kept only when it has a straight edge: in at least this fraction of the rows
+   * with text on that side, the boxes directly left of it end at a common x, or the boxes
+   * directly right of it start at a common x (within {@link #ALIGN_TOLERANCE_FACTOR} median
+   * heights). Justified and left-aligned columns are straight on both sides, a centred column is
+   * straight on its neighbour's side. The word gaps of a wide justified single column also line
+   * up into coverage valleys, but they are ragged on both sides, so those gutters are discarded.
    */
   public static final float ALIGNED_ROW_FRACTION = 0.6f;
 
-  /** Tolerance for two row starts to count as the same left edge, as factor of the median height. */
+  /** Tolerance for two edges to count as the same x, as factor of the median height. */
   public static final float ALIGN_TOLERANCE_FACTOR = 0.5f;
 
   private MultiColumnLayoutPolicy() {
@@ -217,7 +220,11 @@ public final class MultiColumnLayoutPolicy {
     Arrays.sort(heights);
     float medianHeight = heights[n / 2];
     float width = Math.max(1f, maxRight - minLeft);
-    return findColumnSplitPoints(all, lefts, tops, rights, bottoms, minLeft, width, medianHeight);
+    List<Float> centres = new ArrayList<>();
+    for (float[] v : findColumnValleys(all, lefts, tops, rights, bottoms, minLeft, width, medianHeight)) {
+      centres.add(0.5f * (v[0] + v[1]));
+    }
+    return centres;
   }
 
   /**
@@ -405,8 +412,10 @@ public final class MultiColumnLayoutPolicy {
     // that (almost) no box of the band covers. Unlike interval clustering this is robust when
     // word gaps and the gutter have similar widths, because word gaps do not line up vertically
     // across the whole band while the gutter does.
-    List<Float> splitPoints =
-        findColumnSplitPoints(band, lefts, tops, rights, bottoms, bandLeft, bandWidth, medianHeight);
+    List<float[]> valleys =
+        findColumnValleys(band, lefts, tops, rights, bottoms, bandLeft, bandWidth, medianHeight);
+    List<Float> splitPoints = new ArrayList<>(valleys.size());
+    for (float[] v : valleys) splitPoints.add(0.5f * (v[0] + v[1]));
 
     // Band-local separators: headlines or captions that span most of this band's width (but not
     // the whole page, otherwise the top-level pass would have caught them) or that clearly cross
@@ -417,8 +426,8 @@ public final class MultiColumnLayoutPolicy {
       for (int idx : band) {
         boolean wide = rights[idx] - lefts[idx] >= FULL_WIDTH_FRACTION * bandWidth;
         boolean crossing = false;
-        for (float sp : splitPoints) {
-          if (lefts[idx] <= sp - crossMargin && rights[idx] >= sp + crossMargin) {
+        for (float[] v : valleys) {
+          if (lefts[idx] <= v[0] - crossMargin && rights[idx] >= v[1] + crossMargin) {
             crossing = true;
             break;
           }
@@ -505,7 +514,11 @@ public final class MultiColumnLayoutPolicy {
    * the maximum coverage and that are at least {@code MIN_GAP_FACTOR * medianHeight} wide count as
    * gutters.
    */
-  private static List<Float> findColumnSplitPoints(
+  /**
+   * Gutters of the band as coverage valleys {@code {start, end}} in x, left to right. The extents matter
+   * for the crossing test.
+   */
+  private static List<float[]> findColumnValleys(
       List<Integer> band,
       float[] lefts,
       float[] tops,
@@ -531,6 +544,7 @@ public final class MultiColumnLayoutPolicy {
     int minValleyBins = Math.max(1, Math.round(MIN_GAP_FACTOR * medianHeight / binWidth));
 
     List<Float> splitPoints = new ArrayList<>();
+    List<float[]> extents = new ArrayList<>();
     List<Integer> valleyBins = new ArrayList<>();
     int runStart = -1;
     for (int i = 0; i <= bins; i++) {
@@ -542,6 +556,7 @@ public final class MultiColumnLayoutPolicy {
         if (runStart > 0 && i < bins && i - runStart >= minValleyBins) {
           float center = bandLeft + (runStart + i) * 0.5f * binWidth;
           splitPoints.add(center);
+          extents.add(new float[] {bandLeft + runStart * binWidth, bandLeft + i * binWidth});
           valleyBins.add(i - runStart);
         }
         runStart = -1;
@@ -571,6 +586,7 @@ public final class MultiColumnLayoutPolicy {
             remove = valleyBins.get(k - 1) <= valleyBins.get(k) ? k - 1 : k;
           }
           splitPoints.remove(remove);
+          extents.remove(remove);
           valleyBins.remove(remove);
           changed = true;
           break;
@@ -578,14 +594,19 @@ public final class MultiColumnLayoutPolicy {
         prev = next;
       }
     }
-    return dropUnalignedRegions(
-        band, lefts, tops, rights, bottoms, bandLeft, bandWidth, medianHeight, splitPoints);
+    List<Float> kept =
+        dropUnalignedRegions(
+            band, lefts, tops, rights, bottoms, bandLeft, bandWidth, medianHeight, splitPoints);
+    List<float[]> out = new ArrayList<>(kept.size());
+    for (int k = 0; k < splitPoints.size(); k++) {
+      if (kept.contains(splitPoints.get(k))) out.add(extents.get(k));
+    }
+    return out;
   }
 
   /**
-   * Removes gutters whose adjacent region does not behave like a column: see {@link
-   * #ALIGNED_ROW_FRACTION}. For the leftmost region the gutter to its right goes, for any other
-   * region the gutter to its left; the check repeats until every region is aligned.
+   * Removes gutters without a straight edge (see {@link #ALIGNED_ROW_FRACTION}); the check repeats
+   * until every remaining gutter has one.
    */
   private static List<Float> dropUnalignedRegions(
       List<Integer> band,
@@ -616,36 +637,55 @@ public final class MultiColumnLayoutPolicy {
     boolean changed = true;
     while (changed && !points.isEmpty()) {
       changed = false;
-      for (int k = 0; k <= points.size(); k++) {
+      for (int k = 0; k < points.size(); k++) {
+        float gutter = points.get(k);
         float from = k == 0 ? bandLeft : points.get(k - 1);
-        float to = k == points.size() ? bandLeft + bandWidth : points.get(k);
-        // Left edge of the region's leftmost box in every row that has one.
-        List<Float> starts = new ArrayList<>();
+        float to = k + 1 < points.size() ? points.get(k + 1) : bandLeft + bandWidth;
+        // Per row: right edge of the box directly left of the gutter, left edge of the box
+        // directly right of it (boxes assigned to a side by their centre, limited to the
+        // neighbouring regions).
+        List<Float> leftEdges = new ArrayList<>();
+        List<Float> rightEdges = new ArrayList<>();
         for (int[] row : rows) {
-          float start = Float.NaN;
+          float endLeft = Float.NaN;
+          float startRight = Float.NaN;
           for (int i : row) {
             float centerX = 0.5f * (l[i] + r[i]);
-            if (centerX >= from && centerX < to && (Float.isNaN(start) || l[i] < start)) {
-              start = l[i];
+            if (centerX >= from && centerX < gutter && (Float.isNaN(endLeft) || r[i] > endLeft)) {
+              endLeft = r[i];
+            }
+            if (centerX >= gutter && centerX < to && (Float.isNaN(startRight) || l[i] < startRight)) {
+              startRight = l[i];
             }
           }
-          if (!Float.isNaN(start)) starts.add(start);
+          if (!Float.isNaN(endLeft)) leftEdges.add(endLeft);
+          if (!Float.isNaN(startRight)) rightEdges.add(startRight);
         }
-        if (starts.size() < 2) continue;
-        int aligned = 0;
-        for (float a : starts) {
-          int count = 0;
-          for (float o : starts) if (Math.abs(o - a) <= tolerance) count++;
-          aligned = Math.max(aligned, count);
-        }
-        if (aligned < ALIGNED_ROW_FRACTION * starts.size()) {
-          points.remove(k == 0 ? 0 : k - 1);
+        boolean straightLeft =
+            leftEdges.size() >= 2
+                && modeCount(leftEdges, tolerance) >= ALIGNED_ROW_FRACTION * leftEdges.size();
+        boolean straightRight =
+            rightEdges.size() >= 2
+                && modeCount(rightEdges, tolerance) >= ALIGNED_ROW_FRACTION * rightEdges.size();
+        if (!straightLeft && !straightRight) {
+          points.remove(k);
           changed = true;
           break;
         }
       }
     }
     return points;
+  }
+
+  /** Size of the largest group of values that lie within {@code tolerance} of one of them. */
+  private static int modeCount(List<Float> values, float tolerance) {
+    int best = 0;
+    for (float a : values) {
+      int count = 0;
+      for (float o : values) if (Math.abs(o - a) <= tolerance) count++;
+      best = Math.max(best, count);
+    }
+    return best;
   }
 
   /** Visual rows of the given boxes, top-to-bottom, members left-to-right (indices into the arrays). */
