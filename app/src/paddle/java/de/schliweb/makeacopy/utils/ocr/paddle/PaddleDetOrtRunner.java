@@ -309,7 +309,16 @@ class PaddleDetOrtRunner implements AutoCloseable {
                             xs[i] = Math.max(0.0, Math.min(srcW - 1.0, p[0]));
                             ys[i] = Math.max(0.0, Math.min(srcH - 1.0, p[1]));
                         }
-                        quads.add(new Quad(xs, ys, q.score));
+                        // The kernel bounds travel along in image coordinates (the builder
+                        // re-derives the unclip for vertical text from them); the pixel count
+                        // stays in map units and is informational only.
+                        double[] kernel = null;
+                        if (q.kernel != null) {
+                            double[] tl = lb.unapplyPoint(q.kernel[0], q.kernel[1]);
+                            double[] br = lb.unapplyPoint(q.kernel[2], q.kernel[3]);
+                            kernel = new double[] {tl[0], tl[1], br[0], br[1], q.kernel[4]};
+                        }
+                        quads.add(new Quad(xs, ys, q.score, kernel));
                     }
 
                     // 5) Sortierung: zuerst y, dann x (TL→BR-Lesefluss).

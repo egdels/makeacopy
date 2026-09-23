@@ -34,8 +34,8 @@ public class DbPostProcessorTest {
     public void twoSeparateRectangles_yieldExactlyTwoQuads() {
         // Probmap mit zwei klar getrennten 8x4 Rechtecken (mehr als 16 Pixel Lücke).
         // Verwende Default-Schwellwerte (db=0.3, box=0.6) -> Probabilities = 0.9
-        // unclipRatio=1.0 für deterministische Bbox-Prüfung.
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
+        // unclipRatio=0 für deterministische Bbox-Prüfung (kein Unclip).
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0);
         float[][] prob = makeProb(64, 32);
         fillRect(prob, 4, 4, 10, 6, 0.9f); // Rect A
         fillRect(prob, 40, 20, 12, 8, 0.9f); // Rect B
@@ -80,7 +80,7 @@ public class DbPostProcessorTest {
 
     @Test
     public void quadCornersInTlTrBrBlOrder() {
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0);
         float[][] prob = makeProb(32, 16);
         fillRect(prob, 4, 4, 10, 6, 0.9f);
         List<Quad> quads = pp.process(prob);
@@ -103,7 +103,7 @@ public class DbPostProcessorTest {
         // vollständig gefüllt. Der frühere Streifenfilter hat genau solche Komponenten als
         // Farbbalken verworfen und damit ganze Textzeilen verloren (GitHub #87); die Referenz
         // filtert nur nach Score und Mindestgröße.
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0);
         float[][] prob = makeProb(400, 32);
         fillRect(prob, 20, 12, 366, 9, 0.9f);
 
@@ -115,7 +115,7 @@ public class DbPostProcessorTest {
     public void veryFlatWideComponent_isKeptLikeInTheReference() {
         // 1500×12 mit homogener Probability (früher als „CMYK-Farbbalken" verworfen). Die
         // Referenz kennt keinen solchen Filter; eine seitenbreite Textzeile sieht identisch aus.
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0);
         float[][] prob = makeProb(1600, 32);
         fillRect(prob, 50, 10, 1500, 12, 0.9f);
 
@@ -125,7 +125,7 @@ public class DbPostProcessorTest {
 
     @Test
     public void normalTextLine_isKept() {
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0);
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0);
         float[][] prob = makeProb(400, 64);
         fillRect(prob, 50, 16, 300, 30, 0.9f);
 
@@ -136,7 +136,7 @@ public class DbPostProcessorTest {
     @Test
     public void boxHygiene_dropsComponentsBelowMinAreaOrMinSide() {
         // minArea=20, minSide=3: 4×4 (16 px) ist zu klein, 10×2 zu flach, 5×4 (20 px) bleibt.
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0, 20, 3);
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0, 20, 3);
         float[][] prob = makeProb(64, 32);
         fillRect(prob, 2, 2, 4, 4, 0.9f);
         fillRect(prob, 20, 2, 10, 2, 0.9f);
@@ -151,7 +151,7 @@ public class DbPostProcessorTest {
     public void connectivity_isFourNeighbourhood() {
         // Zwei Rechtecke, die sich nur diagonal an einer Ecke berühren, sind ZWEI Komponenten;
         // ein L aus zwei Rechtecken mit gemeinsamer Kante ist EINE.
-        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.0, 1, 1);
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 0.0, 1, 1);
         float[][] diagonal = makeProb(32, 32);
         fillRect(diagonal, 2, 2, 4, 4, 0.9f);
         fillRect(diagonal, 6, 6, 4, 4, 0.9f);
@@ -171,14 +171,15 @@ public class DbPostProcessorTest {
 
     @Test
     public void unclip_growsTheBoxByAreaTimesRatioOverPerimeter() {
-        // 20×10-Box, ratio 1.5: D = 200 * 0.5 / 60 = 1.666…
+        // 20×10-Box, ratio 1.5: D = area * ratio / perimeter = 200 * 1.5 / 60 = 5 (PaddleOCR's
+        // DBPostProcess.unclip; the former "ratio - 1" grew only 40 % of that).
         DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.5, 1, 1);
         float[][] prob = makeProb(64, 64);
         fillRect(prob, 10, 20, 20, 10, 0.9f);
 
         List<Quad> quads = pp.process(prob);
         assertEquals(1, quads.size());
-        double d = 200.0 * 0.5 / 60.0;
+        double d = 200.0 * 1.5 / 60.0;
         assertEquals(10.0 - d, quads.get(0).minX(), 1e-9);
         assertEquals(30.0 + d, quads.get(0).maxX(), 1e-9);
         assertEquals(20.0 - d, quads.get(0).minY(), 1e-9);

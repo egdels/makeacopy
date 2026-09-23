@@ -31,13 +31,25 @@ final class Quad {
      */
     final double score;
 
+    /**
+     * {@code {minX, minY, maxX, maxY, pixelCount}} of the raw detector component (the DB
+     * kernel) this quad was unclipped from, or null when the quad did not come from the
+     * detector. Lets the builder re-derive a different unclip for vertical text.
+     */
+    final double[] kernel;
+
     Quad(double[] xs, double[] ys, double score) {
+        this(xs, ys, score, null);
+    }
+
+    Quad(double[] xs, double[] ys, double score, double[] kernel) {
         if (xs.length != 4 || ys.length != 4) {
             throw new IllegalArgumentException("xs/ys must have length 4");
         }
         System.arraycopy(xs, 0, this.x, 0, 4);
         System.arraycopy(ys, 0, this.y, 0, 4);
         this.score = score;
+        this.kernel = kernel == null ? null : kernel.clone();
     }
 
     double minX() {

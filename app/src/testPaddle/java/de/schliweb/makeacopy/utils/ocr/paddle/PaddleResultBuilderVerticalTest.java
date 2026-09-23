@@ -568,6 +568,45 @@ public class PaddleResultBuilderVerticalTest {
         assertEquals("あ", PaddleResultBuilder.mergeAlignedCandidateTexts("あ", "", false));
     }
 
+    // --- restoreCalibratedVerticalGeometry: vertikale Quads behalten die kalibrierte Weitung ---
+
+    @Test
+    public void restoreCalibratedVerticalGeometry_tallQuadIsReUnclippedFromItsKernel() {
+        // Kernel 20 wide x 200 tall, detector box unclipped with the reference factor 1.5:
+        // d = 4000 * 1.5 / 440 = 13.6 per side. The builder re-derives d = 4000 * 0.6 / 440.
+        double[] kernel = {100, 50, 120, 250};
+        double dRef = 4000.0 * 1.5 / 440.0;
+        Quad detected =
+                new Quad(
+                        new double[] {100 - dRef, 120 + dRef, 120 + dRef, 100 - dRef},
+                        new double[] {50 - dRef, 50 - dRef, 250 + dRef, 250 + dRef},
+                        0.9,
+                        kernel);
+        List<Quad> out = PaddleResultBuilder.restoreCalibratedVerticalGeometry(List.of(detected));
+        double d = 4000.0 * PaddleResultBuilder.VERTICAL_UNCLIP_FACTOR / 440.0;
+        assertEquals(100 - d, out.get(0).minX(), 1e-9);
+        assertEquals(120 + d, out.get(0).maxX(), 1e-9);
+        assertEquals(50 - d, out.get(0).minY(), 1e-9);
+        assertEquals(250 + d, out.get(0).maxY(), 1e-9);
+    }
+
+    @Test
+    public void restoreCalibratedVerticalGeometry_kernellessQuadsStay_fragmentsShrinkToo() {
+        // A detached punctuation fragment (kernel 6x6) is re-derived as well, so that the
+        // fragment merge still sees a small box; a quad without kernel is left alone.
+        double[] kernel = {100, 50, 106, 56};
+        Quad fragment =
+                new Quad(new double[] {97, 109, 109, 97}, new double[] {47, 47, 59, 59}, 0.9, kernel);
+        Quad noKernel =
+                new Quad(new double[] {0, 20, 20, 0}, new double[] {0, 0, 200, 200}, 0.9);
+        List<Quad> out =
+                PaddleResultBuilder.restoreCalibratedVerticalGeometry(List.of(fragment, noKernel));
+        double d = 36.0 * PaddleResultBuilder.VERTICAL_UNCLIP_FACTOR / 24.0;
+        assertEquals(100 - d, out.get(0).minX(), 1e-9);
+        assertEquals(106 + d, out.get(0).maxX(), 1e-9);
+        assertSame(noKernel, out.get(1));
+    }
+
     // --- expandTallQuad: Sicherheitsrand hochkanter Det-Quads (Issue #88) ---
 
     @Test

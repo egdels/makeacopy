@@ -69,13 +69,14 @@ final class DbPostProcessor {
     static final double DEFAULT_BOX_THRESH = 0.6;
 
     /**
-     * Unclip ratio. The reference configuration says 1.5, but it grows a contour polygon whereas
-     * this class grows the axis-aligned bounding box of the flood-filled component, so the
-     * numbers are not interchangeable: with 1.5 the vertical Japanese book photo of {@code
-     * JapaneseVerticalEvalTest} loses glyphs at the column edges (CER 0.049 instead of 0). 1.6 is
-     * the value the vertical CJK path was tuned with.
+     * Unclip ratio of the reference configuration ({@code unclip_ratio 1.5}). The DB model
+     * predicts a kernel shrunk well inside the text; unclipping grows it back by {@code area *
+     * ratio / perimeter} (PaddleOCR's DBPostProcess). An earlier version grew by {@code area *
+     * (ratio - 1) / perimeter}, only 40 % of the reference offset, which left the boxes about
+     * 10 px inside the ink at 1920 px and cost the first and last letter of many lines
+     * ("Inselbewohner" read as "[nselbewohner", "und" as "unc").
      */
-    static final double DEFAULT_UNCLIP_RATIO = 1.6;
+    static final double DEFAULT_UNCLIP_RATIO = 1.5;
     /**
      * Defines the minimum area threshold for regions to be considered during
      * post-processing in the detection pipeline.
@@ -164,6 +165,14 @@ final class DbPostProcessor {
         int minX, maxX, minY, maxY;
         int count = 0;
         double sumProb = 0.0;
+        // Ink span per row and per column ({min, max} of the other coordinate): the component's
+        // thickness is a high percentile of the spans across the cells of its longer axis, i.e.
+        // the thickness of its hull where the kernel is full. For a straight line that is the
+        // box height, even where the kernel thins out into the whitespace beside a short word;
+        // for a skewed line of a photo it is the true stroke band, not the inflated bounding
+        // box; holes in the kernel do not thin it (the reference unclips the contour polygon).
+        final java.util.HashMap<Integer, int[]> rowSpan = new java.util.HashMap<>();
+        final java.util.HashMap<Integer, int[]> colSpan = new java.util.HashMap<>();
 
         Component(int x, int y) {
             minX = maxX = x;
@@ -173,10 +182,22 @@ final class DbPostProcessor {
         void add(int px, int py, float p) {
             count++;
             sumProb += p;
+            extend(rowSpan, py, px);
+            extend(colSpan, px, py);
             if (px < minX) minX = px;
             if (px > maxX) maxX = px;
             if (py < minY) minY = py;
             if (py > maxY) maxY = py;
+        }
+
+        private static void extend(java.util.HashMap<Integer, int[]> spans, int key, int v) {
+            int[] span = spans.get(key);
+            if (span == null) {
+                spans.put(key, new int[] {v, v});
+            } else {
+                if (v < span[0]) span[0] = v;
+                if (v > span[1]) span[1] = v;
+            }
         }
 
         int boxW() {
@@ -236,10 +257,31 @@ final class DbPostProcessor {
      * Faktor `unclipRatio` zu explodieren. Dadurch verschmelzen benachbarte Zeilen seltener zu
      * einem Riesen-Quad.
      */
+    /** Percentile of the per-cell spans that stands for the kernel's full thickness. */
+    static final double THICKNESS_PERCENTILE = 0.9;
+
+    private static double spanPercentile(java.util.Map<Integer, int[]> spans) {
+        if (spans.isEmpty()) return 1.0;
+        int[] values = new int[spans.size()];
+        int i = 0;
+        for (int[] span : spans.values()) values[i++] = span[1] - span[0] + 1;
+        java.util.Arrays.sort(values);
+        int index = Math.min(values.length - 1, (int) Math.floor(THICKNESS_PERCENTILE * (values.length - 1)));
+        return values[index];
+    }
+
     private Quad unclip(Component c) {
-        double area = (double) c.boxW() * c.boxH();
-        double perimeter = 2.0 * (c.boxW() + c.boxH());
-        double d = perimeter > 0 ? area * Math.max(0.0, unclipRatio - 1.0) / perimeter : 0.0;
+        // Offset like PaddleOCR's DBPostProcess.unclip: area * ratio / perimeter of the kernel
+        // polygon. The polygon is approximated by the component's pixel count and its length,
+        // not by its bounding box: a slightly skewed line of a phone photo has a bounding box
+        // far taller than the text, and growing by the box's area pushed the crop into the
+        // neighbouring lines (the newspaper photo of GitHub issue #87 came out garbled).
+        boolean horizontal = c.boxW() >= c.boxH();
+        double length = Math.max(1.0, horizontal ? c.boxW() : c.boxH());
+        double thickness = Math.max(1.0, spanPercentile(horizontal ? c.colSpan : c.rowSpan));
+        double area = length * thickness;
+        double perimeter = 2.0 * (length + thickness);
+        double d = area * Math.max(0.0, unclipRatio) / perimeter;
 
         double x0 = c.minX - d;
         double x1 = c.maxX + 1 + d;
@@ -248,6 +290,7 @@ final class DbPostProcessor {
 
         double[] xs = new double[] {x0, x1, x1, x0};
         double[] ys = new double[] {y0, y0, y1, y1};
-        return new Quad(xs, ys, c.meanProb());
+        double[] kernel = new double[] {c.minX, c.minY, c.maxX + 1, c.maxY + 1, c.count};
+        return new Quad(xs, ys, c.meanProb(), kernel);
     }
 }

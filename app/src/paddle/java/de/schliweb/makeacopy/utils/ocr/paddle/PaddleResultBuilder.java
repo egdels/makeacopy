@@ -62,6 +62,20 @@ final class PaddleResultBuilder {
     @VisibleForTesting static final double VERTICAL_QUAD_ASPECT_RATIO = 1.5;
 
     /**
+     * Unclip factor (offset = area * factor / perimeter of the kernel) that vertical text keeps.
+     * The detector now unclips like the reference (factor 1.5), which fixed clipped first and
+     * last letters of horizontal lines. The vertical CJK path, however, was calibrated on the
+     * former tight boxes plus its own expansion ({@link #TALL_QUAD_EXPAND_FRACTION}, {@link
+     * #TALL_QUAD_EXPAND_FRACTION_COLUMN_AXIS}); with the wider reference boxes the rotated crops
+     * scale the glyphs down and small kana and punctuation vanish (book photo CER 0.17 instead
+     * of 0). On a page whose detected layout is vertical, every quad is therefore re-derived
+     * from its kernel with the former factor (bounding box based, as it was) before anything
+     * else looks at it; the small fragments (a detached 。 or っ) must shrink back too, or the
+     * fragment merge no longer takes them for fragments.
+     */
+    @VisibleForTesting static final double VERTICAL_UNCLIP_FACTOR = 0.6;
+
+    /**
      * Mindestanzahl an Det-Quads, ab der ein Dokument überhaupt als vertikales Layout
      * eingestuft werden kann. Verhindert, dass ein einzelner schmaler Treffer (z.&nbsp;B.
      * eine Ziffer) das gesamte Seitenlayout umschaltet.
@@ -245,6 +259,10 @@ final class PaddleResultBuilder {
         if (quads == null || quads.isEmpty()) {
             return new OCRHelper.OcrResultWords("", null, new ArrayList<>());
         }
+        // Decide on the merged quads, as the vertical path itself does: before the fragment
+        // merge the detached small glyphs dilute the share of tall quads.
+        List<Quad> calibrated = restoreCalibratedVerticalGeometry(quads);
+        if (isVerticalLayout(mergeVerticalFragments(calibrated))) quads = calibrated;
         // Schritt 2 (Layout-Rekonstruktion v2): zu hohe Det-Quads vor Recognition per
         // horizontalem Projection Profile in Zeilen-Sub-Quads zerlegen. Im normalen
         // Paddle-Pfad bleibt das deaktiviert, weil reale Messungen gezeigt haben, dass
@@ -725,6 +743,37 @@ final class PaddleResultBuilder {
      * Prüft, ob die Bounding-Box eines Det-Quads „hochkant" ist
      * (Höhe/Breite ≥ {@link #VERTICAL_QUAD_ASPECT_RATIO}).
      */
+    /**
+     * Replaces every detector quad by its kernel unclipped with {@link #VERTICAL_UNCLIP_FACTOR}
+     * (bounding-box based); quads without kernel stay as they are. The caller uses the result
+     * only when it describes a vertical layout.
+     */
+    @VisibleForTesting
+    static List<Quad> restoreCalibratedVerticalGeometry(List<Quad> quads) {
+        List<Quad> out = new ArrayList<>(quads.size());
+        for (Quad q : quads) {
+            if (q.kernel == null) {
+                out.add(q);
+                continue;
+            }
+            double w = q.kernel[2] - q.kernel[0];
+            double h = q.kernel[3] - q.kernel[1];
+            double perimeter = 2.0 * (w + h);
+            double d = perimeter > 0 ? w * h * VERTICAL_UNCLIP_FACTOR / perimeter : 0.0;
+            double x0 = q.kernel[0] - d;
+            double x1 = q.kernel[2] + d;
+            double y0 = q.kernel[1] - d;
+            double y1 = q.kernel[3] + d;
+            out.add(
+                    new Quad(
+                            new double[] {x0, x1, x1, x0},
+                            new double[] {y0, y0, y1, y1},
+                            q.score,
+                            q.kernel));
+        }
+        return out;
+    }
+
     @VisibleForTesting
     static boolean isTallQuad(Quad q) {
         double w = Math.max(1.0, q.maxX() - q.minX());
