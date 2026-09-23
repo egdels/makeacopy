@@ -154,6 +154,7 @@ public class SyntheticPageRegressionTest {
       }
       String rowText = rowsToText(boxes);
       String multiColumn = OCRPostProcessor.wordsToText(words, true);
+      dumpWords(ctx, name, words);
       LineCoverage.Report report = LineCoverage.compare(gt, rowText, multiColumn);
       Log.i(TAG, name + " app " + report.summary());
       // Diagnostics: every non-intact reference line next to the closest multi-column OCR line.
@@ -245,6 +246,37 @@ public class SyntheticPageRegressionTest {
       sb.append('\n');
     }
     return sb.toString();
+  }
+
+  /**
+   * Writes the recognised words with their boxes to {@code <external files>/synth-words/<name>.words.json}
+   * so that a run can be turned into a JVM fixture for the layout policies (see
+   * {@code app/src/test/resources/layout_words/}). Pull with {@code adb pull
+   * /sdcard/Android/data/<app>/files/synth-words}; the connected test task uninstalls the app
+   * afterwards, so install and run the test with {@code am instrument} to keep the files.
+   */
+  private static void dumpWords(Context ctx, String name, List<RecognizedWord> words) {
+    try {
+      java.io.File dir = ctx.getExternalFilesDir("synth-words");
+      if (dir == null) return;
+      org.json.JSONArray arr = new org.json.JSONArray();
+      for (RecognizedWord w : words) {
+        if (w.getBoundingBox() == null) continue;
+        org.json.JSONObject o = new org.json.JSONObject();
+        o.put("text", w.getText());
+        o.put("l", Math.round(w.getBoundingBox().left * 10) / 10.0);
+        o.put("t", Math.round(w.getBoundingBox().top * 10) / 10.0);
+        o.put("r", Math.round(w.getBoundingBox().right * 10) / 10.0);
+        o.put("b", Math.round(w.getBoundingBox().bottom * 10) / 10.0);
+        o.put("c", Math.round(w.getConfidence()));
+        arr.put(o);
+      }
+      try (java.io.FileWriter fw = new java.io.FileWriter(new java.io.File(dir, name + ".words.json"))) {
+        fw.write(new JSONObject().put("page", name).put("words", arr).toString(1));
+      }
+    } catch (Exception e) {
+      Log.w(TAG, "word dump failed: " + e);
+    }
   }
 
   private static List<String> readLines(AssetManager am, String path) throws IOException {
