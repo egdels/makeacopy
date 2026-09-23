@@ -686,12 +686,19 @@ final class PaddleResultBuilder {
         java.util.Arrays.sort(sortedHeights);
         double medianHeight = sortedHeights[sortedHeights.length / 2];
         double tol = LINE_TOLERANCE_FACTOR * medianHeight;
+        // A quad much taller than the median (a drop cap) is anchored at the line its top edge
+        // starts, like LineGrouping does for words: its centre lies between two lines and would
+        // otherwise pull both of them together.
+        double tallLimit = de.schliweb.makeacopy.utils.ocr.LineGrouping.TALL_BOX_FACTOR * medianHeight;
+        sortedByY.sort(
+                java.util.Comparator.<Quad>comparingDouble(q -> anchorY(q, medianHeight, tallLimit))
+                        .thenComparingDouble(PaddleResultBuilder::centerX));
 
         List<List<Quad>> lines = new ArrayList<>();
         List<Quad> current = new ArrayList<>();
         double currentRefY = Double.NaN;
         for (Quad q : sortedByY) {
-            double cy = centerY(q);
+            double cy = anchorY(q, medianHeight, tallLimit);
             if (current.isEmpty()) {
                 current.add(q);
                 currentRefY = cy;
@@ -785,6 +792,12 @@ final class PaddleResultBuilder {
      * Leserichtung rechts→links geliefert, innerhalb einer Spalte top-to-bottom.
      */
     @VisibleForTesting
+    /** Vertical anchor of a quad for line grouping: centre, or top + half a line for tall quads. */
+    private static double anchorY(Quad q, double medianHeight, double tallLimit) {
+        double h = q.maxY() - q.minY();
+        return h > tallLimit ? q.minY() + 0.5 * medianHeight : centerY(q);
+    }
+
     static List<List<Quad>> groupQuadsIntoColumns(List<Quad> quads) {
         List<Quad> sortedByX = new ArrayList<>(quads);
         // Primärsortierung nach Center-X absteigend (rechts→links), Tie-Break Center-Y.

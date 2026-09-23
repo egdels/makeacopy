@@ -741,46 +741,26 @@ public class OCRPostProcessor {
    * @return the reconstructed text
    */
   private static String horizontalWordsToText(List<RecognizedWord> words) {
-    // Sort words by position using a strict, transitive order. Line grouping below still decides
-    // which nearby words belong together; the initial sort must not use pair-dependent thresholds
-    // because TimSort rejects non-transitive comparators on dense Paddle OCR boxes.
-    List<RecognizedWord> sorted = new ArrayList<>(words);
-    sorted.sort(
-        Comparator.comparingDouble((RecognizedWord word) -> word.getBoundingBox().top)
-            .thenComparingDouble(word -> word.getBoundingBox().left)
-            .thenComparingDouble(word -> word.getBoundingBox().bottom)
-            .thenComparingDouble(word -> word.getBoundingBox().right));
-
-    // Group words into lines based on vertical proximity
-    List<List<RecognizedWord>> lines = new ArrayList<>();
-    List<RecognizedWord> currentLine = new ArrayList<>();
-    float lastMidY = Float.MIN_VALUE;
-    float lineThreshold = 0;
-
-    for (RecognizedWord word : sorted) {
-      float midY = word.midY();
-      float wordHeight = word.height();
-
-      if (currentLine.isEmpty()) {
-        currentLine.add(word);
-        lastMidY = midY;
-        lineThreshold = wordHeight * 0.6f;
-      } else if (Math.abs(midY - lastMidY) <= lineThreshold) {
-        // Same line
-        currentLine.add(word);
-        // Update threshold based on average height
-        lineThreshold = Math.max(lineThreshold, wordHeight * 0.6f);
-      } else {
-        // New line
-        lines.add(currentLine);
-        currentLine = new ArrayList<>();
-        currentLine.add(word);
-        lastMidY = midY;
-        lineThreshold = wordHeight * 0.6f;
-      }
+    // One line-grouping rule for the whole app (see LineGrouping): a drop cap or a headline word
+    // next to body text neither widens the tolerance beyond the line pitch nor lands in the
+    // wrong line.
+    int n = words.size();
+    float[] lefts = new float[n];
+    float[] tops = new float[n];
+    float[] rights = new float[n];
+    float[] bottoms = new float[n];
+    for (int i = 0; i < n; i++) {
+      android.graphics.RectF r = words.get(i).getBoundingBox();
+      lefts[i] = r.left;
+      tops[i] = r.top;
+      rights[i] = r.right;
+      bottoms[i] = r.bottom;
     }
-    if (!currentLine.isEmpty()) {
-      lines.add(currentLine);
+    List<List<RecognizedWord>> lines = new ArrayList<>();
+    for (int[] line : LineGrouping.groupIntoLines(lefts, tops, rights, bottoms)) {
+      List<RecognizedWord> members = new ArrayList<>(line.length);
+      for (int idx : line) members.add(words.get(idx));
+      lines.add(members);
     }
 
     // Calculate average line height for paragraph detection
