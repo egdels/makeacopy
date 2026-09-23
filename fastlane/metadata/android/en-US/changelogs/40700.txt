@@ -4,3 +4,4 @@ MakeACopy 4.7.0
 * New: re-crop any page of a multi-page document from its original photo; a curved-page crop comes back with its curves.
 * Corner detection: about 9× faster; retrained model is far better with tilted documents.
 * Fixed: a separate TXT file is only exported when OCR found text; the camera options no longer switch it on.
+* Fixed (Paddle OCR): long justified lines of body text no longer vanish from the result; the "Best quality" option now really runs the detector at a higher resolution.

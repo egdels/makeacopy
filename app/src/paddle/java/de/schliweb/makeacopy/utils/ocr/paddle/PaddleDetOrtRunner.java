@@ -58,9 +58,14 @@ class PaddleDetOrtRunner implements AutoCloseable {
      * and accuracy.
      */
     static final int DEFAULT_MAX_SIDE = 1536;
-    private static final int DENSE_DOCUMENT_RETRY_MAX_SIDE = 1920;
-    private static final int DENSE_DOCUMENT_MIN_SOURCE_SIDE = 3000;
-    private static final int DENSE_DOCUMENT_RETRY_QUAD_LIMIT = 19;
+
+    /**
+     * Longer-side limit used when the user has enabled "Best Paddle OCR quality". Earlier
+     * versions only retried at this size when the first pass on a large source produced at most
+     * 19 boxes, which never happens on dense pages, so the option had no effect exactly where
+     * the extra resolution matters (small body text on newspaper and magazine pages).
+     */
+    static final int HIGH_QUALITY_MAX_SIDE = 1920;
 
     /**
      * Precomputed mean values for the BGR (Blue, Green, Red) color channels used in image normalization.
@@ -218,11 +223,15 @@ class PaddleDetOrtRunner implements AutoCloseable {
      * @throws OrtException If an error occurs during the ONNX Runtime inference or post-processing.
      */
     List<Quad> detect(Bitmap bitmap) throws OrtException {
-        return detect(bitmap, DEFAULT_MAX_SIDE, false);
+        return detect(bitmap, DEFAULT_MAX_SIDE);
     }
 
-    List<Quad> detect(Bitmap bitmap, boolean allowHighQualityRetry) throws OrtException {
-        return detect(bitmap, DEFAULT_MAX_SIDE, allowHighQualityRetry);
+    /**
+     * Detects text regions at the default resolution, or at {@link #HIGH_QUALITY_MAX_SIDE} when
+     * {@code highQuality} is set.
+     */
+    List<Quad> detect(Bitmap bitmap, boolean highQuality) throws OrtException {
+        return detect(bitmap, highQuality ? HIGH_QUALITY_MAX_SIDE : DEFAULT_MAX_SIDE);
     }
 
     /**
@@ -241,44 +250,10 @@ class PaddleDetOrtRunner implements AutoCloseable {
      * @throws OrtException If an error occurs during the ONNX Runtime inference or post-processing.
      */
     List<Quad> detect(Bitmap bitmap, int maxSide) throws OrtException {
-        return detect(bitmap, maxSide, false);
-    }
-
-    List<Quad> detect(Bitmap bitmap, int maxSide, boolean allowHighQualityRetry) throws OrtException {
         if (bitmap == null || bitmap.isRecycled()) {
             throw new IllegalArgumentException("bitmap must be non-null and not recycled");
         }
-        List<Quad> quads = detectOnce(bitmap, maxSide);
-        int longestSide = Math.max(bitmap.getWidth(), bitmap.getHeight());
-        if (allowHighQualityRetry
-                && maxSide == DEFAULT_MAX_SIDE
-                && longestSide >= DENSE_DOCUMENT_MIN_SOURCE_SIDE
-                && quads.size() <= DENSE_DOCUMENT_RETRY_QUAD_LIMIT) {
-            Log.i(
-                    TAG,
-                    "detect retry: large document produced only "
-                            + quads.size()
-                            + " quads at maxSide="
-                            + maxSide
-                            + ", retrying maxSide="
-                            + DENSE_DOCUMENT_RETRY_MAX_SIDE);
-            List<Quad> retryQuads = detectOnce(bitmap, DENSE_DOCUMENT_RETRY_MAX_SIDE);
-            if (retryQuads.size() > quads.size()) {
-                Log.i(
-                        TAG,
-                        "detect retry accepted: "
-                                + quads.size()
-                                + " -> "
-                                + retryQuads.size()
-                                + " quads");
-                return retryQuads;
-            }
-            Log.i(
-                    TAG,
-                    "detect retry kept original: retryQuads=" + retryQuads.size()
-                            + " originalQuads=" + quads.size());
-        }
-        return quads;
+        return detectOnce(bitmap, maxSide);
     }
 
     private List<Quad> detectOnce(Bitmap bitmap, int maxSide) throws OrtException {
