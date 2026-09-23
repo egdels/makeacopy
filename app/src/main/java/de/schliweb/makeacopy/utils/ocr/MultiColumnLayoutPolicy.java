@@ -86,11 +86,6 @@ public final class MultiColumnLayoutPolicy {
    */
   private static final int MAX_BAND_DEPTH = 2;
 
-  /**
-   * Maximum vertical center distance for two boxes to belong to the same visual row, as factor of
-   * the box height (mirrors the line grouping threshold in the text builder).
-   */
-  private static final float ROW_TOLERANCE_FACTOR = 0.6f;
 
   /**
    * Maximum horizontal gap between two boxes of the same row to be merged into one line fragment,
@@ -99,6 +94,27 @@ public final class MultiColumnLayoutPolicy {
    * while boxes on either side of a gutter stay separate.
    */
   private static final float WORD_MERGE_GAP_FACTOR = 1.0f;
+
+  /**
+   * A box counts as crossing a gutter only when it extends at least this factor of the median box
+   * height beyond the gutter on both sides. A line box that merely protrudes a few pixels into
+   * the gutter (the detector's boxes are not pixel-exact) is not a headline spanning two columns;
+   * treating it as a separator would cut the page into bands of a few rows whose column analysis
+   * then has too little evidence and finds word gaps instead of gutters.
+   */
+  public static final float CROSSING_MIN_EXTENT_FACTOR = 1.0f;
+
+  /**
+   * A region between two gutters is a column only when its rows start at a common left edge: in
+   * at least this fraction of the rows the region's leftmost box begins within {@link
+   * #ALIGN_TOLERANCE_FACTOR} median heights of the same x. The word gaps of a wide justified
+   * single column also line up into coverage valleys, but the "columns" they would create have
+   * ragged starts, so the gutter is discarded.
+   */
+  public static final float ALIGNED_ROW_FRACTION = 0.6f;
+
+  /** Tolerance for two row starts to count as the same left edge, as factor of the median height. */
+  public static final float ALIGN_TOLERANCE_FACTOR = 0.5f;
 
   private MultiColumnLayoutPolicy() {
     // utility
@@ -201,7 +217,7 @@ public final class MultiColumnLayoutPolicy {
     Arrays.sort(heights);
     float medianHeight = heights[n / 2];
     float width = Math.max(1f, maxRight - minLeft);
-    return findColumnSplitPoints(all, lefts, rights, minLeft, width, medianHeight);
+    return findColumnSplitPoints(all, lefts, tops, rights, bottoms, minLeft, width, medianHeight);
   }
 
   /**
@@ -221,32 +237,14 @@ public final class MultiColumnLayoutPolicy {
     float medianHeight = sortedHeights[n / 2];
     float mergeGap = WORD_MERGE_GAP_FACTOR * medianHeight;
 
-    // Group boxes into visual rows (top-to-bottom, greedy by vertical center proximity).
-    Integer[] byY = new Integer[n];
-    for (int i = 0; i < n; i++) byY[i] = i;
-    Arrays.sort(
-        byY,
-        (a, b) -> {
-          int c = Float.compare(tops[a] + bottoms[a], tops[b] + bottoms[b]);
-          if (c != 0) return c;
-          return Integer.compare(a, b);
-        });
+    // Group boxes into visual rows with the app-wide line rule (drop caps and headline words do
+    // not widen the tolerance).
     List<List<Integer>> rows = new ArrayList<>();
-    List<Integer> row = new ArrayList<>();
-    float lastMidY = 0f;
-    for (int idx : byY) {
-      float midY = 0.5f * (tops[idx] + bottoms[idx]);
-      float tolerance = ROW_TOLERANCE_FACTOR * heights[idx];
-      if (row.isEmpty() || Math.abs(midY - lastMidY) <= tolerance) {
-        row.add(idx);
-      } else {
-        rows.add(row);
-        row = new ArrayList<>();
-        row.add(idx);
-      }
-      lastMidY = midY;
+    for (int[] line : LineGrouping.groupIntoLines(lefts, tops, rights, bottoms)) {
+      List<Integer> row = new ArrayList<>(line.length);
+      for (int idx : line) row.add(idx);
+      rows.add(row);
     }
-    if (!row.isEmpty()) rows.add(row);
 
     // Within each row (sorted left-to-right) merge boxes across word gaps into fragments.
     List<List<Integer>> fragments = new ArrayList<>();
@@ -321,34 +319,29 @@ public final class MultiColumnLayoutPolicy {
     // XY-cut): column clustering happens per band, so layouts whose columns do not extend
     // over the full page height (headline blocks, column count changing mid-page, partial
     // columns) are reconstructed correctly.
-    Integer[] byY = new Integer[n];
-    for (int i = 0; i < n; i++) byY[i] = i;
-    Arrays.sort(
-        byY,
-        (a, b) -> {
-          int c = Float.compare(tops[a] + bottoms[a], tops[b] + bottoms[b]);
-          if (c != 0) return c;
-          return Integer.compare(a, b);
-        });
-
+    List<Integer> all = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) all.add(i);
     List<int[]> segments = new ArrayList<>();
     List<Integer> fullWidthRun = new ArrayList<>();
     List<Integer> band = new ArrayList<>();
     boolean anyMultiColumnBand = false;
-    for (int idx : byY) {
-      if (fullWidth[idx]) {
+    // Rows, not boxes, are the unit: a full-width box takes the rest of its visual row along.
+    for (List<Integer> row : rowsOf(all, lefts, tops, rights, bottoms)) {
+      boolean fullWidthRow = false;
+      for (int idx : row) if (fullWidth[idx]) fullWidthRow = true;
+      if (fullWidthRow) {
         if (!band.isEmpty()) {
           anyMultiColumnBand |=
               emitBandSegments(band, lefts, tops, rights, bottoms, rtl, MAX_BAND_DEPTH, segments);
           band = new ArrayList<>();
         }
-        fullWidthRun.add(idx);
+        fullWidthRun.addAll(row);
       } else {
         if (!fullWidthRun.isEmpty()) {
           segments.add(toArray(fullWidthRun));
           fullWidthRun = new ArrayList<>();
         }
-        band.add(idx);
+        band.addAll(row);
       }
     }
     if (!fullWidthRun.isEmpty()) segments.add(toArray(fullWidthRun));
@@ -413,13 +406,13 @@ public final class MultiColumnLayoutPolicy {
     // word gaps and the gutter have similar widths, because word gaps do not line up vertically
     // across the whole band while the gutter does.
     List<Float> splitPoints =
-        findColumnSplitPoints(band, lefts, rights, bandLeft, bandWidth, medianHeight);
+        findColumnSplitPoints(band, lefts, tops, rights, bottoms, bandLeft, bandWidth, medianHeight);
 
     // Band-local separators: headlines or captions that span most of this band's width (but not
     // the whole page, otherwise the top-level pass would have caught them) or that clearly cross
     // a gutter split the band into sub-bands that are analyzed independently.
     if (depth > 0) {
-      float crossMargin = 0.5f * medianHeight;
+      float crossMargin = CROSSING_MIN_EXTENT_FACTOR * medianHeight;
       List<Integer> localFull = new ArrayList<>();
       for (int idx : band) {
         boolean wide = rights[idx] - lefts[idx] >= FULL_WIDTH_FRACTION * bandWidth;
@@ -435,23 +428,28 @@ public final class MultiColumnLayoutPolicy {
         }
       }
       if (!localFull.isEmpty() && localFull.size() < band.size()) {
+        // A separator takes its whole visual row with it: a headline that the detector split
+        // into several boxes has crossing and non-crossing fragments side by side, and the
+        // non-crossing ones must not become one-box sub-bands between them.
         boolean any = false;
         List<Integer> fullRun = new ArrayList<>();
         List<Integer> subBand = new ArrayList<>();
-        for (int idx : band) {
-          if (localFull.contains(idx)) {
+        for (List<Integer> row : rowsOf(band, lefts, tops, rights, bottoms)) {
+          boolean separatorRow = false;
+          for (int idx : row) if (localFull.contains(idx)) separatorRow = true;
+          if (separatorRow) {
             if (!subBand.isEmpty()) {
               any |=
                   emitBandSegments(subBand, lefts, tops, rights, bottoms, rtl, depth - 1, segments);
               subBand = new ArrayList<>();
             }
-            fullRun.add(idx);
+            fullRun.addAll(row);
           } else {
             if (!fullRun.isEmpty()) {
               segments.add(toArray(fullRun));
               fullRun = new ArrayList<>();
             }
-            subBand.add(idx);
+            subBand.addAll(row);
           }
         }
         if (!fullRun.isEmpty()) segments.add(toArray(fullRun));
@@ -510,7 +508,9 @@ public final class MultiColumnLayoutPolicy {
   private static List<Float> findColumnSplitPoints(
       List<Integer> band,
       float[] lefts,
+      float[] tops,
       float[] rights,
+      float[] bottoms,
       float bandLeft,
       float bandWidth,
       float medianHeight) {
@@ -531,6 +531,7 @@ public final class MultiColumnLayoutPolicy {
     int minValleyBins = Math.max(1, Math.round(MIN_GAP_FACTOR * medianHeight / binWidth));
 
     List<Float> splitPoints = new ArrayList<>();
+    List<Integer> valleyBins = new ArrayList<>();
     int runStart = -1;
     for (int i = 0; i <= bins; i++) {
       boolean valley = i < bins && coverage[i] <= valleyThreshold;
@@ -541,6 +542,7 @@ public final class MultiColumnLayoutPolicy {
         if (runStart > 0 && i < bins && i - runStart >= minValleyBins) {
           float center = bandLeft + (runStart + i) * 0.5f * binWidth;
           splitPoints.add(center);
+          valleyBins.add(i - runStart);
         }
         runStart = -1;
       }
@@ -549,6 +551,9 @@ public final class MultiColumnLayoutPolicy {
     // Enforce a minimum column width: valleys that would create a region narrower than
     // MIN_COLUMN_WIDTH_FRACTION of the band (typically vertically aligned word gaps in a sparse
     // block) are removed by merging the narrow region with its neighbor.
+    // Of the two valleys bounding a narrow region the narrower one goes: a word gap that happens
+    // to line up vertically is a few bins wide, a real gutter many, and removing the wrong one
+    // would keep the word gap as "gutter" and cut a column in two.
     float minColumnWidth = MIN_COLUMN_WIDTH_FRACTION * bandWidth;
     boolean changed = true;
     while (changed && !splitPoints.isEmpty()) {
@@ -557,14 +562,114 @@ public final class MultiColumnLayoutPolicy {
       for (int k = 0; k <= splitPoints.size(); k++) {
         float next = k < splitPoints.size() ? splitPoints.get(k) : bandLeft + bandWidth;
         if (next - prev < minColumnWidth) {
-          splitPoints.remove(k == 0 ? 0 : k - 1);
+          int remove;
+          if (k == 0) {
+            remove = 0;
+          } else if (k == splitPoints.size()) {
+            remove = k - 1;
+          } else {
+            remove = valleyBins.get(k - 1) <= valleyBins.get(k) ? k - 1 : k;
+          }
+          splitPoints.remove(remove);
+          valleyBins.remove(remove);
           changed = true;
           break;
         }
         prev = next;
       }
     }
-    return splitPoints;
+    return dropUnalignedRegions(
+        band, lefts, tops, rights, bottoms, bandLeft, bandWidth, medianHeight, splitPoints);
+  }
+
+  /**
+   * Removes gutters whose adjacent region does not behave like a column: see {@link
+   * #ALIGNED_ROW_FRACTION}. For the leftmost region the gutter to its right goes, for any other
+   * region the gutter to its left; the check repeats until every region is aligned.
+   */
+  private static List<Float> dropUnalignedRegions(
+      List<Integer> band,
+      float[] lefts,
+      float[] tops,
+      float[] rights,
+      float[] bottoms,
+      float bandLeft,
+      float bandWidth,
+      float medianHeight,
+      List<Float> splitPoints) {
+    if (splitPoints.isEmpty()) return splitPoints;
+    int m = band.size();
+    float[] l = new float[m];
+    float[] t = new float[m];
+    float[] r = new float[m];
+    float[] b = new float[m];
+    for (int i = 0; i < m; i++) {
+      int idx = band.get(i);
+      l[i] = lefts[idx];
+      t[i] = tops[idx];
+      r[i] = rights[idx];
+      b[i] = bottoms[idx];
+    }
+    List<int[]> rows = LineGrouping.groupIntoLines(l, t, r, b);
+    float tolerance = ALIGN_TOLERANCE_FACTOR * medianHeight;
+    List<Float> points = new ArrayList<>(splitPoints);
+    boolean changed = true;
+    while (changed && !points.isEmpty()) {
+      changed = false;
+      for (int k = 0; k <= points.size(); k++) {
+        float from = k == 0 ? bandLeft : points.get(k - 1);
+        float to = k == points.size() ? bandLeft + bandWidth : points.get(k);
+        // Left edge of the region's leftmost box in every row that has one.
+        List<Float> starts = new ArrayList<>();
+        for (int[] row : rows) {
+          float start = Float.NaN;
+          for (int i : row) {
+            float centerX = 0.5f * (l[i] + r[i]);
+            if (centerX >= from && centerX < to && (Float.isNaN(start) || l[i] < start)) {
+              start = l[i];
+            }
+          }
+          if (!Float.isNaN(start)) starts.add(start);
+        }
+        if (starts.size() < 2) continue;
+        int aligned = 0;
+        for (float a : starts) {
+          int count = 0;
+          for (float o : starts) if (Math.abs(o - a) <= tolerance) count++;
+          aligned = Math.max(aligned, count);
+        }
+        if (aligned < ALIGNED_ROW_FRACTION * starts.size()) {
+          points.remove(k == 0 ? 0 : k - 1);
+          changed = true;
+          break;
+        }
+      }
+    }
+    return points;
+  }
+
+  /** Visual rows of the given boxes, top-to-bottom, members left-to-right (indices into the arrays). */
+  private static List<List<Integer>> rowsOf(
+      List<Integer> subset, float[] lefts, float[] tops, float[] rights, float[] bottoms) {
+    int m = subset.size();
+    float[] l = new float[m];
+    float[] t = new float[m];
+    float[] r = new float[m];
+    float[] b = new float[m];
+    for (int i = 0; i < m; i++) {
+      int idx = subset.get(i);
+      l[i] = lefts[idx];
+      t[i] = tops[idx];
+      r[i] = rights[idx];
+      b[i] = bottoms[idx];
+    }
+    List<List<Integer>> rows = new ArrayList<>();
+    for (int[] line : LineGrouping.groupIntoLines(l, t, r, b)) {
+      List<Integer> row = new ArrayList<>(line.length);
+      for (int i : line) row.add(subset.get(i));
+      rows.add(row);
+    }
+    return rows;
   }
 
   private static int[] toArray(List<Integer> list) {

@@ -11,8 +11,10 @@ package de.schliweb.makeacopy.utils.ocr;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 
@@ -322,5 +324,95 @@ public class MultiColumnLayoutPolicyTest {
       assertTrue("duplicate index " + idx, !seen[idx]);
       seen[idx] = true;
     }
+  }
+
+  // ── rules from the synthetic layout pages (GitHub #87) ──────────────────
+
+  /** Rows of a wide single column with 3-4 justified words: gaps line up, starts do not. */
+  private static float[][] wideJustifiedSingleColumn() {
+    // 8 rows, 3 words each, justified over [0, 1400]: first word at 0, last word ends at 1400,
+    // the middle word wherever the widths leave it. Word widths vary per row.
+    int[][] widths = {
+      {220, 300, 180}, {150, 260, 340}, {300, 180, 220}, {120, 420, 160},
+      {260, 200, 280}, {180, 340, 140}, {330, 150, 260}, {200, 280, 200},
+    };
+    float[][] boxes = new float[widths.length * 3][];
+    for (int row = 0; row < widths.length; row++) {
+      int w0 = widths[row][0], w1 = widths[row][1], w2 = widths[row][2];
+      float gap = (1400 - w0 - w1 - w2) / 2f;
+      float y = row * 60;
+      boxes[row * 3] = new float[] {0, y, w0, y + 40};
+      boxes[row * 3 + 1] = new float[] {w0 + gap, y, w0 + gap + w1, y + 40};
+      boxes[row * 3 + 2] = new float[] {1400 - w2, y, 1400, y + 40};
+    }
+    return boxes;
+  }
+
+  @Test
+  public void wideJustifiedSingleColumn_isNotMultiColumn() {
+    // The word gaps of every row leave coverage valleys, but the regions they would separate
+    // have ragged starts (the middle and last words begin wherever the widths leave them).
+    assertTrue(group(wideJustifiedSingleColumn(), false).isEmpty());
+  }
+
+  @Test
+  public void headlineSplitIntoFragments_staysOneSegmentInReadingOrder() {
+    // Two columns [0,400] and [500,900]; a headline row of three fragments where only the middle
+    // one crosses the gutter. Without row-level separators the outer fragments became one-box
+    // sub-bands and the headline read "Left / Right / Middle".
+    List<float[]> boxes = new ArrayList<>();
+    boxes.add(new float[] {0, 0, 280, 40}); // "Fähre: Welche"
+    boxes.add(new float[] {300, 0, 600, 40}); // "Fahrten fallen" (crosses the gutter at ~450)
+    boxes.add(new float[] {620, 0, 900, 40}); // "in dieser Woche"
+    for (int i = 0; i < 6; i++) {
+      boxes.add(new float[] {0, 80 + i * 40, 400, 110 + i * 40});
+      boxes.add(new float[] {500, 80 + i * 40, 900, 110 + i * 40});
+    }
+    List<int[]> segments = group(boxes.toArray(new float[0][]), false);
+    assertFalse(segments.isEmpty());
+    assertArrayEquals(new int[] {0, 1, 2}, segments.get(0));
+    // then the left column, then the right column
+    assertArrayEquals(new int[] {3, 5, 7, 9, 11, 13}, segments.get(1));
+    assertArrayEquals(new int[] {4, 6, 8, 10, 12, 14}, segments.get(2));
+  }
+
+  @Test
+  public void boxProtrudingSlightlyIntoTheGutter_isNotASeparator() {
+    // Two columns [0,400] and [500,900]; one right-column box starts 12 px early. With the old
+    // 0.5 x height margin (15) it counted as spanning the gutter and split the page into bands.
+    List<float[]> boxes = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      boxes.add(new float[] {0, i * 40, 400, 30 + i * 40});
+      float left = i == 3 ? 438 : 500;
+      boxes.add(new float[] {left, i * 40, 900, 30 + i * 40});
+    }
+    List<int[]> segments = group(boxes.toArray(new float[0][]), false);
+    assertEquals(2, segments.size());
+    assertArrayEquals(new int[] {0, 2, 4, 6, 8, 10, 12, 14}, segments.get(0));
+    assertArrayEquals(new int[] {1, 3, 5, 7, 9, 11, 13, 15}, segments.get(1));
+  }
+
+  @Test
+  public void narrowRegionMerge_keepsTheWiderValley() {
+    // Three columns where the third is sparse: five short repeated-word rows whose word gaps
+    // line up into a narrow valley right after the real gutter. The region between the real
+    // gutter and the word-gap valley is too narrow to be a column; the word-gap valley must go,
+    // not the real gutter.
+    List<float[]> boxes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      boxes.add(new float[] {0, i * 40, 800, 30 + i * 40});
+      boxes.add(new float[] {1000, i * 40, 1800, 30 + i * 40});
+    }
+    for (int i = 0; i < 5; i++) {
+      // "One one one": three word boxes with identical gaps in every row
+      boxes.add(new float[] {2000, i * 40, 2060, 30 + i * 40});
+      boxes.add(new float[] {2110, i * 40, 2170, 30 + i * 40});
+      boxes.add(new float[] {2220, i * 40, 2280, 30 + i * 40});
+    }
+    List<int[]> segments = group(boxes.toArray(new float[0][]), false);
+    assertEquals(3, segments.size());
+    assertEquals(10, segments.get(0).length);
+    assertEquals(10, segments.get(1).length);
+    assertEquals(15, segments.get(2).length);
   }
 }
