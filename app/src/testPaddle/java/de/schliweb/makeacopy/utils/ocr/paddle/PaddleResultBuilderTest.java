@@ -53,6 +53,61 @@ public class PaddleResultBuilderTest {
     }
 
     @Test
+    public void build_lowConfidenceLine_isReadAgainWithTheFallbackAndTheBetterReadingWins()
+            throws Exception {
+        Quad q = quadAt(10, 20, 200, 12);
+        StubRec rec =
+                new StubRec(
+                        Collections.singletonList(
+                                new PaddleRecOrtRunner.RecOutput("0orempsu", 0.30f)));
+        StubRec fallback =
+                new StubRec(
+                        Collections.singletonList(
+                                new PaddleRecOrtRunner.RecOutput("01Lorem ipsum", 0.97f)));
+        OCRHelper.OcrResultWords result =
+                PaddleResultBuilder.build(
+                        null, Collections.singletonList(q), rec, PASSTHROUGH, () -> fallback);
+        assertEquals("01Lorem ipsum", result.text);
+        assertEquals(1, rec.callCount);
+        assertEquals(1, fallback.callCount);
+    }
+
+    @Test
+    public void build_confidentLine_neverAsksTheFallback() throws Exception {
+        Quad q = quadAt(10, 20, 200, 12);
+        StubRec rec =
+                new StubRec(
+                        Collections.singletonList(
+                                new PaddleRecOrtRunner.RecOutput("hello", 0.90f)));
+        OCRHelper.OcrResultWords result =
+                PaddleResultBuilder.build(
+                        null,
+                        Collections.singletonList(q),
+                        rec,
+                        PASSTHROUGH,
+                        () -> {
+                            throw new AssertionError("fallback must not be created");
+                        });
+        assertEquals("hello", result.text);
+    }
+
+    @Test
+    public void build_fallbackLessConfident_keepsTheFirstReading() throws Exception {
+        Quad q = quadAt(10, 20, 200, 12);
+        StubRec rec =
+                new StubRec(
+                        Collections.singletonList(new PaddleRecOrtRunner.RecOutput("abc", 0.50f)));
+        StubRec fallback =
+                new StubRec(
+                        Collections.singletonList(new PaddleRecOrtRunner.RecOutput("xyz", 0.40f)));
+        OCRHelper.OcrResultWords result =
+                PaddleResultBuilder.build(
+                        null, Collections.singletonList(q), rec, PASSTHROUGH, () -> fallback);
+        assertEquals("abc", result.text);
+        assertEquals(1, fallback.callCount);
+    }
+
+    @Test
     public void build_twoQuads_yieldsWordsInOrderWithMeanConfidence() throws Exception {
         Quad q1 = quadAt(10, 20, 50, 12); // y=20, "first"
         Quad q2 = quadAt(15, 60, 80, 14); // y=60, "second"

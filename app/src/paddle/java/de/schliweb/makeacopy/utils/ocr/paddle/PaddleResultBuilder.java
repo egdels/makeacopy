@@ -121,6 +121,25 @@ final class PaddleResultBuilder {
     @VisibleForTesting static final float PHOTO_VARIANT_MIN_CONFIDENCE = 0.85f;
 
     /**
+     * A horizontal line whose recognition confidence falls below this value is read a second time
+     * with the base model when the caller provides one (see {@link
+     * PaddleLanguageRouter#hasBaseModelFallback}). The script-specific Latin mobile model
+     * misreads clean lines such as "01Lorem ipsum" (as "0orempsu", confidence 0.30) where the
+     * base model reads correctly (0.97); on umlauts the Latin model stays the better first
+     * choice, which is why confident lines are never re-read. On the Latin eval samples no line
+     * falls below 0.8, so the second pass is neutral there.
+     */
+    @VisibleForTesting static final float LOW_CONFIDENCE_RETRY_THRESHOLD = 0.6f;
+
+    /**
+     * The second reading replaces the first only when the base model is at least this confident.
+     * Confidences are not calibrated across models: re-reading every line showed the base model
+     * reporting 0.99 for readings that had lost all spaces ("Section2-MoreBodyText"), so "more
+     * confident" alone is not a safe criterion.
+     */
+    @VisibleForTesting static final float FALLBACK_MIN_CONFIDENCE = 0.8f;
+
+    /**
      * Schwellwert der Perzentil-Luminanzspanne (P98 − P2), unterhalb derer ein
      * Hochkant-Crop als kontrastarmes Foto gilt und per
      * {@link #enhanceLowContrastCrop(Bitmap)} aufbereitet wird. Gemessen: Buchfoto
@@ -209,6 +228,20 @@ final class PaddleResultBuilder {
     static OCRHelper.OcrResultWords build(
             Bitmap full, List<Quad> quads, PaddleRecOrtRunner rec, Cropper cropper)
             throws Exception {
+        return build(full, quads, rec, cropper, null);
+    }
+
+    /**
+     * @param fallbackRec lazily created base-model recogniser for the low-confidence second pass,
+     *     or null to recognise every line with {@code rec} only
+     */
+    static OCRHelper.OcrResultWords build(
+            Bitmap full,
+            List<Quad> quads,
+            PaddleRecOrtRunner rec,
+            Cropper cropper,
+            Callable<PaddleRecOrtRunner> fallbackRec)
+            throws Exception {
         if (quads == null || quads.isEmpty()) {
             return new OCRHelper.OcrResultWords("", null, new ArrayList<>());
         }
@@ -269,11 +302,7 @@ final class PaddleResultBuilder {
                     textBuilder.append('\n');
                 }
                 QuadRecognition[] recognized =
-                        recognizeLine(
-                                full,
-                                lines.get(li),
-                                rec,
-                                cropper,
+                        recognizeLine(full, lines.get(li), rec, fallbackRec, cropper,
                                 globalCropIndex,
                                 allQuads,
                                 recognitionExecutor);
@@ -349,6 +378,7 @@ final class PaddleResultBuilder {
             Bitmap full,
             List<Quad> line,
             PaddleRecOrtRunner rec,
+            Callable<PaddleRecOrtRunner> fallbackRec,
             Cropper cropper,
             AtomicInteger globalCropIndex,
             List<Quad> allQuads,
@@ -363,7 +393,7 @@ final class PaddleResultBuilder {
                 futures.add(
                         recognitionExecutor.submit(
                                 (Callable<QuadRecognition>)
-                                        () -> recognizeQuad(full, q, rec, cropper, globalCropIndex, allQuads)));
+                                        () -> recognizeQuad(full, q, rec, fallbackRec, cropper, globalCropIndex, allQuads)));
             }
             for (int qi = 0; qi < n; qi++) {
                 recognized[qi] = futures.get(qi).get();
@@ -371,7 +401,8 @@ final class PaddleResultBuilder {
         } else {
             for (int qi = 0; qi < n; qi++) {
                 recognized[qi] =
-                        recognizeQuad(full, line.get(qi), rec, cropper, globalCropIndex, allQuads);
+                        recognizeQuad(
+                                full, line.get(qi), rec, fallbackRec, cropper, globalCropIndex, allQuads);
             }
         }
         return recognized;
@@ -419,6 +450,7 @@ final class PaddleResultBuilder {
             Bitmap full,
             Quad q,
             PaddleRecOrtRunner rec,
+            Callable<PaddleRecOrtRunner> fallbackRec,
             Cropper cropper,
             AtomicInteger globalCropIndex,
             List<Quad> allQuads)
@@ -534,6 +566,27 @@ final class PaddleResultBuilder {
                 }
             } else {
                 out = rec.recognize(crop);
+                if (fallbackRec != null && out.confidence() < LOW_CONFIDENCE_RETRY_THRESHOLD) {
+                    PaddleRecOrtRunner.RecOutput outB = fallbackRec.call().recognize(crop);
+                    if (outB != null
+                            && outB.text() != null
+                            && !outB.text().isEmpty()
+                            && outB.confidence() >= FALLBACK_MIN_CONFIDENCE
+                            && outB.confidence() > out.confidence()) {
+                        Log.d(
+                                TAG,
+                                "low-confidence retry: '"
+                                        + out.text()
+                                        + "' ("
+                                        + out.confidence()
+                                        + ") -> '"
+                                        + outB.text()
+                                        + "' ("
+                                        + outB.confidence()
+                                        + ")");
+                        out = outB;
+                    }
+                }
             }
             String text =
                     overrideText != null ? overrideText : (out.text() != null ? out.text() : "");

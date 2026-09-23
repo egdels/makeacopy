@@ -175,8 +175,15 @@ public final class PaddleOcrEngine implements OcrEngine {
         }
 
         List<Quad> quads = det.detect(bitmap, highQualityDetectionEnabled);
+        // Second pass for low-confidence lines with the base model, whose Latin recognition is
+        // stronger than the script-specific mobile models' on digits, capitals and wide gaps.
+        // Loaded lazily, only when a line actually falls below the threshold.
+        java.util.concurrent.Callable<PaddleRecOrtRunner> fallbackRec =
+                PaddleLanguageRouter.hasBaseModelFallback(modelKey)
+                        ? () -> supplier.rec(PaddleLanguageRouter.BASE_MODEL_KEY)
+                        : null;
         OCRHelper.OcrResultWords result =
-                PaddleResultBuilder.build(bitmap, quads, rec, supplier.cropper());
+                PaddleResultBuilder.build(bitmap, quads, rec, supplier.cropper(), fallbackRec);
         long tEnd = System.nanoTime();
 
         Log.i(

@@ -183,6 +183,18 @@ final class PaddleLanguageRouter {
      *         is found.
      */
     @Nullable
+    /** Model key of PP-OCRv5's base recogniser (Chinese, English, Japanese and Latin script). */
+    static final String BASE_MODEL_KEY = "zh";
+
+    /**
+     * Whether lines recognised with {@code modelKey} may be re-read with the base model when the
+     * confidence is low. Only the Latin-script models qualify: the base model does not cover
+     * Cyrillic, Greek, Arabic, Devanagari or Thai, and for CJK it is the routed model already.
+     */
+    static boolean hasBaseModelFallback(@Nullable String modelKey) {
+        return "latin".equals(modelKey) || "en".equals(modelKey);
+    }
+
     static String resolveRecModel(@Nullable String langSpec) {
         if (langSpec == null) return null;
         String s = langSpec.trim();
