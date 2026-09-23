@@ -1,0 +1,2457 @@
+{
+ "source": "synth_dropcap_footer.png",
+ "language": "latin",
+ "words": [
+  {
+   "text": "Fähre",
+   "confidence": 0.989349,
+   "polygon": [
+    [
+     526,
+     86
+    ],
+    [
+     1144,
+     96
+    ],
+    [
+     1141,
+     281
+    ],
+    [
+     523,
+     271
+    ]
+   ]
+  },
+  {
+   "text": "Nach vierzig Jahren geht die alte",
+   "confidence": 0.999946,
+   "polygon": [
+    [
+     102,
+     384
+    ],
+    [
+     938,
+     382
+    ],
+    [
+     938,
+     460
+    ],
+    [
+     102,
+     462
+    ]
+   ]
+  },
+  {
+   "text": "Die neue Fähre bietet Platz für dreihundert Fahrgäste und",
+   "confidence": 0.984414,
+   "polygon": [
+    [
+     1206,
+     384
+    ],
+    [
+     2232,
+     386
+    ],
+    [
+     2232,
+     440
+    ],
+    [
+     1206,
+     438
+    ]
+   ]
+  },
+  {
+   "text": "g Fahrzeuge. Sie braucht für die Überfahrt nur",
+   "confidence": 0.985888,
+   "polygon": [
+    [
+     1341,
+     456
+    ],
+    [
+     2233,
+     458
+    ],
+    [
+     2233,
+     516
+    ],
+    [
+     1341,
+     514
+    ]
+   ]
+  },
+  {
+   "text": "Inselfähre in den Ruhestand. Ein neues",
+   "confidence": 0.988834,
+   "polygon": [
+    [
+     100,
+     475
+    ],
+    [
+     1086,
+     477
+    ],
+    [
+     1086,
+     563
+    ],
+    [
+     100,
+     560
+    ]
+   ]
+  },
+  {
+   "text": "zwanzig",
+   "confidence": 0.999306,
+   "polygon": [
+    [
+     1209,
+     466
+    ],
+    [
+     1366,
+     464
+    ],
+    [
+     1367,
+     513
+    ],
+    [
+     1209,
+     516
+    ]
+   ]
+  },
+  {
+   "text": "noch fünfundzwanzig Minuten statt vierzig. An Bord gibt",
+   "confidence": 0.976948,
+   "polygon": [
+    [
+     1203,
+     527
+    ],
+    [
+     2235,
+     532
+    ],
+    [
+     2235,
+     597
+    ],
+    [
+     1203,
+     591
+    ]
+   ]
+  },
+  {
+   "text": "Schiff übernimmt den Dienst. Was mit",
+   "confidence": 0.973026,
+   "polygon": [
+    [
+     100,
+     575
+    ],
+    [
+     1055,
+     567
+    ],
+    [
+     1055,
+     651
+    ],
+    [
+     100,
+     659
+    ]
+   ]
+  },
+  {
+   "text": "es einen Aufenthaltsraum mit großen Fenstern, eine",
+   "confidence": 0.992281,
+   "polygon": [
+    [
+     1207,
+     610
+    ],
+    [
+     2233,
+     612
+    ],
+    [
+     2233,
+     666
+    ],
+    [
+     1207,
+     664
+    ]
+   ]
+  },
+  {
+   "text": "der alten wird, ist offen",
+   "confidence": 0.976935,
+   "polygon": [
+    [
+     104,
+     671
+    ],
+    [
+     694,
+     674
+    ],
+    [
+     693,
+     749
+    ],
+    [
+     104,
+     746
+    ]
+   ]
+  },
+  {
+   "text": "kleine Küche und Platz für Fahrräder. Der Fahrplan bleibt",
+   "confidence": 0.974968,
+   "polygon": [
+    [
+     1205,
+     682
+    ],
+    [
+     2229,
+     682
+    ],
+    [
+     2229,
+     742
+    ],
+    [
+     1205,
+     742
+    ]
+   ]
+  },
+  {
+   "text": "unverändert,",
+   "confidence": 0.999842,
+   "polygon": [
+    [
+     1354,
+     762
+    ],
+    [
+     1598,
+     764
+    ],
+    [
+     1597,
+     809
+    ],
+    [
+     1354,
+     807
+    ]
+   ]
+  },
+  {
+   "text": ", im",
+   "confidence": 0.819974,
+   "polygon": [
+    [
+     1579,
+     765
+    ],
+    [
+     1717,
+     767
+    ],
+    [
+     1716,
+     809
+    ],
+    [
+     1578,
+     807
+    ]
+   ]
+  },
+  {
+   "text": "Sommer sollen zusätzliche",
+   "confidence": 0.980564,
+   "polygon": [
+    [
+     1696,
+     758
+    ],
+    [
+     2230,
+     758
+    ],
+    [
+     2230,
+     812
+    ],
+    [
+     1696,
+     812
+    ]
+   ]
+  },
+  {
+   "text": "vorerst",
+   "confidence": 0.999951,
+   "polygon": [
+    [
+     1209,
+     768
+    ],
+    [
+     1344,
+     766
+    ],
+    [
+     1345,
+     809
+    ],
+    [
+     1209,
+     811
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     1327,
+     772
+    ],
+    [
+     1374,
+     772
+    ],
+    [
+     1374,
+     805
+    ],
+    [
+     1327,
+     805
+    ]
+   ]
+  },
+  {
+   "text": "Abendfahrten angeboten werden. Die Reederei rechnet",
+   "confidence": 0.99076,
+   "polygon": [
+    [
+     1208,
+     835
+    ],
+    [
+     2233,
+     835
+    ],
+    [
+     2233,
+     889
+    ],
+    [
+     1208,
+     889
+    ]
+   ]
+  },
+  {
+   "text": "damit, dass die Zahl der Fahrgäste in den ersten Jahren",
+   "confidence": 0.978927,
+   "polygon": [
+    [
+     1206,
+     905
+    ],
+    [
+     2232,
+     905
+    ],
+    [
+     2232,
+     966
+    ],
+    [
+     1206,
+     966
+    ]
+   ]
+  },
+  {
+   "text": "deutlich steigen wird. Kritiker bemängeln,",
+   "confidence": 0.995551,
+   "polygon": [
+    [
+     1208,
+     985
+    ],
+    [
+     2048,
+     985
+    ],
+    [
+     2048,
+     1039
+    ],
+    [
+     1208,
+     1039
+    ]
+   ]
+  },
+  {
+   "text": ",dass die",
+   "confidence": 0.843757,
+   "polygon": [
+    [
+     2019,
+     986
+    ],
+    [
+     2229,
+     986
+    ],
+    [
+     2229,
+     1038
+    ],
+    [
+     2019,
+     1038
+    ]
+   ]
+  },
+  {
+   "text": "hatte sie die kleine Insel mit dem Festland verbunden, bei",
+   "confidence": 0.991653,
+   "polygon": [
+    [
+     105,
+     1041
+    ],
+    [
+     1134,
+     1045
+    ],
+    [
+     1134,
+     1103
+    ],
+    [
+     105,
+     1099
+    ]
+   ]
+  },
+  {
+   "text": "Fahrpreise zum Fahrplanwechsel angehoben werden. Die",
+   "confidence": 0.997079,
+   "polygon": [
+    [
+     1207,
+     1059
+    ],
+    [
+     2231,
+     1059
+    ],
+    [
+     2231,
+     1116
+    ],
+    [
+     1207,
+     1116
+    ]
+   ]
+  },
+  {
+   "text": "Sturm und bei Flaute, im Sommer voller Ausflügler und",
+   "confidence": 0.98097,
+   "polygon": [
+    [
+     107,
+     1120
+    ],
+    [
+     1133,
+     1120
+    ],
+    [
+     1133,
+     1177
+    ],
+    [
+     107,
+     1177
+    ]
+   ]
+  },
+  {
+   "text": "Gemeinde verhandelt noch",
+   "confidence": 0.994898,
+   "polygon": [
+    [
+     1210,
+     1136
+    ],
+    [
+     1735,
+     1136
+    ],
+    [
+     1735,
+     1187
+    ],
+    [
+     1210,
+     1187
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     1720,
+     1145
+    ],
+    [
+     1756,
+     1145
+    ],
+    [
+     1756,
+     1175
+    ],
+    [
+     1720,
+     1175
+    ]
+   ]
+  },
+  {
+   "text": "über einen Nachlass",
+   "confidence": 0.992162,
+   "polygon": [
+    [
+     1745,
+     1137
+    ],
+    [
+     2158,
+     1137
+    ],
+    [
+     2158,
+     1185
+    ],
+    [
+     1745,
+     1185
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     2142,
+     1144
+    ],
+    [
+     2185,
+     1144
+    ],
+    [
+     2185,
+     1179
+    ],
+    [
+     2142,
+     1179
+    ]
+   ]
+  },
+  {
+   "text": "für",
+   "confidence": 0.993077,
+   "polygon": [
+    [
+     2168,
+     1139
+    ],
+    [
+     2227,
+     1139
+    ],
+    [
+     2227,
+     1185
+    ],
+    [
+     2168,
+     1185
+    ]
+   ]
+  },
+  {
+   "text": "im Winter fast leer. Nun sollte ein neues Schiff ihren",
+   "confidence": 0.985569,
+   "polygon": [
+    [
+     101,
+     1188
+    ],
+    [
+     1135,
+     1193
+    ],
+    [
+     1135,
+     1257
+    ],
+    [
+     101,
+     1252
+    ]
+   ]
+  },
+  {
+   "text": "Inselbewohner und Schulkinder. Oder",
+   "confidence": 0.998059,
+   "polygon": [
+    [
+     1209,
+     1206
+    ],
+    [
+     1964,
+     1209
+    ],
+    [
+     1964,
+     1263
+    ],
+    [
+     1209,
+     1260
+    ]
+   ]
+  },
+  {
+   "text": "gehörten",
+   "confidence": 0.992724,
+   "polygon": [
+    [
+     1944,
+     1212
+    ],
+    [
+     2153,
+     1212
+    ],
+    [
+     2153,
+     1261
+    ],
+    [
+     1944,
+     1261
+    ]
+   ]
+  },
+  {
+   "text": "die",
+   "confidence": 0.978942,
+   "polygon": [
+    [
+     2133,
+     1212
+    ],
+    [
+     2232,
+     1212
+    ],
+    [
+     2232,
+     1263
+    ],
+    [
+     2133,
+     1263
+    ]
+   ]
+  },
+  {
+   "text": "Dienst übernehmen, schneller, größer und mit einem",
+   "confidence": 0.993696,
+   "polygon": [
+    [
+     104,
+     1263
+    ],
+    [
+     1134,
+     1267
+    ],
+    [
+     1134,
+     1329
+    ],
+    [
+     104,
+     1324
+    ]
+   ]
+  },
+  {
+   "text": "Schritte",
+   "confidence": 0.999959,
+   "polygon": [
+    [
+     1210,
+     1286
+    ],
+    [
+     1353,
+     1286
+    ],
+    [
+     1353,
+     1336
+    ],
+    [
+     1210,
+     1336
+    ]
+   ]
+  },
+  {
+   "text": "hinter",
+   "confidence": 0.999967,
+   "polygon": [
+    [
+     1392,
+     1287
+    ],
+    [
+     1513,
+     1287
+    ],
+    [
+     1513,
+     1335
+    ],
+    [
+     1392,
+     1335
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     1502,
+     1292
+    ],
+    [
+     1557,
+     1292
+    ],
+    [
+     1557,
+     1327
+    ],
+    [
+     1502,
+     1327
+    ]
+   ]
+  },
+  {
+   "text": "ihm z",
+   "confidence": 0.791309,
+   "polygon": [
+    [
+     1544,
+     1286
+    ],
+    [
+     1688,
+     1286
+    ],
+    [
+     1688,
+     1336
+    ],
+    [
+     1544,
+     1336
+    ]
+   ]
+  },
+  {
+   "text": "1",
+   "confidence": 0.180095,
+   "polygon": [
+    [
+     1709,
+     1290
+    ],
+    [
+     1775,
+     1290
+    ],
+    [
+     1775,
+     1328
+    ],
+    [
+     1709,
+     1328
+    ]
+   ]
+  },
+  {
+   "text": "einem",
+   "confidence": 0.999838,
+   "polygon": [
+    [
+     1760,
+     1288
+    ],
+    [
+     1881,
+     1288
+    ],
+    [
+     1881,
+     1336
+    ],
+    [
+     1760,
+     1336
+    ]
+   ]
+  },
+  {
+   "text": "der",
+   "confidence": 0.999968,
+   "polygon": [
+    [
+     1920,
+     1288
+    ],
+    [
+     1996,
+     1288
+    ],
+    [
+     1996,
+     1334
+    ],
+    [
+     1920,
+     1334
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     1981,
+     1293
+    ],
+    [
+     2038,
+     1293
+    ],
+    [
+     2038,
+     1329
+    ],
+    [
+     1981,
+     1329
+    ]
+   ]
+  },
+  {
+   "text": "unzähligen",
+   "confidence": 0.999576,
+   "polygon": [
+    [
+     2025,
+     1284
+    ],
+    [
+     2230,
+     1287
+    ],
+    [
+     2230,
+     1343
+    ],
+    [
+     2024,
+     1340
+    ]
+   ]
+  },
+  {
+   "text": "zu",
+   "confidence": 0.999288,
+   "polygon": [
+    [
+     1667,
+     1295
+    ],
+    [
+     1722,
+     1295
+    ],
+    [
+     1722,
+     1331
+    ],
+    [
+     1667,
+     1331
+    ]
+   ]
+  },
+  {
+   "text": "Elektroantrieb, der leiser ist als das alte Dieselaggregat.",
+   "confidence": 0.99865,
+   "polygon": [
+    [
+     103,
+     1333
+    ],
+    [
+     1132,
+     1344
+    ],
+    [
+     1132,
+     1411
+    ],
+    [
+     103,
+     1400
+    ]
+   ]
+  },
+  {
+   "text": "Gesetzeshüter dieser Stadt, und die stählerne Acht um",
+   "confidence": 0.990257,
+   "polygon": [
+    [
+     1207,
+     1356
+    ],
+    [
+     2229,
+     1359
+    ],
+    [
+     2229,
+     1417
+    ],
+    [
+     1207,
+     1415
+    ]
+   ]
+  },
+  {
+   "text": "Viele Inselbewohner standen am Kai und winkten, einige",
+   "confidence": 0.999861,
+   "polygon": [
+    [
+     104,
+     1415
+    ],
+    [
+     1131,
+     1420
+    ],
+    [
+     1131,
+     1481
+    ],
+    [
+     104,
+     1476
+    ]
+   ]
+  },
+  {
+   "text": "seine Handgelenke würde gleich zuschnappen? Er konnte",
+   "confidence": 0.994451,
+   "polygon": [
+    [
+     1206,
+     1433
+    ],
+    [
+     2230,
+     1433
+    ],
+    [
+     2230,
+     1490
+    ],
+    [
+     1206,
+     1490
+    ]
+   ]
+  },
+  {
+   "text": "hatten Tränen in den Augen. Der Kapitän, der die Fähre",
+   "confidence": 0.994942,
+   "polygon": [
+    [
+     106,
+     1493
+    ],
+    [
+     1129,
+     1496
+    ],
+    [
+     1129,
+     1550
+    ],
+    [
+     106,
+     1547
+    ]
+   ]
+  },
+  {
+   "text": "die Aufforderung stehen zu bleiben schon hören. Gehetzt",
+   "confidence": 0.987714,
+   "polygon": [
+    [
+     1208,
+     1507
+    ],
+    [
+     2233,
+     1509
+    ],
+    [
+     2233,
+     1566
+    ],
+    [
+     1208,
+     1564
+    ]
+   ]
+  },
+  {
+   "text": "seit zwei Jahrzehnten gesteuert hatte, ließ das Horn",
+   "confidence": 0.998883,
+   "polygon": [
+    [
+     104,
+     1570
+    ],
+    [
+     1133,
+     1568
+    ],
+    [
+     1133,
+     1625
+    ],
+    [
+     104,
+     1627
+    ]
+   ]
+  },
+  {
+   "text": "sah er sich um. Plötzlich erblickte er den schmalen",
+   "confidence": 0.991525,
+   "polygon": [
+    [
+     1207,
+     1582
+    ],
+    [
+     2232,
+     1582
+    ],
+    [
+     2232,
+     1639
+    ],
+    [
+     1207,
+     1639
+    ]
+   ]
+  },
+  {
+   "text": "dreimal ertönen. Dann verschwand das Schiff langsam im",
+   "confidence": 0.995635,
+   "polygon": [
+    [
+     105,
+     1637
+    ],
+    [
+     1134,
+     1644
+    ],
+    [
+     1134,
+     1706
+    ],
+    [
+     105,
+     1698
+    ]
+   ]
+  },
+  {
+   "text": "Durchgang. Blitzartig",
+   "confidence": 0.961375,
+   "polygon": [
+    [
+     1206,
+     1657
+    ],
+    [
+     1650,
+     1657
+    ],
+    [
+     1650,
+     1715
+    ],
+    [
+     1206,
+     1715
+    ]
+   ]
+  },
+  {
+   "text": "drehte er sich nach rechts und",
+   "confidence": 0.988237,
+   "polygon": [
+    [
+     1620,
+     1659
+    ],
+    [
+     2230,
+     1656
+    ],
+    [
+     2230,
+     1708
+    ],
+    [
+     1620,
+     1712
+    ]
+   ]
+  },
+  {
+   "text": "Abendlicht. Was aus der alten Fähre wird, ist noch nicht",
+   "confidence": 0.998924,
+   "polygon": [
+    [
+     107,
+     1718
+    ],
+    [
+     1133,
+     1718
+    ],
+    [
+     1133,
+     1776
+    ],
+    [
+     107,
+     1776
+    ]
+   ]
+  },
+  {
+   "text": "verschwand zwischen den beiden Gebäuden. Beinahe",
+   "confidence": 0.988061,
+   "polygon": [
+    [
+     1207,
+     1729
+    ],
+    [
+     2229,
+     1735
+    ],
+    [
+     2229,
+     1792
+    ],
+    [
+     1207,
+     1787
+    ]
+   ]
+  },
+  {
+   "text": "entschieden. Ein Verein möchte sie als Museumsschiff",
+   "confidence": 0.998953,
+   "polygon": [
+    [
+     109,
+     1797
+    ],
+    [
+     1131,
+     1797
+    ],
+    [
+     1131,
+     1847
+    ],
+    [
+     109,
+     1847
+    ]
+   ]
+  },
+  {
+   "text": "wäre er dabei über den umgestürzten Mülleimer gefallen,",
+   "confidence": 0.998347,
+   "polygon": [
+    [
+     1208,
+     1809
+    ],
+    [
+     2227,
+     1809
+    ],
+    [
+     2227,
+     1866
+    ],
+    [
+     1208,
+     1866
+    ]
+   ]
+  },
+  {
+   "text": "erhalten, die Reederei denkt über einen Verkauf nach. Die",
+   "confidence": 0.985962,
+   "polygon": [
+    [
+     105,
+     1864
+    ],
+    [
+     1132,
+     1867
+    ],
+    [
+     1132,
+     1931
+    ],
+    [
+     105,
+     1928
+    ]
+   ]
+  },
+  {
+   "text": "der mitten im Weg lag. Er versuchte, sich in der",
+   "confidence": 0.989916,
+   "polygon": [
+    [
+     1205,
+     1881
+    ],
+    [
+     2234,
+     1883
+    ],
+    [
+     2234,
+     1941
+    ],
+    [
+     1205,
+     1939
+    ]
+   ]
+  },
+  {
+   "text": "Gemeinde will in den kommenden Wochen mit allen",
+   "confidence": 0.993726,
+   "polygon": [
+    [
+     106,
+     1942
+    ],
+    [
+     1132,
+     1945
+    ],
+    [
+     1132,
+     1999
+    ],
+    [
+     106,
+     1996
+    ]
+   ]
+  },
+  {
+   "text": "Dunkelheit",
+   "confidence": 0.999962,
+   "polygon": [
+    [
+     1210,
+     1959
+    ],
+    [
+     1415,
+     1963
+    ],
+    [
+     1414,
+     2013
+    ],
+    [
+     1209,
+     2008
+    ]
+   ]
+  },
+  {
+   "text": "seinen",
+   "confidence": 0.999959,
+   "polygon": [
+    [
+     1434,
+     1963
+    ],
+    [
+     1564,
+     1965
+    ],
+    [
+     1563,
+     2011
+    ],
+    [
+     1433,
+     2009
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     1554,
+     1969
+    ],
+    [
+     1603,
+     1969
+    ],
+    [
+     1603,
+     2005
+    ],
+    [
+     1554,
+     2005
+    ]
+   ]
+  },
+  {
+   "text": "Weg zu",
+   "confidence": 0.913682,
+   "polygon": [
+    [
+     1580,
+     1961
+    ],
+    [
+     1805,
+     1961
+    ],
+    [
+     1805,
+     2017
+    ],
+    [
+     1580,
+     2017
+    ]
+   ]
+  },
+  {
+   "text": "ertasten und",
+   "confidence": 0.997955,
+   "polygon": [
+    [
+     1784,
+     1963
+    ],
+    [
+     2044,
+     1961
+    ],
+    [
+     2044,
+     2010
+    ],
+    [
+     1785,
+     2012
+    ]
+   ]
+  },
+  {
+   "text": "erstarrte:",
+   "confidence": 0.996053,
+   "polygon": [
+    [
+     2066,
+     1960
+    ],
+    [
+     2227,
+     1965
+    ],
+    [
+     2225,
+     2015
+    ],
+    [
+     2065,
+     2010
+    ]
+   ]
+  },
+  {
+   "text": ":",
+   "confidence": 0.741504,
+   "polygon": [
+    [
+     1403,
+     1970
+    ],
+    [
+     1446,
+     1970
+    ],
+    [
+     1446,
+     2004
+    ],
+    [
+     1403,
+     2004
+    ]
+   ]
+  },
+  {
+   "text": "−",
+   "confidence": 0.553146,
+   "polygon": [
+    [
+     2040,
+     1973
+    ],
+    [
+     2071,
+     1973
+    ],
+    [
+     2071,
+     1998
+    ],
+    [
+     2040,
+     1998
+    ]
+   ]
+  },
+  {
+   "text": "Beteiligten sprechen und eine Lösung finden, die der",
+   "confidence": 0.997285,
+   "polygon": [
+    [
+     105,
+     2020
+    ],
+    [
+     1135,
+     2018
+    ],
+    [
+     1135,
+     2075
+    ],
+    [
+     105,
+     2077
+    ]
+   ]
+  },
+  {
+   "text": "Anscheinend gab es keinen anderen Ausweg aus diesem",
+   "confidence": 0.987691,
+   "polygon": [
+    [
+     1207,
+     2030
+    ],
+    [
+     2229,
+     2035
+    ],
+    [
+     2229,
+     2094
+    ],
+    [
+     1207,
+     2088
+    ]
+   ]
+  },
+  {
+   "text": "Geschichte des Schiffes gerecht wird. Bis dahin liegt die",
+   "confidence": 0.985289,
+   "polygon": [
+    [
+     101,
+     2083
+    ],
+    [
+     1137,
+     2091
+    ],
+    [
+     1137,
+     2162
+    ],
+    [
+     101,
+     2154
+    ]
+   ]
+  },
+  {
+   "text": "kleinen Hof als den Durchgang, durch den er gekommen",
+   "confidence": 0.999892,
+   "polygon": [
+    [
+     1208,
+     2106
+    ],
+    [
+     2233,
+     2110
+    ],
+    [
+     2233,
+     2168
+    ],
+    [
+     1208,
+     2165
+    ]
+   ]
+  },
+  {
+   "text": "Fähre im alten Hafenbecken, wo sie schon vor vierzig",
+   "confidence": 0.984994,
+   "polygon": [
+    [
+     105,
+     2163
+    ],
+    [
+     1134,
+     2171
+    ],
+    [
+     1134,
+     2229
+    ],
+    [
+     105,
+     2222
+    ]
+   ]
+  },
+  {
+   "text": "war. Die Schritte wurden lauter und lauter, er sah eine",
+   "confidence": 0.997658,
+   "polygon": [
+    [
+     1210,
+     2187
+    ],
+    [
+     2229,
+     2187
+    ],
+    [
+     2229,
+     2238
+    ],
+    [
+     1210,
+     2238
+    ]
+   ]
+  },
+  {
+   "text": "Jahren zum ersten",
+   "confidence": 0.999243,
+   "polygon": [
+    [
+     106,
+     2246
+    ],
+    [
+     480,
+     2248
+    ],
+    [
+     479,
+     2297
+    ],
+    [
+     106,
+     2295
+    ]
+   ]
+  },
+  {
+   "text": "Mal",
+   "confidence": 0.999915,
+   "polygon": [
+    [
+     493,
+     2251
+    ],
+    [
+     585,
+     2251
+    ],
+    [
+     585,
+     2295
+    ],
+    [
+     493,
+     2295
+    ]
+   ]
+  },
+  {
+   "text": "festgemacht",
+   "confidence": 0.999944,
+   "polygon": [
+    [
+     597,
+     2247
+    ],
+    [
+     830,
+     2247
+    ],
+    [
+     830,
+     2299
+    ],
+    [
+     597,
+     2299
+    ]
+   ]
+  },
+  {
+   "text": "hatte. Für die",
+   "confidence": 0.972258,
+   "polygon": [
+    [
+     836,
+     2245
+    ],
+    [
+     1133,
+     2245
+    ],
+    [
+     1133,
+     2300
+    ],
+    [
+     836,
+     2300
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     469,
+     2258
+    ],
+    [
+     506,
+     2258
+    ],
+    [
+     506,
+     2288
+    ],
+    [
+     469,
+     2288
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     572,
+     2255
+    ],
+    [
+     610,
+     2255
+    ],
+    [
+     610,
+     2289
+    ],
+    [
+     572,
+     2289
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     820,
+     2256
+    ],
+    [
+     857,
+     2256
+    ],
+    [
+     857,
+     2287
+    ],
+    [
+     820,
+     2287
+    ]
+   ]
+  },
+  {
+   "text": "dunkle Gestalt um die Ecke",
+   "confidence": 0.998717,
+   "polygon": [
+    [
+     1209,
+     2259
+    ],
+    [
+     1764,
+     2259
+    ],
+    [
+     1764,
+     2313
+    ],
+    [
+     1209,
+     2313
+    ]
+   ]
+  },
+  {
+   "text": "ebiegen. Fieberhaft irrten",
+   "confidence": 0.98982,
+   "polygon": [
+    [
+     1738,
+     2258
+    ],
+    [
+     2231,
+     2263
+    ],
+    [
+     2231,
+     2317
+    ],
+    [
+     1737,
+     2312
+    ]
+   ]
+  },
+  {
+   "text": "−",
+   "confidence": 0.802009,
+   "polygon": [
+    [
+     597,
+     2272
+    ],
+    [
+     604,
+     2272
+    ],
+    [
+     604,
+     2279
+    ],
+    [
+     597,
+     2279
+    ]
+   ]
+  },
+  {
+   "text": "Bewohner der Insel bleibt sie ein Stück Heimat, das man",
+   "confidence": 0.998843,
+   "polygon": [
+    [
+     104,
+     2315
+    ],
+    [
+     1134,
+     2320
+    ],
+    [
+     1134,
+     2378
+    ],
+    [
+     104,
+     2373
+    ]
+   ]
+  },
+  {
+   "text": "seine Augen durch die nächtliche Dunkelheit und suchten",
+   "confidence": 0.997084,
+   "polygon": [
+    [
+     1205,
+     2334
+    ],
+    [
+     2233,
+     2328
+    ],
+    [
+     2233,
+     2385
+    ],
+    [
+     1205,
+     2391
+    ]
+   ]
+  },
+  {
+   "text": "nicht so leicht ersetzt. Die neue Fähre bietet Platz für",
+   "confidence": 0.989445,
+   "polygon": [
+    [
+     104,
+     2387
+    ],
+    [
+     1135,
+     2392
+    ],
+    [
+     1135,
+     2453
+    ],
+    [
+     104,
+     2448
+    ]
+   ]
+  },
+  {
+   "text": "einen Ausweg.",
+   "confidence": 0.995046,
+   "polygon": [
+    [
+     1208,
+     2408
+    ],
+    [
+     1469,
+     2417
+    ],
+    [
+     1467,
+     2473
+    ],
+    [
+     1206,
+     2464
+    ]
+   ]
+  },
+  {
+   "text": "dreihundert",
+   "confidence": 0.999973,
+   "polygon": [
+    [
+     110,
+     2468
+    ],
+    [
+     320,
+     2472
+    ],
+    [
+     319,
+     2524
+    ],
+    [
+     109,
+     2520
+    ]
+   ]
+  },
+  {
+   "text": "Fahrgäste",
+   "confidence": 0.999774,
+   "polygon": [
+    [
+     342,
+     2473
+    ],
+    [
+     527,
+     2473
+    ],
+    [
+     527,
+     2524
+    ],
+    [
+     342,
+     2524
+    ]
+   ]
+  },
+  {
+   "text": "und",
+   "confidence": 0.857878,
+   "polygon": [
+    [
+     509,
+     2475
+    ],
+    [
+     667,
+     2472
+    ],
+    [
+     668,
+     2519
+    ],
+    [
+     510,
+     2522
+    ]
+   ]
+  },
+  {
+   "text": "zwanzig",
+   "confidence": 0.999224,
+   "polygon": [
+    [
+     646,
+     2472
+    ],
+    [
+     811,
+     2475
+    ],
+    [
+     810,
+     2524
+    ],
+    [
+     645,
+     2521
+    ]
+   ]
+  },
+  {
+   "text": "Fahrzeuge.",
+   "confidence": 0.999932,
+   "polygon": [
+    [
+     836,
+     2472
+    ],
+    [
+     1048,
+     2472
+    ],
+    [
+     1048,
+     2526
+    ],
+    [
+     836,
+     2526
+    ]
+   ]
+  },
+  {
+   "text": " Sie",
+   "confidence": 0.967526,
+   "polygon": [
+    [
+     1021,
+     2472
+    ],
+    [
+     1133,
+     2472
+    ],
+    [
+     1133,
+     2526
+    ],
+    [
+     1021,
+     2526
+    ]
+   ]
+  },
+  {
+   "text": "braucht für die",
+   "confidence": 0.994756,
+   "polygon": [
+    [
+     106,
+     2546
+    ],
+    [
+     416,
+     2543
+    ],
+    [
+     417,
+     2596
+    ],
+    [
+     106,
+     2598
+    ]
+   ]
+  },
+  {
+   "text": "Überfahrt nur noch",
+   "confidence": 0.99106,
+   "polygon": [
+    [
+     430,
+     2545
+    ],
+    [
+     819,
+     2547
+    ],
+    [
+     819,
+     2595
+    ],
+    [
+     430,
+     2593
+    ]
+   ]
+  },
+  {
+   "text": "fünfundzwanzig",
+   "confidence": 0.999899,
+   "polygon": [
+    [
+     834,
+     2542
+    ],
+    [
+     1131,
+     2550
+    ],
+    [
+     1130,
+     2606
+    ],
+    [
+     833,
+     2598
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     405,
+     2555
+    ],
+    [
+     442,
+     2555
+    ],
+    [
+     442,
+     2585
+    ],
+    [
+     405,
+     2585
+    ]
+   ]
+  },
+  {
+   "text": "Martina Musterfrau/abc",
+   "confidence": 0.999254,
+   "polygon": [
+    [
+     1763,
+     2562
+    ],
+    [
+     2232,
+     2562
+    ],
+    [
+     2232,
+     2610
+    ],
+    [
+     1763,
+     2610
+    ]
+   ]
+  },
+  {
+   "text": "Minuten",
+   "confidence": 0.999969,
+   "polygon": [
+    [
+     106,
+     2622
+    ],
+    [
+     269,
+     2622
+    ],
+    [
+     269,
+     2675
+    ],
+    [
+     106,
+     2675
+    ]
+   ]
+  },
+  {
+   "text": "statt",
+   "confidence": 0.999862,
+   "polygon": [
+    [
+     296,
+     2626
+    ],
+    [
+     391,
+     2626
+    ],
+    [
+     391,
+     2674
+    ],
+    [
+     296,
+     2674
+    ]
+   ]
+  },
+  {
+   "text": "vierzig.",
+   "confidence": 0.999761,
+   "polygon": [
+    [
+     412,
+     2626
+    ],
+    [
+     565,
+     2626
+    ],
+    [
+     565,
+     2672
+    ],
+    [
+     412,
+     2672
+    ]
+   ]
+  },
+  {
+   "text": "An",
+   "confidence": 0.999617,
+   "polygon": [
+    [
+     593,
+     2626
+    ],
+    [
+     668,
+     2626
+    ],
+    [
+     668,
+     2669
+    ],
+    [
+     593,
+     2669
+    ]
+   ]
+  },
+  {
+   "text": " Bord",
+   "confidence": 0.871777,
+   "polygon": [
+    [
+     644,
+     2621
+    ],
+    [
+     802,
+     2621
+    ],
+    [
+     802,
+     2674
+    ],
+    [
+     644,
+     2674
+    ]
+   ]
+  },
+  {
+   "text": "gibt es einen",
+   "confidence": 0.925281,
+   "polygon": [
+    [
+     828,
+     2619
+    ],
+    [
+     1136,
+     2621
+    ],
+    [
+     1136,
+     2677
+    ],
+    [
+     827,
+     2675
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     255,
+     2631
+    ],
+    [
+     308,
+     2631
+    ],
+    [
+     308,
+     2667
+    ],
+    [
+     255,
+     2667
+    ]
+   ]
+  },
+  {
+   "text": "t",
+   "confidence": 0.330406,
+   "polygon": [
+    [
+     371,
+     2632
+    ],
+    [
+     428,
+     2632
+    ],
+    [
+     428,
+     2666
+    ],
+    [
+     371,
+     2666
+    ]
+   ]
+  },
+  {
+   "text": "",
+   "confidence": 0.0,
+   "polygon": [
+    [
+     562,
+     2636
+    ],
+    [
+     604,
+     2636
+    ],
+    [
+     604,
+     2660
+    ],
+    [
+     562,
+     2660
+    ]
+   ]
+  },
+  {
+   "text": "Aufenthaltsraum mit großen Fenstern, eine kleine Küche",
+   "confidence": 0.999741,
+   "polygon": [
+    [
+     108,
+     2697
+    ],
+    [
+     1130,
+     2697
+    ],
+    [
+     1130,
+     2748
+    ],
+    [
+     108,
+     2748
+    ]
+   ]
+  },
+  {
+   "text": "Hafenzeitung, Sonntag, 19.30 Uhr",
+   "confidence": 0.990183,
+   "polygon": [
+    [
+     1206,
+     2695
+    ],
+    [
+     2065,
+     2697
+    ],
+    [
+     2065,
+     2768
+    ],
+    [
+     1206,
+     2766
+    ]
+   ]
+  }
+ ],
+ "model": {
+  "modelId": "latin_PP-OCRv5_mobile_rec",
+  "modelVersion": "PP-OCRv5",
+  "modelSha256": "53cdc8b481a7394bb108f96d0fb3432b0a8f392e22c7d18f06dbb2d42b8b25f9",
+  "detectionModelId": "PP-OCRv5_mobile_det",
+  "detectionModelSha256": "afa1820cb16c1fd0dad589d0f8b389139061c1ef6d68019685fd07be997dda5b",
+  "paddleVersion": "3.7.0",
+  "workerVersion": "0.1.0"
+ }
+}

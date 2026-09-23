@@ -1,0 +1,1753 @@
+{
+ "source": "synth_lorem_columns.png",
+ "language": "latin",
+ "words": [
+  {
+   "text": "01Lorem ipsum dolor sit amet, consectetur",
+   "confidence": 0.9995,
+   "polygon": [
+    [
+     213,
+     256
+    ],
+    [
+     1061,
+     256
+    ],
+    [
+     1061,
+     303
+    ],
+    [
+     213,
+     303
+    ]
+   ]
+  },
+  {
+   "text": "Er hörte leise Schritte hinter sich. Das",
+   "confidence": 0.984476,
+   "polygon": [
+    [
+     1183,
+     255
+    ],
+    [
+     2077,
+     255
+    ],
+    [
+     2077,
+     299
+    ],
+    [
+     1183,
+     299
+    ]
+   ]
+  },
+  {
+   "text": "One one one one one one one one one one",
+   "confidence": 0.990761,
+   "polygon": [
+    [
+     2233,
+     257
+    ],
+    [
+     3063,
+     261
+    ],
+    [
+     3063,
+     302
+    ],
+    [
+     2233,
+     298
+    ]
+   ]
+  },
+  {
+   "text": "02adipiscing elit. Vestibulum consequat mi",
+   "confidence": 0.993748,
+   "polygon": [
+    [
+     213,
+     315
+    ],
+    [
+     1062,
+     315
+    ],
+    [
+     1062,
+     365
+    ],
+    [
+     213,
+     365
+    ]
+   ]
+  },
+  {
+   "text": "bedeutete nichts Gutes. Wer würde ihm",
+   "confidence": 0.987752,
+   "polygon": [
+    [
+     1182,
+     313
+    ],
+    [
+     2076,
+     315
+    ],
+    [
+     2076,
+     359
+    ],
+    [
+     1182,
+     357
+    ]
+   ]
+  },
+  {
+   "text": "Two two two two two two two two two two",
+   "confidence": 0.987438,
+   "polygon": [
+    [
+     2232,
+     318
+    ],
+    [
+     3091,
+     321
+    ],
+    [
+     3090,
+     359
+    ],
+    [
+     2232,
+     356
+    ]
+   ]
+  },
+  {
+   "text": "03quis pretium semper. Proin luctus orci ac",
+   "confidence": 0.999568,
+   "polygon": [
+    [
+     211,
+     375
+    ],
+    [
+     1062,
+     375
+    ],
+    [
+     1062,
+     425
+    ],
+    [
+     211,
+     425
+    ]
+   ]
+  },
+  {
+   "text": "schon folgen, spät in der Nacht und dazu",
+   "confidence": 0.991051,
+   "polygon": [
+    [
+     1180,
+     374
+    ],
+    [
+     2080,
+     371
+    ],
+    [
+     2080,
+     421
+    ],
+    [
+     1180,
+     424
+    ]
+   ]
+  },
+  {
+   "text": "Three three three three three three three three",
+   "confidence": 0.991974,
+   "polygon": [
+    [
+     2232,
+     372
+    ],
+    [
+     3120,
+     375
+    ],
+    [
+     3119,
+     418
+    ],
+    [
+     2232,
+     415
+    ]
+   ]
+  },
+  {
+   "text": "04neque venenatis, quis commodo dolor",
+   "confidence": 0.987761,
+   "polygon": [
+    [
+     209,
+     431
+    ],
+    [
+     1063,
+     430
+    ],
+    [
+     1063,
+     485
+    ],
+    [
+     209,
+     486
+    ]
+   ]
+  },
+  {
+   "text": "noch in dieser engen Gasse mitten im übel",
+   "confidence": 0.999649,
+   "polygon": [
+    [
+     1179,
+     429
+    ],
+    [
+     2079,
+     428
+    ],
+    [
+     2079,
+     482
+    ],
+    [
+     1179,
+     483
+    ]
+   ]
+  },
+  {
+   "text": "Fore fore fore",
+   "confidence": 0.999745,
+   "polygon": [
+    [
+     2231,
+     431
+    ],
+    [
+     2507,
+     433
+    ],
+    [
+     2507,
+     478
+    ],
+    [
+     2231,
+     476
+    ]
+   ]
+  },
+  {
+   "text": "05posuere. Curabitur dignissim sapien quis",
+   "confidence": 0.995308,
+   "polygon": [
+    [
+     210,
+     489
+    ],
+    [
+     1060,
+     493
+    ],
+    [
+     1060,
+     548
+    ],
+    [
+     210,
+     543
+    ]
+   ]
+  },
+  {
+   "text": "beleumundeten Hafenviertel? Gerade jetzt,",
+   "confidence": 0.994847,
+   "polygon": [
+    [
+     1181,
+     487
+    ],
+    [
+     2076,
+     493
+    ],
+    [
+     2076,
+     543
+    ],
+    [
+     1181,
+     536
+    ]
+   ]
+  },
+  {
+   "text": "Five five five five five five five five five five",
+   "confidence": 0.987924,
+   "polygon": [
+    [
+     2230,
+     489
+    ],
+    [
+     3117,
+     490
+    ],
+    [
+     3117,
+     537
+    ],
+    [
+     2230,
+     536
+    ]
+   ]
+  },
+  {
+   "text": "06cursus egestas. Donec blandit auctor arcu,",
+   "confidence": 0.998104,
+   "polygon": [
+    [
+     210,
+     548
+    ],
+    [
+     1062,
+     551
+    ],
+    [
+     1062,
+     602
+    ],
+    [
+     210,
+     599
+    ]
+   ]
+  },
+  {
+   "text": "wo er das Ding seines Lebens gedreht hatte",
+   "confidence": 0.996192,
+   "polygon": [
+    [
+     1180,
+     550
+    ],
+    [
+     2077,
+     550
+    ],
+    [
+     2077,
+     601
+    ],
+    [
+     1180,
+     601
+    ]
+   ]
+  },
+  {
+   "text": "07nec pellentesque eros molestie eget. In",
+   "confidence": 0.99814,
+   "polygon": [
+    [
+     209,
+     606
+    ],
+    [
+     1060,
+     610
+    ],
+    [
+     1060,
+     664
+    ],
+    [
+     209,
+     660
+    ]
+   ]
+  },
+  {
+   "text": "und mit der Beute verschwinden wollte!",
+   "confidence": 0.976257,
+   "polygon": [
+    [
+     1184,
+     610
+    ],
+    [
+     2076,
+     610
+    ],
+    [
+     2076,
+     654
+    ],
+    [
+     1184,
+     654
+    ]
+   ]
+  },
+  {
+   "text": "08consectetur aliquam hendrerit. Sed cursus",
+   "confidence": 0.998654,
+   "polygon": [
+    [
+     211,
+     668
+    ],
+    [
+     1060,
+     670
+    ],
+    [
+     1060,
+     717
+    ],
+    [
+     211,
+     715
+    ]
+   ]
+  },
+  {
+   "text": "Hatte einer seiner zahllosen Kollegen",
+   "confidence": 0.988523,
+   "polygon": [
+    [
+     1180,
+     664
+    ],
+    [
+     2077,
+     669
+    ],
+    [
+     2077,
+     719
+    ],
+    [
+     1180,
+     714
+    ]
+   ]
+  },
+  {
+   "text": "09mauris vitae ligula pellentesque, non",
+   "confidence": 0.96932,
+   "polygon": [
+    [
+     210,
+     724
+    ],
+    [
+     1063,
+     730
+    ],
+    [
+     1063,
+     780
+    ],
+    [
+     210,
+     774
+    ]
+   ]
+  },
+  {
+   "text": "dieselbe Idee gehabt, ihn beobachtet und",
+   "confidence": 0.987539,
+   "polygon": [
+    [
+     1183,
+     724
+    ],
+    [
+     2079,
+     726
+    ],
+    [
+     2079,
+     777
+    ],
+    [
+     1183,
+     775
+    ]
+   ]
+  },
+  {
+   "text": "10pellentesque urna aliquet. Fusce placerat",
+   "confidence": 0.979294,
+   "polygon": [
+    [
+     213,
+     786
+    ],
+    [
+     1063,
+     788
+    ],
+    [
+     1063,
+     839
+    ],
+    [
+     213,
+     837
+    ]
+   ]
+  },
+  {
+   "text": "abgewartet, um ihn nun um die Früchte",
+   "confidence": 0.98202,
+   "polygon": [
+    [
+     1185,
+     788
+    ],
+    [
+     2077,
+     782
+    ],
+    [
+     2077,
+     833
+    ],
+    [
+     1185,
+     839
+    ]
+   ]
+  },
+  {
+   "text": "mauris enim, nec rutrum purus semper vel.",
+   "confidence": 0.996913,
+   "polygon": [
+    [
+     208,
+     848
+    ],
+    [
+     1062,
+     844
+    ],
+    [
+     1062,
+     898
+    ],
+    [
+     208,
+     901
+    ]
+   ]
+  },
+  {
+   "text": "seiner Arbeit zu erleichtern?",
+   "confidence": 0.985032,
+   "polygon": [
+    [
+     1184,
+     847
+    ],
+    [
+     1737,
+     847
+    ],
+    [
+     1737,
+     890
+    ],
+    [
+     1184,
+     890
+    ]
+   ]
+  },
+  {
+   "text": "Praesent tincidunt neque eu pellentesque",
+   "confidence": 0.984271,
+   "polygon": [
+    [
+     208,
+     900
+    ],
+    [
+     1061,
+     902
+    ],
+    [
+     1061,
+     957
+    ],
+    [
+     208,
+     955
+    ]
+   ]
+  },
+  {
+   "text": "Überschrift Dummy",
+   "confidence": 0.982849,
+   "polygon": [
+    [
+     1185,
+     918
+    ],
+    [
+     1670,
+     929
+    ],
+    [
+     1669,
+     986
+    ],
+    [
+     1183,
+     974
+    ]
+   ]
+  },
+  {
+   "text": "pharetra. Fusce pellentesque est orci.",
+   "confidence": 0.986748,
+   "polygon": [
+    [
+     210,
+     964
+    ],
+    [
+     1062,
+     964
+    ],
+    [
+     1062,
+     1013
+    ],
+    [
+     210,
+     1013
+    ]
+   ]
+  },
+  {
+   "text": "Oder gehörten die Schritte hinter ihm zu",
+   "confidence": 0.975096,
+   "polygon": [
+    [
+     1244,
+     1012
+    ],
+    [
+     2078,
+     1012
+    ],
+    [
+     2078,
+     1063
+    ],
+    [
+     1244,
+     1063
+    ]
+   ]
+  },
+  {
+   "text": "Integer sodales tincidunt tristique. Sed a",
+   "confidence": 0.998296,
+   "polygon": [
+    [
+     211,
+     1023
+    ],
+    [
+     1062,
+     1021
+    ],
+    [
+     1062,
+     1071
+    ],
+    [
+     211,
+     1073
+    ]
+   ]
+  },
+  {
+   "text": "einem der unzähligen Gesetzeshüter dieser",
+   "confidence": 0.990836,
+   "polygon": [
+    [
+     1181,
+     1071
+    ],
+    [
+     2080,
+     1073
+    ],
+    [
+     2080,
+     1123
+    ],
+    [
+     1181,
+     1121
+    ]
+   ]
+  },
+  {
+   "text": "metus posuere, adipiscing nunc et, viverra",
+   "confidence": 0.999774,
+   "polygon": [
+    [
+     210,
+     1085
+    ],
+    [
+     1060,
+     1083
+    ],
+    [
+     1060,
+     1131
+    ],
+    [
+     210,
+     1133
+    ]
+   ]
+  },
+  {
+   "text": "odio. Donec auctor molestie sem, sit amet",
+   "confidence": 0.995757,
+   "polygon": [
+    [
+     213,
+     1140
+    ],
+    [
+     1061,
+     1145
+    ],
+    [
+     1061,
+     1189
+    ],
+    [
+     213,
+     1184
+    ]
+   ]
+  },
+  {
+   "text": "Stadt, und die stählerne Acht um seine",
+   "confidence": 0.984758,
+   "polygon": [
+    [
+     1184,
+     1131
+    ],
+    [
+     2077,
+     1133
+    ],
+    [
+     2077,
+     1179
+    ],
+    [
+     1184,
+     1177
+    ]
+   ]
+  },
+  {
+   "text": "tristique lectus hendrerit sed. Cras sodales",
+   "confidence": 0.983063,
+   "polygon": [
+    [
+     212,
+     1199
+    ],
+    [
+     1061,
+     1196
+    ],
+    [
+     1061,
+     1246
+    ],
+    [
+     212,
+     1249
+    ]
+   ]
+  },
+  {
+   "text": "Handgelenke würde gleich zuschnappen? Er",
+   "confidence": 0.99647,
+   "polygon": [
+    [
+     1183,
+     1190
+    ],
+    [
+     2077,
+     1190
+    ],
+    [
+     2077,
+     1244
+    ],
+    [
+     1183,
+     1244
+    ]
+   ]
+  },
+  {
+   "text": "nisl sed orci mattis iaculis. Nunc eget",
+   "confidence": 0.977111,
+   "polygon": [
+    [
+     211,
+     1255
+    ],
+    [
+     1062,
+     1262
+    ],
+    [
+     1062,
+     1310
+    ],
+    [
+     211,
+     1302
+    ]
+   ]
+  },
+  {
+   "text": "konnte die Aufforderung stehen zu bleiben",
+   "confidence": 0.997187,
+   "polygon": [
+    [
+     1181,
+     1248
+    ],
+    [
+     2077,
+     1250
+    ],
+    [
+     2077,
+     1300
+    ],
+    [
+     1181,
+     1298
+    ]
+   ]
+  },
+  {
+   "text": "dolor",
+   "confidence": 0.951228,
+   "polygon": [
+    [
+     211,
+     1313
+    ],
+    [
+     391,
+     1317
+    ],
+    [
+     390,
+     1364
+    ],
+    [
+     210,
+     1361
+    ]
+   ]
+  },
+  {
+   "text": "risus a,",
+   "confidence": 0.99597,
+   "polygon": [
+    [
+     860,
+     1315
+    ],
+    [
+     1068,
+     1322
+    ],
+    [
+     1066,
+     1375
+    ],
+    [
+     858,
+     1368
+    ]
+   ]
+  },
+  {
+   "text": "schon hören. Gehetzt sah er sich um.",
+   "confidence": 0.993953,
+   "polygon": [
+    [
+     1181,
+     1308
+    ],
+    [
+     2079,
+     1308
+    ],
+    [
+     2079,
+     1357
+    ],
+    [
+     1181,
+     1357
+    ]
+   ]
+  },
+  {
+   "text": "accumsan,I",
+   "confidence": 0.929419,
+   "polygon": [
+    [
+     369,
+     1321
+    ],
+    [
+     659,
+     1321
+    ],
+    [
+     659,
+     1365
+    ],
+    [
+     369,
+     1365
+    ]
+   ]
+  },
+  {
+   "text": "pharetra",
+   "confidence": 0.999972,
+   "polygon": [
+    [
+     639,
+     1319
+    ],
+    [
+     814,
+     1319
+    ],
+    [
+     814,
+     1365
+    ],
+    [
+     639,
+     1365
+    ]
+   ]
+  },
+  {
+   "text": "Plötzlich erblickte er den",
+   "confidence": 0.958794,
+   "polygon": [
+    [
+     1182,
+     1364
+    ],
+    [
+     1885,
+     1364
+    ],
+    [
+     1885,
+     1415
+    ],
+    [
+     1182,
+     1415
+    ]
+   ]
+  },
+  {
+   "text": "Nunc",
+   "confidence": 0.999916,
+   "polygon": [
+    [
+     698,
+     1375
+    ],
+    [
+     818,
+     1380
+    ],
+    [
+     816,
+     1423
+    ],
+    [
+     696,
+     1418
+    ]
+   ]
+  },
+  {
+   "text": "vulputate",
+   "confidence": 0.999971,
+   "polygon": [
+    [
+     870,
+     1375
+    ],
+    [
+     1062,
+     1378
+    ],
+    [
+     1061,
+     1430
+    ],
+    [
+     869,
+     1427
+    ]
+   ]
+  },
+  {
+   "text": "schmalen",
+   "confidence": 0.999986,
+   "polygon": [
+    [
+     1881,
+     1368
+    ],
+    [
+     2077,
+     1368
+    ],
+    [
+     2077,
+     1413
+    ],
+    [
+     1881,
+     1413
+    ]
+   ]
+  },
+  {
+   "text": "vestibulum",
+   "confidence": 0.999977,
+   "polygon": [
+    [
+     212,
+     1378
+    ],
+    [
+     439,
+     1378
+    ],
+    [
+     439,
+     1420
+    ],
+    [
+     212,
+     1420
+    ]
+   ]
+  },
+  {
+   "text": "mauris.",
+   "confidence": 0.955902,
+   "polygon": [
+    [
+     491,
+     1382
+    ],
+    [
+     713,
+     1382
+    ],
+    [
+     713,
+     1420
+    ],
+    [
+     491,
+     1420
+    ]
+   ]
+  },
+  {
+   "text": "lobortis mollis. Vivamus nec tellus",
+   "confidence": 0.973792,
+   "polygon": [
+    [
+     207,
+     1434
+    ],
+    [
+     1062,
+     1432
+    ],
+    [
+     1062,
+     1482
+    ],
+    [
+     207,
+     1484
+    ]
+   ]
+  },
+  {
+   "text": "Durchgang. Blitzartig drehte er sich nach",
+   "confidence": 0.99853,
+   "polygon": [
+    [
+     1180,
+     1425
+    ],
+    [
+     2079,
+     1424
+    ],
+    [
+     2079,
+     1478
+    ],
+    [
+     1180,
+     1479
+    ]
+   ]
+  },
+  {
+   "text": "faucibus, tempor magna nec, facilisis felis.",
+   "confidence": 0.978393,
+   "polygon": [
+    [
+     209,
+     1491
+    ],
+    [
+     1063,
+     1491
+    ],
+    [
+     1063,
+     1548
+    ],
+    [
+     209,
+     1548
+    ]
+   ]
+  },
+  {
+   "text": "rechts und verschwand zwischen den beiden",
+   "confidence": 0.99994,
+   "polygon": [
+    [
+     1179,
+     1484
+    ],
+    [
+     2077,
+     1485
+    ],
+    [
+     2077,
+     1532
+    ],
+    [
+     1179,
+     1531
+    ]
+   ]
+  },
+  {
+   "text": "Donec commodo",
+   "confidence": 0.968174,
+   "polygon": [
+    [
+     210,
+     1552
+    ],
+    [
+     607,
+     1555
+    ],
+    [
+     606,
+     1603
+    ],
+    [
+     210,
+     1600
+    ]
+   ]
+  },
+  {
+   "text": "Gebäuden. Beinahe wäre er dabei über den",
+   "confidence": 0.99234,
+   "polygon": [
+    [
+     1184,
+     1545
+    ],
+    [
+     2077,
+     1544
+    ],
+    [
+     2077,
+     1591
+    ],
+    [
+     1184,
+     1592
+    ]
+   ]
+  },
+  {
+   "text": " enim a vehicula",
+   "confidence": 0.956951,
+   "polygon": [
+    [
+     584,
+     1555
+    ],
+    [
+     1059,
+     1551
+    ],
+    [
+     1059,
+     1598
+    ],
+    [
+     585,
+     1602
+    ]
+   ]
+  },
+  {
+   "text": "pellentesque. Nullam vehicula vestibulum",
+   "confidence": 0.999237,
+   "polygon": [
+    [
+     208,
+     1614
+    ],
+    [
+     1060,
+     1609
+    ],
+    [
+     1060,
+     1659
+    ],
+    [
+     208,
+     1664
+    ]
+   ]
+  },
+  {
+   "text": "umgestürzten Mülleimer gefallen, der mitten",
+   "confidence": 0.994641,
+   "polygon": [
+    [
+     1181,
+     1606
+    ],
+    [
+     2079,
+     1601
+    ],
+    [
+     2079,
+     1653
+    ],
+    [
+     1181,
+     1658
+    ]
+   ]
+  },
+  {
+   "text": "est vel ultricies. Aliquam velit massa,",
+   "confidence": 0.994524,
+   "polygon": [
+    [
+     208,
+     1667
+    ],
+    [
+     1062,
+     1672
+    ],
+    [
+     1062,
+     1722
+    ],
+    [
+     208,
+     1717
+    ]
+   ]
+  },
+  {
+   "text": "im Weg lag. Er versuchte, sich in der",
+   "confidence": 0.993995,
+   "polygon": [
+    [
+     1180,
+     1664
+    ],
+    [
+     2082,
+     1661
+    ],
+    [
+     2082,
+     1712
+    ],
+    [
+     1180,
+     1715
+    ]
+   ]
+  },
+  {
+   "text": "laoreet vel leo nec, volutpat facilisis eros.",
+   "confidence": 0.990665,
+   "polygon": [
+    [
+     208,
+     1729
+    ],
+    [
+     1061,
+     1732
+    ],
+    [
+     1061,
+     1780
+    ],
+    [
+     208,
+     1776
+    ]
+   ]
+  },
+  {
+   "text": "Dunkelheit seinen",
+   "confidence": 0.997001,
+   "polygon": [
+    [
+     1183,
+     1720
+    ],
+    [
+     1578,
+     1725
+    ],
+    [
+     1577,
+     1770
+    ],
+    [
+     1183,
+     1764
+    ]
+   ]
+  },
+  {
+   "text": "n Weg zu ertasten und",
+   "confidence": 0.972423,
+   "polygon": [
+    [
+     1551,
+     1725
+    ],
+    [
+     2079,
+     1721
+    ],
+    [
+     2080,
+     1768
+    ],
+    [
+     1552,
+     1773
+    ]
+   ]
+  },
+  {
+   "text": "Donec consequat arcu ut diam tempor",
+   "confidence": 0.991867,
+   "polygon": [
+    [
+     209,
+     1787
+    ],
+    [
+     1064,
+     1791
+    ],
+    [
+     1064,
+     1842
+    ],
+    [
+     209,
+     1839
+    ]
+   ]
+  },
+  {
+   "text": "erstarrte: Anscheinend gab es keinen anderen",
+   "confidence": 0.99731,
+   "polygon": [
+    [
+     1182,
+     1783
+    ],
+    [
+     2076,
+     1781
+    ],
+    [
+     2076,
+     1828
+    ],
+    [
+     1182,
+     1829
+    ]
+   ]
+  },
+  {
+   "text": "luctus. Cum sociis natoque penatibus et",
+   "confidence": 0.996795,
+   "polygon": [
+    [
+     209,
+     1846
+    ],
+    [
+     1063,
+     1850
+    ],
+    [
+     1063,
+     1901
+    ],
+    [
+     209,
+     1897
+    ]
+   ]
+  },
+  {
+   "text": "Ausweg aus diesem kleinen Hof als den",
+   "confidence": 0.994048,
+   "polygon": [
+    [
+     1182,
+     1842
+    ],
+    [
+     2079,
+     1835
+    ],
+    [
+     2080,
+     1885
+    ],
+    [
+     1182,
+     1892
+    ]
+   ]
+  },
+  {
+   "text": "magnis dis parturient montes, nascetur",
+   "confidence": 0.999011,
+   "polygon": [
+    [
+     209,
+     1906
+    ],
+    [
+     1062,
+     1904
+    ],
+    [
+     1062,
+     1960
+    ],
+    [
+     209,
+     1962
+    ]
+   ]
+  },
+  {
+   "text": "Durchgang, durch den er gekommen war.",
+   "confidence": 0.987175,
+   "polygon": [
+    [
+     1182,
+     1899
+    ],
+    [
+     2079,
+     1899
+    ],
+    [
+     2079,
+     1949
+    ],
+    [
+     1182,
+     1949
+    ]
+   ]
+  },
+  {
+   "text": "ridiculus mus. Praesent vitae lacus vel leo",
+   "confidence": 0.995146,
+   "polygon": [
+    [
+     210,
+     1964
+    ],
+    [
+     1060,
+     1966
+    ],
+    [
+     1060,
+     2013
+    ],
+    [
+     210,
+     2011
+    ]
+   ]
+  },
+  {
+   "text": "Die Schritte wurden lauter und lauter, er sah",
+   "confidence": 0.993136,
+   "polygon": [
+    [
+     1182,
+     1956
+    ],
+    [
+     2077,
+     1958
+    ],
+    [
+     2077,
+     2006
+    ],
+    [
+     1182,
+     2004
+    ]
+   ]
+  },
+  {
+   "text": "eine dunkle Gestalt um die Ecke biegen.",
+   "confidence": 0.995085,
+   "polygon": [
+    [
+     1182,
+     2012
+    ],
+    [
+     2076,
+     2018
+    ],
+    [
+     2076,
+     2069
+    ],
+    [
+     1182,
+     2063
+    ]
+   ]
+  },
+  {
+   "text": "sodales pharetra a a nibh. Vestibulum ante",
+   "confidence": 0.995925,
+   "polygon": [
+    [
+     209,
+     2026
+    ],
+    [
+     1061,
+     2026
+    ],
+    [
+     1061,
+     2076
+    ],
+    [
+     209,
+     2076
+    ]
+   ]
+  },
+  {
+   "text": "Fieberhaft irrten seine Augen durch die",
+   "confidence": 0.974859,
+   "polygon": [
+    [
+     1180,
+     2072
+    ],
+    [
+     2078,
+     2074
+    ],
+    [
+     2078,
+     2128
+    ],
+    [
+     1180,
+     2126
+    ]
+   ]
+  },
+  {
+   "text": "ipsum primis in faucibus orci luctus.",
+   "confidence": 0.99306,
+   "polygon": [
+    [
+     209,
+     2086
+    ],
+    [
+     933,
+     2079
+    ],
+    [
+     934,
+     2131
+    ],
+    [
+     209,
+     2137
+    ]
+   ]
+  },
+  {
+   "text": "nächtliche Dunkelheit und suchten einen",
+   "confidence": 0.991978,
+   "polygon": [
+    [
+     1180,
+     2132
+    ],
+    [
+     2078,
+     2136
+    ],
+    [
+     2078,
+     2183
+    ],
+    [
+     1180,
+     2179
+    ]
+   ]
+  },
+  {
+   "text": "Ausweg.",
+   "confidence": 0.999869,
+   "polygon": [
+    [
+     1184,
+     2193
+    ],
+    [
+     1360,
+     2201
+    ],
+    [
+     1358,
+     2247
+    ],
+    [
+     1182,
+     2239
+    ]
+   ]
+  }
+ ],
+ "model": {
+  "modelId": "latin_PP-OCRv5_mobile_rec",
+  "modelVersion": "PP-OCRv5",
+  "modelSha256": "53cdc8b481a7394bb108f96d0fb3432b0a8f392e22c7d18f06dbb2d42b8b25f9",
+  "detectionModelId": "PP-OCRv5_mobile_det",
+  "detectionModelSha256": "afa1820cb16c1fd0dad589d0f8b389139061c1ef6d68019685fd07be997dda5b",
+  "paddleVersion": "3.7.0",
+  "workerVersion": "0.1.0"
+ }
+}
