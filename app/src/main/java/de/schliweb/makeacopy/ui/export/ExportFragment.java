@@ -1097,9 +1097,21 @@ public class ExportFragment extends Fragment {
         R.string.confirm_clear_pages_title,
         R.string.confirm_clear_pages_message,
         () -> {
-          // Reset to initial single page
-          Bitmap bmp = exportViewModel.getDocumentBitmap().getValue();
-          exportSessionViewModel.setInitial(bmp != null ? newInMemoryPage(bmp, 0) : null);
+          // Reset to the previewed page itself: it keeps its id, files and OCR result. An
+          // anonymous page built from the preview bitmap would neither own the in-memory OCR
+          // state (see ocrStateBelongsTo) nor have a persisted OCR text, so the export would
+          // lose the text.
+          List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
+          CompletedScan keep =
+              (cur != null && activeSessionPageIndex >= 0 && activeSessionPageIndex < cur.size())
+                  ? cur.get(activeSessionPageIndex)
+                  : null;
+          if (keep == null) {
+            Bitmap bmp = exportViewModel.getDocumentBitmap().getValue();
+            keep = bmp != null ? newInMemoryPage(bmp, 0) : null;
+          }
+          activeSessionPageIndex = keep != null ? 0 : -1;
+          exportSessionViewModel.setInitial(keep);
         });
   }
 
@@ -1486,12 +1498,19 @@ public class ExportFragment extends Fragment {
         Boolean.TRUE.equals(exportViewModel.isConvertToGrayscale().getValue());
     final Uri selectedLocation = exportViewModel.getSelectedFileLocation().getValue();
 
-    final String recognizedText = getOcrTextFromState();
+    // Single page: the in-memory OCR state only describes the page that last went through the
+    // scan flow. After deleting that page the remaining one must use its own persisted result.
+    final CompletedScan singlePage = isMulti ? null : singleSessionPage(pages);
+    final boolean useOcrState = singlePage == null || ocrStateBelongsTo(singlePage);
+    final String recognizedText =
+        useOcrState ? getOcrTextFromState() : ExportTxtHelper.readPersistedPageText(singlePage);
     final List<RecognizedWord> recognizedWords =
         ensurePdfTextLayerWords(
-            resolveCurrentPageWords(),
+            useOcrState ? resolveCurrentPageWords() : loadWordsForSessionPage(singlePage),
             recognizedText,
             exportViewModel.getDocumentBitmap().getValue());
+
+    final java.util.function.Predicate<CompletedScan> ownsOcrState = ocrOwnershipSnapshot();
 
     final Context appContext = requireContext().getApplicationContext();
     exportViewModel.setTxtExportUri(null);
@@ -1517,6 +1536,7 @@ public class ExportFragment extends Fragment {
                         isMulti ? pages : null,
                         documentBitmap,
                         recognizedWords,
+                        ownsOcrState,
                         selectedLocation,
                         convertToGrayscale);
                 final int pageCountForIndex = isMulti ? pages.size() : 1;
@@ -1588,6 +1608,8 @@ public class ExportFragment extends Fragment {
    * Writes the searchable PDF on the calling (background) thread.
    *
    * @param multiPages the session pages for a multi-page export, {@code null} for a single page
+   * @param ownsOcrState which session page the in-memory OCR words belong to, see {@link
+   *     #ocrOwnershipSnapshot()}
    * @return the URI of the written document, or {@code null} on failure
    */
   private Uri createPdf(
@@ -1595,6 +1617,7 @@ public class ExportFragment extends Fragment {
       List<CompletedScan> multiPages,
       Bitmap documentBitmap,
       List<RecognizedWord> recognizedWords,
+      java.util.function.Predicate<CompletedScan> ownsOcrState,
       Uri selectedLocation,
       boolean convertToGrayscale) {
     // Resolve export settings from SharedPreferences via helper
@@ -1638,7 +1661,7 @@ public class ExportFragment extends Fragment {
     // Streaming export: pages are loaded lazily one at a time via PageSource so
     // peak memory depends on a single page, not on the document page count.
     final SessionPageSource pageSource =
-        new SessionPageSource(new ArrayList<>(multiPages), documentBitmap, recognizedWords);
+        new SessionPageSource(new ArrayList<>(multiPages), ownsOcrState, recognizedWords);
     final int totalPages = pageSource.getPageCount();
     postToUiSafe(
         () -> {
@@ -1666,7 +1689,7 @@ public class ExportFragment extends Fragment {
   /** Hands the session pages to PdfCreator one at a time (streaming multi-page export). */
   private final class SessionPageSource implements PdfCreator.PageSource {
     private final List<CompletedScan> pageSnapshot;
-    private final Bitmap currentPreviewBitmap;
+    private final java.util.function.Predicate<CompletedScan> ownsOcrState;
     private final List<RecognizedWord> currentPageWords;
 
     // Tracks whether the bitmap handed out for the current page is owned by
@@ -1677,10 +1700,10 @@ public class ExportFragment extends Fragment {
 
     SessionPageSource(
         List<CompletedScan> pageSnapshot,
-        Bitmap currentPreviewBitmap,
+        java.util.function.Predicate<CompletedScan> ownsOcrState,
         List<RecognizedWord> currentPageWords) {
       this.pageSnapshot = pageSnapshot;
-      this.currentPreviewBitmap = currentPreviewBitmap;
+      this.ownsOcrState = ownsOcrState;
       this.currentPageWords = currentPageWords;
     }
 
@@ -1732,8 +1755,9 @@ public class ExportFragment extends Fragment {
       CompletedScan s = pageSnapshot.get(index);
       if (s == null) return null;
       List<RecognizedWord> pageWords = loadWordsForSessionPage(s);
+      // In-memory OCR words only for the page they belong to (the freshly scanned one)
       if (pageWords == null
-          && s.inMemoryBitmap() == currentPreviewBitmap
+          && ownsOcrState.test(s)
           && currentPageWords != null
           && !currentPageWords.isEmpty()) {
         pageWords = currentPageWords;
@@ -2242,7 +2266,7 @@ public class ExportFragment extends Fragment {
         ExportTxtHelper.collectOcrText(
             exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null,
             getOcrTextFromState(),
-            exportViewModel.getDocumentBitmap().getValue());
+            this::ocrStateBelongsTo);
     switch (ExportTxtHelper.decideTxtExport(includeTxt, inboxMode, ocrText)) {
       case INBOX:
         // Inbox Mode: export TXT directly to inbox without file picker
@@ -2328,7 +2352,7 @@ public class ExportFragment extends Fragment {
         exportSessionViewModel,
         txtUri,
         getOcrTextFromState(),
-        exportViewModel.getDocumentBitmap().getValue(),
+        this::ocrStateBelongsTo,
         () -> deferAssignUntilTxt = false);
   }
 
@@ -3212,6 +3236,36 @@ public class ExportFragment extends Fragment {
     return (s != null) ? s.getEffectiveWords() : null;
   }
 
+  /**
+   * Whether the in-memory OCR state ({@link OCRViewModel}) belongs to {@code page}. OCR runs on the
+   * crop bitmap, and the page that last went through the scan flow was created from exactly that
+   * bitmap instance. A page restored from disk, or the page left behind after deleting the freshly
+   * scanned one, does not own the state and has to use its own persisted OCR result.
+   */
+  private boolean ocrStateBelongsTo(CompletedScan page) {
+    return ownsOcrState(
+        page, cropViewModel != null ? cropViewModel.getImageBitmap().getValue() : null);
+  }
+
+  /**
+   * The rule of {@link #ocrStateBelongsTo(CompletedScan)} with the crop bitmap resolved on the
+   * calling (main) thread, for use by the background export.
+   */
+  private java.util.function.Predicate<CompletedScan> ocrOwnershipSnapshot() {
+    final Bitmap crop = cropViewModel != null ? cropViewModel.getImageBitmap().getValue() : null;
+    return page -> ownsOcrState(page, crop);
+  }
+
+  private static boolean ownsOcrState(CompletedScan page, Bitmap cropBitmap) {
+    Bitmap own = (page != null) ? page.inMemoryBitmap() : null;
+    return own != null && own == cropBitmap;
+  }
+
+  /** The only page of a single-page session, {@code null} for none or more than one. */
+  private static CompletedScan singleSessionPage(List<CompletedScan> pages) {
+    return (pages != null && pages.size() == 1) ? pages.get(0) : null;
+  }
+
   @VisibleForTesting
   static List<RecognizedWord> ensurePdfTextLayerWords(
       List<RecognizedWord> words, String text, Bitmap bitmap) {
@@ -3253,7 +3307,10 @@ public class ExportFragment extends Fragment {
         title,
         pageCount,
         exportUri,
-        getOcrTextFromState(),
+        ExportTxtHelper.collectOcrText(
+            exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null,
+            getOcrTextFromState(),
+            this::ocrStateBelongsTo),
         buildDefaultBaseName());
   }
 }

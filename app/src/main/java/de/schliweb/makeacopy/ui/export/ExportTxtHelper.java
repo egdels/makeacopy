@@ -10,7 +10,6 @@
 package de.schliweb.makeacopy.ui.export;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.Toast;
@@ -22,6 +21,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.function.Predicate;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -74,21 +74,32 @@ final class ExportTxtHelper {
    * Collects the OCR text that a TXT export would contain. For multi-page sessions, concatenates
    * per-page OCR text in filmstrip order.
    *
+   * <p>The in-memory OCR text (OCRViewModel) always describes the page that last went through the
+   * scan flow. It is only used for a page that {@code ownsInMemoryOcr} confirms; any other page,
+   * e.g. the one left behind after deleting the freshly scanned page, gets its own persisted text.
+   *
    * @param pages the session pages (nullable)
-   * @param currentText the in-memory OCR text for the current page
-   * @param currentPreviewBitmap the currently previewed bitmap (to match in-memory OCR)
+   * @param currentText the in-memory OCR text of the page that last went through the scan flow
+   * @param ownsInMemoryOcr whether a page is the one {@code currentText} belongs to (nullable: no
+   *     page owns it)
    */
   static String collectOcrText(
       List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages,
       String currentText,
-      Bitmap currentPreviewBitmap) {
-    boolean isMulti = pages != null && pages.size() > 1;
+      Predicate<de.schliweb.makeacopy.ui.export.session.CompletedScan> ownsInMemoryOcr) {
+    // No session page at all (legacy single-bitmap flow): the in-memory text is all there is
+    if (pages == null || pages.isEmpty()) return currentText;
 
-    // Single-page: the in-memory OCR text, or — when OCR was skipped in the scan flow and run
-    // later from the export screen — the text the background job persisted for the page
-    if (!isMulti) {
-      if (currentText != null && !currentText.isEmpty()) return currentText;
-      return (pages != null && pages.size() == 1) ? readPersistedPageText(pages.get(0)) : null;
+    // Single-page: the in-memory text when it belongs to this page (it may be newer than the
+    // persisted copy after a Review round trip), otherwise — when OCR was skipped in the scan
+    // flow and run later from the export screen, or the fresh page was deleted — the text
+    // persisted for the page
+    if (pages.size() == 1) {
+      de.schliweb.makeacopy.ui.export.session.CompletedScan only = pages.get(0);
+      if (owns(ownsInMemoryOcr, only) && currentText != null && !currentText.isEmpty()) {
+        return currentText;
+      }
+      return readPersistedPageText(only);
     }
 
     // Multi-page: concatenate per-page OCR from registry
@@ -96,10 +107,7 @@ final class ExportTxtHelper {
     for (int i = 0; i < pages.size(); i++) {
       de.schliweb.makeacopy.ui.export.session.CompletedScan s = pages.get(i);
       String pageText = readPersistedPageText(s);
-      if ((pageText == null || pageText.isEmpty())
-          && s != null
-          && s.inMemoryBitmap() != null
-          && currentPreviewBitmap == s.inMemoryBitmap()) {
+      if ((pageText == null || pageText.isEmpty()) && owns(ownsInMemoryOcr, s)) {
         pageText = currentText;
       }
       if (pageText != null) sb.append(pageText);
@@ -108,12 +116,17 @@ final class ExportTxtHelper {
     return sb.toString();
   }
 
+  private static boolean owns(
+      Predicate<de.schliweb.makeacopy.ui.export.session.CompletedScan> ownsInMemoryOcr,
+      de.schliweb.makeacopy.ui.export.session.CompletedScan page) {
+    return page != null && ownsInMemoryOcr != null && ownsInMemoryOcr.test(page);
+  }
+
   /**
    * Reads the persisted OCR text of a page: the plain text file itself, or — for words_json — the
    * text.txt that is written next to it.
    */
-  private static String readPersistedPageText(
-      de.schliweb.makeacopy.ui.export.session.CompletedScan page) {
+  static String readPersistedPageText(de.schliweb.makeacopy.ui.export.session.CompletedScan page) {
     String path = (page != null) ? page.ocrTextPath() : null;
     if (path == null) return null;
     String fmt = page.ocrFormat();
@@ -141,8 +154,8 @@ final class ExportTxtHelper {
    * @param exportViewModel the export view model to update TXT URI
    * @param exportSessionViewModel the session view model for multi-page access
    * @param txtUri the target URI for the TXT file
-   * @param currentText the in-memory OCR text for the current page
-   * @param currentPreviewBitmap the currently previewed bitmap (to match in-memory OCR)
+   * @param currentText the in-memory OCR text of the page that last went through the scan flow
+   * @param ownsInMemoryOcr whether a page is the one {@code currentText} belongs to
    * @param deferAssignCallback callback to clear the deferAssignUntilTxt flag on success
    */
   static void exportOcrTextToTxt(
@@ -151,13 +164,13 @@ final class ExportTxtHelper {
       de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel exportSessionViewModel,
       Uri txtUri,
       String currentText,
-      Bitmap currentPreviewBitmap,
+      Predicate<de.schliweb.makeacopy.ui.export.session.CompletedScan> ownsInMemoryOcr,
       Runnable deferAssignCallback) {
     if (txtUri == null) return;
 
     List<de.schliweb.makeacopy.ui.export.session.CompletedScan> pages =
         exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
-    String text = collectOcrText(pages, currentText, currentPreviewBitmap);
+    String text = collectOcrText(pages, currentText, ownsInMemoryOcr);
     if (!hasOcrText(text)) {
       Log.d(TAG, "exportOcrTextToTxt: No OCR text available to export");
       return;
