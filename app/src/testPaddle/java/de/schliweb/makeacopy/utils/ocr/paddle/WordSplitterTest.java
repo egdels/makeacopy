@@ -91,6 +91,49 @@ public class WordSplitterTest {
     // --- WordSplitter v2: Upscale-Pfad / Segmentgrenzen-Rückprojektion ---
 
     @Test
+    public void assignCharsByPosition_placesEachCharInTheSegmentThatContainsIt() {
+        // Two words: chars at x 5..25 belong to [0,30], chars at 60..80 to [50,90].
+        int[] segs = {0, 30, 50, 90};
+        double[] xs = {5, 12, 19, 25, 60, 70, 80};
+        int[][] r = WordSplitter.assignCharsByPosition(xs, segs);
+        assertArrayEquals(new int[] {0, 4}, r[0]);
+        assertArrayEquals(new int[] {4, 7}, r[1]);
+    }
+
+    @Test
+    public void assignCharsByPosition_doesNotShiftTheBoundaryWhenACharIsMissing() {
+        // "01Lorem ipsum" read as "0Loremipsum": one char lost in the first word. Proportional
+        // distribution would move the boundary ("0Loremi psum"); by position the first word gets
+        // exactly the chars drawn left of the gap.
+        int[] segs = {0, 180, 250, 370};
+        double[] xs = {10, 50, 80, 110, 140, 170, 260, 290, 320, 350, 365};
+        int[][] r = WordSplitter.assignCharsByPosition(xs, segs);
+        assertArrayEquals(new int[] {0, 6}, r[0]);
+        assertArrayEquals(new int[] {6, 11}, r[1]);
+    }
+
+    @Test
+    public void assignCharsByPosition_charInTheGapGoesToTheNearerSegment() {
+        int[] segs = {0, 30, 50, 90};
+        double[] xs = {10, 33, 48, 70};
+        int[][] r = WordSplitter.assignCharsByPosition(xs, segs);
+        assertArrayEquals(new int[] {0, 2}, r[0]);
+        assertArrayEquals(new int[] {2, 4}, r[1]);
+    }
+
+    @Test
+    public void assignCharsByPosition_staysMonotonicAndCoversEveryChar() {
+        // A char whose position points back to an earlier segment stays with its predecessor's
+        // segment; no char is dropped and empty segments get empty ranges.
+        int[] segs = {0, 30, 40, 60, 70, 100};
+        double[] xs = {10, 80, 20, 90};
+        int[][] r = WordSplitter.assignCharsByPosition(xs, segs);
+        assertArrayEquals(new int[] {0, 1}, r[0]);
+        assertArrayEquals(new int[] {1, 1}, r[1]);
+        assertArrayEquals(new int[] {1, 4}, r[2]);
+    }
+
+    @Test
     public void unscaleSegments_identityWhenScaleOne() {
         int[] scaled = new int[] {0, 19, 30, 49};
         int[] back = WordSplitter.unscaleSegments(scaled, 1.0, 50);

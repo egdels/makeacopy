@@ -182,6 +182,17 @@ final class WordSplitter {
      *                  provided crop, text, or detected segments are insufficient for splitting.
      */
     static List<RecognizedWord> split(Quad q, Bitmap crop, String text, float conf100) {
+        return split(q, crop, text, conf100, null);
+    }
+
+    /**
+     * Splits the crop into word boxes at the visible gaps and assigns the recognised characters
+     * to them by their CTC frame position when {@code out} carries one per character; without
+     * positions the characters are distributed proportionally to the segment widths (the old
+     * behaviour, which shifts every boundary as soon as the recogniser drops a character).
+     */
+    static List<RecognizedWord> split(
+            Quad q, Bitmap crop, String text, float conf100, PaddleRecOrtRunner.RecOutput out) {
         if (crop == null || text == null) return null;
         String trimmed = text.trim();
         if (trimmed.length() < 2) return null;
@@ -231,26 +242,35 @@ final class WordSplitter {
         }
         if (totalSegW <= 0) return null;
 
-        // String-Anteile proportional zur Segment-Breite verteilen.
-        // Verteilung über Char-Indices, damit kein Zeichen verloren geht.
         int n = trimmed.length();
         int[] charStarts = new int[segCount];
         int[] charEnds = new int[segCount];
-        int cursor = 0;
-        int seenW = 0;
-        for (int i = 0; i < segCount; i++) {
-            int segW = segments[2 * i + 1] - segments[2 * i] + 1;
-            seenW += segW;
-            int targetEnd =
-                    (i == segCount - 1) ? n : (int) Math.round((double) seenW * n / totalSegW);
-            if (targetEnd <= cursor) targetEnd = Math.min(n, cursor + 1);
-            if (targetEnd > n) targetEnd = n;
-            charStarts[i] = cursor;
-            charEnds[i] = targetEnd;
-            cursor = targetEnd;
+        double[] charX = charPositions(text, trimmed, out, w);
+        if (charX != null) {
+            int[][] ranges = assignCharsByPosition(charX, segments);
+            for (int i = 0; i < segCount; i++) {
+                charStarts[i] = ranges[i][0];
+                charEnds[i] = ranges[i][1];
+            }
+        } else {
+            // Fallback ohne Positionsdaten: String-Anteile proportional zur Segment-Breite
+            // verteilen. Verteilung über Char-Indices, damit kein Zeichen verloren geht.
+            int cursor = 0;
+            int seenW = 0;
+            for (int i = 0; i < segCount; i++) {
+                int segW = segments[2 * i + 1] - segments[2 * i] + 1;
+                seenW += segW;
+                int targetEnd =
+                        (i == segCount - 1) ? n : (int) Math.round((double) seenW * n / totalSegW);
+                if (targetEnd <= cursor) targetEnd = Math.min(n, cursor + 1);
+                if (targetEnd > n) targetEnd = n;
+                charStarts[i] = cursor;
+                charEnds[i] = targetEnd;
+                cursor = targetEnd;
+            }
+            // Falls Rundung Reste übrig lässt, an letztes Segment anhängen.
+            if (charEnds[segCount - 1] < n) charEnds[segCount - 1] = n;
         }
-        // Falls Rundung Reste übrig lässt, an letztes Segment anhängen.
-        if (charEnds[segCount - 1] < n) charEnds[segCount - 1] = n;
 
         List<RecognizedWord> result = new ArrayList<>(segCount);
         for (int i = 0; i < segCount; i++) {
@@ -266,6 +286,73 @@ final class WordSplitter {
             result.add(new RecognizedWord(wt, bbox, conf100));
         }
         return result.size() >= 2 ? result : null;
+    }
+
+    /**
+     * Horizontal centre of every char of {@code trimmed} in crop pixels, from the CTC frame per
+     * char, or null when the recogniser output does not carry usable positions. Frame {@code k}
+     * covers {@code [k, k+1) * paddedW / T} of the padded recognition input; dividing by the
+     * scaled content width gives the fraction of the crop width.
+     */
+    private static double[] charPositions(
+            String text, String trimmed, PaddleRecOrtRunner.RecOutput out, int cropW) {
+        if (out == null || out.charFrames() == null) return null;
+        int[] frames = out.charFrames();
+        if (frames.length != text.length()
+                || out.frameCount() <= 0
+                || out.scaledCropWidth() <= 0
+                || out.paddedCropWidth() <= 0) {
+            return null;
+        }
+        int offset = text.indexOf(trimmed);
+        if (offset < 0) return null;
+        double[] xs = new double[trimmed.length()];
+        double frameW = (double) out.paddedCropWidth() / out.frameCount();
+        for (int i = 0; i < xs.length; i++) {
+            double xPadded = (frames[offset + i] + 0.5) * frameW;
+            xs[i] = xPadded / out.scaledCropWidth() * cropW;
+        }
+        return xs;
+    }
+
+    /**
+     * Assigns characters to segments by position: each char goes to the segment that contains
+     * its x, or to the nearest one when it lies in a gap. The assignment is kept monotonic in
+     * reading order (a char never lands in an earlier segment than its predecessor), so the
+     * concatenation of all ranges is the whole text again. Returns {@code [start, end)} char
+     * ranges per segment; a segment that receives no character gets an empty range.
+     */
+    @VisibleForTesting
+    static int[][] assignCharsByPosition(double[] charX, int[] segments) {
+        int segCount = segments.length / 2;
+        int n = charX.length;
+        int[] segOf = new int[n];
+        int prev = 0;
+        for (int i = 0; i < n; i++) {
+            double x = charX[i];
+            int best = -1;
+            double bestDist = Double.MAX_VALUE;
+            for (int s = 0; s < segCount; s++) {
+                double a = segments[2 * s];
+                double b = segments[2 * s + 1];
+                double dist = x < a ? a - x : (x > b ? x - b : 0.0);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = s;
+                }
+            }
+            if (best < prev) best = prev;
+            segOf[i] = best;
+            prev = best;
+        }
+        int[][] ranges = new int[segCount][2];
+        int cursor = 0;
+        for (int s = 0; s < segCount; s++) {
+            ranges[s][0] = cursor;
+            while (cursor < n && segOf[cursor] == s) cursor++;
+            ranges[s][1] = cursor;
+        }
+        return ranges;
     }
 
     /**

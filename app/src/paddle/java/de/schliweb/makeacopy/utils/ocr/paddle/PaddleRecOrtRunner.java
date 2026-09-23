@@ -134,6 +134,8 @@ class PaddleRecOrtRunner implements AutoCloseable {
     /**
      * Represents the output of a recognition process, including the recognized text,
      * confidence score, token details, and dimensions related to the processing of the input image.
+     * {@code charFrames} is the CTC frame index per char of {@code text} (null when unknown): the
+     * horizontal position of every character in the recognition input.
      */
     record RecOutput(
             String text,
@@ -143,7 +145,8 @@ class PaddleRecOrtRunner implements AutoCloseable {
             int scaledCropWidth,
             int paddedCropWidth,
             int srcCropWidth,
-            int[] argmaxIdsHead) {
+            int[] argmaxIdsHead,
+            int[] charFrames) {
         /**
          * Constructs a simplified {@code RecOutput} instance with default values for optional parameters.
          *
@@ -151,7 +154,29 @@ class PaddleRecOrtRunner implements AutoCloseable {
          * @param confidence The confidence score of the recognition process, indicating the reliability of the output.
          */
         RecOutput(String text, float confidence) {
-            this(text, confidence, Collections.emptyList(), 0, 0, 0, 0, null);
+            this(text, confidence, Collections.emptyList(), 0, 0, 0, 0, null, null);
+        }
+
+        /** Without per-character frames (older call sites and tests). */
+        RecOutput(
+                String text,
+                float confidence,
+                List<CtcDecoder.RecognizedToken> tokens,
+                int frameCount,
+                int scaledCropWidth,
+                int paddedCropWidth,
+                int srcCropWidth,
+                int[] argmaxIdsHead) {
+            this(
+                    text,
+                    confidence,
+                    tokens,
+                    frameCount,
+                    scaledCropWidth,
+                    paddedCropWidth,
+                    srcCropWidth,
+                    argmaxIdsHead,
+                    null);
         }
 
         /**
@@ -607,7 +632,8 @@ class PaddleRecOrtRunner implements AutoCloseable {
                             scaledW,
                             paddedW,
                             srcW,
-                            argmaxHead);
+                            argmaxHead,
+                            dec.charFrames());
                 }
             }
         } finally {

@@ -42,6 +42,26 @@ public class CtcDecoderTest {
     }
 
     @Test
+    public void decode_recordsTheFrameOfEveryEmittedChar() {
+        // Frames: a a _ b  -> "ab"; the a is emitted at frame 0 (frame 1 is a repeat), b at 3.
+        float[][] logits = {
+            {0.1f, 0.9f, 0.0f}, {0.1f, 0.9f, 0.0f}, {0.9f, 0.05f, 0.05f}, {0.1f, 0.0f, 0.9f}
+        };
+        CtcDecoder.Decoded d = CtcDecoder.decode(logits, VOCAB);
+        assertEquals("ab", d.text());
+        assertArrayEquals(new int[] {0, 3}, d.charFrames());
+    }
+
+    @Test
+    public void decode_multiCharVocabEntry_repeatsItsFrame() {
+        String[] vocab = {"", "ab", "c"};
+        float[][] logits = {{0.1f, 0.9f, 0.0f}, {0.9f, 0.0f, 0.1f}, {0.1f, 0.0f, 0.9f}};
+        CtcDecoder.Decoded d = CtcDecoder.decode(logits, vocab);
+        assertEquals("abc", d.text());
+        assertArrayEquals(new int[] {0, 0, 2}, d.charFrames());
+    }
+
+    @Test
     public void decode_allBlanks_yieldsEmptyAndZeroConfidence() {
         float[][] logits = new float[][] {frame(0), frame(0), frame(0)};
         CtcDecoder.Decoded d = CtcDecoder.decode(logits, VOCAB);

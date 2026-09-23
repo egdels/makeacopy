@@ -63,7 +63,18 @@ final class CtcDecoder {
             float meanConfidence,
             int[] tokenIndices,
             List<RecognizedToken> tokens,
-            int frameCount) {}
+            int frameCount,
+            int[] charFrames) {
+
+        Decoded(
+                String text,
+                float meanConfidence,
+                int[] tokenIndices,
+                List<RecognizedToken> tokens,
+                int frameCount) {
+            this(text, meanConfidence, tokenIndices, tokens, frameCount, null);
+        }
+    }
 
     /**
      * Decodes the output logits of a time-distributed model into a text sequence
@@ -94,6 +105,10 @@ final class CtcDecoder {
         StringBuilder sb = new StringBuilder();
         int[] tokenBuf = new int[T];
         int tokenCount = 0;
+        // Frame index per char of the emitted text (a multi-char vocab entry repeats its frame),
+        // so that callers can place every character horizontally without guessing.
+        int[] frameOfChar = new int[T * 4];
+        int charCount = 0;
         double confSum = 0.0;
         int confCount = 0;
         int prevIdx = -1;
@@ -153,6 +168,12 @@ final class CtcDecoder {
                 String tokStr = (argmax < vocab.length) ? vocab[argmax] : "";
                 if (tokStr != null) {
                     sb.append(tokStr);
+                    for (int k = 0; k < tokStr.length(); k++) {
+                        if (charCount == frameOfChar.length) {
+                            frameOfChar = java.util.Arrays.copyOf(frameOfChar, charCount * 2);
+                        }
+                        frameOfChar[charCount++] = t;
+                    }
                 }
                 tokenBuf[tokenCount++] = argmax;
 
@@ -187,7 +208,8 @@ final class CtcDecoder {
                 meanConf,
                 indices,
                 Collections.unmodifiableList(tokens),
-                T);
+                T,
+                java.util.Arrays.copyOf(frameOfChar, charCount));
     }
 
     /**

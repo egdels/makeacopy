@@ -591,7 +591,7 @@ final class PaddleResultBuilder {
         List<RecognizedWord> subWords =
                 (!ENABLE_BITMAP_WORD_SPLITTER || cropIsRtl)
                         ? null
-                        : WordSplitter.split(q, crop, text, aggConf100);
+                        : WordSplitter.split(q, crop, text, aggConf100, out);
         String emittedText;
         if (subWords != null && subWords.size() >= 2) {
             StringBuilder sb = new StringBuilder();
