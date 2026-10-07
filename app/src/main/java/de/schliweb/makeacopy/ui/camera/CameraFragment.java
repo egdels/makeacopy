@@ -1965,38 +1965,51 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       ImageCapture.OutputFileOptions outputOptions =
           new ImageCapture.OutputFileOptions.Builder(photoFile).build();
 
-      // Pre-capture AF/AE/AWB lock for sharper, color-stable document shots.
-      // AWB is included so that warm/cool ambient light (lamps, daylight mix) is locked in
-      // before the shutter, improving OCR-relevant text/background contrast consistency.
-      // Timeout 2s: balance between robust AF convergence and responsive capture; if AF
-      // does not converge within the window, we still proceed (best-effort).
+      // Pre-capture AF/AE/AWB lock for sharper, color-stable document shots. AWB is included so
+      // that warm/cool ambient light (lamps, daylight mix) is locked in before the shutter.
+      // The AF part is skipped while manual focus is active: the interop AF_MODE_OFF makes the
+      // lens ignore the trigger, and CameraX would wait the whole auto-cancel window for an AF
+      // state that never arrives (2 s per shot, Play review 2026-10-07). The window itself is
+      // short (PRE_CAPTURE_AF_TIMEOUT_MS): when AF does not converge in time (dark scene, lens
+      // below its minimum focus distance) the shot is taken anyway, as before.
       if (camera != null && camera.getCameraControl() != null) {
         MeteringPointFactory mpf = binding.viewFinder.getMeteringPointFactory();
         MeteringPoint center =
             mpf.createPoint(
                 binding.viewFinder.getWidth() / 2f, binding.viewFinder.getHeight() / 2f);
 
-        FocusMeteringAction fma =
-            new FocusMeteringAction.Builder(
-                    center,
-                    FocusMeteringAction.FLAG_AF
-                        | FocusMeteringAction.FLAG_AE
-                        | FocusMeteringAction.FLAG_AWB)
-                .setAutoCancelDuration(2, TimeUnit.SECONDS)
-                .build();
+        final boolean manualFocus = manualFocusActive;
+        FocusMeteringAction fma = buildPreCaptureMeteringAction(center, manualFocus);
+        final long preFocusStart = SystemClock.elapsedRealtime();
 
         ListenableFuture<FocusMeteringResult> fut =
             camera.getCameraControl().startFocusAndMetering(fma);
 
         fut.addListener(
             () -> {
+              long waitedMs = SystemClock.elapsedRealtime() - preFocusStart;
               try {
                 FocusMeteringResult result =
                     fut.get(); // does not block; listener fires only after completion
                 boolean ok = result != null && result.isFocusSuccessful();
-                Log.d(TAG, "captureImage: pre-focus(AF/AE/AWB) result=" + ok);
+                Log.i(
+                    TAG,
+                    "captureImage: pre-focus done in "
+                        + waitedMs
+                        + "ms, manualFocus="
+                        + manualFocus
+                        + ", focusSuccessful="
+                        + ok);
               } catch (Exception e) {
-                Log.w(TAG, "captureImage: pre-focus threw: " + e.getMessage());
+                Log.i(
+                    TAG,
+                    "captureImage: pre-focus gave up after "
+                        + waitedMs
+                        + "ms, manualFocus="
+                        + manualFocus
+                        + " ("
+                        + e.getClass().getSimpleName()
+                        + ")");
               }
               doTakePicture(outputOptions, photoFile);
             },
@@ -2013,16 +2026,49 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     }
   }
 
+  /**
+   * Auto-cancel window of the pre-capture focus/metering lock. Autofocus on a lit page converges in
+   * well under 300 ms; anything longer means AF cannot converge at all (dark or featureless scene,
+   * telephoto lens closer than its minimum focus distance), so waiting more only delays the shot.
+   * The previous 2 s window made every manual-focus capture take two extra seconds.
+   */
+  static final long PRE_CAPTURE_AF_TIMEOUT_MS = 1000L;
+
+  /**
+   * Builds the pre-capture 3A action. With manual focus active the AF flag is left out: the lens
+   * position is fixed via Camera2 interop ({@code CONTROL_AF_MODE_OFF}), an AF trigger would be
+   * ignored by the HAL and CameraX would wait the whole window for an AF lock that never comes.
+   *
+   * @param center metering point at the viewfinder centre
+   * @param manualFocusActive whether the manual focus slider currently fixes the lens position
+   * @return the action to pass to {@code CameraControl.startFocusAndMetering}
+   */
+  @androidx.annotation.VisibleForTesting
+  static FocusMeteringAction buildPreCaptureMeteringAction(
+      MeteringPoint center, boolean manualFocusActive) {
+    int flags = FocusMeteringAction.FLAG_AE | FocusMeteringAction.FLAG_AWB;
+    if (!manualFocusActive) flags |= FocusMeteringAction.FLAG_AF;
+    return new FocusMeteringAction.Builder(center, flags)
+        .setAutoCancelDuration(PRE_CAPTURE_AF_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .build();
+  }
+
   private void doTakePicture(ImageCapture.OutputFileOptions outputOptions, File photoFile) {
+    final long shutterStart = SystemClock.elapsedRealtime();
     imageCapture.takePicture(
         outputOptions,
         ContextCompat.getMainExecutor(requireContext()),
         new ImageCapture.OnImageSavedCallback() {
           @Override
           public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
-            Log.d(
+            Log.i(
                 TAG,
-                "Image saved: " + photoFile.getAbsolutePath() + ", size=" + photoFile.length());
+                "Image saved in "
+                    + (SystemClock.elapsedRealtime() - shutterStart)
+                    + "ms: "
+                    + photoFile.getAbsolutePath()
+                    + ", size="
+                    + photoFile.length());
             // Confirm capture success with a short haptic tick (all users)
             HapticsUtils.vibrateOneShot(getContext(), 30L);
             // Accessibility: confirm capture success with haptic + spoken cue
