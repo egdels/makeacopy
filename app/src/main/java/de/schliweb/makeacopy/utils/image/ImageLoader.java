@@ -145,7 +145,7 @@ public final class ImageLoader {
       return null;
     } finally {
       long dt = System.currentTimeMillis() - t0;
-      Log.d(
+      Log.i(
           TAG,
           "ImageLoader.decode done in "
               + dt

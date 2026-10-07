@@ -15,10 +15,11 @@
 -renamesourcefileattribute SourceFile
 
 # Remove Log statements
+# Strip verbose/debug logging only. Info-level lines carry the camera, capture and OCR
+# diagnostics that the in-app "Share logs" export relies on in release builds.
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);
-    public static *** i(...);
 }
 
 # PdfBox-Android rules
