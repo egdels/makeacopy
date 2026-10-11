@@ -23,14 +23,25 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Filled by DocumentActivity, one TextView per heading, paragraph and bullet -->
-        <LinearLayout
-            android:id="@+id/document_content"
+        <!-- Centres the text column: in landscape and on tablets, lines over the full width are
+             hard to read -->
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingBottom="24dp" />
+            android:layout_height="wrap_content">
+
+            <!-- Filled by DocumentActivity, one TextView per heading, paragraph and bullet -->
+            <LinearLayout
+                android:id="@+id/document_content"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingBottom="24dp"
+                app:layout_constraintWidth_max="640dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
