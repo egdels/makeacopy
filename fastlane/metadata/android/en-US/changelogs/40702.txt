@@ -1,4 +1,5 @@
 MakeACopy 4.7.2
+* New: Help and the privacy policy in Options → App, readable offline.
 * Fixed: with manual focus every scan waited two seconds before the shutter fired.
 * Improved: the autofocus lock before a shot gives up after one second instead of two when it cannot converge (dark scene, telephoto lens too close).
 * Improved: "Share logs" now includes the camera, capture timing and OCR diagnostics in release builds.
