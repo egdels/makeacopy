@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.util.Log;
 import android.widget.Toast;
 import de.schliweb.makeacopy.R;
+import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ui.UIUtils;
 import java.io.File;
 import java.io.IOException;
@@ -141,7 +142,7 @@ final class ExportTxtHelper {
     try {
       return readAllUtf8(textFile);
     } catch (IOException e) {
-      Log.w(TAG, "Failed reading OCR text for page: " + textFile.getAbsolutePath(), e);
+      Log.w(TAG, "Failed reading OCR text for page: " + LogSafe.file(textFile), e);
       return null;
     }
   }
