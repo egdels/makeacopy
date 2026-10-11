@@ -255,6 +255,8 @@ if (cornerEvalDir != null) {
 dependencies {
 
     implementation libs.appcompat
+    // Optional app lock (fingerprint, face or the device screen lock)
+    implementation libs.biometric
     implementation libs.material
     implementation libs.constraintlayout
     implementation libs.lifecycle.livedata.ktx

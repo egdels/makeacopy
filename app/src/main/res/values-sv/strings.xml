@@ -372,6 +372,11 @@
     <string name="a11y_crop_summary_no_doc">Analys av den fångade bilden: inget dokument upptäcktes.</string>
     <string name="accessibility_mode_label">Tillgänglighetsläge</string>
     <string name="protect_screen_content_option">Dölj skanningar från skärmbilder och senaste appar</string>
+    <string name="app_lock_option">Lås appen med fingeravtryck, ansikte eller skärmlås</string>
+    <string name="app_lock_title">MakeACopy är låst</string>
+    <string name="app_lock_unlock">Lås upp</string>
+    <string name="app_lock_prompt_title">Lås upp MakeACopy</string>
+    <string name="app_lock_no_screen_lock">Ställ först in ett skärmlås på den här enheten.</string>
     <string name="a11y_camera_ready">Kameran är redo. Dubbeltryck på Skanna för att ta bilden.</string>
     <string name="a11y_low_light_toggle_flash">Svagt ljus upptäckt. Dubbeltryck på Blixt för att aktivera.</string>
     <string name="a11y_capture_failed">Fångning misslyckades.</string>

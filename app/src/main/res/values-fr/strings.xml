@@ -376,6 +376,11 @@
     <string name="a11y_crop_summary_no_doc">Analyse de l’image capturée : aucun document détecté.</string>
     <string name="accessibility_mode_label">Mode accessibilité</string>
     <string name="protect_screen_content_option">Masquer les scans des captures d’écran et des apps récentes</string>
+    <string name="app_lock_option">Verrouiller l’app par empreinte, visage ou verrouillage de l’écran</string>
+    <string name="app_lock_title">MakeACopy est verrouillé</string>
+    <string name="app_lock_unlock">Déverrouiller</string>
+    <string name="app_lock_prompt_title">Déverrouiller MakeACopy</string>
+    <string name="app_lock_no_screen_lock">Configurez d’abord un verrouillage de l’écran sur cet appareil.</string>
     <string name="a11y_camera_ready">Caméra prête. Double-tapez sur Scanner pour capturer.</string>
     <string name="a11y_low_light_toggle_flash">Faible luminosité détectée. Double-tapez sur Flash pour activer.</string>
     <string name="a11y_capture_failed">Échec de la capture.</string>

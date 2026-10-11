@@ -124,6 +124,7 @@ public final class SettingsCatalog {
           // App
           bool("accessibility_mode", false, Group.APP),
           bool("protect_screen_content", false, Group.APP),
+          bool("app_lock_enabled", false, Group.APP),
           new Setting(PREFS_LANGUAGE, "tag", Type.STRING, "", Group.APP)); // "" = system default
 
   /**

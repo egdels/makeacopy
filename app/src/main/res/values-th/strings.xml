@@ -369,6 +369,11 @@
     <string name="a11y_crop_summary_no_doc">การวิเคราะห์ภาพที่บันทึก: ไม่พบเอกสาร</string>
     <string name="accessibility_mode_label">โหมดการเข้าถึง</string>
     <string name="protect_screen_content_option">ซ่อนการสแกนจากภาพหน้าจอและแอปล่าสุด</string>
+    <string name="app_lock_option">ล็อกแอปด้วยลายนิ้วมือ ใบหน้า หรือการล็อกหน้าจอ</string>
+    <string name="app_lock_title">MakeACopy ถูกล็อกอยู่</string>
+    <string name="app_lock_unlock">ปลดล็อก</string>
+    <string name="app_lock_prompt_title">ปลดล็อก MakeACopy</string>
+    <string name="app_lock_no_screen_lock">โปรดตั้งค่าการล็อกหน้าจอบนอุปกรณ์นี้ก่อน</string>
     <string name="a11y_camera_ready">กล้องพร้อมแล้ว แตะสองครั้งที่ “สแกน” เพื่อถ่ายภาพ</string>
     <string name="a11y_low_light_toggle_flash">ตรวจพบแสงน้อย แตะสองครั้งที่ “แฟลช” เพื่อเปิดใช้งาน</string>
     <string name="a11y_capture_failed">ถ่ายภาพไม่สำเร็จ</string>

@@ -396,6 +396,11 @@
     <string name="a11y_crop_summary_no_doc">Captured image analysis: no document detected.</string>
     <string name="accessibility_mode_label">Accessibility Mode</string>
     <string name="protect_screen_content_option">Hide scans from screenshots and recent apps</string>
+    <string name="app_lock_option">Lock the app with fingerprint, face or screen lock</string>
+    <string name="app_lock_title">MakeACopy is locked</string>
+    <string name="app_lock_unlock">Unlock</string>
+    <string name="app_lock_prompt_title">Unlock MakeACopy</string>
+    <string name="app_lock_no_screen_lock">Set up a screen lock on this device first.</string>
     <string name="a11y_camera_ready">Camera ready. Double tap Scan to capture.</string>
     <string name="a11y_low_light_toggle_flash">Low light detected. Double tap Flash to enable.</string>
     <string name="a11y_capture_failed">Capture failed.</string>

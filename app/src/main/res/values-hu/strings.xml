@@ -374,6 +374,11 @@
     <string name="a11y_crop_summary_no_doc">A rögzített kép elemzése: nem észlelhető dokumentum.</string>
     <string name="accessibility_mode_label">Kisegítő mód</string>
     <string name="protect_screen_content_option">Szkennelések elrejtése a képernyőképekről és a legutóbbi alkalmazásokból</string>
+    <string name="app_lock_option">Az alkalmazás zárolása ujjlenyomattal, arccal vagy képernyőzárral</string>
+    <string name="app_lock_title">A MakeACopy zárolva van</string>
+    <string name="app_lock_unlock">Feloldás</string>
+    <string name="app_lock_prompt_title">MakeACopy feloldása</string>
+    <string name="app_lock_no_screen_lock">Először állíts be képernyőzárat ezen az eszközön.</string>
     <string name="a11y_camera_ready">A kamera kész. A rögzítéshez koppintson duplán a Szkennelésre.</string>
     <string name="a11y_low_light_toggle_flash">Gyenge fény észlelve. A bekapcsoláshoz koppintson duplán a Vaku gombra.
     </string>

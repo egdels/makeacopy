@@ -69,8 +69,16 @@ can set is under **Options**, the slider button on the camera screen.
 - **Export**: page size, quality, colour, the PDF text layer, a separate
   TXT file with the text, and Inbox Mode.
 - **App**: Accessibility Mode, hiding scans from screenshots and the
-  recent apps overview, the app language, this help and the privacy
-  policy.
+  recent apps overview, the app lock, the app language, this help and
+  the privacy policy.
+
+## App lock
+
+With the app lock on, MakeACopy asks for your fingerprint, face or
+screen lock when it starts and when it has been in the background for
+more than 30 seconds; picking a file or sharing a document in between
+does not ask again. It needs a screen lock on the device. Switch it on
+in Options → App.
 
 ## Inbox Mode
 

@@ -77,8 +77,16 @@ Recadrer, OCR et Exporter. Tout ce qui se règle se trouve sous
   PDF, un fichier TXT séparé avec le texte, et le mode Boîte de
   réception.
 - **Application** : mode accessibilité, masquage des scans dans les
-  captures d'écran et les apps récentes, langue de l'application, cette
-  aide et la politique de confidentialité.
+  captures d'écran et les apps récentes, verrouillage de l'app, langue
+  de l'application, cette aide et la politique de confidentialité.
+
+## Verrouillage de l'app
+
+Avec le verrouillage, MakeACopy demande votre empreinte, votre visage ou
+le verrouillage de l'écran au démarrage et après plus de 30 secondes en
+arrière-plan ; choisir un fichier ou partager un document entre-temps ne
+redemande rien. Il faut un verrouillage de l'écran sur l'appareil.
+Activez-le dans Options → Application.
 
 ## Mode Boîte de réception
 

@@ -169,6 +169,13 @@
                 android:layout_height="wrap_content"
                 android:text="@string/protect_screen_content_option" />
 
+            <!-- App lock: fingerprint, face or the screen lock after a start or 30 s away -->
+            <CheckBox
+                android:id="@+id/dialog_checkbox_app_lock"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/app_lock_option" />
+
             <!-- In-app UI language: label plus current value, opens a picker -->
             <LinearLayout
                 android:id="@+id/row_app_language"

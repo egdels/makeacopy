@@ -360,6 +360,11 @@
     <string name="a11y_crop_summary_no_doc">कैप्चर किए गए चित्र का विश्लेषण: कोई दस्तावेज़ नहीं पहचाना गया।</string>
     <string name="accessibility_mode_label">सुलभता मोड</string>
     <string name="protect_screen_content_option">स्क्रीनशॉट और हाल के ऐप्स से स्कैन छिपाएँ</string>
+    <string name="app_lock_option">फ़िंगरप्रिंट, चेहरे या स्क्रीन लॉक से ऐप लॉक करें</string>
+    <string name="app_lock_title">MakeACopy लॉक है</string>
+    <string name="app_lock_unlock">अनलॉक करें</string>
+    <string name="app_lock_prompt_title">MakeACopy अनलॉक करें</string>
+    <string name="app_lock_no_screen_lock">पहले इस डिवाइस पर स्क्रीन लॉक सेट करें।</string>
     <string name="a11y_camera_ready">कैमरा तैयार। कैप्चर के लिए स्कैन पर डबल टैप करें।</string>
     <string name="a11y_low_light_toggle_flash">कम रोशनी का पता चला। सक्षम करने के लिए फ्लैश पर डबल टैप करें।</string>
     <string name="a11y_capture_failed">कैप्चर विफल।</string>

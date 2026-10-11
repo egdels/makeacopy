@@ -381,6 +381,11 @@
     <string name="a11y_crop_summary_no_doc">Analiza imaginii capturate: nu a fost detectat niciun document.</string>
     <string name="accessibility_mode_label">Mod de accesibilitate</string>
     <string name="protect_screen_content_option">Ascunde scanările din capturi de ecran și aplicațiile recente</string>
+    <string name="app_lock_option">Blochează aplicația cu amprentă, față sau blocarea ecranului</string>
+    <string name="app_lock_title">MakeACopy este blocată</string>
+    <string name="app_lock_unlock">Deblochează</string>
+    <string name="app_lock_prompt_title">Deblochează MakeACopy</string>
+    <string name="app_lock_no_screen_lock">Configurează mai întâi o blocare a ecranului pe acest dispozitiv.</string>
     <string name="a11y_camera_ready">Camera este gata. Atingeți de două ori „Scanare” pentru a captura.</string>
     <string name="a11y_low_light_toggle_flash">Luminozitate scăzută detectată. Atingeți de două ori „Bliț” pentru a
         activa.

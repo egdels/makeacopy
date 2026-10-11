@@ -34,8 +34,10 @@ import de.schliweb.makeacopy.ui.export.ExportOptionsPanel;
 import de.schliweb.makeacopy.ui.library.LibraryOptionsPanel;
 import de.schliweb.makeacopy.ui.ocr.OcrOptionsPanel;
 import de.schliweb.makeacopy.utils.ui.AppLanguage;
+import de.schliweb.makeacopy.utils.ui.AppLock;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.ScreenProtection;
+import de.schliweb.makeacopy.utils.ui.UIUtils;
 import java.util.List;
 
 /**
@@ -508,6 +510,7 @@ public class OptionsDialogFragment extends DialogFragment {
     CheckBox cbAnalysis = view.findViewById(R.id.dialog_checkbox_analysis_enabled);
     CheckBox cbAccessibility = view.findViewById(R.id.dialog_checkbox_accessibility_mode);
     CheckBox cbProtectScreen = view.findViewById(R.id.dialog_checkbox_protect_screen);
+    CheckBox cbAppLock = view.findViewById(R.id.dialog_checkbox_app_lock);
     CheckBox cbExposure = view.findViewById(R.id.dialog_checkbox_exposure_compensation);
     CheckBox cbManualFocus = view.findViewById(R.id.dialog_checkbox_manual_focus);
     CheckBox cbFocusQuality = view.findViewById(R.id.dialog_checkbox_focus_quality);
@@ -530,6 +533,8 @@ public class OptionsDialogFragment extends DialogFragment {
     if (cbAnalysis != null) cbAnalysis.setChecked(analysisEnabled);
     if (cbAccessibility != null) cbAccessibility.setChecked(accessibilityMode);
     if (cbProtectScreen != null) cbProtectScreen.setChecked(ScreenProtection.isEnabled(ctx));
+    boolean appLockWasOn = AppLock.isEnabled(ctx);
+    if (cbAppLock != null) cbAppLock.setChecked(appLockWasOn);
     if (cbExposure != null) cbExposure.setChecked(exposureEnabled);
     if (cbManualFocus != null) cbManualFocus.setChecked(manualFocusEnabled);
     if (cbLowLightPrompt != null) cbLowLightPrompt.setChecked(lowLightPromptEnabled);
@@ -586,6 +591,12 @@ public class OptionsDialogFragment extends DialogFragment {
           boolean analysis = cbAnalysis != null && cbAnalysis.isChecked();
           boolean accessibility = cbAccessibility != null && cbAccessibility.isChecked();
           boolean protectScreen = cbProtectScreen != null && cbProtectScreen.isChecked();
+          boolean appLock = cbAppLock != null && cbAppLock.isChecked();
+          if (appLock && !AppLock.isAvailable(ctx)) {
+            // Nothing could unlock the app: refuse instead of locking the user out
+            UIUtils.showToast(ctx, R.string.app_lock_no_screen_lock, Toast.LENGTH_LONG);
+            appLock = false;
+          }
           boolean exposure = cbExposure != null && cbExposure.isChecked();
           boolean manualFocus = cbManualFocus != null && cbManualFocus.isChecked();
           boolean focusQuality = cbFocusQuality != null && cbFocusQuality.isChecked();
@@ -604,7 +615,11 @@ public class OptionsDialogFragment extends DialogFragment {
               .putBoolean(BUNDLE_FOCUS_QUALITY_INDICATOR, focusQuality)
               .putBoolean(BUNDLE_LOW_LIGHT_PROMPT, lowLightPrompt)
               .putBoolean(ScreenProtection.KEY, protectScreen)
+              .putBoolean(AppLock.KEY, appLock)
               .apply();
+          // The user is here and has just chosen it: no unlock prompt right away
+          if (appLock && !appLockWasOn) AppLock.markUnlocked();
+          AppLock.applyRecentsPreview(getActivity());
           // Takes effect at once, not only after the next start
           ScreenProtection.apply(getActivity());
 
