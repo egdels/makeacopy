@@ -36,9 +36,10 @@ recognition (OCR) and PDF creation all run on your device.
   app's cache, which the app cleans up regularly.
 
 Uninstalling the app removes all of this; exported files stay where you
-saved them. The Android system may include the app's data in a device
-backup you have set up with Google, under the terms of that backup
-service, not of MakeACopy.
+saved them. Your scans, their text and the library are excluded from
+Android's backup and from device-to-device transfer, so they never leave
+the device that way. Only the settings can be part of a device backup
+you have set up with Google, under the terms of that backup service.
 
 ## What the app reads
 
