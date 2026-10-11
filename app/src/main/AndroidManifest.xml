@@ -16,6 +16,10 @@
     <uses-permission
             android:name="android.permission.ACCESS_NETWORK_STATE"
             tools:node="remove"/>
+    <!-- androidx.biometric declares this for Android 9 and older; minSdk is 29, so it is never used -->
+    <uses-permission
+            android:name="android.permission.USE_FINGERPRINT"
+            tools:node="remove"/>
 
     <uses-feature
             android:name="android.hardware.camera"

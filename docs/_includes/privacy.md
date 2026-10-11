@@ -70,6 +70,10 @@ time), and you decide whether and to whom to send it.
   screen opens for the first time.
 - `VIBRATE`: for the short haptic feedback of Accessibility Mode. Android
   does not ask for this one.
+- `USE_BIOMETRIC`: for the optional app lock, which asks for your
+  fingerprint, face or screen lock. Android does not ask for this one;
+  the app never sees your biometric data, only whether the check
+  succeeded.
 
 There is no Internet, location, contacts, microphone or phone permission,
 and no permission to read your photos or files in general: files reach
