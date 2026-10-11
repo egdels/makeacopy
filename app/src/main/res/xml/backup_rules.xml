@@ -1,13 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
--->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older (Auto Backup). The same exclusions as data_extraction_rules.xml: scans
+     stay on the device, the settings are backed up. -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="file" path="scans"/>
+    <exclude domain="file" path="scans_covers"/>
+    <exclude domain="file" path="documents"/>
+    <exclude domain="file" path="registry"/>
+    <exclude domain="file" path="Pictures"/>
+    <exclude domain="database" path="."/>
+    <exclude domain="external" path="."/>
+    <exclude domain="sharedpref" path="session_ids.xml"/>
 </full-backup-content>
