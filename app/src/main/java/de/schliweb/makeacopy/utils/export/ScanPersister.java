@@ -15,6 +15,7 @@ import android.graphics.Matrix;
 import android.util.Log;
 import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
+import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import de.schliweb.makeacopy.utils.ocr.WordsJson;
 import java.io.File;
@@ -201,7 +202,7 @@ public final class ScanPersister {
     for (String stale : new String[] {"text.txt", "words.json"}) {
       File f = new File(dir, stale);
       if (f.exists() && !f.delete()) {
-        Log.w(TAG, "persistEditedPage: failed to delete stale OCR artifact " + f);
+        Log.w(TAG, "persistEditedPage: failed to delete stale OCR artifact " + LogSafe.file(f));
       }
     }
     return persist(appContext, edited, null, null);
