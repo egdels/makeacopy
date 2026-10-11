@@ -215,18 +215,18 @@
                 android:text="@string/menu_privacy_policy"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
-            <!-- Share logs button placed directly under the options (de-emphasized) -->
-            <Button
+            <!-- Share logs: a row like Help and Privacy policy above it -->
+            <TextView
                 android:id="@+id/button_share_logs"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_gravity="start"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:background="?attr/selectableItemBackground"
                 android:text="@string/share_logs"
-                android:textColor="?android:textColorSecondary"
-                android:textAllCaps="false"
-                android:textSize="14sp"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
         </LinearLayout>
 
     </LinearLayout>
