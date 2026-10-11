@@ -70,6 +70,8 @@
     <string name="error_toggling_flashlight">Chyba pri prepínaní blesku: %1$s</string>
     <string name="error_camera_preview_failed">Náhľad fotoaparátu sa nepodarilo spustiť. Skúste to znova.</string>
     <string name="app_language_label">Jazyk aplikácie</string>
+    <string name="menu_help">Pomocník</string>
+    <string name="menu_privacy_policy">Zásady ochrany osobných údajov</string>
     <string name="app_language_system_default">Predvolené systémom</string>
 
     <string name="share_logs">Zdieľať záznamy</string>

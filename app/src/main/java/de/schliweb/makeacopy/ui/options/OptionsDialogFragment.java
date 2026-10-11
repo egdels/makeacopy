@@ -29,6 +29,7 @@ import androidx.fragment.app.FragmentManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.R;
+import de.schliweb.makeacopy.ui.DocumentActivity;
 import de.schliweb.makeacopy.ui.export.ExportOptionsPanel;
 import de.schliweb.makeacopy.ui.library.LibraryOptionsPanel;
 import de.schliweb.makeacopy.ui.ocr.OcrOptionsPanel;
@@ -560,6 +561,10 @@ public class OptionsDialogFragment extends DialogFragment {
               : AppLanguage.displayName(current));
       languageRow.setOnClickListener(v -> showLanguagePicker(ctx, tags, current));
     }
+
+    view.findViewById(R.id.row_help).setOnClickListener(v -> DocumentActivity.showHelp(ctx));
+    view.findViewById(R.id.row_privacy_policy)
+        .setOnClickListener(v -> DocumentActivity.showPrivacyPolicy(ctx));
 
     // Wire up the Share Logs button placed under the options
     View shareBtn = view.findViewById(R.id.button_share_logs);

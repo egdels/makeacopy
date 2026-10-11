@@ -68,6 +68,8 @@
     <string name="error_toggling_flashlight">Eroare la comutarea lanternei: %1$s</string>
     <string name="error_camera_preview_failed">Previzualizarea camerei nu a putut fi pornită. Încearcă din nou.</string>
     <string name="app_language_label">Limba aplicației</string>
+    <string name="menu_help">Ajutor</string>
+    <string name="menu_privacy_policy">Politica de confidențialitate</string>
     <string name="app_language_system_default">Prestabilită de sistem</string>
 
     <string name="share_logs">Partajează jurnalele</string>

@@ -69,6 +69,8 @@
 
     <!-- In-app UI language selection -->
     <string name="app_language_label">App language</string>
+    <string name="menu_help">Help</string>
+    <string name="menu_privacy_policy">Privacy policy</string>
     <string name="app_language_system_default">System default</string>
 
     <!-- Logging / Share logs -->

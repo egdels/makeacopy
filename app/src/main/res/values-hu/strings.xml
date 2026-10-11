@@ -67,6 +67,8 @@
     <string name="error_toggling_flashlight">Hiba a vaku kapcsolásakor: %1$s</string>
     <string name="error_camera_preview_failed">A kamera előnézete nem indítható el. Próbálja újra.</string>
     <string name="app_language_label">Alkalmazás nyelve</string>
+    <string name="menu_help">Súgó</string>
+    <string name="menu_privacy_policy">Adatvédelmi irányelvek</string>
     <string name="app_language_system_default">Rendszer alapértelmezése</string>
 
     <string name="share_logs">Naplók megosztása</string>

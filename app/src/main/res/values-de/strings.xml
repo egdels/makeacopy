@@ -68,6 +68,8 @@
     <string name="error_camera_preview_failed">Kameravorschau konnte nicht gestartet werden. Bitte versuche es erneut.
     </string>
     <string name="app_language_label">App-Sprache</string>
+    <string name="menu_help">Hilfe</string>
+    <string name="menu_privacy_policy">Datenschutzerklärung</string>
     <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Protokolle teilen</string>

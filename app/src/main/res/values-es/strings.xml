@@ -71,6 +71,8 @@
         nuevo.
     </string>
     <string name="app_language_label">Idioma de la aplicación</string>
+    <string name="menu_help">Ayuda</string>
+    <string name="menu_privacy_policy">Política de privacidad</string>
     <string name="app_language_system_default">Predeterminado del sistema</string>
 
     <string name="share_logs">Compartir registros</string>

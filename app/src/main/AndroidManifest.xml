@@ -69,6 +69,11 @@
                 <data android:mimeType="application/pdf"/>
             </intent-filter>
         </activity>
+        <!-- Help and privacy policy, opened from the App group of the options -->
+        <activity
+                android:name=".ui.DocumentActivity"
+                android:exported="false"
+                android:parentActivityName=".MainActivity"/>
         <!-- FileProvider for sharing files with other apps -->
         <provider
                 android:name="androidx.core.content.FileProvider"

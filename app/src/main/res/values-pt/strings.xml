@@ -69,6 +69,8 @@
     <string name="error_toggling_flashlight">Erro ao alternar a lanterna: %1$s</string>
     <string name="error_camera_preview_failed">Falha ao iniciar a visualização da câmera. Tente novamente.</string>
     <string name="app_language_label">Idioma do app</string>
+    <string name="menu_help">Ajuda</string>
+    <string name="menu_privacy_policy">Política de privacidade</string>
     <string name="app_language_system_default">Padrão do sistema</string>
 
     <string name="share_logs">Compartilhar logs</string>

@@ -175,7 +175,8 @@ android {
         main {
             assets.srcDirs = [
                     'src/main/assets',
-                    layout.buildDirectory.dir("generated/assets/licenses").get().asFile
+                    layout.buildDirectory.dir("generated/assets/licenses").get().asFile,
+                    layout.buildDirectory.dir("generated/assets/docs").get().asFile
             ]
             jniLibs.srcDirs = ['src/main/jniLibs']
         }
@@ -354,8 +355,20 @@ tasks.register("copyNotices", Sync) {
     into(layout.buildDirectory.dir("generated/assets/licenses"))
 }
 
+// The privacy policy (docs/_includes/privacy.md, which GitHub Pages also renders into
+// docs/privacy.html, the page linked on Google Play) and the help (help/HELP*.md, one file per
+// language) are maintained once; DocumentActivity shows them from assets/docs/, so the app stays
+// offline.
+tasks.register("copyDocs", Sync) {
+    into(layout.buildDirectory.dir("generated/assets/docs"))
+    into("docs") {
+        from("$rootDir/docs/_includes/privacy.md") { rename { "PRIVACY.md" } }
+        from("$rootDir/help") { include "*.md" }
+    }
+}
+
 tasks.named("preBuild").configure {
-    dependsOn("copyNotices")
+    dependsOn("copyNotices", "copyDocs")
 }
 
 tasks.register("copyPaddleEditionAssets", Sync) {

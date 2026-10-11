@@ -67,6 +67,8 @@
     <string name="error_toggling_flashlight">Fener açılırken/kapatılırken hata: %1$s</string>
     <string name="error_camera_preview_failed">Kamera önizlemesi başlatılamadı. Lütfen tekrar deneyin.</string>
     <string name="app_language_label">Uygulama dili</string>
+    <string name="menu_help">Yardım</string>
+    <string name="menu_privacy_policy">Gizlilik politikası</string>
     <string name="app_language_system_default">Sistem varsayılanı</string>
 
     <string name="share_logs">Günlükleri paylaş</string>

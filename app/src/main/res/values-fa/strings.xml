@@ -67,6 +67,8 @@
     <string name="error_camera_preview_failed">شروع پیش‌نمایش دوربین ناموفق بود. لطفاً دوباره تلاش کنید.</string>
 
     <string name="app_language_label">زبان برنامه</string>
+    <string name="menu_help">راهنما</string>
+    <string name="menu_privacy_policy">سیاست حفظ حریم خصوصی</string>
     <string name="app_language_system_default">پیش‌فرض سیستم</string>
 
     <!-- Logging / Share logs -->

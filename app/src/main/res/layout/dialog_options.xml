@@ -190,6 +190,31 @@
                     android:textColor="?android:textColorSecondary" />
             </LinearLayout>
 
+            <!-- Help and privacy policy: open a page in DocumentActivity -->
+            <TextView
+                android:id="@+id/row_help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:background="?attr/selectableItemBackground"
+                android:text="@string/menu_help"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <TextView
+                android:id="@+id/row_privacy_policy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:background="?attr/selectableItemBackground"
+                android:text="@string/menu_privacy_policy"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
             <!-- Share logs button placed directly under the options (de-emphasized) -->
             <Button
                 android:id="@+id/button_share_logs"

@@ -55,6 +55,8 @@
     <string name="error_camera_preview_failed">Η προεπισκόπηση κάμερας απέτυχε να ξεκινήσει. Δοκιμάστε ξανά.</string>
 
     <string name="app_language_label">Γλώσσα εφαρμογής</string>
+    <string name="menu_help">Βοήθεια</string>
+    <string name="menu_privacy_policy">Πολιτική απορρήτου</string>
     <string name="app_language_system_default">Προεπιλογή συστήματος</string>
 
     <!-- Logging / Share logs -->

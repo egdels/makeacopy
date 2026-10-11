@@ -60,6 +60,8 @@
     <string name="error_toggling_flashlight">切换闪光灯出错：%1$s</string>
     <string name="error_camera_preview_failed">无法启动相机预览。请重试。</string>
     <string name="app_language_label">应用语言</string>
+    <string name="menu_help">帮助</string>
+    <string name="menu_privacy_policy">隐私政策</string>
     <string name="app_language_system_default">跟随系统</string>
 
     <string name="share_logs">共享日志</string>

@@ -64,6 +64,8 @@
     <string name="error_toggling_flashlight">เปิด/ปิดไฟฉายผิดพลาด: %1$s</string>
     <string name="error_camera_preview_failed">ไม่สามารถเริ่มพรีวิวกล้อง กรุณาลองใหม่</string>
     <string name="app_language_label">ภาษาของแอป</string>
+    <string name="menu_help">ความช่วยเหลือ</string>
+    <string name="menu_privacy_policy">นโยบายความเป็นส่วนตัว</string>
     <string name="app_language_system_default">ค่าเริ่มต้นของระบบ</string>
 
     <string name="share_logs">แชร์บันทึก</string>

@@ -1,3 +1,7 @@
+---
+# Front matter: makes GitHub Pages run Liquid on this page; no theme layout.
+layout: null
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,10 +10,6 @@
     <title>Privacy Policy - MakeACopy</title>
     <!-- Canonical -->
     <link rel="canonical" href="https://egdels.github.io/makeacopy/privacy.html" />
-    <!-- Language alternates -->
-    <link rel="alternate" hreflang="en" href="https://egdels.github.io/makeacopy/privacy.html" />
-    <link rel="alternate" hreflang="de" href="https://egdels.github.io/makeacopy/privacy_de.html" />
-    <link rel="alternate" hreflang="fr" href="https://egdels.github.io/makeacopy/privacy_fr.html" />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,75 +55,14 @@
 <body>
     <a class="skip-link" href="#main">Skip to main content</a>
     <main id="main">
-    <h1>Privacy Policy</h1>
-    
-    <p class="last-updated"><em>Last updated: July 29, 2025</em></p>
-    
-    <h2>Introduction</h2>
-    
-    <p>This Privacy Policy explains how MakeACopy handles your data. MakeACopy is designed with privacy as a core principle, operating completely offline and without collecting any personal data.</p>
-    
-    <h2>Summary</h2>
-    
-    <ul>
-        <li>MakeACopy operates <strong>100% offline</strong></li>
-        <li><strong>No data collection</strong> or transmission to servers</li>
-        <li><strong>No analytics</strong> or tracking</li>
-        <li><strong>No advertising</strong></li>
-        <li>All processing happens <strong>locally on your device</strong></li>
-    </ul>
-    
-    <h2>Information We Don't Collect</h2>
-    
-    <p>MakeACopy does not collect, store, or transmit:</p>
-    
-    <ul>
-        <li>Personal information</li>
-        <li>Usage statistics</li>
-        <li>Device information</li>
-        <li>Location data</li>
-        <li>Network information</li>
-        <li>Any other identifiable data</li>
-    </ul>
-    
-    <h2>App Permissions</h2>
-    
-    <p>MakeACopy requires the following permissions:</p>
-    
-    <ol>
-        <li><strong>Camera</strong>: Required to capture images of documents. Images are processed locally and are not sent to any server.</li>
-        <li><strong>Storage</strong>: Required to save processed documents and exported PDFs to your device. All files are stored locally on your device and are not uploaded anywhere.</li>
-    </ol>
-    
-    <h2>Third-Party Services</h2>
-    
-    <p>MakeACopy does not integrate with any third-party services, analytics tools, or advertising networks. There are no embedded trackers or data collection mechanisms.</p>
-    
-    <h2>Data Storage</h2>
-    
-    <p>All data (images, processed documents, and PDFs) is stored locally on your device. You have complete control over this data through your device's file management system.</p>
-    
-    <h2>Changes to This Privacy Policy</h2>
-    
-    <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
-    
-    <h2>Contact Us</h2>
-    
-    <p>If you have any questions about this Privacy Policy, please contact us:</p>
-    
-    <ul>
-        <li>By email: <a href="mailto:christian.kierdorf@schliweb.de">christian.kierdorf@schliweb.de</a></li>
-        <li>By visiting this page on our website: <a href="https://egdels.github.io/makeacopy/">https://egdels.github.io/makeacopy/</a></li>
-    </ul>
-    
-    <h2>Open Source</h2>
-    
-    <p>MakeACopy is open-source software. You can review the source code at <a href="https://github.com/egdels/makeacopy">https://github.com/egdels/makeacopy</a> to verify our privacy practices.</p>
-    
+{% comment %}
+    The text is docs/_includes/privacy.md, the one source of the privacy policy: GitHub Pages
+    renders it in here, and the app shows the same file (copyDocs in app/build.gradle).
+{% endcomment %}
+{% capture policy %}{% include privacy.md %}{% endcapture %}
+{{ policy | markdownify }}
     <nav class="footer-links" aria-label="Footer">
-        <a href="index.html">Home</a> |
-        <a href="privacy_de.html" hreflang="de">Deutsch</a> |
-        <a href="privacy_fr.html" hreflang="fr">Français</a>
+        <a href="index.html">Home</a>
     </nav>
 </main>
 </body>
