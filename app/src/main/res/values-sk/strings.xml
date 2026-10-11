@@ -380,6 +380,7 @@
     <string name="a11y_crop_summary_detected">Analýza zachyteného obrázka: dokument bol rozpoznaný.</string>
     <string name="a11y_crop_summary_no_doc">Analýza zachyteného obrázka: nebol zistený žiadny dokument.</string>
     <string name="accessibility_mode_label">Režim prístupnosti</string>
+    <string name="protect_screen_content_option">Skryť skeny pred snímkami obrazovky a nedávnymi aplikáciami</string>
     <string name="a11y_camera_ready">Fotoaparát pripravený. Dvojitým ťuknutím na „Skenovať“ zachytíte.</string>
     <string name="a11y_low_light_toggle_flash">Zistené slabé osvetlenie. Dvojitým ťuknutím na „Blesk“ ho zapnete.
     </string>

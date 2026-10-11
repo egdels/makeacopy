@@ -76,7 +76,8 @@ Recadrer, OCR et Exporter. Tout ce qui se règle se trouve sous
 - **Exporter** : format de page, qualité, couleur, la couche de texte du
   PDF, un fichier TXT séparé avec le texte, et le mode Boîte de
   réception.
-- **Application** : mode accessibilité, langue de l'application, cette
+- **Application** : mode accessibilité, masquage des scans dans les
+  captures d'écran et les apps récentes, langue de l'application, cette
   aide et la politique de confidentialité.
 
 ## Mode Boîte de réception

@@ -162,6 +162,13 @@
                 android:layout_height="wrap_content"
                 android:text="@string/accessibility_mode_label" />
 
+            <!-- FLAG_SECURE on the main window: no screenshots, no recents preview of scans -->
+            <CheckBox
+                android:id="@+id/dialog_checkbox_protect_screen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/protect_screen_content_option" />
+
             <!-- In-app UI language: label plus current value, opens a picker -->
             <LinearLayout
                 android:id="@+id/row_app_language"

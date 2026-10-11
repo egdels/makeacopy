@@ -68,8 +68,9 @@ can set is under **Options**, the slider button on the camera screen.
   recognition errors.
 - **Export**: page size, quality, colour, the PDF text layer, a separate
   TXT file with the text, and Inbox Mode.
-- **App**: Accessibility Mode, the app language, this help and the
-  privacy policy.
+- **App**: Accessibility Mode, hiding scans from screenshots and the
+  recent apps overview, the app language, this help and the privacy
+  policy.
 
 ## Inbox Mode
 
