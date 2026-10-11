@@ -26,6 +26,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 import de.schliweb.makeacopy.databinding.ActivityMainBinding;
 import de.schliweb.makeacopy.services.CacheCleanupService;
 import de.schliweb.makeacopy.ui.camera.CameraViewModel;
+import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
 
 /**
  * MainActivity represents the entry point of the application. This activity initializes the main
@@ -118,6 +119,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     if (uri == null) return;
+    // Only other apps' content Uris: never a file Uri or one of our own providers (audit F-01)
+    if (!IncomingUriPolicy.isAllowed(this, uri)) return;
 
     String mime = intent.getType();
     if (mime == null) {

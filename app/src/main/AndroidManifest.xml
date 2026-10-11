@@ -56,15 +56,15 @@
                 <data android:mimeType="application/pdf"/>
             </intent-filter>
 
-            <!-- Receive "Open with" requests for images and PDFs -->
+            <!-- Receive "Open with" requests for images and PDFs. Content Uris only and not
+                 BROWSABLE: a file Uri or a link on a web page could point the app at its own
+                 private files (security audit F-01; see IncomingUriPolicy). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
 
                 <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
 
                 <data android:scheme="content"/>
-                <data android:scheme="file"/>
                 <data android:mimeType="image/*"/>
                 <data android:mimeType="application/pdf"/>
             </intent-filter>
