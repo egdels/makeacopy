@@ -75,7 +75,8 @@ der Schieberegler-Taste auf dem Kamerabildschirm.
   Erkennungsfehler korrigiert.
 - **Exportieren**: Seitengröße, Qualität, Farbe, die Textebene im PDF,
   eine eigene TXT-Datei mit dem Text und der Inbox-Modus.
-- **App**: Barrierefreiheitsmodus, App-Sprache, diese Hilfe und die
+- **App**: Barrierefreiheitsmodus, Schutz der Scans vor Screenshots und
+  in der App-Übersicht, App-Sprache, diese Hilfe und die
   Datenschutzerklärung.
 
 ## Inbox-Modus

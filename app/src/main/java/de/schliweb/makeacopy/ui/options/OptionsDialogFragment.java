@@ -35,6 +35,7 @@ import de.schliweb.makeacopy.ui.library.LibraryOptionsPanel;
 import de.schliweb.makeacopy.ui.ocr.OcrOptionsPanel;
 import de.schliweb.makeacopy.utils.ui.AppLanguage;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
+import de.schliweb.makeacopy.utils.ui.ScreenProtection;
 import java.util.List;
 
 /**
@@ -506,6 +507,7 @@ public class OptionsDialogFragment extends DialogFragment {
     CheckBox cbSkipEdgeDetection = view.findViewById(R.id.dialog_checkbox_skip_edge_detection);
     CheckBox cbAnalysis = view.findViewById(R.id.dialog_checkbox_analysis_enabled);
     CheckBox cbAccessibility = view.findViewById(R.id.dialog_checkbox_accessibility_mode);
+    CheckBox cbProtectScreen = view.findViewById(R.id.dialog_checkbox_protect_screen);
     CheckBox cbExposure = view.findViewById(R.id.dialog_checkbox_exposure_compensation);
     CheckBox cbManualFocus = view.findViewById(R.id.dialog_checkbox_manual_focus);
     CheckBox cbFocusQuality = view.findViewById(R.id.dialog_checkbox_focus_quality);
@@ -527,6 +529,7 @@ public class OptionsDialogFragment extends DialogFragment {
     if (cbSkipEdgeDetection != null) cbSkipEdgeDetection.setChecked(skipEdgeDetection);
     if (cbAnalysis != null) cbAnalysis.setChecked(analysisEnabled);
     if (cbAccessibility != null) cbAccessibility.setChecked(accessibilityMode);
+    if (cbProtectScreen != null) cbProtectScreen.setChecked(ScreenProtection.isEnabled(ctx));
     if (cbExposure != null) cbExposure.setChecked(exposureEnabled);
     if (cbManualFocus != null) cbManualFocus.setChecked(manualFocusEnabled);
     if (cbLowLightPrompt != null) cbLowLightPrompt.setChecked(lowLightPromptEnabled);
@@ -582,6 +585,7 @@ public class OptionsDialogFragment extends DialogFragment {
           boolean skipEdge = cbSkipEdgeDetection != null && cbSkipEdgeDetection.isChecked();
           boolean analysis = cbAnalysis != null && cbAnalysis.isChecked();
           boolean accessibility = cbAccessibility != null && cbAccessibility.isChecked();
+          boolean protectScreen = cbProtectScreen != null && cbProtectScreen.isChecked();
           boolean exposure = cbExposure != null && cbExposure.isChecked();
           boolean manualFocus = cbManualFocus != null && cbManualFocus.isChecked();
           boolean focusQuality = cbFocusQuality != null && cbFocusQuality.isChecked();
@@ -599,7 +603,10 @@ public class OptionsDialogFragment extends DialogFragment {
               .putBoolean(BUNDLE_MANUAL_FOCUS, manualFocus)
               .putBoolean(BUNDLE_FOCUS_QUALITY_INDICATOR, focusQuality)
               .putBoolean(BUNDLE_LOW_LIGHT_PROMPT, lowLightPrompt)
+              .putBoolean(ScreenProtection.KEY, protectScreen)
               .apply();
+          // Takes effect at once, not only after the next start
+          ScreenProtection.apply(getActivity());
 
           OcrOptionsPanel.Choice ocr = ocrPanel.apply(ctx);
           if (!ocrPanel.isFixedPaddleMode()

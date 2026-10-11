@@ -360,6 +360,7 @@
     <string name="a11y_crop_summary_detected">Ανάλυση ληφθείσας εικόνας: εντοπίστηκε έγγραφο.</string>
     <string name="a11y_crop_summary_no_doc">Ανάλυση ληφθείσας εικόνας: δεν εντοπίστηκε έγγραφο.</string>
     <string name="accessibility_mode_label">Λειτουργία προσβασιμότητας</string>
+    <string name="protect_screen_content_option">Απόκρυψη σαρώσεων από στιγμιότυπα οθόνης και πρόσφατες εφαρμογές</string>
     <string name="a11y_camera_ready">Η κάμερα είναι έτοιμη. Πατήστε δύο φορές τη Σάρωση για λήψη.</string>
     <string name="a11y_low_light_toggle_flash">Εντοπίστηκε χαμηλός φωτισμός. Πατήστε δύο φορές τον Φακό για ενεργοποίηση.</string>
     <string name="a11y_capture_failed">Η λήψη απέτυχε.</string>

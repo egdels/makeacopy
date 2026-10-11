@@ -370,6 +370,7 @@
     <string name="a11y_crop_summary_detected">تحلیل تصویر ثبت‌شده: سند شناسایی شد.</string>
     <string name="a11y_crop_summary_no_doc">تحلیل تصویر ثبت‌شده: هیچ سندی شناسایی نشد.</string>
     <string name="accessibility_mode_label">حالت دسترس‌پذیری</string>
+    <string name="protect_screen_content_option">پنهان کردن اسکن‌ها از اسکرین‌شات و برنامه‌های اخیر</string>
     <string name="a11y_camera_ready">دوربین آماده است. برای ثبت، روی «اسکن» دوبار ضربه بزنید.</string>
     <string name="a11y_low_light_toggle_flash">نور کم تشخیص داده شد. برای فعال‌کردن، روی «فلش» دوبار ضربه بزنید.
     </string>

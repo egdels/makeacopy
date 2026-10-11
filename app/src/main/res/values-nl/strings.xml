@@ -374,6 +374,7 @@
     <string name="a11y_crop_summary_detected">Analyse van de vastgelegde afbeelding: document gedetecteerd.</string>
     <string name="a11y_crop_summary_no_doc">Analyse van de vastgelegde afbeelding: geen document gedetecteerd.</string>
     <string name="accessibility_mode_label">Toegankelijkheidsmodus</string>
+    <string name="protect_screen_content_option">Scans verbergen voor schermafbeeldingen en recente apps</string>
     <string name="a11y_camera_ready">Camera klaar. Dubbel tik op Scannen om vast te leggen.</string>
     <string name="a11y_low_light_toggle_flash">Weinig licht gedetecteerd. Dubbel tik op Flits om in te schakelen.
     </string>

@@ -373,6 +373,7 @@
     <string name="a11y_crop_summary_detected">A rögzített kép elemzése: dokumentum felismerve.</string>
     <string name="a11y_crop_summary_no_doc">A rögzített kép elemzése: nem észlelhető dokumentum.</string>
     <string name="accessibility_mode_label">Kisegítő mód</string>
+    <string name="protect_screen_content_option">Szkennelések elrejtése a képernyőképekről és a legutóbbi alkalmazásokból</string>
     <string name="a11y_camera_ready">A kamera kész. A rögzítéshez koppintson duplán a Szkennelésre.</string>
     <string name="a11y_low_light_toggle_flash">Gyenge fény észlelve. A bekapcsoláshoz koppintson duplán a Vaku gombra.
     </string>

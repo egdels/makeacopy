@@ -371,6 +371,7 @@
     <string name="a11y_crop_summary_detected">Analyse av det fangede bildet: dokument oppdaget.</string>
     <string name="a11y_crop_summary_no_doc">Analyse av det fangede bildet: ingen dokumenter ble oppdaget.</string>
     <string name="accessibility_mode_label">Tilgjengelighetsmodus</string>
+    <string name="protect_screen_content_option">Skjul skanninger fra skjermbilder og nylige apper</string>
     <string name="a11y_camera_ready">Kamera klart. Dobbelttrykk på Skann for å ta bilde.</string>
     <string name="a11y_low_light_toggle_flash">Svakt lys oppdaget. Dobbelttrykk på Blits for å slå på.</string>
     <string name="a11y_capture_failed">Opptak mislyktes.</string>

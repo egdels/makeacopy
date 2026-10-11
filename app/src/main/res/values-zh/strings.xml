@@ -353,6 +353,7 @@
     <string name="a11y_crop_summary_detected">已捕获图像分析：检测到文档。</string>
     <string name="a11y_crop_summary_no_doc">已捕获图像分析：未检测到文档。</string>
     <string name="accessibility_mode_label">无障碍模式</string>
+    <string name="protect_screen_content_option">在截图和最近任务中隐藏扫描内容</string>
     <string name="a11y_camera_ready">相机已就绪。双击“扫描”即可拍摄。</string>
     <string name="a11y_low_light_toggle_flash">检测到光线不足。双击“闪光灯”以开启。</string>
     <string name="a11y_capture_failed">拍摄失败。</string>

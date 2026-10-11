@@ -377,6 +377,7 @@
     <string name="a11y_crop_summary_detected">Анализ захваченного изображения: документ обнаружен.</string>
     <string name="a11y_crop_summary_no_doc">Анализ полученного изображения: документ не обнаружен.</string>
     <string name="accessibility_mode_label">Режим доступности</string>
+    <string name="protect_screen_content_option">Скрывать сканы на снимках экрана и в недавних приложениях</string>
     <string name="a11y_camera_ready">Камера готова. Дважды нажмите «Сканировать», чтобы сделать снимок.</string>
     <string name="a11y_low_light_toggle_flash">Обнаружено мало света. Дважды нажмите «Вспышка», чтобы включить.</string>
     <string name="a11y_capture_failed">Съёмка не удалась.</string>

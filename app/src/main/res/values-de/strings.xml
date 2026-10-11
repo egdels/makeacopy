@@ -383,6 +383,7 @@
     <string name="a11y_crop_summary_detected">Analyse des aufgenommenen Bildes: Dokument erkannt.</string>
     <string name="a11y_crop_summary_no_doc">Analyse des aufgenommenen Bildes: Kein Dokument erkannt.</string>
     <string name="accessibility_mode_label">Barrierefreiheitsmodus</string>
+    <string name="protect_screen_content_option">Scans vor Screenshots und App-Übersicht schützen</string>
     <string name="a11y_camera_ready">Kamera bereit. Doppeltippen auf „Scannen“ zum Aufnehmen.</string>
     <string name="a11y_low_light_toggle_flash">Wenig Licht erkannt. Doppeltippen auf „Blitz“ zum Aktivieren.</string>
     <string name="a11y_capture_failed">Aufnahme fehlgeschlagen.</string>

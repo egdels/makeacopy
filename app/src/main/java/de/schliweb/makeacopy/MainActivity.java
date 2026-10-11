@@ -27,6 +27,7 @@ import de.schliweb.makeacopy.databinding.ActivityMainBinding;
 import de.schliweb.makeacopy.services.CacheCleanupService;
 import de.schliweb.makeacopy.ui.camera.CameraViewModel;
 import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
+import de.schliweb.makeacopy.utils.ui.ScreenProtection;
 
 /**
  * MainActivity represents the entry point of the application. This activity initializes the main
@@ -51,6 +52,9 @@ public class MainActivity extends AppCompatActivity {
     // Capture share/view intents BEFORE Fragments are created so the start
     // destination (CameraFragment) can consume the pending Uri on first frame.
     handleShareIntent(getIntent());
+
+    // Before any content is drawn, so a scan never reaches a screenshot or the recents preview
+    ScreenProtection.apply(this);
 
     // Enable true edge-to-edge: app draws behind system bars
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);

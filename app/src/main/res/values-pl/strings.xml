@@ -374,6 +374,7 @@
     <string name="a11y_crop_summary_detected">Analiza przechwyconego obrazu: wykryto dokument.</string>
     <string name="a11y_crop_summary_no_doc">Analiza przechwyconego obrazu: nie wykryto dokumentu.</string>
     <string name="accessibility_mode_label">Tryb dostępności</string>
+    <string name="protect_screen_content_option">Ukryj skany przed zrzutami ekranu i ostatnimi aplikacjami</string>
     <string name="a11y_camera_ready">Aparat gotowy. Stuknij dwukrotnie „Skanuj”, aby wykonać zdjęcie.</string>
     <string name="a11y_low_light_toggle_flash">Wykryto słabe oświetlenie. Stuknij dwukrotnie „Lampa”, aby włączyć.
     </string>

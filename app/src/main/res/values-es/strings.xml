@@ -382,6 +382,7 @@
     <string name="a11y_crop_summary_no_doc">Análisis de la imagen capturada: no se ha detectado ningún documento.
     </string>
     <string name="accessibility_mode_label">Modo de accesibilidad</string>
+    <string name="protect_screen_content_option">Ocultar los escaneos en capturas de pantalla y apps recientes</string>
     <string name="a11y_camera_ready">Cámara lista. Doble toque en Escanear para capturar.</string>
     <string name="a11y_low_light_toggle_flash">Poca luz detectada. Doble toque en Flash para activar.</string>
     <string name="a11y_capture_failed">Error al capturar.</string>

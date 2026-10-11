@@ -380,6 +380,7 @@
     <string name="a11y_crop_summary_detected">Analiza imaginii capturate: document detectat.</string>
     <string name="a11y_crop_summary_no_doc">Analiza imaginii capturate: nu a fost detectat niciun document.</string>
     <string name="accessibility_mode_label">Mod de accesibilitate</string>
+    <string name="protect_screen_content_option">Ascunde scanările din capturi de ecran și aplicațiile recente</string>
     <string name="a11y_camera_ready">Camera este gata. Atingeți de două ori „Scanare” pentru a captura.</string>
     <string name="a11y_low_light_toggle_flash">Luminozitate scăzută detectată. Atingeți de două ori „Bliț” pentru a
         activa.

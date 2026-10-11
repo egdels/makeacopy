@@ -123,6 +123,7 @@ public final class SettingsCatalog {
               PREFS_CLEANUP, "completed_scans_max_storage_mb", Type.INT, 500, Group.LIBRARY),
           // App
           bool("accessibility_mode", false, Group.APP),
+          bool("protect_screen_content", false, Group.APP),
           new Setting(PREFS_LANGUAGE, "tag", Type.STRING, "", Group.APP)); // "" = system default
 
   /**
