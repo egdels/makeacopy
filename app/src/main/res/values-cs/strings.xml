@@ -374,12 +374,6 @@
     <string name="a11y_crop_summary_detected">Analýza pořízeného snímku: dokument byl rozpoznán.</string>
     <string name="a11y_crop_summary_no_doc">Analýza pořízení snímku: žádný dokument nebyl rozpoznán.</string>
     <string name="accessibility_mode_label">Režim přístupnosti</string>
-    <string name="protect_screen_content_option">Skrýt skeny před snímky obrazovky a nedávnými aplikacemi</string>
-    <string name="app_lock_option">Zamknout aplikaci otiskem prstu, obličejem nebo zámkem obrazovky</string>
-    <string name="app_lock_title">MakeACopy je zamčená</string>
-    <string name="app_lock_unlock">Odemknout</string>
-    <string name="app_lock_prompt_title">Odemknout MakeACopy</string>
-    <string name="app_lock_no_screen_lock">Nejprve na tomto zařízení nastavte zámek obrazovky.</string>
     <string name="a11y_camera_ready">Kamera připravena. Dvojitým klepnutím na Skenovat zachytíte.</string>
     <string name="a11y_low_light_toggle_flash">Nedostatek světla. Dvojitým klepnutím na Blesk jej zapnete.</string>
     <string name="a11y_capture_failed">Zachycení selhalo.</string>

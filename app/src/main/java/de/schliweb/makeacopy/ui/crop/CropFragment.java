@@ -39,7 +39,6 @@ import de.schliweb.makeacopy.utils.image.DewarpState;
 import de.schliweb.makeacopy.utils.image.ImageLoader;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
-import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ui.A11yUtils;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.HapticsUtils;
@@ -217,11 +216,7 @@ public class CropFragment extends Fragment {
         original = ImageLoader.decode(requireContext(), path, u);
         if (original == null) {
           android.util.Log.w(
-              TAG,
-              "[FR72] Re-Edit: failed to reload original from path="
-                  + LogSafe.path(path)
-                  + " uri="
-                  + LogSafe.uri(u));
+              TAG, "[FR72] Re-Edit: failed to reload original from path=" + path + " uri=" + u);
           return;
         }
         cropViewModel.setOriginalImageBitmap(original);

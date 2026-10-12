@@ -36,10 +36,9 @@ recognition (OCR) and PDF creation all run on your device.
   app's cache, which the app cleans up regularly.
 
 Uninstalling the app removes all of this; exported files stay where you
-saved them. Your scans, their text and the library are excluded from
-Android's backup and from device-to-device transfer, so they never leave
-the device that way. Only the settings can be part of a device backup
-you have set up with Google, under the terms of that backup service.
+saved them. The Android system may include the app's data in a device
+backup you have set up with Google, under the terms of that backup
+service, not of MakeACopy.
 
 ## What the app reads
 
@@ -70,10 +69,6 @@ time), and you decide whether and to whom to send it.
   screen opens for the first time.
 - `VIBRATE`: for the short haptic feedback of Accessibility Mode. Android
   does not ask for this one.
-- `USE_BIOMETRIC`: for the optional app lock, which asks for your
-  fingerprint, face or screen lock. Android does not ask for this one;
-  the app never sees your biometric data, only whether the check
-  succeeded.
 
 There is no Internet, location, contacts, microphone or phone permission,
 and no permission to read your photos or files in general: files reach

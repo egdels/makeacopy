@@ -374,12 +374,6 @@
     <string name="a11y_crop_summary_detected">Analiza przechwyconego obrazu: wykryto dokument.</string>
     <string name="a11y_crop_summary_no_doc">Analiza przechwyconego obrazu: nie wykryto dokumentu.</string>
     <string name="accessibility_mode_label">Tryb dostępności</string>
-    <string name="protect_screen_content_option">Ukryj skany przed zrzutami ekranu i ostatnimi aplikacjami</string>
-    <string name="app_lock_option">Blokuj aplikację odciskiem palca, twarzą lub blokadą ekranu</string>
-    <string name="app_lock_title">MakeACopy jest zablokowana</string>
-    <string name="app_lock_unlock">Odblokuj</string>
-    <string name="app_lock_prompt_title">Odblokuj MakeACopy</string>
-    <string name="app_lock_no_screen_lock">Najpierw ustaw blokadę ekranu na tym urządzeniu.</string>
     <string name="a11y_camera_ready">Aparat gotowy. Stuknij dwukrotnie „Skanuj”, aby wykonać zdjęcie.</string>
     <string name="a11y_low_light_toggle_flash">Wykryto słabe oświetlenie. Stuknij dwukrotnie „Lampa”, aby włączyć.
     </string>

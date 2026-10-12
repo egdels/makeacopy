@@ -371,12 +371,6 @@
     <string name="a11y_crop_summary_detected">Analyse af det optagne billede: dokument fundet.</string>
     <string name="a11y_crop_summary_no_doc">Analyse af det optagede billede: intet dokument registreret.</string>
     <string name="accessibility_mode_label">Tilgængelighedstilstand</string>
-    <string name="protect_screen_content_option">Skjul scanninger fra skærmbilleder og seneste apps</string>
-    <string name="app_lock_option">Lås appen med fingeraftryk, ansigt eller skærmlås</string>
-    <string name="app_lock_title">MakeACopy er låst</string>
-    <string name="app_lock_unlock">Lås op</string>
-    <string name="app_lock_prompt_title">Lås MakeACopy op</string>
-    <string name="app_lock_no_screen_lock">Konfigurer først en skærmlås på denne enhed.</string>
     <string name="a11y_camera_ready">Kamera klar. Dobbelttryk på Scan for at optage.</string>
     <string name="a11y_low_light_toggle_flash">Lavt lys. Dobbelttryk på Flash for at aktivere.</string>
     <string name="a11y_capture_failed">Optagelse mislykkedes.</string>

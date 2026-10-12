@@ -43,7 +43,6 @@ import de.schliweb.makeacopy.utils.export.jpeg.JpegExporter;
 import de.schliweb.makeacopy.utils.image.*;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.infra.FileUtils;
-import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.infra.SessionIds;
 import de.schliweb.makeacopy.utils.ocr.*;
 import de.schliweb.makeacopy.utils.ui.A11yUtils;
@@ -2391,7 +2390,7 @@ public class ExportFragment extends Fragment {
     if (source == null) return false;
     Bitmap original = ImageLoader.decode(ctx, source.originalPath(), null);
     if (original == null) {
-      Log.w(TAG, "startOriginalPageEdit: decode failed for " + LogSafe.path(source.originalPath()));
+      Log.w(TAG, "startOriginalPageEdit: decode failed for " + source.originalPath());
       return false;
     }
     // Start from the unrotated original; CropFragment re-applies the accepted rotation first and

@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Only the folders whose files the app hands out, never the whole data directory (security audit
-     F-05): the database, the settings and the other folders cannot get a FileProvider Uri at all.
-     Guarded by ProviderPathsTest. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Completed scans shared from the library (files/scans/<id>/...) -->
-    <files-path name="scans" path="scans/" />
-    <!-- Camera captures: external app-specific Pictures/MakeACopy, internal fallback files/Pictures -->
-    <external-files-path name="captures" path="Pictures/MakeACopy/" />
-    <files-path name="captures_internal" path="Pictures/MakeACopy/" />
-    <!-- "Share logs" attachment (cache/debug/makeacopy-logs-*.txt) -->
-    <cache-path name="logs" path="debug/" />
+    <!-- Allow sharing from app-specific external files directory -->
+    <external-files-path name="external_files" path="." />
+    <!-- Allow sharing from app-internal files directory (e.g., files/scans/...) -->
+    <files-path name="internal_files" path="." />
+    <!-- Allow sharing temporary files from app cache directory (e.g., logs) -->
+    <cache-path name="cache" path="." />
 </paths>

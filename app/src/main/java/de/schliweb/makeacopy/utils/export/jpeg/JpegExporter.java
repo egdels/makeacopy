@@ -19,7 +19,6 @@ import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
-import de.schliweb.makeacopy.utils.infra.LogSafe;
 import java.io.IOException;
 import java.io.OutputStream;
 import lombok.experimental.UtilityClass;
@@ -189,7 +188,7 @@ public final class JpegExporter {
     ContentResolver resolver = context.getContentResolver();
     try (OutputStream os = resolver.openOutputStream(targetUri, "w")) {
       if (os == null) {
-        Log.e(TAG, "compressToUri: failed to open OutputStream for Uri: " + LogSafe.uri(targetUri));
+        Log.e(TAG, "compressToUri: failed to open OutputStream for Uri: " + targetUri);
         return null;
       }
       boolean ok = bmp.compress(Bitmap.CompressFormat.JPEG, clampQuality(quality), os);

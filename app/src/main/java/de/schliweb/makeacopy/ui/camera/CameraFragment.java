@@ -68,8 +68,6 @@ import de.schliweb.makeacopy.ui.ocr.OCRViewModel;
 import de.schliweb.makeacopy.ui.options.OptionsDialogFragment;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
-import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
-import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ui.A11yUtils;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.HapticsUtils;
@@ -381,11 +379,6 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     Intent data = result.getData();
     Uri uri = data.getData();
     if (uri == null) return;
-    // A picker app could answer with a file Uri into our own data directory (audit F-01)
-    if (!IncomingUriPolicy.isAllowed(requireContext(), uri)) {
-      UIUtils.showToast(requireContext(), R.string.error_unknown_file_type, Toast.LENGTH_SHORT);
-      return;
-    }
 
     // Determine MIME type
     String mime = requireContext().getContentResolver().getType(uri);
@@ -1948,7 +1941,10 @@ public class CameraFragment extends Fragment implements SensorEventListener {
         //noinspection ResultOfMethodCallIgnored
         picturesInInternal.mkdirs();
         outputDir = new File(picturesInInternal, "MakeACopy");
-        Log.w(TAG, "captureImage: external files dir null, using internal storage");
+        Log.w(
+            TAG,
+            "captureImage: external files dir null, using internal: "
+                + outputDir.getAbsolutePath());
       }
       if (!outputDir.exists()) {
         boolean mkOk = outputDir.mkdirs();
@@ -1962,7 +1958,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       Log.i(
           TAG,
           "captureImage: target file="
-              + LogSafe.file(photoFile)
+              + photoFile.getAbsolutePath()
               + ", rotationDeg="
               + toDegrees(getViewFinderRotation()));
 
@@ -2070,7 +2066,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                 "Image saved in "
                     + (SystemClock.elapsedRealtime() - shutterStart)
                     + "ms: "
-                    + LogSafe.file(photoFile)
+                    + photoFile.getAbsolutePath()
                     + ", size="
                     + photoFile.length());
             // Confirm capture success with a short haptic tick (all users)

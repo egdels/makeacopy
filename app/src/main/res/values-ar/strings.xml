@@ -368,12 +368,6 @@
     </string>
     <string name="a11y_crop_summary_detected">تحليل الصورة الملتقطة: تم اكتشاف مستند.</string>
     <string name="accessibility_mode_label">وضع إمكانية الوصول</string>
-    <string name="protect_screen_content_option">إخفاء المسوحات من لقطات الشاشة والتطبيقات الأخيرة</string>
-    <string name="app_lock_option">قفل التطبيق ببصمة الإصبع أو الوجه أو قفل الشاشة</string>
-    <string name="app_lock_title">تطبيق MakeACopy مقفل</string>
-    <string name="app_lock_unlock">فتح القفل</string>
-    <string name="app_lock_prompt_title">فتح قفل MakeACopy</string>
-    <string name="app_lock_no_screen_lock">اضبط قفل الشاشة على هذا الجهاز أولاً.</string>
     <string name="a11y_camera_ready">الكاميرا جاهزة. انقر نقرتين على «مسح» للالتقاط.</string>
     <string name="a11y_crop_summary_no_doc">تحليل الصورة الملتقطة: لم يتم اكتشاف أي مستند.</string>
     <string name="a11y_low_light_toggle_flash">تم اكتشاف إضاءة منخفضة. انقر نقرتين على «الفلاش» للتفعيل.</string>

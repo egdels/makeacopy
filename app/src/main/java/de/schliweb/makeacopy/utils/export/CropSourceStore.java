@@ -18,7 +18,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import de.schliweb.makeacopy.utils.image.DewarpState;
-import de.schliweb.makeacopy.utils.infra.LogSafe;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -135,7 +134,7 @@ public final class CropSourceStore {
     File dir = scanDir(ctx, pageId);
     for (String name : new String[] {ORIGINAL_FILE, CROP_FILE}) {
       File f = new File(dir, name);
-      if (f.exists() && !f.delete()) Log.w(TAG, "delete: failed to delete " + LogSafe.file(f));
+      if (f.exists() && !f.delete()) Log.w(TAG, "delete: failed to delete " + f);
     }
   }
 
@@ -184,7 +183,7 @@ public final class CropSourceStore {
     for (File f : new File[] {original, crop}) {
       if (f.exists() && !f.delete()) {
         deleted = false;
-        Log.w(TAG, "purgeExpired: failed to delete " + LogSafe.file(f));
+        Log.w(TAG, "purgeExpired: failed to delete " + f);
       }
     }
     return deleted;

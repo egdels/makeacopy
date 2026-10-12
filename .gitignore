@@ -36,7 +36,3 @@ local.properties
 __pycache__/
 *.pyc
 
-
-# Signing keys (CI decodes them to app/keystore.jks and langpack-latin-best/keystore.jks)
-*.jks
-*.keystore

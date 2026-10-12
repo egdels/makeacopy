@@ -371,12 +371,6 @@
     <string name="a11y_crop_summary_detected">Çekilen görüntü analizi: belge algılandı.</string>
     <string name="a11y_crop_summary_no_doc">Çekilen görüntü analizi: belge algılanamadı.</string>
     <string name="accessibility_mode_label">Erişilebilirlik Modu</string>
-    <string name="protect_screen_content_option">Taramaları ekran görüntülerinden ve son uygulamalardan gizle</string>
-    <string name="app_lock_option">Uygulamayı parmak izi, yüz veya ekran kilidiyle kilitle</string>
-    <string name="app_lock_title">MakeACopy kilitli</string>
-    <string name="app_lock_unlock">Kilidi aç</string>
-    <string name="app_lock_prompt_title">MakeACopy kilidini aç</string>
-    <string name="app_lock_no_screen_lock">Önce bu cihazda bir ekran kilidi ayarlayın.</string>
     <string name="a11y_camera_ready">Kamera hazır. Çekmek için Tara düğmesine çift dokunun.</string>
     <string name="a11y_low_light_toggle_flash">Düşük ışık algılandı. Etkinleştirmek için Fener düğmesine çift dokunun.</string>
     <string name="a11y_capture_failed">Çekim başarısız.</string>

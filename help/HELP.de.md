@@ -75,17 +75,8 @@ der Schieberegler-Taste auf dem Kamerabildschirm.
   Erkennungsfehler korrigiert.
 - **Exportieren**: Seitengröße, Qualität, Farbe, die Textebene im PDF,
   eine eigene TXT-Datei mit dem Text und der Inbox-Modus.
-- **App**: Barrierefreiheitsmodus, Schutz der Scans vor Screenshots und
-  in der App-Übersicht, App-Sperre, App-Sprache, diese Hilfe und die
+- **App**: Barrierefreiheitsmodus, App-Sprache, diese Hilfe und die
   Datenschutzerklärung.
-
-## App-Sperre
-
-Mit der App-Sperre fragt MakeACopy beim Start und nach mehr als 30
-Sekunden im Hintergrund nach Fingerabdruck, Gesicht oder Displaysperre;
-eine Datei auswählen oder ein Dokument teilen löst zwischendurch keine
-neue Abfrage aus. Sie setzt eine Displaysperre auf dem Gerät voraus.
-Schalte sie unter Optionen → App ein.
 
 ## Inbox-Modus
 

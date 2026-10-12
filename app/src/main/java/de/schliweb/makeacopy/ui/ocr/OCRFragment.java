@@ -39,7 +39,6 @@ import de.schliweb.makeacopy.ui.crop.CropViewModel;
 import de.schliweb.makeacopy.ui.options.OptionsDialogFragment;
 import de.schliweb.makeacopy.utils.image.ImageLoader;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
-import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
 import de.schliweb.makeacopy.utils.ocr.*;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.HapticsUtils;
@@ -186,9 +185,7 @@ public class OCRFragment extends Fragment {
               if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                 Intent data = result.getData();
                 Uri uri = data.getData();
-                boolean ok =
-                    IncomingUriPolicy.isAllowed(requireContext(), uri)
-                        && OcrModelManager.importFromUri(requireContext(), uri);
+                boolean ok = uri != null && OcrModelManager.importFromUri(requireContext(), uri);
                 UIUtils.showToast(
                     requireContext(),
                     ok

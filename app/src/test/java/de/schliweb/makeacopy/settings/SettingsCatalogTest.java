@@ -46,8 +46,6 @@ public class SettingsCatalogTest {
       Set.of(
           // Fragment argument keys
           "collectionId", "collectionName", "scanId",
-          // Saved instance state keys
-          "app_lock_authenticating",
           // OcrSearchIndexer states
           "empty", "error", "indexed",
           // Preference files that hold runtime state only

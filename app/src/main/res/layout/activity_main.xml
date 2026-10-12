@@ -18,45 +18,4 @@
         app:layout_constraintTop_toTopOf="parent"
         app:navGraph="@navigation/mobile_navigation" />
 
-    <!-- App lock (AppLock): covers every screen until fingerprint, face or the screen lock is
-         confirmed. Clickable so that no touch reaches the screens below it. -->
-    <LinearLayout
-        android:id="@+id/app_lock_overlay"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="?attr/colorSurface"
-        android:clickable="true"
-        android:focusable="true"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="32dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:contentDescription="@null"
-            android:src="@mipmap/ic_launcher" />
-
-        <TextView
-            android:id="@+id/app_lock_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:gravity="center"
-            android:text="@string/app_lock_title"
-            android:textAppearance="?attr/textAppearanceTitleLarge" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/app_lock_unlock"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/app_lock_unlock" />
-    </LinearLayout>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -383,12 +383,6 @@
     <string name="a11y_crop_summary_detected">Analyse des aufgenommenen Bildes: Dokument erkannt.</string>
     <string name="a11y_crop_summary_no_doc">Analyse des aufgenommenen Bildes: Kein Dokument erkannt.</string>
     <string name="accessibility_mode_label">Barrierefreiheitsmodus</string>
-    <string name="protect_screen_content_option">Scans vor Screenshots und App-Übersicht schützen</string>
-    <string name="app_lock_option">App mit Fingerabdruck, Gesicht oder Displaysperre sperren</string>
-    <string name="app_lock_title">MakeACopy ist gesperrt</string>
-    <string name="app_lock_unlock">Entsperren</string>
-    <string name="app_lock_prompt_title">MakeACopy entsperren</string>
-    <string name="app_lock_no_screen_lock">Richte zuerst eine Displaysperre auf diesem Gerät ein.</string>
     <string name="a11y_camera_ready">Kamera bereit. Doppeltippen auf „Scannen“ zum Aufnehmen.</string>
     <string name="a11y_low_light_toggle_flash">Wenig Licht erkannt. Doppeltippen auf „Blitz“ zum Aktivieren.</string>
     <string name="a11y_capture_failed">Aufnahme fehlgeschlagen.</string>

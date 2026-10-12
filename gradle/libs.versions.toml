@@ -21,7 +21,6 @@ tesseract = "4.9.0"
 lombok = "1.18.46"
 pdfbox = "2.0.27.0"
 activity = "1.13.0"
-biometric = "1.1.0"
 exifinterface = "1.4.2"
 documentfile = "1.1.0"
 gson="2.14.0"
@@ -53,7 +52,6 @@ lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-view
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 gson = { group = "com.google.code.gson",  name = "gson", version.ref = "gson" }
 
 # CameraX dependencies

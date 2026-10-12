@@ -374,12 +374,6 @@
     <string name="a11y_crop_summary_detected">Analyse van de vastgelegde afbeelding: document gedetecteerd.</string>
     <string name="a11y_crop_summary_no_doc">Analyse van de vastgelegde afbeelding: geen document gedetecteerd.</string>
     <string name="accessibility_mode_label">Toegankelijkheidsmodus</string>
-    <string name="protect_screen_content_option">Scans verbergen voor schermafbeeldingen en recente apps</string>
-    <string name="app_lock_option">App vergrendelen met vingerafdruk, gezicht of schermvergrendeling</string>
-    <string name="app_lock_title">MakeACopy is vergrendeld</string>
-    <string name="app_lock_unlock">Ontgrendelen</string>
-    <string name="app_lock_prompt_title">MakeACopy ontgrendelen</string>
-    <string name="app_lock_no_screen_lock">Stel eerst een schermvergrendeling in op dit apparaat.</string>
     <string name="a11y_camera_ready">Camera klaar. Dubbel tik op Scannen om vast te leggen.</string>
     <string name="a11y_low_light_toggle_flash">Weinig licht gedetecteerd. Dubbel tik op Flits om in te schakelen.
     </string>

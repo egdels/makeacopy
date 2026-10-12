@@ -376,12 +376,6 @@
     <string name="a11y_crop_summary_detected">Analisi dell’immagine acquisita: documento rilevato.</string>
     <string name="a11y_crop_summary_no_doc">Analisi dell’immagine acquisita: nessun documento rilevato.</string>
     <string name="accessibility_mode_label">Modalità accessibilità</string>
-    <string name="protect_screen_content_option">Nascondi le scansioni da screenshot e app recenti</string>
-    <string name="app_lock_option">Blocca l’app con impronta, volto o blocco schermo</string>
-    <string name="app_lock_title">MakeACopy è bloccata</string>
-    <string name="app_lock_unlock">Sblocca</string>
-    <string name="app_lock_prompt_title">Sblocca MakeACopy</string>
-    <string name="app_lock_no_screen_lock">Configura prima un blocco schermo su questo dispositivo.</string>
     <string name="a11y_camera_ready">Fotocamera pronta. Tocca due volte su “Scansiona” per catturare.</string>
     <string name="a11y_low_light_toggle_flash">Scarsa illuminazione rilevata. Tocca due volte su “Flash” per
         attivarlo.
