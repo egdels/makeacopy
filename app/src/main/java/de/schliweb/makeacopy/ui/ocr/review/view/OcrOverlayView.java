@@ -26,14 +26,14 @@ import lombok.Setter;
  * Overlay view to render OCR word boxes and support editing plus navigation. - Aspect-fit base
  * transform, then applies userScale and userOffset for pinch-zoom and pan. - Hit testing with
  * tolerance. Long-press opens context menu, single tap edits. - Viewport changes (scale/offset) are
- * exposed via listener for syncing sibling layers and UI.
+ * exposed via listener for syncing sibling layers and UI. The word text itself is drawn by {@link
+ * OcrTextLayerView} underneath; this view never paints text, or it would appear twice.
  */
 public class OcrOverlayView extends View {
   private OcrDoc doc;
   private final Paint boxPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Paint lowConfPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Paint selectedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-  private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final RectF tmp = new RectF();
 
   private float scale = 1f; // effective scale = baseFit * userScale
@@ -48,7 +48,6 @@ public class OcrOverlayView extends View {
 
   private int selectedWordId = -1;
   private float lowConfThreshold = 0.60f;
-  @Setter private boolean boxesOnly = false; // When true, only draw boxes without text content
 
   public interface OnWordTapListener {
     void onWordTapped(OcrDoc.Word w);
@@ -98,12 +97,6 @@ public class OcrOverlayView extends View {
     selectedPaint.setStyle(Paint.Style.STROKE);
     selectedPaint.setStrokeWidth(dp(2.5f));
     selectedPaint.setColor(Color.argb(255, 255, 193, 7));
-
-    textPaint.setStyle(Paint.Style.FILL);
-    // default; will be adjusted in onDraw based on UI mode
-    textPaint.setColor(Color.WHITE);
-    textPaint.setTextAlign(Paint.Align.LEFT);
-    textPaint.setTextSize(dp(12));
 
     setWillNotDraw(false);
 
@@ -220,12 +213,6 @@ public class OcrOverlayView extends View {
       return;
     computeTransform();
     if (doc.words == null) return;
-    // Update text color based on current UI mode: white in dark mode, black in light mode
-    boolean isNight =
-        (getResources().getConfiguration().uiMode
-                & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-    textPaint.setColor(isNight ? Color.WHITE : Color.BLACK);
 
     for (OcrDoc.Word w : doc.words) {
       if (w == null) continue;
@@ -234,20 +221,6 @@ public class OcrOverlayView extends View {
       canvas.drawRect(tmp, p);
       if (w.id == selectedWordId) {
         canvas.drawRect(tmp, selectedPaint);
-      }
-      // Only draw text content if boxesOnly is false
-      if (!boxesOnly && w.t != null && !w.t.isEmpty()) {
-        float h = tmp.height();
-        if (h > dp(8f)) {
-          float size = Math.max(dp(8f), h * 0.8f);
-          textPaint.setTextSize(size);
-          float x = tmp.left + dp(2f);
-          float y = tmp.top + h * 0.85f;
-          int save = canvas.save();
-          canvas.clipRect(tmp);
-          canvas.drawText(w.t, x, y, textPaint);
-          canvas.restoreToCount(save);
-        }
       }
     }
   }

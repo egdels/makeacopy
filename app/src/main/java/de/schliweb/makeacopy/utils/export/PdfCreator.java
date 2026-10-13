@@ -1155,14 +1155,6 @@ public class PdfCreator {
   }
 
   /**
-   * Restricts a given value to lie within the specified minimum and maximum bounds.
-   *
-   * @param v The value to be clamped.
-   * @param min The minimum bound to which the value can be clamped.
-   * @param max The maximum bound to which the value can be clamped.
-   * @return The clamped value, lying between the specified minimum and maximum bounds.
-   */
-  /**
    * Baseline for a text run inside an OCR box (image Y grows downward): a fifth of the box height
    * above its bottom, leaving room for descenders. A baseline below the box makes the selectable
    * text layer hang under the visible scan text.
@@ -1171,6 +1163,14 @@ public class PdfCreator {
     return boxBottom - boxHeight * 0.20f;
   }
 
+  /**
+   * Restricts a given value to lie within the specified minimum and maximum bounds.
+   *
+   * @param v The value to be clamped.
+   * @param min The minimum bound to which the value can be clamped.
+   * @param max The maximum bound to which the value can be clamped.
+   * @return The clamped value, lying between the specified minimum and maximum bounds.
+   */
   private static float clamp(float v, float min, float max) {
     return Math.max(min, Math.min(max, v));
   }

@@ -281,8 +281,7 @@ public class OcrReviewFragment extends Fragment {
   private void bindViews(View root) {
     overlay = root.findViewById(R.id.ocr_overlay);
     // The text layer below draws the words (fitted, RTL and vertical CJK aware); the overlay on
-    // top only adds boxes, or both would paint the text twice.
-    if (overlay != null) overlay.setBoxesOnly(true);
+    // top only adds boxes.
     textLayer = root.findViewById(R.id.ocr_text_layer);
     overlayContainer = root.findViewById(R.id.overlay_container);
     textModeContainer = root.findViewById(R.id.text_mode_container);
@@ -595,8 +594,6 @@ public class OcrReviewFragment extends Fragment {
     if (documentOcrOverlay == null) return;
     // Sync OCR overlay with document
     documentOcrOverlay.setDoc(currentDoc());
-    // In Document mode, show only boxes without text content
-    documentOcrOverlay.setBoxesOnly(true);
     documentOcrOverlay.setOnWordTapListener(this::showInlineEditDialog);
     documentOcrOverlay.setOnWordLongPressListener(this::showContextMenu);
     // Sync zoom and position from Layout overlay to Document overlay
