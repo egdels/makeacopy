@@ -750,9 +750,7 @@ public class PdfCreator {
                   targetTextWidth / measuredTextWidth, MIN_LINE_TEXT_SCALE_X, MAX_LINE_TEXT_SCALE_X)
               : 1f;
 
-      // Baseline inside the OCR line box (image Y increases downward). Placing it below the box
-      // makes the selectable text layer hang under the visible scan text.
-      float baselineImgY = lineBox.bottom - boxH * 0.20f;
+      float baselineImgY = baselineInBox(lineBox.bottom, boxH);
 
       // Invert Y (image space → PDF Y-up)
       float x_img = clamp(lineBox.left, 0f, imageWidth);
@@ -849,7 +847,7 @@ public class PdfCreator {
                 PdfTextUtils.reorderRtlForPdf(tokenRaw) + " ", java.text.Normalizer.Form.NFC);
         RectF b = w.getBoundingBox();
         float boxH = b.height();
-        float baselineImgY = b.bottom + boxH * 0.25f;
+        float baselineImgY = baselineInBox(b.bottom, boxH);
         float x_img = clamp(b.left, 0f, imageWidth);
         float y_img = clamp((imageHeight - baselineImgY), 0f, imageHeight);
 
@@ -1164,6 +1162,15 @@ public class PdfCreator {
    * @param max The maximum bound to which the value can be clamped.
    * @return The clamped value, lying between the specified minimum and maximum bounds.
    */
+  /**
+   * Baseline for a text run inside an OCR box (image Y grows downward): a fifth of the box height
+   * above its bottom, leaving room for descenders. A baseline below the box makes the selectable
+   * text layer hang under the visible scan text.
+   */
+  static float baselineInBox(float boxBottom, float boxHeight) {
+    return boxBottom - boxHeight * 0.20f;
+  }
+
   private static float clamp(float v, float min, float max) {
     return Math.max(min, Math.min(max, v));
   }
