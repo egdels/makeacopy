@@ -89,10 +89,11 @@ aus dem Datum; eine vorhandene Datei wird nie überschrieben.
 
 ## Barrierefreiheitsmodus
 
-Der Barrierefreiheitsmodus führt mit Sprache und Vibration durch die
-Aufnahme, so dass sich eine Seite scannen lässt, ohne den Bildschirm zu
-sehen. Die Lautstärketasten dienen dann als Auslöser. Schalte ihn unter
-Optionen → App ein.
+Der Barrierefreiheitsmodus führt mit gesprochenen Hinweisen und
+Vibration durch die Aufnahme, so dass sich eine Seite scannen lässt,
+ohne den Bildschirm zu sehen. Die Hinweise spricht dein Screenreader,
+etwa TalkBack; schalte ihn also ebenfalls ein. Die Lautstärketasten
+dienen dann als Auslöser. Schalte den Modus unter Optionen → App ein.
 
 ## Tipps für gute Scans
 

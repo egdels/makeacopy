@@ -412,9 +412,9 @@ MakeACopy respects your privacy:
 - Works 100% offline
 - No tracking, telemetry, or analytics
 - No cloud upload
-- Requires only camera and storage permissions
+- Requires only the camera permission (plus vibration for haptic feedback); files are reached through the system file dialogs, not a storage permission
 
-See our [Privacy Policy](https://egdels.github.io/makeacopy/privacy) for details.
+See our [Privacy Policy](https://egdels.github.io/makeacopy/privacy.html) for details.
 
 ## Related Projects
 
@@ -483,7 +483,7 @@ A big thank you to the people who make *MakeACopy* better:
 ### 📝 Notes from the Field
 
 - A public review claimed that *MakeACopy* installs other apps and drains the battery.  
-  This is technically impossible, as the app only requests the `CAMERA` permission.  
+  This is technically impossible, as the app only requests the `CAMERA` and `VIBRATE` permissions and has no Internet access.  
   This highlights how misunderstandings can sometimes appear in public reviews.
 
 - An anonymous email criticized the application size without providing actionable feedback.  

@@ -11,7 +11,7 @@
 
     <!-- Camera permission for document scanning -->
     <uses-permission android:name="android.permission.CAMERA"/>
-    <!-- Haptics for subtle accessibility feedback (no runtime prompt required) -->
+    <!-- Haptic ticks on capture, crop, OCR and export, plus Accessibility Mode cues (no runtime prompt required) -->
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission
             android:name="android.permission.ACCESS_NETWORK_STATE"

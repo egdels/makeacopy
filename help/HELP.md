@@ -82,9 +82,11 @@ never overwritten.
 
 ## Accessibility Mode
 
-Accessibility Mode guides the camera with speech and vibration, so that
-a page can be scanned without seeing the screen. The volume keys then
-work as the shutter. Switch it on in Options → App.
+Accessibility Mode guides the camera with spoken hints and vibration, so
+that a page can be scanned without seeing the screen. The hints are
+spoken by your screen reader, such as TalkBack, so switch that on as
+well. The volume keys then work as the shutter. Switch the mode on in
+Options → App.
 
 ## Tips for good scans
 

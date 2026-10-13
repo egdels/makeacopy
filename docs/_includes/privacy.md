@@ -1,6 +1,6 @@
 # Privacy Policy
 
-*MakeACopy for Android. Effective 2026-10-11. The app shows this text
+*MakeACopy for Android. Effective 2026-10-13. The app shows this text
 under Options → App → Privacy policy.*
 
 ## Who is responsible
@@ -22,11 +22,14 @@ recognition (OCR) and PDF creation all run on your device.
 ## What the app stores on your device
 
 - **Your scans**: the photographed or imported pages, the cropped and
-  processed images, the recognised text and the PDF or JPEG files of
-  completed scans, so that you can find them again in the library and
-  add them to other documents. They are kept in the app's private
-  storage until you delete them or the cleanup policy you chose in
-  Options → Library removes them.
+  processed page images, the recognised text and a small preview image
+  of every completed scan, so that you can find them again in the
+  library and add them to other documents. They are kept in the app's
+  private storage until you delete them or the cleanup policy you chose
+  in Options → Library removes them. The library also remembers where
+  you saved or shared the exported PDF or JPEG, and keeps Android's read
+  access to that file so that it can show and share it again; the file
+  itself stays in the place you chose.
 - **Collections** you create in the library, and which scans belong to
   them.
 - **Settings**: the choices in the options dialog, such as the OCR
@@ -52,7 +55,9 @@ service, not of MakeACopy.
 - **MakeACopy's own OCR language packs**, in the Tesseract edition from
   GitHub Releases: the app looks for these add-on apps, which answer to
   its own `de.schliweb.makeacopy.ACTION_TESSDATA` request, and copies
-  their language files. It sees no other installed apps.
+  their language files. It sees no other installed apps. The edition on
+  Google Play and F-Droid uses PaddleOCR and does not look for language
+  packs.
 
 ## What leaves your device
 
@@ -60,15 +65,19 @@ Only what you send yourself: when you save a document, it goes to the
 place you pick in the system's file dialog; when you share it, to the
 app you pick in the share dialog. **Share logs** in Options → App works
 the same way: it opens the share dialog with the app's own log and a
-short header (app version, Android version, device model, language,
-time), and you decide whether and to whom to send it.
+short header (app version, Android version, device make, model and
+build, supported CPU architectures, app language, the state of the
+"analysis" option, time and process ID), and you decide whether and to
+whom to send it.
 
 ## Android permissions
 
 - `CAMERA`: to photograph documents. Android asks for it when the camera
   screen opens for the first time.
-- `VIBRATE`: for the short haptic feedback of Accessibility Mode. Android
-  does not ask for this one.
+- `VIBRATE`: for the short haptic tick when a picture is taken, a page
+  is cropped, text recognition finishes or an export is done, and for
+  the framing cues of Accessibility Mode. Android does not ask for this
+  one.
 
 There is no Internet, location, contacts, microphone or phone permission,
 and no permission to read your photos or files in general: files reach

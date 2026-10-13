@@ -91,9 +91,11 @@ jamais écrasé.
 
 ## Mode accessibilité
 
-Le mode accessibilité guide la prise de vue par la parole et les
-vibrations, de sorte qu'une page peut être numérisée sans voir l'écran.
-Les touches de volume servent alors de déclencheur. Activez-le dans
+Le mode accessibilité guide la prise de vue par des indications
+parlées et des vibrations, de sorte qu'une page peut être numérisée
+sans voir l'écran. Les indications sont lues par votre lecteur d'écran,
+par exemple TalkBack ; activez-le donc aussi. Les touches de volume
+servent alors de déclencheur. Activez le mode dans
 Options → Application.
 
 ## Conseils pour de bonnes numérisations
