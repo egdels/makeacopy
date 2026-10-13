@@ -43,16 +43,19 @@ public class IncomingUriPolicy {
         // Not resolvable here; the authority check below still applies
       }
     }
-    boolean allowed = isAllowed(uri.getScheme(), authority, providerPackage, ctx.getPackageName());
+    boolean allowed =
+        isAllowed(uri.getScheme(), uri.getAuthority(), providerPackage, ctx.getPackageName());
     if (!allowed) Log.w(TAG, "Rejected incoming Uri with scheme " + uri.getScheme());
     return allowed;
   }
 
   /**
-   * The rule itself: scheme {@code content}, an authority, and neither the authority nor the
-   * resolved provider belongs to {@code ownPackage}. App providers are named after the application
-   * id ({@code <applicationId>.fileprovider}, {@code <applicationId>.androidx-startup}), so the
-   * authority check holds even when the provider cannot be resolved.
+   * The rule itself: scheme {@code content}, an authority, and a provider that is not ours. When
+   * the provider resolved, its package decides, so another edition of the app (the Light edition
+   * has the id {@code <applicationId>.light}) may share with this one. When it did not resolve, the
+   * name decides: the app's own providers are named {@code <applicationId>.<provider>} with a
+   * single segment after the id ({@code .fileprovider}, {@code .androidx-startup}), while a sibling
+   * package's provider has at least two ({@code .light.fileprovider}).
    */
   static boolean isAllowed(
       @Nullable String scheme,
@@ -63,10 +66,12 @@ public class IncomingUriPolicy {
       return false;
     String name = providerAuthority(authority);
     if (name == null || name.isEmpty()) return false;
+    if (providerPackage != null) return !providerPackage.equals(ownPackage);
     String lower = name.toLowerCase(Locale.ROOT);
     String own = ownPackage.toLowerCase(Locale.ROOT);
-    if (lower.equals(own) || lower.startsWith(own + ".")) return false;
-    return providerPackage == null || !providerPackage.equals(ownPackage);
+    if (lower.equals(own)) return false;
+    if (!lower.startsWith(own + ".")) return true;
+    return lower.substring(own.length() + 1).contains(".");
   }
 
   /**

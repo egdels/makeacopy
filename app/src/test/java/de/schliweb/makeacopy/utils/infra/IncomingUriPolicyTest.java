@@ -59,6 +59,18 @@ public class IncomingUriPolicyTest {
   }
 
   @Test
+  public void siblingEdition_isAllowed() {
+    // The Light edition shares into the Full edition: resolved to its own package ...
+    assertTrue(
+        IncomingUriPolicy.isAllowed("content", OWN + ".light.fileprovider", OWN + ".light", OWN));
+    // ... or unresolved, recognisable by the two segments after our id
+    assertTrue(IncomingUriPolicy.isAllowed("content", OWN + ".light.fileprovider", null, OWN));
+    assertTrue(IncomingUriPolicy.isAllowed("content", "0@" + OWN + ".light.fileprovider", null, OWN));
+    // A resolved foreign package wins over a look-alike name
+    assertTrue(IncomingUriPolicy.isAllowed("content", OWN + ".fileprovider", "org.example", OWN));
+  }
+
+  @Test
   public void providerAuthority_stripsUserAndPort() {
     assertEquals("media", IncomingUriPolicy.providerAuthority("0@media"));
     assertEquals("media", IncomingUriPolicy.providerAuthority("media:443"));
