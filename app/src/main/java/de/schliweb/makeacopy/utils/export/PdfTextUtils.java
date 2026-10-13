@@ -135,6 +135,46 @@ public final class PdfTextUtils {
   }
 
   /**
+   * Lays out one logical line for the PDF content stream, where glyphs always advance to the right:
+   * with an RTL base the runs are put into visual order by the Unicode bidi algorithm and every
+   * right-to-left run is written back to front, while embedded Latin words and numbers keep their
+   * order. The result, drawn from the line's left edge, lands each word on its own ink, and a
+   * bidi-aware extractor turns it back into the logical line. Lines without an RTL base are
+   * returned unchanged.
+   *
+   * @param logical the line in logical (reading) order
+   * @param rtlBase whether the line reads right to left
+   * @return the glyph sequence to write, left to right
+   */
+  public static String logicalToVisual(String logical, boolean rtlBase) {
+    if (logical == null || logical.length() < 2 || !rtlBase) return logical;
+    java.text.Bidi bidi = new java.text.Bidi(logical, java.text.Bidi.DIRECTION_RIGHT_TO_LEFT);
+    int n = bidi.getRunCount();
+    byte[] levels = new byte[n];
+    String[] runs = new String[n];
+    for (int i = 0; i < n; i++) {
+      levels[i] = (byte) bidi.getRunLevel(i);
+      runs[i] = logical.substring(bidi.getRunStart(i), bidi.getRunLimit(i));
+    }
+    Integer[] order = new Integer[n];
+    for (int i = 0; i < n; i++) order[i] = i;
+    java.text.Bidi.reorderVisually(levels, 0, order, 0, n);
+    StringBuilder sb = new StringBuilder(logical.length());
+    for (int i = 0; i < n; i++) {
+      int run = order[i];
+      sb.append((levels[run] & 1) == 1 ? reverseCodepoints(runs[run]) : runs[run]);
+    }
+    return sb.toString();
+  }
+
+  private static String reverseCodepoints(String s) {
+    int[] cps = s.codePoints().toArray();
+    StringBuilder sb = new StringBuilder(s.length());
+    for (int i = cps.length - 1; i >= 0; i--) sb.appendCodePoint(cps[i]);
+    return sb.toString();
+  }
+
+  /**
    * Reorders text for correct PDF text layer representation. For RTL text that appears to be in
    * visual order (reversed), this method reverses it back to logical order so that copy/paste works
    * correctly.

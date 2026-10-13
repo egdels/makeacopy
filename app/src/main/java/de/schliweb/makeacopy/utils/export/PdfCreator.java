@@ -731,14 +731,18 @@ public class PdfCreator {
 
         // PDFBox writes the complete line as one positioned PDF text run. Positioning every word
         // independently makes some PDF extractors interpret the visual gaps as multiple spaces or
-        // line breaks. For RTL scripts the encoded glyph order still needs PDF-specific reordering,
-        // isolated from the logical text used by OCRFragment/OCRReview/TXT export.
-        lineText.append(PdfTextUtils.reorderRtlForPdf(tokenRaw));
+        // line breaks. An LTR line keeps its words in place and only turns each RTL word into
+        // glyph order; an RTL line is laid out as a whole below, so that the first word lands on
+        // the right where the ink is. Both stay isolated from the logical text used by
+        // OCRFragment/OCRReview/TXT export.
+        lineText.append(isRtl ? tokenRaw : PdfTextUtils.reorderRtlForPdf(tokenRaw));
       }
       if (anchor == null || lineText.length() == 0) continue;
 
       String token =
-          java.text.Normalizer.normalize(lineText.toString(), java.text.Normalizer.Form.NFC);
+          java.text.Normalizer.normalize(
+              PdfTextUtils.logicalToVisual(lineText.toString(), isRtl),
+              java.text.Normalizer.Form.NFC);
 
       RectF lineBox = getLineBoundingBox(line);
       float boxH = lineBox.height();
