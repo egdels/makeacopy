@@ -1,8 +1,9 @@
 MakeACopy 4.7.2
 * New: Help and privacy policy in Options → App.
+* New: scans stay out of Android backups and device transfer.
+* New: option to hide scans from screenshots and recent apps.
 * Fixed: manual focus delayed every shot by two seconds.
-* Fixed: the OCR review drew words twice and clipped their last letters.
-* Fixed: Arabic words next to a link or e-mail address were mirrored.
-* Fixed: the PDF text layer of right-to-left lines sat too low and in reversed word order, breaking search and copy.
-* Improved: the autofocus lock gives up after one second.
-* Improved: "Share logs" adds camera and OCR diagnostics.
+* Fixed: OCR review drew words twice and clipped them.
+* Fixed: Arabic words next to a link or e-mail were mirrored.
+* Fixed: right-to-left PDF text layer sat too low, in reversed order.
+* Improved: stricter file intake, fewer details in "Share logs".
