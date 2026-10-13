@@ -280,6 +280,9 @@ public class OcrReviewFragment extends Fragment {
 
   private void bindViews(View root) {
     overlay = root.findViewById(R.id.ocr_overlay);
+    // The text layer below draws the words (fitted, RTL and vertical CJK aware); the overlay on
+    // top only adds boxes, or both would paint the text twice.
+    if (overlay != null) overlay.setBoxesOnly(true);
     textLayer = root.findViewById(R.id.ocr_text_layer);
     overlayContainer = root.findViewById(R.id.overlay_container);
     textModeContainer = root.findViewById(R.id.text_mode_container);
