@@ -107,6 +107,11 @@ public class OcrTextLayerView extends View {
       }
       float size = Math.max(dp(8f), h * 0.8f);
       textPaint.setTextSize(size);
+      // The box hugs the word's ink, but its height also covers descender space, so a size taken
+      // from the height alone can be wider than the box and lose its last letters to the clip.
+      float avail = tmp.width() - dp(4f);
+      size = fitTextSize(size, textPaint.measureText(w.t), avail, dp(8f));
+      textPaint.setTextSize(size);
       boolean rtl = OcrDocReadingOrder.isRtlText(w.t);
       float x = rtl ? tmp.right - dp(2f) : tmp.left + dp(2f);
       float y = tmp.top + h * 0.85f; // rough baseline inside box
@@ -179,6 +184,15 @@ public class OcrTextLayerView extends View {
     out.set(
         offsetX + x * scale, offsetY + y * scale,
         offsetX + (x + rw) * scale, offsetY + (y + rh) * scale);
+  }
+
+  /**
+   * Shrinks {@code size} so that text measuring {@code width} at that size fits into {@code
+   * avail}; text width grows linearly with the size. Never goes below {@code minSize}.
+   */
+  static float fitTextSize(float size, float width, float avail, float minSize) {
+    if (width <= 0f || avail <= 0f || width <= avail) return size;
+    return Math.max(minSize, size * avail / width);
   }
 
   private float clamp(float v, float min, float max) {
