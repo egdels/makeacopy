@@ -336,15 +336,16 @@ final class PaddleResultBuilder {
                 // Sub-Words werden in visueller Reihenfolge der Zeile gesammelt: der
                 // PdfCreator macht seine eigene RTL-Sortierung anhand der Bounding-Boxes
                 // (siehe PdfTextUtils.isRtlLine + Sortierung in PdfCreator), daher hier
-                // bewusst keine Umkehrung. Bei RTL müssen aber auch die Wort-Texte selbst
-                // in dieselbe logische Codepoint-Reihenfolge gebracht werden wie der oben
-                // aufgebaute Gesamttext; sonst zeigen word-basierte Views (OCRReview) die
-                // einzelnen Wörter gespiegelt an.
+                // bewusst keine Umkehrung. Die Wort-Texte selbst müssen aber in logische
+                // Codepoint-Reihenfolge gebracht werden, sonst zeigen word-basierte Views
+                // (OCRReview) die Wörter gespiegelt an. Paddle liefert RTL-Glyphen in
+                // visueller Reihenfolge unabhängig davon, ob die Zeile mehrheitlich RTL
+                // ist — ein arabisches Wort neben einer langen URL wäre sonst gespiegelt.
                 for (QuadRecognition quad : recognized) {
                     for (RecognizedWord sw : quad.words) {
                         if (sw == null) continue;
-                        if (rtl && isRtlText(sw.getText())) {
-                            sw.setText(reverseByCodepoints(sw.getText()));
+                        if (containsRtl(sw.getText())) {
+                            sw.setText(visualToLogical(sw.getText(), true));
                         }
                         words.add(sw);
                         confSum += sw.getConfidence();
@@ -445,12 +446,11 @@ final class PaddleResultBuilder {
             int idx = rtl ? (n - 1 - qi) : qi;
             String emittedText = recognized[idx].text;
             if (emittedText == null) continue;
-            // Bei RTL liefert Paddle die Glyphen pro Crop in visueller (links→rechts)
-            // Reihenfolge — das ist die Spiegelung der logischen Codepoint-Reihenfolge.
-            // Für korrekten TXT-/BiDi-Output drehen wir jeden Snippet per Codepoints um.
-            if (rtl) {
-                emittedText = reverseByCodepoints(emittedText);
-            }
+            // Paddle liefert die Glyphen pro Crop in visueller (links→rechts) Reihenfolge.
+            // Für korrekten TXT-/BiDi-Output wird jeder Snippet in logische Reihenfolge
+            // gebracht: eingebettete Läufe der Gegenrichtung (Zahlen/Latein in einer
+            // RTL-Zeile, arabische Wörter in einer LTR-Zeile) bleiben dabei intakt.
+            emittedText = visualToLogical(emittedText, rtl);
             // In vertikalen CJK-Spalten sind Spaces zwischen Quad-Segmenten nicht
             // sinnvoll — Segmente derselben Spalte werden direkt konkateniert.
             if (!verticalLayout && qi > 0 && textBuilder.length() > 0) {
@@ -1387,6 +1387,80 @@ final class PaddleResultBuilder {
      * TXT-Output verwendet, weil Paddle die Glyphen pro Crop in visueller (links→rechts)
      * Reihenfolge liefert — die logische Codepoint-Reihenfolge ist die Spiegelung davon.
      */
+    private static final int DIR_L = 1;
+    private static final int DIR_R = 2;
+    private static final int DIR_N = 0;
+
+    /**
+     * Richtungsklasse eines Codepoints für {@link #visualToLogical}: {@code DIR_R} für
+     * hebräische/arabische Buchstaben, {@code DIR_L} für lateinische Buchstaben und Ziffern
+     * (europäische wie arabisch-indische werden beide links→rechts gelesen), sonst neutral.
+     */
+    private static int dirClass(int cp) {
+        byte d = Character.getDirectionality(cp);
+        if (d == Character.DIRECTIONALITY_RIGHT_TO_LEFT
+                || d == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC) {
+            return DIR_R;
+        }
+        if (d == Character.DIRECTIONALITY_LEFT_TO_RIGHT
+                || d == Character.DIRECTIONALITY_EUROPEAN_NUMBER
+                || d == Character.DIRECTIONALITY_ARABIC_NUMBER) {
+            return DIR_L;
+        }
+        return DIR_N;
+    }
+
+    /** {@code true}, wenn mindestens ein hebräischer/arabischer Buchstabe enthalten ist. */
+    @VisibleForTesting
+    static boolean containsRtl(String s) {
+        if (s == null) return false;
+        for (int i = 0; i < s.length(); ) {
+            int cp = s.codePointAt(i);
+            if (dirClass(cp) == DIR_R) return true;
+            i += Character.charCount(cp);
+        }
+        return false;
+    }
+
+    /**
+     * Bringt einen Paddle-Snippet aus visueller (links→rechts) Glyphenreihenfolge in logische
+     * Codepoint-Reihenfolge. Bei RTL-Basis wird alles gespiegelt und danach jeder eingebettete
+     * LTR-Lauf (lateinische Wörter, Zahlen samt Trennzeichen dazwischen) zurückgedreht; bei
+     * LTR-Basis bleibt die Reihenfolge und nur jeder RTL-Lauf wird gedreht. Neutrale Zeichen
+     * gehören zum Lauf, wenn sie zwischen zwei Zeichen desselben Laufs stehen.
+     */
+    @VisibleForTesting
+    static String visualToLogical(String visual, boolean rtlBase) {
+        if (visual == null || visual.length() < 2) return visual;
+        int[] cps = visual.codePoints().toArray();
+        if (rtlBase) reverseRange(cps, 0, cps.length - 1);
+        int embedded = rtlBase ? DIR_L : DIR_R;
+        int i = 0;
+        while (i < cps.length) {
+            if (dirClass(cps[i]) != embedded) {
+                i++;
+                continue;
+            }
+            int end = i;
+            for (int j = i + 1; j < cps.length; j++) {
+                int c = dirClass(cps[j]);
+                if (c == embedded) end = j;
+                else if (c != DIR_N) break;
+            }
+            reverseRange(cps, i, end);
+            i = end + 1;
+        }
+        return new String(cps, 0, cps.length);
+    }
+
+    private static void reverseRange(int[] a, int from, int to) {
+        while (from < to) {
+            int t = a[from];
+            a[from++] = a[to];
+            a[to--] = t;
+        }
+    }
+
     @VisibleForTesting
     static String reverseByCodepoints(String s) {
         if (s == null || s.length() < 2) return s;

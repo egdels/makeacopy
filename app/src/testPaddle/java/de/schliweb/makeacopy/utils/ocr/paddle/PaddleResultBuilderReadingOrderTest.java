@@ -299,6 +299,73 @@ public class PaddleResultBuilderReadingOrderTest {
     }
 
     @Test
+    public void visualToLogical_rtlBase_keepsEmbeddedNumbersAndLatin() {
+        // Logisch "التاريخ: 25/12/2025" — visuell steht die Zahl links, das arabische Wort
+        // rechts in gespiegelter Glyphenreihenfolge.
+        String visual = "25/12/2025 :" + PaddleResultBuilder.reverseByCodepoints("التاريخ");
+        assertEquals("التاريخ: 25/12/2025", PaddleResultBuilder.visualToLogical(visual, true));
+
+        String visualLatin =
+                ".MakeACopy " + PaddleResultBuilder.reverseByCodepoints("هذا مستند");
+        assertEquals("هذا مستند MakeACopy.", PaddleResultBuilder.visualToLogical(visualLatin, true));
+
+        // Arabisch-indische Ziffern werden ebenfalls links→rechts gelesen.
+        String visualDigits = "٠١٢٣ :" + PaddleResultBuilder.reverseByCodepoints("أرقام");
+        assertEquals("أرقام: ٠١٢٣", PaddleResultBuilder.visualToLogical(visualDigits, true));
+
+        // Rein arabisch: identisch zur vollen Spiegelung.
+        String logical = "مستند اختبار العربية";
+        String visualPure = PaddleResultBuilder.reverseByCodepoints(logical);
+        assertEquals(logical, PaddleResultBuilder.visualToLogical(visualPure, true));
+    }
+
+    @Test
+    public void visualToLogical_ltrBase_flipsOnlyTheArabicRun() {
+        // Regression: in "- رابط: https://example.com/makeacopy" überwiegt Latein, die Zeile
+        // gilt als LTR; das arabische Wort kam trotzdem in visueller Reihenfolge von Paddle
+        // und muss für sich gedreht werden ("طبار" → "رابط").
+        String visual =
+                "https://example.com/makeacopy :" + PaddleResultBuilder.reverseByCodepoints("رابط") + " -";
+        assertEquals(
+                "https://example.com/makeacopy :رابط -",
+                PaddleResultBuilder.visualToLogical(visual, false));
+
+        // Mehrere arabische Wörter in einem Lauf bleiben als Lauf zusammen.
+        String twoWords = "Hello " + PaddleResultBuilder.reverseByCodepoints("مستند اختبار") + " World";
+        assertEquals(
+                "Hello مستند اختبار World", PaddleResultBuilder.visualToLogical(twoWords, false));
+
+        // Ohne RTL-Zeichen: unverändert.
+        assertEquals("Hello World", PaddleResultBuilder.visualToLogical("Hello World", false));
+        assertEquals("x", PaddleResultBuilder.visualToLogical("x", false));
+        assertEquals(null, PaddleResultBuilder.visualToLogical(null, true));
+    }
+
+    @Test
+    public void build_arabicWordInLatinMajorityLine_isNotMirrored() throws Exception {
+        // Zeile "- رابط: https://example.com/makeacopy": Quad A (links) hält die URL, Quad B
+        // (rechts) das arabische Wort in visueller Glyphenreihenfolge.
+        Quad qUrl = rectQuad(0, 0, 300, 20, 1.0);
+        Quad qWord = rectQuad(320, 0, 60, 20, 2.0);
+
+        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        byId.put(1.0, textOnly("https://example.com/makeacopy"));
+        byId.put(2.0, textOnly(PaddleResultBuilder.reverseByCodepoints("رابط")));
+
+        IdRec rec = new IdRec(byId);
+        PaddleResultBuilder.Cropper hook = (full, quad) -> {
+            rec.lastQuad = quad;
+            return null;
+        };
+        OCRHelper.OcrResultWords result =
+                PaddleResultBuilder.build(null, Arrays.asList(qWord, qUrl), rec, hook);
+
+        assertEquals("https://example.com/makeacopy رابط", result.text);
+        assertEquals(2, result.words.size());
+        assertTrue(result.words.stream().anyMatch(w -> "رابط".equals(w.getText())));
+    }
+
+    @Test
     public void build_ltrLineUnchanged_byRtlHeuristic() throws Exception {
         // Sicherstellen, dass die RTL-Heuristik LTR-Zeilen nicht aus Versehen kippt.
         Quad qA = rectQuad(0, 0, 50, 20, 1.0);
