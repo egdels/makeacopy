@@ -1,5 +1,8 @@
 MakeACopy 4.7.2
-* New: Help and the privacy policy in Options → App, readable offline.
-* Fixed: with manual focus every scan waited two seconds before the shutter fired.
-* Improved: the autofocus lock before a shot gives up after one second instead of two when it cannot converge (dark scene, telephoto lens too close).
-* Improved: "Share logs" now includes the camera, capture timing and OCR diagnostics in release builds.
+* New: Help and privacy policy in Options → App.
+* Fixed: manual focus delayed every shot by two seconds.
+* Fixed: the OCR review drew words twice and clipped their last letters.
+* Fixed: Arabic words next to a link or e-mail address were mirrored.
+* Fixed: the PDF text layer of right-to-left lines sat too low and in reversed word order, breaking search and copy.
+* Improved: the autofocus lock gives up after one second.
+* Improved: "Share logs" adds camera and OCR diagnostics.
