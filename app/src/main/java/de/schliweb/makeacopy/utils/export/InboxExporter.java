@@ -139,7 +139,7 @@ public final class InboxExporter {
       String fileName = resolveUniqueFileName(dir, baseName, extension);
       DocumentFile newFile = dir.createFile(mimeType, fileName);
       if (newFile == null) {
-        Log.w(TAG, "Failed to create file in inbox: " + fileName);
+        Log.w(TAG, "Failed to create file in inbox");
         return null;
       }
       Log.d(TAG, "Created inbox file: " + newFile.getUri());

@@ -2155,7 +2155,7 @@ public class ExportFragment extends Fragment {
                         pageBmp = ImageDecodeUtils.decodeFull(p);
                         loadedFromFile = (pageBmp != null);
                       } catch (Exception e) {
-                        Log.w(TAG, "ZIP export: decodeFull failed for " + p, e);
+                        Log.w(TAG, "ZIP export: decodeFull failed for " + LogSafe.path(p), e);
                       }
                     }
                   }
