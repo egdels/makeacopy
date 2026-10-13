@@ -93,6 +93,7 @@ public class SettingsCatalogTest {
     known.add(SettingsCatalog.PREFS_CROP);
     known.add(SettingsCatalog.PREFS_CLEANUP);
     known.add(SettingsCatalog.PREFS_LANGUAGE);
+    known.add(SettingsCatalog.PREFS_LOCATIONS);
     known.addAll(NOT_A_PREFERENCE);
 
     Set<String> unknown = new TreeSet<>();

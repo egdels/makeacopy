@@ -41,8 +41,10 @@ recognition (OCR) and PDF creation all run on your device.
 Uninstalling the app removes all of this; exported files stay where you
 saved them. Your scans, their text and the library are excluded from
 Android's backup and from device-to-device transfer, so they never leave
-the device that way. Only the settings can be part of a device backup
-you have set up with Google, under the terms of that backup service.
+the device that way, and neither do the folders and files you picked
+for Inbox Mode, saving and loading. Only the other settings can be part
+of a device backup you have set up with Google, under the terms of that
+backup service.
 
 ## What the app reads
 

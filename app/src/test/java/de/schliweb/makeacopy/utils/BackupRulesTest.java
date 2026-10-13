@@ -33,7 +33,8 @@ public class BackupRulesTest {
           "file:Pictures",
           "database:.",
           "external:.",
-          "sharedpref:session_ids.xml");
+          "sharedpref:session_ids.xml",
+          "sharedpref:export_locations.xml");
 
   /** Folders under getFilesDir() that hold no document content and may be backed up. */
   private static final Set<String> BACKED_UP_FOLDERS = Set.of("tessdata");
@@ -41,8 +42,10 @@ public class BackupRulesTest {
   private static final Pattern EXCLUDE =
       Pattern.compile("<exclude\\s+domain=\"([a-z]+)\"\\s+path=\"([^\"]+)\"\\s*/>");
 
+  /** {@code new File(getFilesDir(), "x")} and {@code getFilesDir().getAbsolutePath() + "/x"}. */
   private static final Pattern FILES_DIR_CHILD =
-      Pattern.compile("getFilesDir\\(\\),\\s*\"([^\"/]+)");
+      Pattern.compile(
+          "getFilesDir\\(\\)(?:,\\s*|\\.getAbsolutePath\\(\\)\\s*\\+\\s*)\"/?([^\"/]+)");
 
   private static File moduleDir() {
     // Gradle runs unit tests with the module directory as working dir; IDEs may use the root.

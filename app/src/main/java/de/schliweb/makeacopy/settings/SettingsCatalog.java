@@ -35,6 +35,9 @@ public final class SettingsCatalog {
   public static final String PREFS_CLEANUP = "cache_cleanup_prefs";
   public static final String PREFS_LANGUAGE = "app_language";
 
+  /** Picked folders and files; excluded from backups, see ExportPrefsHelper.PREFS_LOCATIONS. */
+  public static final String PREFS_LOCATIONS = "export_locations";
+
   /** Sections of the options dialog, in display order. */
   public enum Group {
     SCAN,
@@ -106,7 +109,7 @@ public final class SettingsCatalog {
           str("jpeg_mode", "NONE", Group.EXPORT), // JpegExportOptions.Mode
           bool("jpeg_output_grayscale", false, Group.EXPORT),
           bool("inbox_enabled", false, Group.EXPORT), // behind FeatureFlags.isInboxModeEnabled
-          str("inbox_uri", null, Group.EXPORT),
+          new Setting(PREFS_LOCATIONS, "inbox_uri", Type.STRING, null, Group.EXPORT),
           str("inbox_filename_template", "date_scan", Group.EXPORT),
           bool("inbox_auto_new_scan", false, Group.EXPORT),
           // Crop

@@ -10,4 +10,5 @@
     <exclude domain="database" path="."/>
     <exclude domain="external" path="."/>
     <exclude domain="sharedpref" path="session_ids.xml"/>
+    <exclude domain="sharedpref" path="export_locations.xml"/>
 </full-backup-content>

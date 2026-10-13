@@ -11,7 +11,6 @@ package de.schliweb.makeacopy.ui.export;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 import de.schliweb.makeacopy.utils.export.PageFormat;
 import de.schliweb.makeacopy.utils.export.PdfCreator;
 import de.schliweb.makeacopy.utils.export.PdfQualityPreset;
@@ -30,8 +29,42 @@ public final class ExportPrefsHelper {
 
   private static final String PREFS_NAME = "export_options";
 
+  /**
+   * The folders and files the user picked (SAF Uris with their folder and file names). They live in
+   * their own preference file, which the backup rules exclude: a persisted Uri permission does not
+   * survive a restore to another device anyway, and the names would otherwise leave the device with
+   * the cloud backup (security audit F-02).
+   */
+  public static final String PREFS_LOCATIONS = "export_locations";
+
+  private static final String KEY_LAST_IMPORT_URI = "last_import_uri";
+  private static final String KEY_LAST_EXPORT_URI = "last_export_uri";
+
   public static SharedPreferences getPrefs(Context context) {
     return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+  }
+
+  private static SharedPreferences locations(Context context) {
+    return context.getSharedPreferences(PREFS_LOCATIONS, Context.MODE_PRIVATE);
+  }
+
+  /** Reads a picked location; a value still in the old file is moved over once. */
+  private static String location(Context context, String key) {
+    SharedPreferences prefs = locations(context);
+    String value = prefs.getString(key, null);
+    if (value != null) return value;
+    SharedPreferences legacy = getPrefs(context);
+    value = legacy.getString(key, null);
+    if (value != null) {
+      prefs.edit().putString(key, value).apply();
+      legacy.edit().remove(key).apply();
+    }
+    return value;
+  }
+
+  private static void setLocation(Context context, String key, String value) {
+    locations(context).edit().putString(key, value).apply();
+    getPrefs(context).edit().remove(key).apply();
   }
 
   public static boolean isIncludeOcr(Context context) {
@@ -153,25 +186,21 @@ public final class ExportPrefsHelper {
   }
 
   public static String getLastImportUri(Context context) {
-    String value = getPrefs(context).getString("last_import_uri", null);
-    Log.d("ExportPrefsHelper", "getLastImportUri: " + value);
+    String value = location(context, KEY_LAST_IMPORT_URI);
     return value;
   }
 
   public static void setLastImportUri(Context context, String uri) {
-    Log.d("ExportPrefsHelper", "setLastImportUri: " + uri);
-    getPrefs(context).edit().putString("last_import_uri", uri).apply();
+    setLocation(context, KEY_LAST_IMPORT_URI, uri);
   }
 
   public static String getLastExportUri(Context context) {
-    String value = getPrefs(context).getString("last_export_uri", null);
-    Log.d("ExportPrefsHelper", "getLastExportUri: " + value);
+    String value = location(context, KEY_LAST_EXPORT_URI);
     return value;
   }
 
   public static void setLastExportUri(Context context, String uri) {
-    Log.d("ExportPrefsHelper", "setLastExportUri: " + uri);
-    getPrefs(context).edit().putString("last_export_uri", uri).apply();
+    setLocation(context, KEY_LAST_EXPORT_URI, uri);
   }
 
   // ── Inbox Mode preferences ──
@@ -190,15 +219,16 @@ public final class ExportPrefsHelper {
 
   /** Returns the persisted tree URI string for the Inbox directory, or {@code null}. */
   public static String getInboxUri(Context context) {
-    return getPrefs(context).getString(KEY_INBOX_URI, null);
+    return location(context, KEY_INBOX_URI);
   }
 
   public static void setInboxUri(Context context, String uri) {
-    getPrefs(context).edit().putString(KEY_INBOX_URI, uri).apply();
+    setLocation(context, KEY_INBOX_URI, uri);
   }
 
   /** Clears the Inbox directory URI and disables Inbox Mode. */
   public static void clearInbox(Context context) {
+    locations(context).edit().remove(KEY_INBOX_URI).apply();
     getPrefs(context).edit().remove(KEY_INBOX_URI).putBoolean(KEY_INBOX_ENABLED, false).apply();
   }
 
