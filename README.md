@@ -91,6 +91,11 @@ height="80">](https://play.google.com/store/apps/details?id=de.schliweb.makeacop
 
 Or download the latest APK from the [Releases Section](https://github.com/egdels/makeacopy/releases/latest).
 
+> **Official app ID:** `de.schliweb.makeacopy` (Light edition: `de.schliweb.makeacopy.light`).
+> MakeACopy is only distributed via F-Droid, Google Play under this ID, and
+> GitHub Releases of this repository. Apps with the same name but a different
+> package ID or developer are not affiliated with this project.
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## APK Verification
