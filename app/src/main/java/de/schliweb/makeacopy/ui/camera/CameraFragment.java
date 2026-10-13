@@ -73,6 +73,7 @@ import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ui.A11yUtils;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.HapticsUtils;
+import de.schliweb.makeacopy.utils.ui.ScreenProtection;
 import de.schliweb.makeacopy.utils.ui.UIUtils;
 import java.io.File;
 import java.text.DecimalFormat;
@@ -925,8 +926,11 @@ public class CameraFragment extends Fragment implements SensorEventListener {
             || Build.PRODUCT.contains("sdk")
             || Build.MODEL.contains("Emulator")
             || Build.MODEL.contains("Android SDK built for");
+    // A SurfaceView (PERFORMANCE) has its own surface, which the window's FLAG_SECURE does not
+    // cover: with "Protect screen content" on, the preview must render inside the window.
+    boolean protectScreen = ScreenProtection.isEnabled(requireContext());
     PreviewView.ImplementationMode implMode =
-        isSony
+        isSony || protectScreen
             ? PreviewView.ImplementationMode.COMPATIBLE
             : (tier == BindTier.PERF
                 ? PreviewView.ImplementationMode.PERFORMANCE
@@ -2086,7 +2090,8 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                   FileProvider.getUriForFile(
                       requireContext(), BuildConfig.APPLICATION_ID + ".fileprovider", photoFile);
             } catch (IllegalArgumentException badRoot) {
-              Log.w(TAG, "FileProvider root mismatch, fallback to file://", badRoot);
+              // The exception message carries the absolute path: log the fact only
+              Log.w(TAG, "FileProvider root mismatch, fallback to file://");
               imageUri = Uri.fromFile(photoFile);
             }
 

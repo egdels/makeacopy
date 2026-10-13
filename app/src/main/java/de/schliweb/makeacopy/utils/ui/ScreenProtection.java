@@ -18,7 +18,9 @@ import lombok.experimental.UtilityClass;
 /**
  * The "Protect screen content" setting (security audit F-04): with it, the main window is marked
  * secure, so screenshots, screen recordings and the recent-apps preview show no scan. All screens
- * with document content live in MainActivity, so its window is the one to mark.
+ * with document content live in MainActivity, so its window is the one to mark. The camera preview
+ * then renders as a TextureView inside that window (see CameraFragment), because a SurfaceView
+ * would have its own, unprotected surface.
  */
 @UtilityClass
 public class ScreenProtection {
