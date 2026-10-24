@@ -1527,19 +1527,23 @@ public class PdfCreator {
    *
    * <p><b>Bitmap ownership contract:</b> {@link PdfCreator} borrows the bitmap returned by {@link
    * #loadBitmap(int)} for the duration of one page render and then calls {@link #releasePage(int,
-   * Bitmap)} exactly once for that page (also when rendering fails). {@code PdfCreator} itself
-   * never recycles a source bitmap. The default {@code releasePage} implementation recycles the
-   * bitmap; implementations that hand out shared/cached bitmaps must override it to a no-op for
-   * those bitmaps to avoid double-recycle.
+   * Bitmap)} exactly once for that page (also when rendering fails), on the same thread and before
+   * that thread loads another page. {@code PdfCreator} itself never recycles a source bitmap.
+   *
+   * <p><b>Threads:</b> with more than one export worker (see {@code exportWorkerCount}) the methods
+   * are called from several worker threads, for a few pages at a time, so implementations must be
+   * thread-safe. With one worker, pages are loaded strictly one after another. The default {@code
+   * releasePage} implementation recycles the bitmap; implementations that hand out shared/cached
+   * bitmaps must override it to a no-op for those bitmaps to avoid double-recycle.
    */
   public interface PageSource {
     /** Total number of pages to export. */
     int getPageCount();
 
     /**
-     * Loads the full-resolution, upright bitmap for the given page index. Called lazily and
-     * strictly sequentially (page {@code n+1} is only requested after page {@code n} has been
-     * rendered and released). Returning {@code null} or throwing aborts the export.
+     * Loads the full-resolution, upright bitmap for the given page index. Called lazily, in page
+     * order per worker thread; see the thread notes above. Returning {@code null} or throwing
+     * aborts the export.
      */
     Bitmap loadBitmap(int index) throws Exception;
 
@@ -1694,34 +1698,115 @@ public class PdfCreator {
       int total = source.getPageCount();
       int embeddedAsStored = 0;
       long startMs = android.os.SystemClock.elapsedRealtime();
-      for (int i = 0; i < total; i++) {
-        int[] stored =
-            storedJpegPassthrough(
+      int workers = exportWorkerCount(context, total);
+      if (workers > 1) {
+        embeddedAsStored =
+            renderPagesParallel(
+                document,
+                fonts,
                 source,
-                i,
+                workers,
                 jpegQuality,
                 convertToGrayscale,
                 convertToBlackWhite,
                 targetDpi,
+                listener,
+                bwMode,
                 pageFormat,
-                cleanupMode);
-        if (stored != null
-            && renderStoredJpegIntoDocument(
-                document,
-                fonts,
-                source.storedJpeg(i),
-                stored[0],
-                stored[1],
-                loadWordsSafely(source, i),
-                i,
-                pageFormat,
+                cleanupMode,
                 textLayerMode,
-                multiColumn)) {
-          embeddedAsStored++;
+                skipNullBitmaps,
+                multiColumn);
+        if (embeddedAsStored < 0) return null;
+      } else {
+        for (int i = 0; i < total; i++) {
+          int[] stored =
+              storedJpegPassthrough(
+                  source,
+                  i,
+                  jpegQuality,
+                  convertToGrayscale,
+                  convertToBlackWhite,
+                  targetDpi,
+                  pageFormat,
+                  cleanupMode);
+          if (stored != null
+              && renderStoredJpegIntoDocument(
+                  document,
+                  fonts,
+                  source.storedJpeg(i),
+                  stored[0],
+                  stored[1],
+                  loadWordsSafely(source, i),
+                  i,
+                  pageFormat,
+                  textLayerMode,
+                  multiColumn)) {
+            embeddedAsStored++;
+            try {
+              source.releasePage(i, null);
+            } catch (Throwable ignore) {
+              // Best-effort; failure is non-critical
+            }
+            if (listener != null) {
+              try {
+                listener.onPageProcessed(i + 1, total);
+              } catch (Throwable ignore) {
+                // Best-effort; failure is non-critical
+              }
+            }
+            continue;
+          }
+          Bitmap src;
           try {
-            source.releasePage(i, null);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
+            src = source.loadBitmap(i);
+          } catch (Throwable t) {
+            Log.e(TAG, "Failed to load bitmap for page " + (i + 1), t);
+            return null;
+          }
+          if (src == null) {
+            if (skipNullBitmaps) {
+              // Legacy List<Bitmap> semantics: skip null entries defensively.
+              if (listener != null)
+                try {
+                  listener.onPageProcessed(i + 1, total);
+                } catch (Throwable ignore) {
+                  // Best-effort; failure is non-critical
+                }
+              continue;
+            }
+            Log.e(TAG, "PageSource returned null bitmap for page " + (i + 1));
+            return null;
+          }
+          boolean rendered;
+          try {
+            List<RecognizedWord> pageWords = loadWordsSafely(source, i);
+            rendered =
+                renderPageIntoDocument(
+                    document,
+                    fonts,
+                    src,
+                    pageWords,
+                    i,
+                    jpegQuality,
+                    convertToGrayscale,
+                    convertToBlackWhite,
+                    targetDpi,
+                    bwMode,
+                    pageFormat,
+                    cleanupMode,
+                    textLayerMode,
+                    multiColumn);
+          } finally {
+            // Ownership contract: the source releases the bitmap exactly once per page.
+            try {
+              source.releasePage(i, src);
+            } catch (Throwable ignore) {
+              // Best-effort; failure is non-critical
+            }
+          }
+          if (!rendered) {
+            return null;
           }
           if (listener != null) {
             try {
@@ -1729,65 +1814,6 @@ public class PdfCreator {
             } catch (Throwable ignore) {
               // Best-effort; failure is non-critical
             }
-          }
-          continue;
-        }
-        Bitmap src;
-        try {
-          src = source.loadBitmap(i);
-        } catch (Throwable t) {
-          Log.e(TAG, "Failed to load bitmap for page " + (i + 1), t);
-          return null;
-        }
-        if (src == null) {
-          if (skipNullBitmaps) {
-            // Legacy List<Bitmap> semantics: skip null entries defensively.
-            if (listener != null)
-              try {
-                listener.onPageProcessed(i + 1, total);
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-            continue;
-          }
-          Log.e(TAG, "PageSource returned null bitmap for page " + (i + 1));
-          return null;
-        }
-        boolean rendered;
-        try {
-          List<RecognizedWord> pageWords = loadWordsSafely(source, i);
-          rendered =
-              renderPageIntoDocument(
-                  document,
-                  fonts,
-                  src,
-                  pageWords,
-                  i,
-                  jpegQuality,
-                  convertToGrayscale,
-                  convertToBlackWhite,
-                  targetDpi,
-                  bwMode,
-                  pageFormat,
-                  cleanupMode,
-                  textLayerMode,
-                  multiColumn);
-        } finally {
-          // Ownership contract: the source releases the bitmap exactly once per page.
-          try {
-            source.releasePage(i, src);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
-          }
-        }
-        if (!rendered) {
-          return null;
-        }
-        if (listener != null) {
-          try {
-            listener.onPageProcessed(i + 1, total);
-          } catch (Throwable ignore) {
-            // Best-effort; failure is non-critical
           }
         }
       }
@@ -1806,12 +1832,323 @@ public class PdfCreator {
               + " pages, "
               + embeddedAsStored
               + " embedded as stored JPEG, "
+              + workers
+              + " worker(s), "
               + (android.os.SystemClock.elapsedRealtime() - startMs)
               + " ms");
       return outputUri;
     } catch (Exception e) {
       Log.e(TAG, "Error creating multi-page PDF", e);
       return null;
+    }
+  }
+
+  /** Upper bound for parallel page preparation; more threads mostly add memory, not speed. */
+  private static final int MAX_EXPORT_WORKERS = 3;
+
+  private static volatile int exportWorkersOverride = 0;
+
+  /** Fixes the number of export workers for tests; {@code 0} picks it from the device again. */
+  @VisibleForTesting
+  public static void setExportWorkersForTesting(int workers) {
+    exportWorkersOverride = Math.max(0, workers);
+  }
+
+  /**
+   * How many threads prepare pages in parallel: one on low-RAM devices and for single pages
+   * (strictly sequential, one page bitmap at a time), otherwise up to {@link #MAX_EXPORT_WORKERS}
+   * leaving one core for the thread that writes the document.
+   */
+  private static int exportWorkerCount(Context context, int pageCount) {
+    if (exportWorkersOverride > 0) return exportWorkersOverride;
+    if (pageCount < 2) return 1;
+    try {
+      android.app.ActivityManager am =
+          (android.app.ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+      if (am != null && am.isLowRamDevice()) return 1;
+    } catch (Throwable ignore) {
+      // Best-effort; fall through to the CPU count
+    }
+    int cpus = Runtime.getRuntime().availableProcessors();
+    return Math.max(1, Math.min(MAX_EXPORT_WORKERS, cpus - 1));
+  }
+
+  /**
+   * A page made ready by a worker: the encoded image (JPEG bytes, or a bitmap for lossless output)
+   * plus what the text layer needs. {@code skipped} marks a null page of the legacy List API.
+   */
+  private static final class PreparedPage {
+    byte[] jpeg;
+    Bitmap lossless;
+    int imgW;
+    int imgH;
+    int srcW;
+    int srcH;
+    List<RecognizedWord> words;
+    boolean fromStoredJpeg;
+    boolean skipped;
+
+    void recycle() {
+      if (lossless != null && !lossless.isRecycled()) lossless.recycle();
+      lossless = null;
+      jpeg = null;
+    }
+  }
+
+  /**
+   * Renders all pages of {@code source} with {@code workers} threads preparing pages (load,
+   * process, encode) ahead of the calling thread, which adds them to the document in page order. At
+   * most {@code workers + 1} pages are prepared or waiting at any time.
+   *
+   * @return the number of pages embedded from their stored JPEG, or {@code -1} on failure (the
+   *     export is aborted)
+   */
+  private static int renderPagesParallel(
+      PDDocument document,
+      List<PDFont> fonts,
+      PageSource source,
+      int workers,
+      int jpegQuality,
+      boolean convertToGrayscale,
+      boolean convertToBlackWhite,
+      int targetDpi,
+      ProgressListener listener,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      TextLayerMode textLayerMode,
+      boolean skipNullBitmaps,
+      boolean multiColumn) {
+    final int total = source.getPageCount();
+    final java.util.concurrent.atomic.AtomicBoolean aborted =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+    java.util.concurrent.ExecutorService pool =
+        java.util.concurrent.Executors.newFixedThreadPool(
+            workers,
+            r -> {
+              Thread th = new Thread(r, "pdf-page");
+              th.setPriority(Thread.NORM_PRIORITY - 1);
+              return th;
+            });
+    java.util.ArrayDeque<java.util.concurrent.Future<PreparedPage>> inFlight =
+        new java.util.ArrayDeque<>();
+    int next = 0;
+    int embeddedAsStored = 0;
+    boolean ok = false;
+    try {
+      for (int i = 0; i < total; i++) {
+        while (next < total && inFlight.size() <= workers) {
+          final int index = next++;
+          inFlight.add(
+              pool.submit(
+                  () ->
+                      preparePage(
+                          source,
+                          index,
+                          aborted,
+                          jpegQuality,
+                          convertToGrayscale,
+                          convertToBlackWhite,
+                          targetDpi,
+                          bwMode,
+                          pageFormat,
+                          cleanupMode,
+                          skipNullBitmaps)));
+        }
+        PreparedPage page;
+        try {
+          page = inFlight.poll().get();
+        } catch (java.util.concurrent.ExecutionException e) {
+          Log.e(TAG, "Failed to prepare page " + (i + 1), e.getCause());
+          return -1;
+        }
+        try {
+          if (!page.skipped) {
+            if (!addPreparedPage(
+                document, fonts, page, i, pageFormat, textLayerMode, multiColumn)) {
+              return -1;
+            }
+            if (page.fromStoredJpeg) embeddedAsStored++;
+          }
+        } finally {
+          page.recycle();
+        }
+        if (listener != null) {
+          try {
+            listener.onPageProcessed(i + 1, total);
+          } catch (Throwable ignore) {
+            // Best-effort; failure is non-critical
+          }
+        }
+      }
+      ok = true;
+      return embeddedAsStored;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      Log.e(TAG, "Interrupted while preparing pages", e);
+      return -1;
+    } finally {
+      if (!ok) {
+        aborted.set(true);
+        for (java.util.concurrent.Future<PreparedPage> f : inFlight) f.cancel(false);
+      }
+      pool.shutdown();
+      // Wait for running workers so every loaded page is released before the export returns.
+      try {
+        if (!pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
+          Log.w(TAG, "Page workers did not finish in time");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      if (!ok) {
+        for (java.util.concurrent.Future<PreparedPage> f : inFlight) {
+          if (f.isDone() && !f.isCancelled()) {
+            try {
+              PreparedPage p = f.get();
+              if (p != null) p.recycle();
+            } catch (Exception ignore) {
+              // Already logged or cancelled
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Worker side of {@link #renderPagesParallel}: loads, processes and encodes one page without
+   * touching the document. The page is released on this thread before it returns.
+   */
+  private static PreparedPage preparePage(
+      PageSource source,
+      int index,
+      java.util.concurrent.atomic.AtomicBoolean aborted,
+      int jpegQuality,
+      boolean toGray,
+      boolean toBw,
+      int targetDpi,
+      BwMode bwMode,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      boolean skipNullBitmaps)
+      throws Exception {
+    PreparedPage page = new PreparedPage();
+    if (aborted.get()) return page;
+    int[] stored =
+        storedJpegPassthrough(
+            source, index, jpegQuality, toGray, toBw, targetDpi, pageFormat, cleanupMode);
+    if (stored != null) {
+      try {
+        page.jpeg = java.nio.file.Files.readAllBytes(source.storedJpeg(index).toPath());
+        page.imgW = page.srcW = stored[0];
+        page.imgH = page.srcH = stored[1];
+        page.words = loadWordsSafely(source, index);
+        page.fromStoredJpeg = true;
+        source.releasePage(index, null);
+        return page;
+      } catch (IOException e) {
+        Log.w(TAG, "Reading the stored JPEG failed for page " + (index + 1), e);
+        page.jpeg = null;
+      }
+    }
+
+    Bitmap src = source.loadBitmap(index);
+    if (src == null) {
+      if (skipNullBitmaps) {
+        page.skipped = true;
+        return page;
+      }
+      throw new IOException("PageSource returned null bitmap for page " + (index + 1));
+    }
+    Bitmap prepared = null;
+    try {
+      page.words = loadWordsSafely(source, index);
+      page.srcW = src.getWidth();
+      page.srcH = src.getHeight();
+      boolean gentle = toBw && containsRtlText(page.words);
+      prepared =
+          processImageForPdf(src, toGray, toBw, targetDpi, bwMode, gentle, pageFormat, cleanupMode);
+      if (prepared == null) {
+        throw new IOException("Image preparation failed for page " + (index + 1));
+      }
+      page.imgW = prepared.getWidth();
+      page.imgH = prepared.getHeight();
+      if (jpegQuality < 100) {
+        // Same encoding as JPEGFactory.createFromImage, done here so it runs in parallel.
+        Bitmap opaque = removeAlphaChannel(prepared);
+        try {
+          java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(1 << 20);
+          float q = Math.max(0f, Math.min(1f, jpegQuality / 100f));
+          if (!opaque.compress(Bitmap.CompressFormat.JPEG, (int) (q * 100), out)) {
+            throw new IOException("JPEG encoding failed for page " + (index + 1));
+          }
+          page.jpeg = out.toByteArray();
+        } finally {
+          if (opaque != prepared) opaque.recycle();
+        }
+      } else {
+        // The source bitmap is released below, so lossless output needs its own copy.
+        page.lossless = (prepared == src) ? src.copy(Bitmap.Config.ARGB_8888, false) : prepared;
+        if (page.lossless == prepared) prepared = null;
+      }
+    } finally {
+      if (prepared != null && prepared != src && !prepared.isRecycled()) prepared.recycle();
+      source.releasePage(index, src);
+    }
+    if (aborted.get()) page.recycle();
+    return page;
+  }
+
+  /** Consumer side of {@link #renderPagesParallel}: adds one prepared page to the document. */
+  private static boolean addPreparedPage(
+      PDDocument document,
+      List<PDFont> fonts,
+      PreparedPage page,
+      int pageIndex,
+      PageFormat pageFormat,
+      TextLayerMode textLayerMode,
+      boolean multiColumn) {
+    try {
+      PDImageXObject pdImg;
+      if (page.jpeg != null) {
+        try {
+          pdImg = JPEGFactory.createFromByteArray(document, page.jpeg);
+        } catch (Exception e) {
+          if (!page.fromStoredJpeg) throw e;
+          // A stored JPEG PdfBox cannot take: decode it and re-encode as usual.
+          Log.w(TAG, "Embedding the stored JPEG failed for page " + (pageIndex + 1), e);
+          Bitmap decoded =
+              android.graphics.BitmapFactory.decodeByteArray(page.jpeg, 0, page.jpeg.length);
+          if (decoded == null) return false;
+          try {
+            pdImg =
+                JPEGFactory.createFromImage(
+                    document, decoded, ScanPersister.PAGE_JPEG_QUALITY / 100f);
+          } finally {
+            decoded.recycle();
+          }
+          page.fromStoredJpeg = false;
+        }
+      } else {
+        pdImg = LosslessFactory.createFromImage(document, page.lossless);
+      }
+      addImagePage(
+          document,
+          fonts,
+          pdImg,
+          page.imgW,
+          page.imgH,
+          page.srcW,
+          page.srcH,
+          page.words,
+          pageFormat,
+          textLayerMode,
+          multiColumn);
+      return true;
+    } catch (Exception e) {
+      Log.e(TAG, "Error rendering page " + (pageIndex + 1), e);
+      return false;
     }
   }
 

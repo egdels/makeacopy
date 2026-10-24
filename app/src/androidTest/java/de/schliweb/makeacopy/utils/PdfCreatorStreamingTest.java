@@ -18,15 +18,18 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Verifies the streaming multi-page PDF export (Session 2): pages are loaded lazily and strictly
- * sequentially via {@link PdfCreator.PageSource}, each loaded bitmap is released exactly once
- * before the next page is requested (peak memory ≈ one page), pages without OCR export image-only,
- * and page errors fail the export atomically (no output written).
+ * Verifies the streaming multi-page PDF export (Session 2): with one worker, pages are loaded
+ * lazily and strictly sequentially via {@link PdfCreator.PageSource}, each loaded bitmap is
+ * released exactly once before the next page is requested (peak memory ≈ one page); with several
+ * workers, at most one page per worker is alive and the page order is kept. Pages without OCR
+ * export image-only, and page errors fail the export atomically (no output written).
  */
 @RunWith(AndroidJUnit4.class)
 public class PdfCreatorStreamingTest {
@@ -39,7 +42,20 @@ public class PdfCreatorStreamingTest {
     PDFBoxResourceLoader.init(context);
   }
 
-  /** PageSource that creates one small bitmap per request and records the lifecycle. */
+  @Before
+  public void oneWorker() {
+    PdfCreator.setExportWorkersForTesting(1);
+  }
+
+  @After
+  public void deviceWorkers() {
+    PdfCreator.setExportWorkersForTesting(0);
+  }
+
+  /**
+   * PageSource that creates one small bitmap per request and records the lifecycle. Synchronized,
+   * since several export workers call it at once.
+   */
   private static class TrackingPageSource implements PdfCreator.PageSource {
     final int pageCount;
     final List<List<RecognizedWord>> words;
@@ -60,7 +76,7 @@ public class PdfCreatorStreamingTest {
     }
 
     @Override
-    public Bitmap loadBitmap(int index) throws Exception {
+    public synchronized Bitmap loadBitmap(int index) throws Exception {
       events.add("load:" + index);
       if (index == failLoadAt) throw new RuntimeException("decode failed for page " + index);
       Bitmap b = Bitmap.createBitmap(400, 600, Bitmap.Config.ARGB_8888);
@@ -71,14 +87,14 @@ public class PdfCreatorStreamingTest {
     }
 
     @Override
-    public List<RecognizedWord> loadWords(int index) {
+    public synchronized List<RecognizedWord> loadWords(int index) {
       events.add("words:" + index);
       if (index == throwWordsAt) throw new RuntimeException("broken OCR JSON for page " + index);
       return (words != null && index < words.size()) ? words.get(index) : null;
     }
 
     @Override
-    public void releasePage(int index, Bitmap bitmap) {
+    public synchronized void releasePage(int index, Bitmap bitmap) {
       events.add("release:" + index);
       live.remove(bitmap);
       if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
@@ -224,6 +240,60 @@ public class PdfCreatorStreamingTest {
     assertTrue(src.live.isEmpty());
     try (PDDocument doc = PDDocument.load(out)) {
       assertEquals(n, doc.getNumberOfPages());
+    }
+  }
+
+  /** Three workers: page order kept, each page released once, at most one live page per worker. */
+  @Test
+  public void parallel_90Pages_keepsOrderAndBoundsLivePages() throws Exception {
+    PdfCreator.setExportWorkersForTesting(3);
+    final int n = 90;
+    List<List<RecognizedWord>> words = new ArrayList<>();
+    for (int i = 0; i < n; i++) words.add(word("Page" + i));
+    TrackingPageSource src = new TrackingPageSource(n, words);
+    File out = outFile("streaming_parallel_90p.pdf");
+    List<int[]> progress = Collections.synchronizedList(new ArrayList<>());
+
+    Uri res = export(src, Uri.fromFile(out), progress);
+    assertNotNull("parallel 90-page export failed", res);
+    assertTrue("more live page bitmaps than workers: " + src.maxLive, src.maxLive <= 3);
+    assertTrue(src.live.isEmpty());
+    for (int i = 0; i < n; i++) {
+      final String rel = "release:" + i;
+      assertEquals(rel, 1, src.events.stream().filter(rel::equals).count());
+    }
+    // Progress is reported in page order from the writing thread.
+    assertEquals(n, progress.size());
+    for (int i = 0; i < n; i++) assertEquals(i + 1, progress.get(i)[0]);
+    try (PDDocument doc = PDDocument.load(out)) {
+      assertEquals(n, doc.getNumberOfPages());
+      PDFTextStripper stripper = new PDFTextStripper();
+      for (int i : new int[] {0, 1, 44, 89}) {
+        stripper.setStartPage(i + 1);
+        stripper.setEndPage(i + 1);
+        assertEquals("Page" + i, stripper.getText(doc).trim());
+      }
+    }
+  }
+
+  /** Three workers: a failing page aborts the export and every loaded page is still released. */
+  @Test
+  public void parallel_loadFailure_failsAtomically_andReleasesLoadedPages() {
+    PdfCreator.setExportWorkersForTesting(3);
+    TrackingPageSource src = new TrackingPageSource(30, null);
+    src.failLoadAt = 12;
+    File out = outFile("streaming_parallel_fail.pdf");
+
+    Uri res = export(src, Uri.fromFile(out), null);
+    assertNull("Export must fail when a page cannot be loaded", res);
+    assertFalse("No (broken) output file must be written", out.exists() && out.length() > 0);
+    assertTrue("loaded pages left unreleased", src.live.isEmpty());
+    for (int i = 0; i < 30; i++) {
+      if (i == 12) continue;
+      final String load = "load:" + i;
+      final String rel = "release:" + i;
+      long loads = src.events.stream().filter(load::equals).count();
+      assertEquals(rel, loads, src.events.stream().filter(rel::equals).count());
     }
   }
 }

@@ -1696,9 +1696,10 @@ public class ExportFragment extends Fragment {
 
     // Tracks whether the bitmap handed out for the current page is owned by
     // this source (decoded/rotated here) or shared (session in-memory bitmap).
-    // Only owned bitmaps are recycled in releasePage(). Access is safe because
-    // PdfCreator consumes pages strictly sequentially.
-    private boolean currentPageOwned = false;
+    // Only owned bitmaps are recycled in releasePage(). Per thread, because the
+    // export prepares pages on several workers and releases each page on the
+    // thread that loaded it.
+    private final ThreadLocal<Boolean> currentPageOwned = ThreadLocal.withInitial(() -> false);
 
     SessionPageSource(
         List<CompletedScan> pageSnapshot,
@@ -1717,7 +1718,7 @@ public class ExportFragment extends Fragment {
     @Override
     public Bitmap loadBitmap(int index) {
       CompletedScan s = pageSnapshot.get(index);
-      currentPageOwned = false;
+      currentPageOwned.set(false);
       if (s == null) return null;
       Bitmap pageBmp = s.inMemoryBitmap();
       boolean loadedFromFile = false;
@@ -1728,7 +1729,7 @@ public class ExportFragment extends Fragment {
           // visually upright
           pageBmp = ImageDecodeUtils.decodeFull(p);
           loadedFromFile = (pageBmp != null);
-          currentPageOwned = loadedFromFile;
+          currentPageOwned.set(loadedFromFile);
         }
       }
       if (pageBmp == null) return null;
@@ -1746,7 +1747,7 @@ public class ExportFragment extends Fragment {
             pageBmp.recycle();
           }
           pageBmp = rotated;
-          currentPageOwned = true;
+          currentPageOwned.set(true);
         }
       }
       return pageBmp;
@@ -1782,10 +1783,10 @@ public class ExportFragment extends Fragment {
     public void releasePage(int index, Bitmap bitmap) {
       // Ownership contract: only recycle bitmaps this source created; the
       // session's in-memory bitmaps stay alive for the UI.
-      if (currentPageOwned && bitmap != null && !bitmap.isRecycled()) {
+      if (currentPageOwned.get() && bitmap != null && !bitmap.isRecycled()) {
         bitmap.recycle();
       }
-      currentPageOwned = false;
+      currentPageOwned.set(false);
     }
   }
 

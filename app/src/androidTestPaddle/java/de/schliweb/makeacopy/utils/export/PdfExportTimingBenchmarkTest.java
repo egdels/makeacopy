@@ -114,6 +114,15 @@ public class PdfExportTimingBenchmarkTest {
     timeLarge(ctx, "90p HIGH fit stored", files, PdfQualityPreset.HIGH, PageFormat.FIT_TO_IMAGE, true);
     timeLarge(ctx, "90p HIGH fit decoded", files, PdfQualityPreset.HIGH, PageFormat.FIT_TO_IMAGE, false);
     timeLarge(ctx, "90p STANDARD A4", files, PdfQualityPreset.STANDARD, PageFormat.A4, true);
+    // The same STANDARD export with page preparation on a single thread, for comparison.
+    PdfCreator.setExportWorkersForTesting(1);
+    try {
+      timeLarge(
+          ctx, "90p STANDARD fit 1 worker", files, PdfQualityPreset.STANDARD,
+          PageFormat.FIT_TO_IMAGE, true);
+    } finally {
+      PdfCreator.setExportWorkersForTesting(0);
+    }
   }
 
   private void timeLarge(
