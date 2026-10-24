@@ -61,7 +61,8 @@ jobs:
 
       - name: Install ScanCode
         run: |
-          pip install scancode-toolkit
+          # plugincode 32 finds no hooks with pluggy 1.7 ("did not find any 'pre_scan' hooks").
+          pip install "scancode-toolkit==32.5.0" "pluggy<1.7"
           scancode --version
 
       - name: Run ScanCode
