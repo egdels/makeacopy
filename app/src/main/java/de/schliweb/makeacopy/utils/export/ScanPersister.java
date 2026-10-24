@@ -35,6 +35,11 @@ public final class ScanPersister {
   private static final String TAG = "ScanPersister";
 
   /**
+   * JPEG quality of the stored page.jpg; the PDF export embeds it as is at this quality or near it.
+   */
+  public static final int PAGE_JPEG_QUALITY = 90;
+
+  /**
    * Persist the given in-memory scan to disk and registry.
    *
    * <p>Behavioural notes (kept identical to previous implementation): - JPEG quality: page 90,
@@ -88,7 +93,7 @@ public final class ScanPersister {
     }
     File page = new File(dir, "page.jpg");
     try (FileOutputStream fos = new FileOutputStream(page)) {
-      baked.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+      baked.compress(Bitmap.CompressFormat.JPEG, PAGE_JPEG_QUALITY, fos);
       fos.flush();
     }
     // Create thumbnail from baked image (no additional rotation)

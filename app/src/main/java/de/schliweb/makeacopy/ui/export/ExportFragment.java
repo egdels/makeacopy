@@ -1753,6 +1753,17 @@ public class ExportFragment extends Fragment {
     }
 
     @Override
+    public File storedJpeg(int index) {
+      CompletedScan s = pageSnapshot.get(index);
+      // Only when loadBitmap would decode this file unchanged: no in-memory page, no rotation
+      if (s == null || s.inMemoryBitmap() != null || s.filePath() == null) return null;
+      if (RotationPolicy.shouldRotateForExport(true, s.orientationMode(), s.rotationDeg())) {
+        return null;
+      }
+      return new File(s.filePath());
+    }
+
+    @Override
     public List<RecognizedWord> loadWords(int index) {
       CompletedScan s = pageSnapshot.get(index);
       if (s == null) return null;

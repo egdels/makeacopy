@@ -14,6 +14,7 @@ import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.net.Uri;
 import android.util.Log;
+import androidx.annotation.VisibleForTesting;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
@@ -32,6 +33,10 @@ import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import de.schliweb.makeacopy.utils.ocr.MultiColumnLayoutPolicy;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -992,6 +997,35 @@ public class PdfCreator {
         DocumentCleanupMode.ORIGINAL);
   }
 
+  /**
+   * Largest image size in pixels that the page holds at {@code targetDpi}. For {@link
+   * PageFormat#FIT_TO_IMAGE} the page follows the image's aspect ratio (long side as long as A4),
+   * so the limit follows from that page and the DPI too.
+   *
+   * @return {@code {maxWidth, maxHeight}}
+   */
+  @VisibleForTesting
+  static int[] maxImagePixels(PageFormat pageFormat, int targetDpi, int imageW, int imageH) {
+    int effectiveDpi = targetDpi <= 0 ? 300 : targetDpi;
+    int[] formatPx = pageFormat.pixelsForDpi(effectiveDpi);
+    if (formatPx != null) return formatPx;
+    PDRectangle page = pageFormat.toPageRectangle(imageW, imageH);
+    return new int[] {
+      Math.max(1, Math.round(page.getWidth() / 72f * effectiveDpi)),
+      Math.max(1, Math.round(page.getHeight() / 72f * effectiveDpi))
+    };
+  }
+
+  /**
+   * Whether an image of {@code w x h} must be scaled down to fit {@code maxW x maxH}. A size within
+   * one pixel of the limit counts as already scaled (rounding of an earlier pass).
+   */
+  @VisibleForTesting
+  static boolean needsDownscale(int w, int h, int maxW, int maxH) {
+    boolean preScaled = Math.abs(w - maxW) <= 1 && Math.abs(h - maxH) <= 1;
+    return !preScaled && (w > maxW || h > maxH);
+  }
+
   private static Bitmap processImageForPdf(
       Bitmap original,
       boolean toGray,
@@ -1004,39 +1038,19 @@ public class PdfCreator {
     if (original == null) return null;
     if (pageFormat == null) pageFormat = PageFormat.A4;
 
-    int effectiveDpi = targetDpi <= 0 ? 300 : targetDpi;
-    int[] formatPx = pageFormat.pixelsForDpi(effectiveDpi);
-    int maxW, maxH;
-    if (formatPx != null) {
-      maxW = formatPx[0];
-      maxH = formatPx[1];
-    } else {
-      // FIT_TO_IMAGE: no fixed-format constraint, but cap at a sensible maximum
-      // to avoid OOM when very large images are passed through without downscaling.
-      int fitCap =
-          Math.round(effectiveDpi / 72f * 14400); // ~14400pt ≈ 200in at 72dpi → 60000px@300dpi
-      maxW = Math.min(original.getWidth(), fitCap);
-      maxH = Math.min(original.getHeight(), fitCap);
-    }
-
-    boolean preScaled =
-        Math.abs(original.getWidth() - maxW) <= 1 && Math.abs(original.getHeight() - maxH) <= 1;
+    int[] maxPx = maxImagePixels(pageFormat, targetDpi, original.getWidth(), original.getHeight());
+    int maxW = maxPx[0];
+    int maxH = maxPx[1];
 
     Bitmap base = original;
 
-    if (!preScaled) {
-      float scale = 1f;
-      if (original.getWidth() > maxW || original.getHeight() > maxH) {
-        float sw = (float) maxW / original.getWidth();
-        float sh = (float) maxH / original.getHeight();
-        scale = Math.min(sw, sh);
-      }
-
-      if (scale < 1f) {
-        int w = Math.max(1, Math.round(original.getWidth() * scale));
-        int h = Math.max(1, Math.round(original.getHeight() * scale));
-        base = Bitmap.createScaledBitmap(original, w, h, true);
-      }
+    if (needsDownscale(original.getWidth(), original.getHeight(), maxW, maxH)) {
+      float sw = (float) maxW / original.getWidth();
+      float sh = (float) maxH / original.getHeight();
+      float scale = Math.min(sw, sh);
+      int w = Math.max(1, Math.round(original.getWidth() * scale));
+      int h = Math.max(1, Math.round(original.getHeight() * scale));
+      base = Bitmap.createScaledBitmap(original, w, h, true);
     }
 
     PdfImageOutput output = resolvePdfImageOutput(toGray, toBw);
@@ -1533,6 +1547,16 @@ public class PdfCreator {
     List<RecognizedWord> loadWords(int index);
 
     /**
+     * The page's stored JPEG file when its pixels are exactly what {@link #loadBitmap(int)} would
+     * return (no rotation, no in-memory edit), so the export may embed the file without decoding
+     * it. When the export does so it skips {@link #loadBitmap(int)} and calls {@link
+     * #releasePage(int, Bitmap)} with {@code null}. Default: {@code null} (always decode).
+     */
+    default File storedJpeg(int index) {
+      return null;
+    }
+
+    /**
      * Called exactly once after the page has been consumed (or rendering failed). Default
      * implementation recycles the bitmap.
      */
@@ -1668,7 +1692,46 @@ public class PdfCreator {
       List<PDFont> fonts = loadFontsWithFallbacks(document, context);
 
       int total = source.getPageCount();
+      int embeddedAsStored = 0;
+      long startMs = android.os.SystemClock.elapsedRealtime();
       for (int i = 0; i < total; i++) {
+        int[] stored =
+            storedJpegPassthrough(
+                source,
+                i,
+                jpegQuality,
+                convertToGrayscale,
+                convertToBlackWhite,
+                targetDpi,
+                pageFormat,
+                cleanupMode);
+        if (stored != null
+            && renderStoredJpegIntoDocument(
+                document,
+                fonts,
+                source.storedJpeg(i),
+                stored[0],
+                stored[1],
+                loadWordsSafely(source, i),
+                i,
+                pageFormat,
+                textLayerMode,
+                multiColumn)) {
+          embeddedAsStored++;
+          try {
+            source.releasePage(i, null);
+          } catch (Throwable ignore) {
+            // Best-effort; failure is non-critical
+          }
+          if (listener != null) {
+            try {
+              listener.onPageProcessed(i + 1, total);
+            } catch (Throwable ignore) {
+              // Best-effort; failure is non-critical
+            }
+          }
+          continue;
+        }
         Bitmap src;
         try {
           src = source.loadBitmap(i);
@@ -1692,15 +1755,7 @@ public class PdfCreator {
         }
         boolean rendered;
         try {
-          List<RecognizedWord> pageWords;
-          try {
-            pageWords = source.loadWords(i);
-          } catch (Throwable t) {
-            // A broken/missing OCR payload must not abort the export; fall back to image-only.
-            Log.w(
-                TAG, "Failed to load OCR words for page " + (i + 1) + "; exporting image only", t);
-            pageWords = null;
-          }
+          List<RecognizedWord> pageWords = loadWordsSafely(source, i);
           rendered =
               renderPageIntoDocument(
                   document,
@@ -1744,9 +1799,111 @@ public class PdfCreator {
         }
         document.save(os);
       }
+      Log.i(
+          TAG,
+          "createSearchablePdf(multi): "
+              + total
+              + " pages, "
+              + embeddedAsStored
+              + " embedded as stored JPEG, "
+              + (android.os.SystemClock.elapsedRealtime() - startMs)
+              + " ms");
       return outputUri;
     } catch (Exception e) {
       Log.e(TAG, "Error creating multi-page PDF", e);
+      return null;
+    }
+  }
+
+  /** The page's OCR words; a broken or missing OCR payload yields {@code null} (image only). */
+  private static List<RecognizedWord> loadWordsSafely(PageSource source, int index) {
+    try {
+      return source.loadWords(index);
+    } catch (Throwable t) {
+      Log.w(TAG, "Failed to load OCR words for page " + (index + 1) + "; exporting image only", t);
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the page's stored JPEG can go into the PDF unchanged: color output without
+   * cleanup, no downscale for the target DPI, a requested quality at most 5 below the stored one
+   * (so the preset's size promise roughly holds), and a plain 8-bit 3-component JPEG (PdfBox tags
+   * embedded JPEGs as DeviceRGB).
+   *
+   * @return {@code {width, height}} of the stored JPEG, or {@code null} when the page must be
+   *     decoded and processed
+   */
+  private static int[] storedJpegPassthrough(
+      PageSource source,
+      int index,
+      int jpegQuality,
+      boolean toGray,
+      boolean toBw,
+      int targetDpi,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode) {
+    if (toGray || toBw) return null;
+    if (cleanupMode != null && cleanupMode != DocumentCleanupMode.ORIGINAL) return null;
+    if (jpegQuality >= 100 || jpegQuality < ScanPersister.PAGE_JPEG_QUALITY - 5) return null;
+    File jpeg;
+    try {
+      jpeg = source.storedJpeg(index);
+    } catch (Throwable t) {
+      return null;
+    }
+    if (jpeg == null || !jpeg.isFile()) return null;
+    int[] size = readPlainJpegSize(jpeg);
+    if (size == null) return null;
+    int[] maxPx = maxImagePixels(pageFormat, targetDpi, size[0], size[1]);
+    if (needsDownscale(size[0], size[1], maxPx[0], maxPx[1])) return null;
+    return size;
+  }
+
+  /**
+   * Reads the frame header of a JPEG file.
+   *
+   * @return {@code {width, height}} for an 8-bit, 3-component baseline, extended or progressive
+   *     JPEG; {@code null} for anything else or on a read error
+   */
+  @VisibleForTesting
+  static int[] readPlainJpegSize(File file) {
+    try (InputStream in = new java.io.BufferedInputStream(new FileInputStream(file))) {
+      if (in.read() != 0xFF || in.read() != 0xD8) return null;
+      while (true) {
+        int b = in.read();
+        if (b != 0xFF) return null;
+        int marker;
+        do {
+          marker = in.read();
+        } while (marker == 0xFF);
+        if (marker < 0 || marker == 0xD9 || marker == 0xDA) return null;
+        if (marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7)) continue; // no length
+        int len = (in.read() << 8) | in.read();
+        if (len < 2) return null;
+        if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2) {
+          int precision = in.read();
+          int height = (in.read() << 8) | in.read();
+          int width = (in.read() << 8) | in.read();
+          int components = in.read();
+          if (precision != 8 || components != 3 || width <= 0 || height <= 0) return null;
+          return new int[] {width, height};
+        }
+        if (marker >= 0xC3
+            && marker <= 0xCF
+            && marker != 0xC4
+            && marker != 0xC8
+            && marker != 0xCC) {
+          return null; // lossless, hierarchical or arithmetic coding
+        }
+        long skip = len - 2;
+        while (skip > 0) {
+          long s = in.skip(skip);
+          if (s <= 0) return null;
+          skip -= s;
+        }
+      }
+    } catch (IOException e) {
       return null;
     }
   }
@@ -1791,29 +1948,6 @@ public class PdfCreator {
         return false;
       }
 
-      PDRectangle pageSize = pageFormat.toPageRectangle(prepared.getWidth(), prepared.getHeight());
-      float pageW = pageSize.getWidth();
-      float pageH = pageSize.getHeight();
-
-      PDPage page = new PDPage(pageSize);
-      // Harmonize page boxes to avoid viewer-specific cropping/offset interpretations
-      try {
-        page.setMediaBox(pageSize);
-        page.setCropBox(pageSize);
-        page.setBleedBox(pageSize);
-        page.setTrimBox(pageSize);
-        page.setArtBox(pageSize);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      document.addPage(page);
-
-      float scale = calculateScale(prepared.getWidth(), prepared.getHeight(), pageW, pageH);
-      float drawW = prepared.getWidth() * scale;
-      float drawH = prepared.getHeight() * scale;
-      float offsetX = (pageW - drawW) / 2f;
-      float offsetY = (pageH - drawH) / 2f;
-
       float q = Math.max(0f, Math.min(1f, jpegQuality / 100f));
       // Remove alpha channel before JPEG encoding to avoid OOM in
       // JPEGFactory.createAlphaFromARGBImage.
@@ -1834,36 +1968,18 @@ public class PdfCreator {
         }
       }
 
-      try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-        cs.drawImage(pdImg, offsetX, offsetY, drawW, drawH);
-        if (pageWords != null && !pageWords.isEmpty()) {
-          cs.saveGraphicsState();
-          cs.transform(new Matrix(scale, 0, 0, scale, offsetX, offsetY));
-          // Normalize OCR boxes from source bitmap space to prepared bitmap space if needed
-          List<RecognizedWord> normWords;
-          if (src.getWidth() != prepared.getWidth() || src.getHeight() != prepared.getHeight()) {
-            float sxImg = (float) prepared.getWidth() / (float) src.getWidth();
-            float syImg = (float) prepared.getHeight() / (float) src.getHeight();
-            normWords = new ArrayList<>(pageWords.size());
-            for (RecognizedWord w : pageWords) {
-              normWords.add(
-                  w.transform(sxImg, syImg, 0f, 0f)
-                      .clipTo(prepared.getWidth(), prepared.getHeight()));
-            }
-          } else {
-            normWords = pageWords;
-          }
-          addTextLayerImageSpace(
-              cs,
-              normWords,
-              fonts,
-              prepared.getWidth(),
-              prepared.getHeight(),
-              textLayerMode,
-              multiColumn);
-          cs.restoreGraphicsState();
-        }
-      }
+      addImagePage(
+          document,
+          fonts,
+          pdImg,
+          prepared.getWidth(),
+          prepared.getHeight(),
+          src.getWidth(),
+          src.getHeight(),
+          pageWords,
+          pageFormat,
+          textLayerMode,
+          multiColumn);
       return true;
     } catch (Exception e) {
       Log.e(TAG, "Error rendering page " + (pageIndex + 1), e);
@@ -1875,6 +1991,112 @@ public class PdfCreator {
         } catch (Throwable ignore) {
           // Best-effort; failure is non-critical
         }
+      }
+    }
+  }
+
+  /**
+   * Embeds a stored page JPEG as is (no decode, no re-encode) and adds its text layer. The caller
+   * has checked with {@link #storedJpegPassthrough} that nothing would change the image.
+   *
+   * @return {@code true} on success, {@code false} on failure (the caller then takes the bitmap
+   *     path)
+   */
+  private static boolean renderStoredJpegIntoDocument(
+      PDDocument document,
+      List<PDFont> fonts,
+      File jpeg,
+      int width,
+      int height,
+      List<RecognizedWord> pageWords,
+      int pageIndex,
+      PageFormat pageFormat,
+      TextLayerMode textLayerMode,
+      boolean multiColumn) {
+    try {
+      PDImageXObject pdImg;
+      try (InputStream in = new FileInputStream(jpeg)) {
+        pdImg = JPEGFactory.createFromStream(document, in);
+      }
+      addImagePage(
+          document,
+          fonts,
+          pdImg,
+          width,
+          height,
+          width,
+          height,
+          pageWords,
+          pageFormat,
+          textLayerMode,
+          multiColumn);
+      return true;
+    } catch (Exception e) {
+      Log.w(TAG, "Embedding the stored JPEG failed for page " + (pageIndex + 1), e);
+      return false;
+    }
+  }
+
+  /**
+   * Adds a page holding {@code pdImg} (an image of {@code imgW x imgH}) fitted into the page
+   * format, plus the OCR text layer. The words are in the coordinates of the source bitmap ({@code
+   * srcW x srcH}) and are scaled to the image when the two differ.
+   */
+  private static void addImagePage(
+      PDDocument document,
+      List<PDFont> fonts,
+      PDImageXObject pdImg,
+      int imgW,
+      int imgH,
+      int srcW,
+      int srcH,
+      List<RecognizedWord> pageWords,
+      PageFormat pageFormat,
+      TextLayerMode textLayerMode,
+      boolean multiColumn)
+      throws Exception {
+    PDRectangle pageSize = pageFormat.toPageRectangle(imgW, imgH);
+    float pageW = pageSize.getWidth();
+    float pageH = pageSize.getHeight();
+
+    PDPage page = new PDPage(pageSize);
+    // Harmonize page boxes to avoid viewer-specific cropping/offset interpretations
+    try {
+      page.setMediaBox(pageSize);
+      page.setCropBox(pageSize);
+      page.setBleedBox(pageSize);
+      page.setTrimBox(pageSize);
+      page.setArtBox(pageSize);
+    } catch (Throwable ignore) {
+      // Best-effort; failure is non-critical
+    }
+    document.addPage(page);
+
+    float scale = calculateScale(imgW, imgH, pageW, pageH);
+    float drawW = imgW * scale;
+    float drawH = imgH * scale;
+    float offsetX = (pageW - drawW) / 2f;
+    float offsetY = (pageH - drawH) / 2f;
+
+    try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
+      cs.drawImage(pdImg, offsetX, offsetY, drawW, drawH);
+      if (pageWords != null && !pageWords.isEmpty()) {
+        cs.saveGraphicsState();
+        cs.transform(new Matrix(scale, 0, 0, scale, offsetX, offsetY));
+        // Normalize OCR boxes from source bitmap space to image space if needed
+        List<RecognizedWord> normWords;
+        if (srcW != imgW || srcH != imgH) {
+          float sxImg = (float) imgW / (float) srcW;
+          float syImg = (float) imgH / (float) srcH;
+          normWords = new ArrayList<>(pageWords.size());
+          for (RecognizedWord w : pageWords) {
+            normWords.add(w.transform(sxImg, syImg, 0f, 0f).clipTo(imgW, imgH));
+          }
+        } else {
+          normWords = pageWords;
+        }
+        addTextLayerImageSpace(cs, normWords, fonts, imgW, imgH, textLayerMode, multiColumn);
+        cs.restoreGraphicsState();
       }
     }
   }
