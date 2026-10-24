@@ -33,7 +33,9 @@ jobs:
 
       - name: Install ORT
         run: |
-          ORT_URL=$(curl -s https://api.github.com/repos/oss-review-toolkit/ort/releases/latest \
+          # Pinned: a new ORT release can add analyzers or checks that fail the job unnoticed.
+          ORT_VERSION=97.2.0
+          ORT_URL=$(curl -s "https://api.github.com/repos/oss-review-toolkit/ort/releases/tags/${ORT_VERSION}" \
             | jq -r '.assets[] | select(.name | test("^ort-.*\\.tgz$")) | .browser_download_url')
           curl -L -o ort.tgz "$ORT_URL"
           tar -xzf ort.tgz

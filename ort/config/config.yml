@@ -7,6 +7,9 @@ ort:
       - PIP
       - NuGet
       - Bazel
+      # ORT >= 97 analyzes the CI workflows with the external "abom" tool, which the
+      # runner lacks (one error per workflow). The app's licenses do not depend on it.
+      - GitHubAction
     packageManagers:
       GradleInspector:
         options:
