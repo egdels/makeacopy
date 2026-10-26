@@ -185,4 +185,37 @@ public class DbPostProcessorTest {
         assertEquals(20.0 - d, quads.get(0).minY(), 1e-9);
         assertEquals(30.0 + d, quads.get(0).maxY(), 1e-9);
     }
+
+    /** A line 300 px long, 6 px thick, rising by {@code rise} px from left to right. */
+    private static float[][] tiltedLine(double rise) {
+        float[][] prob = makeProb(360, 80);
+        for (int x = 30; x < 330; x++) {
+            int yc = (int) Math.round(40 - rise * (x - 30) / 300.0);
+            for (int y = yc - 3; y < yc + 3; y++) prob[y][x] = 0.9f;
+        }
+        return prob;
+    }
+
+    @Test
+    public void tiltedLine_getsABoxAlongIt() {
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.5);
+        List<Quad> quads = pp.process(tiltedLine(10.0)); // ~1.9 degrees
+        assertEquals(1, quads.size());
+        Quad q = quads.get(0);
+        // TL above TR by about the rise, and the box as tall as the line plus its unclip margin
+        // (about 16 px); the axis-aligned box would add the whole rise (about 25 px).
+        assertEquals(10.0, q.y[0] - q.y[1], 1.5);
+        double height = Math.hypot(q.x[3] - q.x[0], q.y[3] - q.y[0]);
+        assertTrue("height " + height, height < 20.0);
+    }
+
+    @Test
+    public void straightLine_keepsTheAxisAlignedBox() {
+        DbPostProcessor pp = new DbPostProcessor(0.3, 0.6, 1.5);
+        List<Quad> quads = pp.process(tiltedLine(0.0));
+        assertEquals(1, quads.size());
+        Quad q = quads.get(0);
+        assertEquals(q.y[0], q.y[1], 1e-9);
+        assertEquals(q.x[0], q.x[3], 1e-9);
+    }
 }

@@ -173,6 +173,11 @@ final class DbPostProcessor {
         // box; holes in the kernel do not thin it (the reference unclips the contour polygon).
         final java.util.HashMap<Integer, int[]> rowSpan = new java.util.HashMap<>();
         final java.util.HashMap<Integer, int[]> colSpan = new java.util.HashMap<>();
+        // Pixel coordinates, for the principal axis of a tilted line (see orientedUnclip).
+        int[] px = new int[64];
+        int[] py = new int[64];
+        double sumX = 0.0;
+        double sumY = 0.0;
 
         Component(int x, int y) {
             minX = maxX = x;
@@ -180,6 +185,14 @@ final class DbPostProcessor {
         }
 
         void add(int px, int py, float p) {
+            if (count == this.px.length) {
+                this.px = java.util.Arrays.copyOf(this.px, 2 * count);
+                this.py = java.util.Arrays.copyOf(this.py, 2 * count);
+            }
+            this.px[count] = px;
+            this.py[count] = py;
+            sumX += px;
+            sumY += py;
             count++;
             sumProb += p;
             extend(rowSpan, py, px);
@@ -270,7 +283,109 @@ final class DbPostProcessor {
         return values[index];
     }
 
+    /** Tilts below this are noise of the pixel grid; the axis-aligned box is kept. */
+    static final double MIN_TILT_DEG = 0.3;
+
+    /** Tilts above this are not a skewed line of text but something else; axis-aligned again. */
+    static final double MAX_TILT_DEG = 30.0;
+
+    /** A tilted box needs a component at least this many times longer than thick. */
+    static final double MIN_ELONGATION = 3.0;
+
+    /**
+     * The box of a component: along its principal axis when it is a horizontal line tilted by
+     * {@link #MIN_TILT_DEG} to {@link #MAX_TILT_DEG}, as PaddleOCR's minimum-area rectangle; else
+     * axis-aligned. An axis-aligned box around a full-width line tilted by a degree or two takes in
+     * half of the next line, and the recogniser reads both (skew_light: character error rate 0.73
+     * with axis-aligned boxes only).
+     */
     private Quad unclip(Component c) {
+        if (c.boxW() >= c.boxH()) {
+            double angle = principalAngle(c);
+            double deg = Math.abs(Math.toDegrees(angle));
+            if (deg >= MIN_TILT_DEG && deg <= MAX_TILT_DEG) {
+                Quad tilted = orientedUnclip(c, angle);
+                if (tilted != null) return tilted;
+            }
+        }
+        return axisAlignedUnclip(c);
+    }
+
+    /** Angle of the principal axis of the component's pixels, in radians. */
+    private static double principalAngle(Component c) {
+        double cx = c.sumX / c.count;
+        double cy = c.sumY / c.count;
+        double sxx = 0.0;
+        double sxy = 0.0;
+        double syy = 0.0;
+        for (int k = 0; k < c.count; k++) {
+            double dx = c.px[k] - cx;
+            double dy = c.py[k] - cy;
+            sxx += dx * dx;
+            sxy += dx * dy;
+            syy += dy * dy;
+        }
+        return 0.5 * Math.atan2(2.0 * sxy, sxx - syy);
+    }
+
+    /**
+     * The unclipped box along {@code angle}: length along the axis, thickness the {@link
+     * #THICKNESS_PERCENTILE} of the cross-sections, grown by the same offset as {@link
+     * #axisAlignedUnclip}. Null when the component is too short for its tilt to be trusted.
+     */
+    private Quad orientedUnclip(Component c, double angle) {
+        // u along the axis, v across it (downwards); pixel centres.
+        double ux = Math.cos(angle);
+        double uy = Math.sin(angle);
+        double vx = -uy;
+        double vy = ux;
+        double uMin = Double.MAX_VALUE;
+        double uMax = -Double.MAX_VALUE;
+        for (int k = 0; k < c.count; k++) {
+            double u = (c.px[k] + 0.5) * ux + (c.py[k] + 0.5) * uy;
+            uMin = Math.min(uMin, u);
+            uMax = Math.max(uMax, u);
+        }
+        int cells = Math.max(1, (int) Math.floor(uMax - uMin) + 1);
+        double[] lo = new double[cells];
+        double[] hi = new double[cells];
+        java.util.Arrays.fill(lo, Double.MAX_VALUE);
+        java.util.Arrays.fill(hi, -Double.MAX_VALUE);
+        double vMin = Double.MAX_VALUE;
+        double vMax = -Double.MAX_VALUE;
+        for (int k = 0; k < c.count; k++) {
+            double x = c.px[k] + 0.5;
+            double y = c.py[k] + 0.5;
+            int cell = Math.min(cells - 1, (int) Math.floor(x * ux + y * uy - uMin + 1e-9));
+            double v = x * vx + y * vy;
+            lo[cell] = Math.min(lo[cell], v);
+            hi[cell] = Math.max(hi[cell], v);
+            vMin = Math.min(vMin, v);
+            vMax = Math.max(vMax, v);
+        }
+        double[] spans = new double[cells];
+        int n = 0;
+        for (int i = 0; i < cells; i++) {
+            if (lo[i] != Double.MAX_VALUE) spans[n++] = hi[i] - lo[i] + 1.0;
+        }
+        java.util.Arrays.sort(spans, 0, n);
+        double thickness =
+                Math.max(1.0, spans[Math.min(n - 1, (int) Math.floor(THICKNESS_PERCENTILE * (n - 1)))]);
+        double length = Math.max(1.0, uMax - uMin + 1.0);
+        if (length / thickness < MIN_ELONGATION) return null;
+        double d = length * thickness * Math.max(0.0, unclipRatio) / (2.0 * (length + thickness));
+        double u0 = uMin - 0.5 - d;
+        double u1 = uMax + 0.5 + d;
+        double v0 = vMin - 0.5 - d;
+        double v1 = vMax + 0.5 + d;
+        // TL, TR, BR, BL
+        double[] xs = {u0 * ux + v0 * vx, u1 * ux + v0 * vx, u1 * ux + v1 * vx, u0 * ux + v1 * vx};
+        double[] ys = {u0 * uy + v0 * vy, u1 * uy + v0 * vy, u1 * uy + v1 * vy, u0 * uy + v1 * vy};
+        double[] kernel = new double[] {c.minX, c.minY, c.maxX + 1, c.maxY + 1, c.count};
+        return new Quad(xs, ys, c.meanProb(), kernel);
+    }
+
+    private Quad axisAlignedUnclip(Component c) {
         // Offset like PaddleOCR's DBPostProcess.unclip: area * ratio / perimeter of the kernel
         // polygon. The polygon is approximated by the component's pixel count and its length,
         // not by its bounding box: a slightly skewed line of a phone photo has a bounding box
