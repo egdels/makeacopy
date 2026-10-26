@@ -58,9 +58,10 @@ public final class CornerDetectorFactory {
 
   /**
    * Creates a {@link CornerDetector} optimized for live corner detection during real-time
-   * processing. This detector uses a combination of throttled DocQuad detection and a fallback to
-   * OpenCV-based corner detection. It also applies smoothing using a default One Euro Corner
-   * Smoother for stability.
+   * processing: throttled DocQuad detection, smoothed with a default One Euro Corner Smoother.
+   * There is no OpenCV fallback: when DocQuad finds nothing, or is unsure (see {@link
+   * ThrottledDocQuadLiveDetector#MIN_LIVE_CONFIDENCE}), no outline is shown. With the fallback, a
+   * covered lens still got an outline, from the contours of the sensor noise.
    *
    * @param ctx the application context used for initializing the detector.
    * @param runner the pre-loaded {@link DocQuadOrtRunner} instance for DocQuad-based detection.
@@ -72,8 +73,6 @@ public final class CornerDetectorFactory {
     if (!BuildConfig.FEATURE_DOCQUAD_CORNERS) {
       return new OpenCvCornerDetector();
     }
-    return new CompositeCornerDetector(
-        new ThrottledDocQuadLiveDetector(ctx.getApplicationContext(), runner, smoother),
-        new OpenCvCornerDetector());
+    return new ThrottledDocQuadLiveDetector(ctx.getApplicationContext(), runner, smoother);
   }
 }
