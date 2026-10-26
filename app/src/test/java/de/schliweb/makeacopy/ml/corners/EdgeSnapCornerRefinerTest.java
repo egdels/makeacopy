@@ -10,6 +10,7 @@
 package de.schliweb.makeacopy.ml.corners;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -140,5 +141,46 @@ public class EdgeSnapCornerRefinerTest {
     assertSame(tooFew, EdgeSnapCornerRefiner.refine(null, tooFew));
     double[][] nan = {{Double.NaN, 0}, {10, 0}, {10, 10}, {0, 10}};
     assertSame(nan, EdgeSnapCornerRefiner.refine(null, nan));
+  }
+
+  // ---------- printed lines are not the paper's edge ----------
+
+  /**
+   * Gradients of a vertical paper edge at x = 50 (one step, positive) with a printed rule at x = 45
+   * just inside it (two steps: dark line on white). The guess lies on the rule.
+   */
+  private static float[][] edgeWithRule(int w, int h) {
+    float[] gx = new float[w * h];
+    float[] gy = new float[w * h];
+    for (int y = 0; y < h; y++) {
+      gx[y * w + 50] = 200f;
+      gx[y * w + 44] = -150f;
+      gx[y * w + 46] = 150f;
+    }
+    return new float[][] {gx, gy};
+  }
+
+  @Test
+  public void snapEdgeLine_skipsAPrintedRuleNextToTheEdge() {
+    int w = 100;
+    int h = 200;
+    float[][] g = edgeWithRule(w, h);
+    double[] line =
+        EdgeSnapCornerRefiner.snapEdgeLine(
+            g[0], g[1], w, h, new double[] {45, 20}, new double[] {45, 180}, 8.0, 1);
+    assertNotNull(line);
+    assertEquals(50.0, line[0], 0.6);
+  }
+
+  @Test
+  public void isPrintedLine_needsAnOppositePeakClose_by() {
+    double[] rule = {0, -150, 0, 150, 0, 0, 0, 0, 0, 0};
+    assertTrue(EdgeSnapCornerRefiner.isPrintedLine(rule, 3, 150));
+    double[] step = {0, 0, 0, 200, 0, 0, 0, 0, 0, 0};
+    assertFalse(EdgeSnapCornerRefiner.isPrintedLine(step, 3, 200));
+    double[] weakOpposite = {0, -50, 0, 200, 0, 0, 0, 0, 0, 0};
+    assertFalse(EdgeSnapCornerRefiner.isPrintedLine(weakOpposite, 3, 200));
+    double[] farOpposite = {-200, 0, 0, 0, 0, 0, 200, 0, 0, 0};
+    assertFalse(EdgeSnapCornerRefiner.isPrintedLine(farOpposite, 6, 200));
   }
 }
