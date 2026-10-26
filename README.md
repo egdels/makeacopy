@@ -65,10 +65,10 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 
 | Edition | OCR Languages | Fonts | APK Size (arm64-v8a) |
 |---------|--------------|-------|---------------------|
-| **Full** | 23 languages (incl. CJK, Arabic, Hindi, Thai, Turkish) | 5 fonts (incl. CJK, Devanagari) | ~99 MB |
-| **Light** | English + German | 1 font (NotoSans) | ~58 MB |
+| **Full** | 23 languages (incl. CJK, Arabic, Hindi, Thai, Turkish) | none (glyphless text layer) | ~99 MB |
+| **Light** | English + German | none (glyphless text layer) | ~58 MB |
 
-Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition additionally ships fewer OCR language models and fonts, and uses a minimal ONNX Runtime AAR to further reduce APK size.
+Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition additionally ships fewer OCR language models, and uses a minimal ONNX Runtime AAR to further reduce APK size.
 
 In addition, MakeACopy is built in two product flavors (`ocr` flavor dimension):
 
@@ -174,9 +174,7 @@ The F-Droid and Google Play links point to the `paddle` flavor. Use GitHub Relea
 
 Notes:
 - All OCR runs fully offline on-device.
-- For Chinese, MakeACopy includes appropriate CJK fonts for better PDF text embedding.
-- For Arabic and Persian, MakeACopy includes the Noto Naskh Arabic font for proper RTL (right-to-left) text rendering in PDF exports.
-- For Hindi, MakeACopy includes the Noto Sans Devanagari font for proper Devanagari text rendering in PDF exports.
+- The searchable text layer of a PDF export is invisible and uses a font without visible glyphs that is built into the app (as Tesseract and OCRmyPDF do), so text in every script, Arabic and Persian right-to-left included, can be searched and copied without bundling a font per script.
 
 ## Screenshots
 
@@ -260,7 +258,7 @@ Notes:
 ./gradlew :app:assembleRelease -Pedition=light -PenableAbiSplits=true
 ```
 
-The Light edition uses `applicationIdSuffix ".light"` (`de.schliweb.makeacopy.light`) and includes only English and German OCR models, the NotoSans-Regular font, and English/German dictionaries.
+The Light edition uses `applicationIdSuffix ".light"` (`de.schliweb.makeacopy.light`) and includes only English and German OCR models and English/German dictionaries.
 
 ## Architecture
 
@@ -282,11 +280,6 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 | OCR (`standard` legacy flavor) | [Tesseract4Android](https://github.com/adaptech-cz/Tesseract4Android) 4.9.0 | Apache 2.0 |
 | OCR Language Data (`standard` legacy flavor) | [tessdata](https://github.com/tesseract-ocr/tessdata) | Apache 2.0 |
 | PDF | Android PdfDocument, pdfbox-android | Apache 2.0 |
-| Fonts (CJK) | [Noto Sans CJK](https://github.com/notofonts/noto-cjk) | OFL 1.1 |
-| Fonts (Japanese Kana) | [Noto Sans JP](https://github.com/notofonts/noto-cjk) (Kana subset) | OFL 1.1 |
-| Fonts (Latin) | [Noto Sans](https://github.com/notofonts/noto-fonts) | OFL 1.1 |
-| Fonts (Arabic) | [Noto Naskh Arabic](https://github.com/notofonts/arabic) | OFL 1.1 |
-| Fonts (Devanagari) | [Noto Sans Devanagari](https://github.com/notofonts/devanagari) | OFL 1.1 |
 | UI | Material Components | Apache 2.0 |
 | OCR Dictionaries | [FrequencyWords](https://github.com/hermitdave/FrequencyWords) | CC BY-SA 4.0 |
 

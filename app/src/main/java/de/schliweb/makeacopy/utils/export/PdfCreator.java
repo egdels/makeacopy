@@ -906,6 +906,7 @@ public class PdfCreator {
 
   private static float measureCharacterWidth(String ch, float fontSize, List<PDFont> fonts) {
     for (PDFont font : fonts) {
+      if (GlyphlessFont.is(font)) return GlyphlessFont.width(ch, fontSize);
       try {
         font.encode(ch);
         return font.getStringWidth(ch) / 1000f * fontSize;

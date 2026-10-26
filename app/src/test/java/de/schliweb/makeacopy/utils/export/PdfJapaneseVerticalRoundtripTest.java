@@ -36,7 +36,7 @@ import org.junit.Test;
  * <ul>
  *   <li>A: Unicode roundtrip — no U+FFFD, all Kana/Kanji/punctuation survive extraction,
  *   <li>B: vertical reading order — columns are extracted right-to-left, top-to-bottom,
- *   <li>D: font coverage — every required code point is encodable by at least one embedded font.
+ *   <li>D: every required code point survives the text layer (one glyphless font for all).
  * </ul>
  *
  * <p>The columns are written exactly like {@code PdfCreator.addVerticalColumnsImageSpace} does
@@ -49,8 +49,6 @@ public class PdfJapaneseVerticalRoundtripTest {
   private static final String COL_MIDDLE = "1億円で遊んでいるのだろう。";
   private static final String COL_LEFT = "なくなったらたかりに来ると思ったので、親に内緒で高級マンションに引っ越すことにした。";
 
-  private File fontsDir;
-
   /**
    * Removes all whitespace. PDFTextStripper inserts line breaks between vertically stacked glyphs
    * (each character starts a new visual "line"); the logical code point order is unaffected and
@@ -60,26 +58,10 @@ public class PdfJapaneseVerticalRoundtripTest {
     return s.replaceAll("\\s+", "");
   }
 
-  @Before
-  public void setUp() {
-    // Gradle unit tests run with the module directory as working dir; fall back for IDE runs.
-    File dir = new File("src/full/assets/fonts");
-    if (!dir.isDirectory()) dir = new File("app/src/full/assets/fonts");
-    assertTrue("font assets directory not found: " + dir.getAbsolutePath(), dir.isDirectory());
-    fontsDir = dir;
-  }
-
   private List<PDFont> loadFonts(PDDocument doc) throws Exception {
-    // Same order as PdfTextUtils.loadFontsWithFallbacks.
-    String[] names = {
-      "NotoSans-Regular.ttf", "NotoSansCJKsc-Regular.ttf", "NotoSansJP-Kana.ttf"
-    };
+    // As PdfTextUtils.loadFontsWithFallbacks: the glyphless font alone.
     List<PDFont> fonts = new ArrayList<>();
-    for (String n : names) {
-      File f = new File(fontsDir, n);
-      assertTrue("missing font asset: " + f.getAbsolutePath(), f.isFile());
-      fonts.add(PDType0Font.load(doc, f));
-    }
+    fonts.add(GlyphlessFont.create(doc));
     return fonts;
   }
 
@@ -183,30 +165,18 @@ public class PdfJapaneseVerticalRoundtripTest {
   // ---------------------------------------------------------------------
 
   @Test
-  public void everyRequiredCodePointIsEncodableByAnEmbeddedFont() throws Exception {
-    String probe = "漢字ひらがなカタカナっゃゅょ。、！？1億円" + COL_RIGHT + COL_MIDDLE + COL_LEFT;
-    try (PDDocument doc = new PDDocument()) {
-      List<PDFont> fonts = loadFonts(doc);
-      StringBuilder missing = new StringBuilder();
-      for (int i = 0; i < probe.length(); ) {
-        int cp = probe.codePointAt(i);
-        String ch = new String(Character.toChars(cp));
-        boolean ok = false;
-        for (PDFont font : fonts) {
-          try {
-            font.encode(ch);
-            ok = true;
-            break;
-          } catch (Exception ignore) {
-            // try next fallback font
-          }
-        }
-        if (!ok) missing.append(ch).append(" (U+").append(Integer.toHexString(cp)).append(") ");
-        i += Character.charCount(cp);
+  public void everyRequiredCodePointSurvivesTheTextLayer() throws Exception {
+    String extracted = joinWhitespace(writeColumnsAndExtract());
+    String probe = COL_RIGHT + COL_MIDDLE + COL_LEFT;
+    StringBuilder missing = new StringBuilder();
+    for (int i = 0; i < probe.length(); ) {
+      int cp = probe.codePointAt(i);
+      String ch = new String(Character.toChars(cp));
+      if (!extracted.contains(ch)) {
+        missing.append(ch).append(" (U+").append(Integer.toHexString(cp)).append(") ");
       }
-      if (missing.length() > 0) {
-        fail("code points without any embedded font glyph: " + missing);
-      }
+      i += Character.charCount(cp);
     }
+    if (missing.length() > 0) fail("code points lost in the text layer: " + missing);
   }
 }

@@ -75,23 +75,8 @@ includes third-party components under their respective licenses as noted below.
           – SHA-256 checksum updated accordingly.
           – Added sync-marker comment referencing makeacopy wrapper.
 
-3) Noto Sans CJK / Noto Sans JP (fonts; used for CJK PDF text layer)
-    - Project: https://github.com/notofonts/noto-cjk
-    - License: SIL Open Font License 1.1
-    - Notes: The bundled fonts are derived from the official Noto Sans CJK OTF
-      distributions. For compatibility with PDFBox, they have been converted to
-      TrueType (TTF) format and subsetted to reduce size. No glyph outlines have
-      been modified. The OFL license notice is included at
-      third_party_licenses/OFL.txt.
-    - Bundled files:
-        * NotoSansCJKsc-Regular.ttf – Simplified Chinese subset (Han + CJK
-          punctuation/fullwidth ranges) of Noto Sans CJK SC.
-        * NotoSansJP-Kana.ttf – Kana/Japanese punctuation subset of
-          Noto Sans JP, covering Hiragana, Katakana, small Kana, and
-          fullwidth forms. It complements the CJKsc subset (which contains
-          no Kana) so that Japanese text can be embedded in the searchable
-          PDF text layer. Kanji glyphs are still provided by
-          NotoSansCJKsc-Regular.ttf.
+3) Noto Sans CJK / Noto Sans JP – no longer bundled (the PDF text layer uses a glyphless
+    font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
 
 4) Tesseract OCR language data (tessdata)
     - Project: https://github.com/tesseract-ocr/tessdata
@@ -108,27 +93,14 @@ includes third-party components under their respective licenses as noted below.
       provide Tesseract OCR functionality on Android. The Apache 2.0 license
       text is included at third_party_licenses/Tesseract4Android_LICENSE.txt.
 
-6) Noto Sans (fonts; e.g., NotoSans-Regular.ttf)
-    - Project: https://github.com/notofonts/noto-fonts
-    - License: SIL Open Font License 1.1
-    - Notes: Distributed under the OFL without modification and without changes
-      to Reserved Font Names. When bundled, the OFL notice is included at
-      third_party_licenses/OFL.txt.
+6) Noto Sans – no longer bundled (the PDF text layer uses a glyphless
+    font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
 
-7) Noto Naskh Arabic (fonts; NotoNaskhArabic-Regular.ttf)
-    - Project: https://github.com/notofonts/arabic
-    - License: SIL Open Font License 1.1
-    - Notes: Used for Arabic and Persian (Farsi) script rendering in PDF text
-      layers. Distributed under the OFL without modification. The OFL notice
-      is included at third_party_licenses/OFL.txt.
+7) Noto Naskh Arabic – no longer bundled (the PDF text layer uses a glyphless
+    font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
 
-8) Noto Sans Devanagari (fonts; NotoSansDevanagari-Regular.ttf)
-    - Project: https://github.com/notofonts/devanagari
-    - Version: 2.006
-    - License: SIL Open Font License 1.1
-    - Notes: Used for Hindi (Devanagari) script rendering in PDF text layers.
-      Distributed under the OFL without modification. The OFL notice is
-      included at third_party_licenses/OFL.txt.
+8) Noto Sans Devanagari – no longer bundled (the PDF text layer uses a glyphless
+    font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
 
 9) FrequencyWords (OCR dictionaries)
     - Project: https://github.com/hermitdave/FrequencyWords

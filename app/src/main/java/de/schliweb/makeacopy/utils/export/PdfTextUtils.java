@@ -14,12 +14,8 @@ import android.util.Log;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
 import com.tom_roush.pdfbox.pdmodel.font.PDFont;
-import com.tom_roush.pdfbox.pdmodel.font.PDType0Font;
 import com.tom_roush.pdfbox.pdmodel.font.PDType1Font;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.experimental.UtilityClass;
@@ -215,66 +211,24 @@ public final class PdfTextUtils {
   }
 
   /**
-   * Loads a list of PDF fonts with fallback mechanisms based on provided font files.
+   * The font for the invisible text layer: {@link GlyphlessFont}, one font for every script.
+   * Before, a Noto font per script was embedded (12.6 MB of assets) only because PDFBox' {@code
+   * showText} needs a glyph for each character; the text layer is never painted. Helvetica (not
+   * embedded, WinAnsi only) remains as a last resort should the font not build.
    *
-   * @param document the PDF document instance where fonts will be loaded into
-   * @param context the Android context used for asset access and caching
-   * @return a list of PDFont objects, including the successfully loaded fonts and any fallbacks
+   * @param document the PDF document instance the font objects are created in
+   * @param context unused; kept for the callers
+   * @return a one-element list with the font
    */
   public static List<PDFont> loadFontsWithFallbacks(PDDocument document, Context context) {
     List<PDFont> fonts = new ArrayList<>();
-    String[] candidates =
-        new String[] {
-          "fonts/NotoSans-Regular.ttf",
-          "fonts/NotoSansThai-Regular.ttf",
-          "fonts/NotoSansCJKsc-Regular.ttf",
-          // Kana/Japanese punctuation subset of Noto Sans JP (OFL). The bundled CJKsc subset
-          // only covers Han + CJK punctuation/fullwidth ranges; Hiragana/Katakana would
-          // otherwise degrade to U+FFFD in the searchable text layer (issue #88).
-          "fonts/NotoSansJP-Kana.ttf",
-          "fonts/NotoNaskhArabic-Regular.ttf",
-          "fonts/NotoSansDevanagari-Regular.ttf"
-        };
-    for (String path : candidates) {
-      try {
-        File f = copyAssetToCache(context, path);
-        Log.d(TAG, "Loading font (file-based): " + path + " (" + f.length() + " bytes)");
-        fonts.add(PDType0Font.load(document, f));
-      } catch (Exception exception) {
-        Log.w(TAG, "Font not found: " + path);
-        Log.w(TAG, "Exception: " + exception.getMessage());
-      }
-    }
-    if (fonts.isEmpty()) {
-      try {
-        File f = copyAssetToCache(context, "fonts/NotoSans-Regular.ttf");
-        fonts.add(PDType0Font.load(document, f));
-      } catch (Exception e) {
-        Log.w(TAG, "No embedded font found, falling back to Helvetica (not embedded)");
-        fonts.add(PDType1Font.HELVETICA);
-      }
+    try {
+      fonts.add(GlyphlessFont.create(document));
+    } catch (Exception e) {
+      Log.w(TAG, "Glyphless font could not be built, falling back to Helvetica (not embedded)", e);
+      fonts.add(PDType1Font.HELVETICA);
     }
     return fonts;
-  }
-
-  /**
-   * Copies a file from the assets directory to the cache directory.
-   *
-   * @param ctx the context used to access the assets and cache directories
-   * @param assetPath the relative path of the asset to be copied
-   * @return the file object pointing to the copied file in the cache directory
-   * @throws java.io.IOException if an I/O error occurs during copying
-   */
-  static File copyAssetToCache(Context ctx, String assetPath) throws java.io.IOException {
-    File out = new File(ctx.getCacheDir(), new File(assetPath).getName());
-    if (out.exists() && out.length() > 0) return out;
-    try (InputStream in = ctx.getAssets().open(assetPath);
-        FileOutputStream os = new FileOutputStream(out)) {
-      byte[] buf = new byte[16 * 1024];
-      int r;
-      while ((r = in.read(buf)) != -1) os.write(buf, 0, r);
-    }
-    return out;
   }
 
   /**
@@ -290,6 +244,12 @@ public final class PdfTextUtils {
       PDPageContentStream cs, String token, float fontSize, List<PDFont> fonts) throws Exception {
     if (token == null || token.isEmpty()) return;
     if (fonts == null || fonts.isEmpty()) throw new IllegalStateException("No fonts available");
+    if (GlyphlessFont.is(fonts.get(0))) {
+      // One font for every script: the UTF-16 code units are the codes, no glyph lookup.
+      cs.setFont(fonts.get(0), fontSize);
+      GlyphlessFont.showText(cs, token);
+      return;
+    }
 
     final int len = token.length();
     int i = 0;
