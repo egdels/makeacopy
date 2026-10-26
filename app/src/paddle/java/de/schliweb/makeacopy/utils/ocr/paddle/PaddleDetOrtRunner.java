@@ -158,7 +158,9 @@ class PaddleDetOrtRunner implements AutoCloseable {
             throws Exception {
         try (OrtSession.SessionOptions opts = new OrtSession.SessionOptions()) {
             opts.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-            opts.setIntraOpNumThreads(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
+            // Two threads, not half the cores: on a Pixel 7a (2 + 2 + 4 cores) four threads waited for the
+            // small cores; a page took 4.9 s instead of 4.1 s (measured in Sheet, same models and ORT build).
+            opts.setIntraOpNumThreads(2);
             return env.createSession(modelPath, opts);
         } catch (Exception e) {
             Log.w(TAG, "CPU session creation failed, retrying with default options: " + e.getMessage());
