@@ -475,4 +475,64 @@ public class MultiColumnLayoutPolicyTest {
     assertArrayEquals(new int[] {0, 2, 4, 6, 8, 10, 12, 14}, segments.get(0));
     assertArrayEquals(new int[] {1, 3, 5, 7, 9, 11, 13, 15}, segments.get(1));
   }
+
+  /**
+   * The boxes of an appointment card on a Pixel 7a: a heading, a name row, a three-cell table
+   * header, an address footer, and the printer's vertical imprint at the left margin split by the
+   * recogniser into two tall fragments (the last two boxes). With the fragments counted as lines,
+   * the card was read as two columns ("Tag" + the fragments, then the rest).
+   */
+  @Test
+  public void verticalMarginFragments_doNotMakeAColumn() {
+    float[][] boxes = {
+      {129.1f, 58.7f, 876.8f, 173.2f},
+      {915.2f, 58.7f, 991.8f, 173.2f},
+      {1030.2f, 58.7f, 1413.6f, 173.2f},
+      {1451.9f, 58.7f, 1586.1f, 173.2f},
+      {1624.5f, 58.7f, 1988.7f, 173.2f},
+      {483.5f, 212.5f, 852.1f, 296.1f},
+      {963.0f, 197.2f, 1322.6f, 292.2f},
+      {1428.2f, 194.9f, 1639.9f, 286.2f},
+      {119.4f, 368.1f, 281.6f, 475.8f},
+      {790.8f, 359.0f, 1053.4f, 449.8f},
+      {1519.3f, 347.1f, 1768.2f, 436.7f},
+      {123.7f, 1401.9f, 433.3f, 1481.2f},
+      {456.6f, 1399.9f, 544.3f, 1475.2f},
+      {567.6f, 1397.2f, 692.2f, 1473.2f},
+      {727.9f, 1394.7f, 827.9f, 1470.3f},
+      {863.5f, 1393.8f, 877.2f, 1467.9f},
+      {912.9f, 1391.6f, 1000.5f, 1467.0f},
+      {1023.8f, 1389.2f, 1136.1f, 1465.0f},
+      {1159.5f, 1388.5f, 1173.1f, 1462.5f},
+      {1196.4f, 1384.5f, 1395.1f, 1461.9f},
+      {1430.7f, 1383.6f, 1444.4f, 1457.6f},
+      {1480.0f, 1381.4f, 1567.7f, 1456.7f},
+      {1591.0f, 1378.9f, 1703.3f, 1454.7f},
+      {1726.6f, 1378.3f, 1740.3f, 1452.3f},
+      {1763.6f, 1373.6f, 1999.2f, 1451.6f},
+      {252.7f, 1469.5f, 771.2f, 1546.6f},
+      {813.8f, 1445.8f, 1882.3f, 1535.6f},
+      {22.2f, 892.6f, 90.9f, 1100.0f},
+      {22.2f, 1150.0f, 90.9f, 1360.9f}
+    };
+    assertTrue(group(boxes, false).isEmpty());
+  }
+
+  @Test
+  public void verticalMarginNote_isReadAfterTheColumns() {
+    float[][] boxes = {
+      {100f, 100f, 900f, 130f},
+      {100f, 150f, 900f, 180f},
+      {100f, 200f, 900f, 230f},
+      {1100f, 100f, 1900f, 130f},
+      {1100f, 150f, 1900f, 180f},
+      {1100f, 200f, 1900f, 230f},
+      {20f, 300f, 50f, 600f}
+    };
+    List<int[]> segments = group(boxes, false);
+    assertEquals(3, segments.size());
+    assertArrayEquals(new int[] {0, 1, 2}, segments.get(0));
+    assertArrayEquals(new int[] {3, 4, 5}, segments.get(1));
+    assertArrayEquals(new int[] {6}, segments.get(2));
+  }
 }

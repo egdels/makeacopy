@@ -118,6 +118,15 @@ public final class MultiColumnLayoutPolicy {
   /** Tolerance for two edges to count as the same x, as factor of the median height. */
   public static final float ALIGN_TOLERANCE_FACTOR = 0.5f;
 
+  /** A box at least this many times taller than wide and than the median box is vertical text. */
+  static final float TALL_BOX_ASPECT = 2.0f;
+
+  /**
+   * Vertical boxes are set aside only while they are at most this share of all boxes; a page of
+   * vertical text (Japanese columns) keeps its analysis unchanged.
+   */
+  static final float TALL_BOX_MAX_FRACTION = 0.25f;
+
   private MultiColumnLayoutPolicy() {
     // utility
   }
@@ -140,6 +149,68 @@ public final class MultiColumnLayoutPolicy {
    * @return segments in reading order, or an empty list if the layout is not multi-column
    */
   public static List<int[]> groupIntoColumnSegments(
+      float[] lefts, float[] tops, float[] rights, float[] bottoms, boolean rtl) {
+    if (lefts == null
+        || tops == null
+        || rights == null
+        || bottoms == null
+        || lefts.length != tops.length
+        || lefts.length != rights.length
+        || lefts.length != bottoms.length) {
+      return new ArrayList<>();
+    }
+    // Vertical text at the margin (a printer's imprint, a filing note) comes out of the
+    // recogniser as one or more tall, narrow boxes. Counted as lines they can complete a "column"
+    // on their own: on an appointment card, the imprint split into two fragments made, with one
+    // table cell, the three lines of a left column, and the card was read column by column. A
+    // minority of such boxes is left out of the analysis and, on a multi-column page, read last.
+    int n = lefts.length;
+    float[] heights = new float[n];
+    for (int i = 0; i < n; i++) heights[i] = bottoms[i] - tops[i];
+    float[] sorted = heights.clone();
+    java.util.Arrays.sort(sorted);
+    float medianHeight = n == 0 ? 0f : sorted[n / 2];
+    boolean[] tall = new boolean[n];
+    int tallCount = 0;
+    for (int i = 0; i < n; i++) {
+      float w = rights[i] - lefts[i];
+      tall[i] = heights[i] > TALL_BOX_ASPECT * w && heights[i] > TALL_BOX_ASPECT * medianHeight;
+      if (tall[i]) tallCount++;
+    }
+    if (tallCount == 0 || tallCount > TALL_BOX_MAX_FRACTION * n) {
+      return groupHorizontalBoxes(lefts, tops, rights, bottoms, rtl);
+    }
+    int m = n - tallCount;
+    int[] keep = new int[m];
+    float[] kL = new float[m], kT = new float[m], kR = new float[m], kB = new float[m];
+    List<Integer> margin = new ArrayList<>();
+    for (int i = 0, k = 0; i < n; i++) {
+      if (tall[i]) {
+        margin.add(i);
+        continue;
+      }
+      keep[k] = i;
+      kL[k] = lefts[i];
+      kT[k] = tops[i];
+      kR[k] = rights[i];
+      kB[k] = bottoms[i];
+      k++;
+    }
+    List<int[]> segments = groupHorizontalBoxes(kL, kT, kR, kB, rtl);
+    if (segments.isEmpty()) return segments;
+    List<int[]> out = new ArrayList<>(segments.size() + 1);
+    for (int[] seg : segments) {
+      int[] mapped = new int[seg.length];
+      for (int j = 0; j < seg.length; j++) mapped[j] = keep[seg[j]];
+      out.add(mapped);
+    }
+    margin.sort((x, y) -> Float.compare(tops[x], tops[y]));
+    out.add(toArray(margin));
+    return out;
+  }
+
+  /** {@link #groupIntoColumnSegments} for horizontal text boxes, without the margin-note filter. */
+  private static List<int[]> groupHorizontalBoxes(
       float[] lefts, float[] tops, float[] rights, float[] bottoms, boolean rtl) {
     List<int[]> none = new ArrayList<>();
     if (lefts == null
