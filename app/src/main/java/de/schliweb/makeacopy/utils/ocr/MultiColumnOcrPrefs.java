@@ -11,7 +11,6 @@ package de.schliweb.makeacopy.utils.ocr;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import de.schliweb.makeacopy.BuildConfig;
 
 /**
  * A utility class for managing the user preference that enables multi-column layout reconstruction
@@ -37,11 +36,12 @@ public final class MultiColumnOcrPrefs {
   public static final String KEY = "multi_column_ocr";
 
   /**
-   * On in the paddle flavor, the only one that offers the option: a page that is not reliably
-   * multi-column is read line by line anyway, and two-column pages went from a character error rate
-   * of 0.66 to 0.00 with it (Sheet's OCR evaluation, same layout policy).
+   * Off. On a Pixel 7a an appointment card with a three-column table came out in the wrong order
+   * with the option on (the table's columns were read one after another, the header line between
+   * them), while Sheet's port of the same policy reads it right; until that difference is
+   * understood, multi-column reading stays opt-in.
    */
-  public static final boolean DEFAULT = BuildConfig.FEATURE_PADDLE_OCR;
+  public static final boolean DEFAULT = false;
 
   private MultiColumnOcrPrefs() {}
 

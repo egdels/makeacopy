@@ -91,7 +91,7 @@ public final class OcrOptionsPanel {
     boolean ocrAutoRotateApply = false;
     boolean ocrPostProcessing = true; // default ON
     boolean layout = false; // default OFF
-    // Detection at 1920 px and multi-column reading: on by default where they exist (paddle).
+    // Detection at 1920 px: on by default where it exists (paddle).
     boolean paddleBest = fixedPaddleMode;
     boolean multiColumn = MultiColumnOcrPrefs.DEFAULT;
     try {

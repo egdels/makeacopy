@@ -97,9 +97,8 @@ public final class SettingsCatalog {
           bool("ocr_auto_rotate_apply_export", false, Group.OCR),
           bool("ocr_post_processing", true, Group.OCR),
           bool("layout_analysis", false, Group.OCR), // behind FeatureFlags.isLayoutAnalysisEnabled
-          // Paddle flavor only, and on there by default.
-          bool("paddle_best_ocr", BuildConfig.FEATURE_PADDLE_OCR, Group.OCR),
-          bool("multi_column_ocr", BuildConfig.FEATURE_PADDLE_OCR, Group.OCR),
+          bool("paddle_best_ocr", BuildConfig.FEATURE_PADDLE_OCR, Group.OCR), // paddle: on
+          bool("multi_column_ocr", false, Group.OCR), // paddle flavor only
           // Export
           bool("include_ocr", false, Group.EXPORT),
           bool("export_as_jpeg", false, Group.EXPORT),
