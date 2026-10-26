@@ -2091,8 +2091,8 @@ public final class OpenCVUtils {
    * Computes a tight target size (width/height) for the warp using a projective aspect-ratio
    * estimation (Zhang & He, 2006, "Whiteboard Scanning and Image Enhancement"). The image's
    * principal point is assumed to be at its centre and the focal length is estimated from the
-   * geometry of the four corners (with a fallback of {@code f ≈ max(srcWidth, srcHeight)} if the
-   * closed-form estimate is degenerate).
+   * geometry of the four corners (with a fallback of {@code f ≈ 0.75 · max(srcWidth, srcHeight)} if
+   * the closed-form estimate is degenerate).
    *
    * <p>If the projective estimate is degenerate (e.g., near-fronto-parallel quad, parallel
    * vanishing rays, or numerically unstable), the method falls back to the pixel-distance heuristic
@@ -2158,6 +2158,9 @@ public final class OpenCVUtils {
             + h);
     return new Size(w, h);
   }
+
+  /** Focal length of a phone's main camera as a fraction of the long image edge (~26 mm equiv.). */
+  static final double PHONE_FOCAL_FRACTION = 0.75;
 
   /**
    * Estimates the true width/height aspect ratio of the rectangle whose perspective-projected image
@@ -2230,8 +2233,11 @@ public final class OpenCVUtils {
     //   f² = - (n2x*n3x + n2y*n3y) / (n2z * n3z)
     double fSquared = -(n2x * n3x + n2y * n3y) / (n2z * n3z);
     if (!Double.isFinite(fSquared) || fSquared <= 0.0) {
-      // Fallback: use a reasonable focal length assumption rather than failing immediately.
-      fSquared = (double) Math.max(srcWidth, srcHeight);
+      // No real solution (common for photos taken nearly straight on): a phone's main camera,
+      // about 26 mm equivalent, i.e. 0.75 of the long image edge. 1.0 was assumed before; on 70
+      // such labelled photos (Sheet's corner evaluation) 0.75 puts 44 within 0.03 of A4 or Letter,
+      // 1.0 puts 36.
+      fSquared = PHONE_FOCAL_FRACTION * Math.max(srcWidth, srcHeight);
       fSquared *= fSquared;
     }
 
