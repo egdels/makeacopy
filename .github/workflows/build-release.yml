@@ -132,7 +132,8 @@ jobs:
             echo "$ENCODED_KEYSTORE" | base64 --decode > app/keystore.jks
             echo "Keystore decoded successfully"
           else
-            echo "No keystore provided. Tag build will proceed unsigned."
+            echo "::error::KEYSTORE_BASE64 is missing; a tag must not produce an unsigned release."
+            exit 1
           fi
 
       - name: Extract versionName and versionCode from build.gradle
@@ -164,7 +165,8 @@ jobs:
           if [ -n "${SIGNING_KEY_ALIAS}" ] && [ -n "${SIGNING_KEY_PASSWORD}" ] && [ -n "${SIGNING_STORE_PASSWORD}" ]; then
             EXTRA_PROPS="-PSIGNING_KEY_ALIAS=${SIGNING_KEY_ALIAS} -PSIGNING_KEY_PASSWORD=${SIGNING_KEY_PASSWORD} -PSIGNING_STORE_PASSWORD=${SIGNING_STORE_PASSWORD}"
           else
-            echo "Signing secrets missing → building unsigned even for tag."
+            echo "::error::Signing secrets are missing; a tag must not produce an unsigned release."
+            exit 1
           fi
           ./gradlew --no-daemon :app:bundleRelease -PenableAbiSplits=false $EXTRA_PROPS
           ./gradlew --no-daemon :app:assembleRelease -PenableAbiSplits=true $EXTRA_PROPS
@@ -214,9 +216,28 @@ jobs:
           set -euo pipefail
           VERSION="${{ steps.extract_version.outputs.VERSION }}"
           APK_OUT="app/build/outputs/apk/release"
+          AAB_OUT="app/build/outputs/bundle/release"
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -Vr | head -n1)
-          for f in "$APK_OUT"/MakeACopy-v${VERSION}-*-release.apk; do
-            [ -f "$f" ] && "$APKSIGNER" verify --verbose "$f"
+          shopt -s nullglob
+          apks=("$APK_OUT"/MakeACopy-v${VERSION}-*-release.apk)
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "::error::no release APKs found in $APK_OUT"
+            exit 1
+          fi
+          for f in "${apks[@]}"; do
+            "$APKSIGNER" verify --verbose "$f"
+            # Each split has to carry the ONNX Runtime of its ABI; a missing one only shows on the phones that need it.
+            if ! unzip -l "$f" | grep -qE 'lib/[^/]+/libonnxruntime\.so$'; then
+              echo "::error::$f has no libonnxruntime.so"
+              exit 1
+            fi
+          done
+          # jarsigner -verify also passes an unsigned bundle, so look for the signature block itself.
+          for f in "$AAB_OUT"/MakeACopy-v${VERSION}*-release.aab; do
+            if ! unzip -l "$f" | grep -qE 'META-INF/[^/]+\.(RSA|EC|DSA)$'; then
+              echo "::error::$f is not signed"
+              exit 1
+            fi
           done
 
       - name: Generate Full checksums
@@ -413,7 +434,8 @@ jobs:
             echo "$ENCODED_KEYSTORE" | base64 --decode > app/keystore.jks
             echo "Keystore decoded successfully"
           else
-            echo "No keystore provided. Tag build will proceed unsigned."
+            echo "::error::KEYSTORE_BASE64 is missing; a tag must not produce an unsigned release."
+            exit 1
           fi
 
       - name: Extract versionName and versionCode from build.gradle
@@ -447,7 +469,8 @@ jobs:
           if [ -n "${SIGNING_KEY_ALIAS}" ] && [ -n "${SIGNING_KEY_PASSWORD}" ] && [ -n "${SIGNING_STORE_PASSWORD}" ]; then
             EXTRA_PROPS="-PSIGNING_KEY_ALIAS=${SIGNING_KEY_ALIAS} -PSIGNING_KEY_PASSWORD=${SIGNING_KEY_PASSWORD} -PSIGNING_STORE_PASSWORD=${SIGNING_STORE_PASSWORD}"
           else
-            echo "Signing secrets missing → building unsigned even for tag."
+            echo "::error::Signing secrets are missing; a tag must not produce an unsigned release."
+            exit 1
           fi
           ./gradlew --no-daemon :app:assembleStandardRelease -PenableAbiSplits=true -Pedition=light $EXTRA_PROPS
 
