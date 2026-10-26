@@ -1,0 +1,8 @@
+MakeACopy 4.8.0
+* Improved: slightly tilted text lines are read reliably.
+* Improved: OCR at best quality by default, better on small text.
+* Improved: corners no longer snap onto printed border lines.
+* Improved: truer page proportions for straight-on shots.
+* Improved: PDF text layer needs no bundled fonts, app ~7 MB smaller.
+* Fixed: no live outline on a covered or dark camera.
+* Fixed: vertical notes at the margin no longer break multi-column reading.
