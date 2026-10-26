@@ -91,15 +91,16 @@ public final class OcrOptionsPanel {
     boolean ocrAutoRotateApply = false;
     boolean ocrPostProcessing = true; // default ON
     boolean layout = false; // default OFF
-    boolean paddleBest = false; // default OFF
-    boolean multiColumn = false; // default OFF
+    // Detection at 1920 px and multi-column reading: on by default where they exist (paddle).
+    boolean paddleBest = fixedPaddleMode;
+    boolean multiColumn = MultiColumnOcrPrefs.DEFAULT;
     try {
       SharedPreferences p = prefs(ctx);
       ocrAutoRotateApply = p.getBoolean(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false);
       ocrPostProcessing = p.getBoolean(BUNDLE_OCR_POST_PROCESSING, true);
       layout = p.getBoolean(BUNDLE_LAYOUT_ANALYSIS, false);
-      paddleBest = p.getBoolean(BUNDLE_PADDLE_BEST_OCR, false);
-      multiColumn = p.getBoolean(MultiColumnOcrPrefs.KEY, false);
+      paddleBest = p.getBoolean(BUNDLE_PADDLE_BEST_OCR, fixedPaddleMode);
+      multiColumn = p.getBoolean(MultiColumnOcrPrefs.KEY, MultiColumnOcrPrefs.DEFAULT);
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }

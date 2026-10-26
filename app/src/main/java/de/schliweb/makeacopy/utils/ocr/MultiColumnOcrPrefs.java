@@ -11,6 +11,7 @@ package de.schliweb.makeacopy.utils.ocr;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import de.schliweb.makeacopy.BuildConfig;
 
 /**
  * A utility class for managing the user preference that enables multi-column layout reconstruction
@@ -31,17 +32,24 @@ public final class MultiColumnOcrPrefs {
   /**
    * The key used in the shared preferences file to store and retrieve the enablement state of the
    * multi-column layout option. The associated preference value is a boolean flag; the default is
-   * {@code false} (option off).
+   * {@link #DEFAULT}.
    */
   public static final String KEY = "multi_column_ocr";
+
+  /**
+   * On in the paddle flavor, the only one that offers the option: a page that is not reliably
+   * multi-column is read line by line anyway, and two-column pages went from a character error rate
+   * of 0.66 to 0.00 with it (Sheet's OCR evaluation, same layout policy).
+   */
+  public static final boolean DEFAULT = BuildConfig.FEATURE_PADDLE_OCR;
 
   private MultiColumnOcrPrefs() {}
 
   public static boolean isEnabled(Context context) {
-    if (context == null) return false;
+    if (context == null) return DEFAULT;
     SharedPreferences sp =
         context.getApplicationContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-    return sp.getBoolean(KEY, false);
+    return sp.getBoolean(KEY, DEFAULT);
   }
 
   public static void setEnabled(Context context, boolean enabled) {

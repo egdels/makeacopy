@@ -9,6 +9,7 @@
  */
 package de.schliweb.makeacopy.settings;
 
+import de.schliweb.makeacopy.BuildConfig;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -96,8 +97,9 @@ public final class SettingsCatalog {
           bool("ocr_auto_rotate_apply_export", false, Group.OCR),
           bool("ocr_post_processing", true, Group.OCR),
           bool("layout_analysis", false, Group.OCR), // behind FeatureFlags.isLayoutAnalysisEnabled
-          bool("paddle_best_ocr", false, Group.OCR), // paddle flavor only
-          bool("multi_column_ocr", false, Group.OCR), // paddle flavor only
+          // Paddle flavor only, and on there by default.
+          bool("paddle_best_ocr", BuildConfig.FEATURE_PADDLE_OCR, Group.OCR),
+          bool("multi_column_ocr", BuildConfig.FEATURE_PADDLE_OCR, Group.OCR),
           // Export
           bool("include_ocr", false, Group.EXPORT),
           bool("export_as_jpeg", false, Group.EXPORT),

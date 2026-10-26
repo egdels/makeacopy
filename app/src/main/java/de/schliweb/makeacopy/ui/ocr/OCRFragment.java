@@ -1166,7 +1166,7 @@ public class OCRFragment extends Fragment {
     try {
       boolean paddleBestOcr =
           de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR
-              && readExportPref(BUNDLE_PADDLE_BEST_OCR, false);
+              && readExportPref(BUNDLE_PADDLE_BEST_OCR, true);
       helper.setPaddleHighQualityDetectionEnabled(paddleBestOcr);
       Log.d(TAG, LP + "Paddle best OCR enabled=" + paddleBestOcr);
     } catch (Throwable t) {
