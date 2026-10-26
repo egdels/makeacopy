@@ -14,6 +14,7 @@ import android.graphics.Bitmap;
 import android.os.SystemClock;
 import android.util.Log;
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
 
@@ -26,6 +27,15 @@ final class ThrottledDocQuadLiveDetector implements CornerDetector {
 
   private static final String TAG = "ThrottledDocQuad";
   private static final long MIN_INTERVAL_MS = 250L; // ~4 Hz
+
+  /**
+   * Below this DocQuad confidence a live outline is not shown. On the dark noise of a covered lens
+   * the model's outline is often convex and inside the frame, at a confidence of 0.0; Sheet (same
+   * model, same confidence) showed it until it used this threshold. In its corner evaluation, one
+   * pass as live, 15 of 429 labelled photos fall below 0.1, one of them with a matching outline.
+   */
+  @VisibleForTesting static final double MIN_LIVE_CONFIDENCE = 0.1;
+
   private static final long LOG_INTERVAL_MS = 1000L;
 
   interface TimeSource {
@@ -119,7 +129,7 @@ final class ThrottledDocQuadLiveDetector implements CornerDetector {
     }
 
     try {
-      DetectionResult raw = inference.run(src, appCtx);
+      DetectionResult raw = unlessUnsure(inference.run(src, appCtx));
       DetectionResult out = maybeSmooth(raw, src, now);
       lastRunMs = now;
       lastResult = out;
@@ -132,6 +142,20 @@ final class ThrottledDocQuadLiveDetector implements CornerDetector {
       lastResult = out;
       return out;
     }
+  }
+
+  /**
+   * {@code raw}, or a failure when DocQuad reports a confidence below {@link #MIN_LIVE_CONFIDENCE}.
+   */
+  @VisibleForTesting
+  static DetectionResult unlessUnsure(DetectionResult raw) {
+    if (raw != null
+        && raw.success
+        && raw.confidence != null
+        && raw.confidence < MIN_LIVE_CONFIDENCE) {
+      return DetectionResult.fail(raw.source);
+    }
+    return raw;
   }
 
   private DetectionResult maybeSmooth(DetectionResult raw, Bitmap src, long nowMs) {

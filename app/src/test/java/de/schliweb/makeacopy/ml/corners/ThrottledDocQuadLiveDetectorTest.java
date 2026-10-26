@@ -39,4 +39,14 @@ public class ThrottledDocQuadLiveDetectorTest {
     assertEquals(Source.OPENCV, r.source);
     assertNull(r.cornersOriginalTLTRBRBL);
   }
+
+  @Test
+  public void unsureOutline_isNotShown() {
+    DetectionResult noise = DetectionResult.success(Source.DOCQUAD, QUAD).withConfidence(0.0);
+    assertFalse(ThrottledDocQuadLiveDetector.unlessUnsure(noise).success);
+    DetectionResult page = DetectionResult.success(Source.DOCQUAD, QUAD).withConfidence(0.9);
+    assertSame(page, ThrottledDocQuadLiveDetector.unlessUnsure(page));
+    DetectionResult unknown = DetectionResult.success(Source.DOCQUAD, QUAD);
+    assertSame(unknown, ThrottledDocQuadLiveDetector.unlessUnsure(unknown));
+  }
 }
