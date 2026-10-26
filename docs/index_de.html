@@ -122,10 +122,10 @@
     
     <ul>
         <li><strong>Kamera-Scan</strong>: Erfassen von Dokumenten mit der Gerätekamera</li>
-        <li><strong>Kantenerkennung</strong>: Automatische Dokumentkantenerkennung mit OpenCV, optional erweitert durch ein selbst trainiertes ONNX-Inferenzmodell</li>
+        <li><strong>Kantenerkennung</strong>: Ein selbst trainiertes Modell (DocQuadNet) findet die Seite auf dem Foto und legt den Umriss auf die Papierkanten, ohne eine gedruckte Rahmenlinie dafür zu halten. Ist in den Optionen <em>Vorschau Eckenerkennung</em> eingeschaltet (im Barrierefreiheitsmodus immer), umrandet es die Seite auch live in der Kamera, aber nur, wenn es sich sicher ist</li>
         <li><strong>Perspektivkorrektur</strong>: Anpassen und Zuschneiden von Dokumenten mit manueller oder automatischer Perspektivkorrektur</li>
         <li><strong>Bildverbesserung</strong>: Filter anwenden (Graustufen, Kontrast, Schärfen)</li>
-        <li><strong>OCR</strong>: Offline-Texterkennung mit PaddleOCR im veröffentlichten paddle-Flavor; das standard-Flavor mit Tesseract bleibt über GitHub Releases verfügbar</li>
+        <li><strong>OCR</strong>: Offline-Texterkennung mit PaddleOCR im veröffentlichten paddle-Flavor, die Textzeilen auch bei leicht schräger Seite folgt; das standard-Flavor mit Tesseract bleibt über GitHub Releases verfügbar</li>
         <li><strong>OCR Review</strong>: Interaktive Überprüfung und Korrektur von OCR-Ergebnissen mit Wort-Level-Bearbeitung, wörterbuchbasierten Vorschlägen, Konfidenz-Hervorhebung und Re-OCR für einzelne Wörter</li>
         <li><strong>PDF-Export</strong>: Speichern als durchsuchbares PDF mit erkanntem Text</li>
         <li><strong>JPEG-Export</strong>: Export als hochwertige JPEG-Bilder (Qualität, Farbe/Schwarzweiß konfigurierbar)</li>
@@ -165,7 +165,7 @@
         <li>Hindi (Devanagari)</li>
         <li>Griechisch (Griechisch)</li>
     </ul>
-        <p><em>Hinweis:</em> Für Chinesisch sind geeignete CJK-Schriften enthalten, um die PDF-Textdarstellung zu verbessern. Für Arabisch und Persisch ist die Noto Naskh Arabic-Schrift für korrekte RTL-Darstellung (rechts-nach-links) in PDF-Exporten enthalten. Für Hindi ist die Noto-Sans-Devanagari-Schrift für korrekte Devanagari-Darstellung in PDF-Exporten enthalten.</p>
+        <p><em>Hinweis:</em> Der durchsuchbare Text eines PDF-Exports liegt als unsichtbare Ebene über dem Seitenbild. Er nutzt eine winzige Schrift ohne sichtbare Zeichen, die in die App eingebaut ist, wie bei Tesseract und OCRmyPDF. So lässt sich Text in jeder Schrift, auch Chinesisch, Japanisch, Arabisch, Persisch und Hindi, durchsuchen und kopieren, ohne dass Schriftdateien mitgeliefert werden müssen.</p>
 
     <h2>App-Varianten und OCR-Backends</h2>
     <p>MakeACopy veröffentlicht das paddle-Flavor mit PaddleOCR auf F-Droid und Google Play. Das standard-Flavor mit Tesseract bleibt für Nutzer verfügbar, die weiterhin Tesseract-Sprachdaten oder -Workflows benötigen:</p>
@@ -341,6 +341,7 @@ appverifier verify MakeACopy-vX.Y.Z.apk
             - Vermeide Schatten, die wie Ränder interpretiert werden können.
         </li>
         <li><strong>Keine automatische Erkennung</strong><br>
+            - Mit eingeschalteter <em>Vorschau Eckenerkennung</em> zeigt die Kamera keinen Umriss, solange sich das Modell der Seite nicht sicher ist, etwa im Dunkeln oder bei abgedeckter Linse. <br>
             - Wiederhole die Aufnahme mit besserer Beleuchtung. <br>
             - Nutze die <em>manuelle Eckenkorrektur</em> nach dem Scan, um Punkte zu verschieben.
         </li>

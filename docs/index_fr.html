@@ -141,12 +141,12 @@
     <ul>
         <li><strong>Numérisation avec l’appareil photo</strong> : capturez des documents avec la caméra de l’appareil
         </li>
-        <li><strong>Détection des bords</strong> : détection automatique des contours du document à l’aide d’OpenCV, éventuellement renforcée par un modèle d’inférence ONNX entraîné sur mesure</li>
+        <li><strong>Détection des bords</strong> : un modèle entraîné sur mesure (DocQuadNet) repère la page sur la photo et cale le contour sur les bords du papier sans les confondre avec une ligne de cadre imprimée. Si l’option <em>Aperçu de la détection des coins</em> est activée (toujours en mode accessibilité), il entoure aussi la page en direct dans la caméra, mais seulement lorsqu’il en est sûr</li>
         <li><strong>Correction de perspective</strong> : ajustez et recadrez les documents manuellement ou
             automatiquement
         </li>
         <li><strong>Amélioration d’image</strong> : appliquez des filtres (niveaux de gris, contraste, netteté)</li>
-        <li><strong>OCR</strong> : reconnaissance de texte hors ligne avec PaddleOCR dans le flavor paddle publié ; le flavor standard avec Tesseract reste disponible via GitHub Releases</li>
+        <li><strong>OCR</strong> : reconnaissance de texte hors ligne avec PaddleOCR dans le flavor paddle publié, qui suit les lignes même sur une page légèrement inclinée ; le flavor standard avec Tesseract reste disponible via GitHub Releases</li>
         <li><strong>OCR Review</strong> : révision et correction interactives des résultats OCR avec édition au niveau
             des mots, suggestions basées sur le dictionnaire, mise en évidence de la confiance et re-OCR pour les mots
             individuels
@@ -193,9 +193,9 @@
         <li>Hindi (Devanagari)</li>
         <li>Grec (Grec)</li>
     </ul>
-    <p><em>Remarque&nbsp;:</em> Pour le chinois, l’application inclut des polices CJK adaptées afin d’améliorer le rendu
-        du texte dans les PDF. Pour l’arabe et le persan, la police Noto Naskh Arabic est incluse afin d’assurer un
-        rendu correct en écriture RTL (de droite à gauche) lors de l’exportation des PDF. Pour l’hindi, la police Noto Sans Devanagari est incluse pour un rendu correct du devanagari dans les PDF.</p>
+    <p><em>Remarque&nbsp;:</em> Le texte recherchable d’un PDF exporté est une couche invisible posée sur l’image de la page.
+        Elle utilise une police minuscule sans glyphes visibles, intégrée à l’application, comme le font Tesseract et OCRmyPDF :
+        le texte de toute écriture, y compris le chinois, le japonais, l’arabe, le persan et l’hindi, peut ainsi être recherché et copié sans embarquer de polices.</p>
 
     <h2>Variantes de l’application et moteurs OCR</h2>
     <p>MakeACopy publie le flavor paddle avec PaddleOCR sur F-Droid et Google Play. Le flavor standard avec Tesseract reste disponible pour les utilisateurs qui ont encore besoin des données de langue ou des workflows Tesseract :</p>
@@ -382,6 +382,7 @@ appverifier verify MakeACopy-vX.Y.Z.apk
             - Évitez les ombres pouvant être interprétées comme des bords.
         </li>
         <li><strong>Aucune détection automatique</strong><br>
+            - Avec l’option <em>Aperçu de la détection des coins</em> activée, la caméra n’affiche aucun contour tant que le modèle n’est pas sûr de la page, par exemple dans l’obscurité ou lorsque l’objectif est masqué. <br>
             - Reprenez la photo avec un meilleur éclairage. <br>
             - Utilisez l’<em>ajustement manuel des coins</em> après le scan pour déplacer les points.
         </li>
