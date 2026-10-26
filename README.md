@@ -65,8 +65,8 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 
 | Edition | OCR Languages | Fonts | APK Size (arm64-v8a) |
 |---------|--------------|-------|---------------------|
-| **Full** | 23 languages (incl. CJK, Arabic, Hindi, Thai, Turkish) | none (glyphless text layer) | ~99 MB |
-| **Light** | English + German | none (glyphless text layer) | ~58 MB |
+| **Full** | 23 languages (incl. CJK, Arabic, Hindi, Thai, Turkish) | none (glyphless text layer) | ~101 MB |
+| **Light** | English + German | none (glyphless text layer) | ~64 MB |
 
 Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition additionally ships fewer OCR language models, and uses a minimal ONNX Runtime AAR to further reduce APK size.
 
