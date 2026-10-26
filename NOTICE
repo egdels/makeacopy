@@ -142,7 +142,9 @@ includes third-party components under their respective licenses as noted below.
 
 This project uses ideas and publicly available datasets for training and
 evaluation purposes only. No datasets, images, labels, or training
-checkpoints/weights are included or redistributed in this repository.
+checkpoints are included or redistributed in this repository. The trained
+corner model shipped with the app (see 12) contains weights learned from
+these datasets, but none of their images or labels.
 
 The following datasets were used:
 
@@ -215,8 +217,18 @@ The following datasets were used:
       and a detailed provenance README are included at
       third_party_licenses/paddleocr/ (LICENSE-Apache-2.0.txt, README.md,
       SHA256SUMS).
-The exported ONNX inference model is an independently created work and is
-licensed under the Apache License 2.0.
+
+12) DocQuadNet-256 (corner model, trained weights)
+    - File: app/src/main/assets/docquad/docquadnet256_trained_opset17.ort
+      SHA-256 f0f2f52d7d79ff02d346c8f9d0c9e903407366aeea1747cdcff160c401e3e72a
+    - Copyright (C) 2026 Christian Kierdorf
+    - License: Apache License, Version 2.0 (as this project, see LICENSE)
+    - Notes: MobileNetV3-Large with a small feature pyramid, 256x256 input,
+      four corner heatmaps and a page mask. Trained from scratch (no
+      pretrained backbone weights) with the code under training/, on the
+      datasets listed in 10, and exported as the ONNX Runtime model of the
+      training run docquad_v6_rot40_from_v2_receipts, epoch 35. The file
+      contains the trained weights; it is an independently created work.
 
 For full license texts, see the corresponding upstream repositories and their
 LICENSE files. The Apache License 2.0 for this project is provided in LICENSE.
