@@ -46,6 +46,14 @@ public final class CleanedPreviewCache {
   public static final String FILE = "preview.enhanced.jpg";
 
   private static final String TMP_FILE = FILE + ".tmp";
+
+  /**
+   * Longest edge of the export preview and of this file, in pixels: more than the preview view
+   * shows, and a fraction of a 300 dpi page, which the cleanup would take seconds and over 100 MB
+   * for.
+   */
+  public static final int MAX_EDGE = 2048;
+
   private static final int JPEG_QUALITY = 90;
 
   private static final ExecutorService EXEC =
@@ -132,23 +140,35 @@ public final class CleanedPreviewCache {
                 .getSharedPreferences("export_options", Context.MODE_PRIVATE)
                 .getString("document_cleanup_mode", null));
     if (mode != DocumentCleanupMode.ENHANCED) return;
-    android.util.DisplayMetrics dm = context.getResources().getDisplayMetrics();
-    int reqW = Math.min(dm.widthPixels, dm.heightPixels);
-    int reqH = Math.max(dm.widthPixels, dm.heightPixels);
     EXEC.execute(
         () -> {
           if (!ref.current()) return;
           File cache = cacheFor(ref.file());
           if (cache.isFile() && cache.lastModified() >= ref.stamp()) return;
-          Bitmap source = ImageDecodeUtils.decodeSampled(ref.file().getAbsolutePath(), reqW, reqH);
+          Bitmap source =
+              ImageDecodeUtils.decodeSampled(ref.file().getAbsolutePath(), MAX_EDGE, MAX_EDGE);
           if (source == null) return;
           Bitmap safe = BitmapUtils.ensureDisplaySafe(source);
-          Bitmap cleaned = ImageOps.enhance(safe, true);
+          Bitmap work = capped(safe);
+          Bitmap cleaned = ImageOps.enhance(work, true);
           write(ref, cleaned);
-          if (cleaned != safe) cleaned.recycle();
-          if (safe != source) safe.recycle();
+          for (Bitmap b : new Bitmap[] {cleaned, work, safe}) {
+            if (b != source && !b.isRecycled()) b.recycle();
+          }
           source.recycle();
         });
+  }
+
+  /** {@code bitmap} scaled down to at most {@link #MAX_EDGE} on its longer edge. */
+  public static Bitmap capped(Bitmap bitmap) {
+    int longEdge = Math.max(bitmap.getWidth(), bitmap.getHeight());
+    if (longEdge <= MAX_EDGE) return bitmap;
+    double s = MAX_EDGE / (double) longEdge;
+    return Bitmap.createScaledBitmap(
+        bitmap,
+        Math.max(1, (int) Math.round(bitmap.getWidth() * s)),
+        Math.max(1, (int) Math.round(bitmap.getHeight() * s)),
+        true);
   }
 
   /** Deletes the cached preview of the page in {@code pageDir}, before its page.jpg changes. */

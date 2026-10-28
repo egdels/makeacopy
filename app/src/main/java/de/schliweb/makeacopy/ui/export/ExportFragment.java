@@ -853,6 +853,19 @@ public class ExportFragment extends Fragment {
     announce(getString(R.string.page_removed));
   }
 
+  /**
+   * Has the cleaned previews of {@code pages} made in the background if Enhanced is selected, so
+   * that picking a page in the filmstrip shows it at once (no-op for pages that have one).
+   */
+  private void prepareCleanedPreviews(@androidx.annotation.Nullable List<CompletedScan> pages) {
+    Context c = getContext();
+    if (c == null || pages == null) return;
+    for (CompletedScan page : pages) {
+      de.schliweb.makeacopy.utils.image.CleanedPreviewCache.prepareAsync(
+          c.getApplicationContext(), page);
+    }
+  }
+
   private void selectPage(int position) {
     List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
     if (cur == null || position < 0 || position >= cur.size()) return;
@@ -906,6 +919,7 @@ public class ExportFragment extends Fragment {
 
   /** Observer for the session's page list: keeps filmstrip, preview and persistence in sync. */
   private void onPagesChanged(List<CompletedScan> pages) {
+    prepareCleanedPreviews(pages);
     pagesAdapter.submitList(pages);
     int n = (pages == null) ? 0 : pages.size();
     // Show filmstrip only when there are actually more than one page
@@ -1342,6 +1356,7 @@ public class ExportFragment extends Fragment {
               exportViewModel.setExportFormat(exportAsJpegSel ? "JPEG" : "PDF");
               // Re-render preview to reflect grayscale/BW selections immediately
               renderPreviewFromCurrent();
+              prepareCleanedPreviews(exportSessionViewModel.getPages().getValue());
               // No export kickoff here
               getParentFragmentManager()
                   .clearFragmentResultListener(ExportOptionsPanel.REQUEST_KEY);

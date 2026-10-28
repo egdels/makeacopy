@@ -306,10 +306,9 @@ public final class BitmapUtils {
         }
       }
 
-      Bitmap safe = BitmapUtils.ensureDisplaySafe(source);
       CleanedPreviewCache.PageRef page = CleanedPreviewCache.pageOf(source);
-      Bitmap out = previewFor(safe, page, cleanupMode, toGray, toBw);
-      prefetchPreviews(safe, page, cleanupMode);
+      Bitmap out = previewFor(source, page, cleanupMode, toGray, toBw);
+      prefetchPreviews(source, page, cleanupMode);
       return out;
     } catch (Throwable ignore) {
       return source;
@@ -323,6 +322,9 @@ public final class BitmapUtils {
    */
   private static java.lang.ref.WeakReference<Bitmap> previewSource;
 
+  /** The source scaled to at most {@link CleanedPreviewCache#MAX_EDGE}, what the preview shows. */
+  private static Bitmap previewWork;
+
   private static DocumentCleanupMode previewCleanupMode;
   private static Bitmap previewCleaned;
 
@@ -330,19 +332,23 @@ public final class BitmapUtils {
   private static final Bitmap[] previewOutputs = new Bitmap[3];
 
   private static synchronized Bitmap previewFor(
-      Bitmap safe,
+      Bitmap source,
       CleanedPreviewCache.PageRef page,
       DocumentCleanupMode cleanupMode,
       boolean toGray,
       boolean toBw) {
-    if (previewSource == null || previewSource.get() != safe || previewCleanupMode != cleanupMode) {
-      previewSource = new java.lang.ref.WeakReference<>(safe);
+    if (previewSource == null
+        || previewSource.get() != source
+        || previewCleanupMode != cleanupMode) {
+      previewSource = new java.lang.ref.WeakReference<>(source);
+      previewWork = CleanedPreviewCache.capped(BitmapUtils.ensureDisplaySafe(source));
       previewCleanupMode = cleanupMode;
       previewCleaned = null;
       java.util.Arrays.fill(previewOutputs, null);
     }
     int output = toBw ? 2 : toGray ? 1 : 0;
     if (previewOutputs[output] != null) return previewOutputs[output];
+    Bitmap safe = previewWork;
     if (previewCleaned == null) {
       previewCleaned = safe;
       if (cleanupMode != DocumentCleanupMode.ORIGINAL) {
@@ -397,17 +403,17 @@ public final class BitmapUtils {
    * its result.
    */
   private static void prefetchPreviews(
-      Bitmap safe, CleanedPreviewCache.PageRef page, DocumentCleanupMode cleanupMode) {
+      Bitmap source, CleanedPreviewCache.PageRef page, DocumentCleanupMode cleanupMode) {
     PREVIEW_PREFETCH.execute(
         () -> {
           for (int output = 0; output < 3; output++) {
             synchronized (BitmapUtils.class) {
               if (previewSource == null
-                  || previewSource.get() != safe
+                  || previewSource.get() != source
                   || previewCleanupMode != cleanupMode) {
                 return;
               }
-              previewFor(safe, page, cleanupMode, output == 1, output == 2);
+              previewFor(source, page, cleanupMode, output == 1, output == 2);
             }
           }
         });
