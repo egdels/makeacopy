@@ -307,8 +307,9 @@ public final class BitmapUtils {
       }
 
       Bitmap safe = BitmapUtils.ensureDisplaySafe(source);
-      Bitmap out = previewFor(safe, cleanupMode, toGray, toBw);
-      prefetchPreviews(safe, cleanupMode);
+      CleanedPreviewCache.PageRef page = CleanedPreviewCache.pageOf(source);
+      Bitmap out = previewFor(safe, page, cleanupMode, toGray, toBw);
+      prefetchPreviews(safe, page, cleanupMode);
       return out;
     } catch (Throwable ignore) {
       return source;
@@ -329,7 +330,11 @@ public final class BitmapUtils {
   private static final Bitmap[] previewOutputs = new Bitmap[3];
 
   private static synchronized Bitmap previewFor(
-      Bitmap safe, DocumentCleanupMode cleanupMode, boolean toGray, boolean toBw) {
+      Bitmap safe,
+      CleanedPreviewCache.PageRef page,
+      DocumentCleanupMode cleanupMode,
+      boolean toGray,
+      boolean toBw) {
     if (previewSource == null || previewSource.get() != safe || previewCleanupMode != cleanupMode) {
       previewSource = new java.lang.ref.WeakReference<>(safe);
       previewCleanupMode = cleanupMode;
@@ -341,13 +346,21 @@ public final class BitmapUtils {
     if (previewCleaned == null) {
       previewCleaned = safe;
       if (cleanupMode != DocumentCleanupMode.ORIGINAL) {
-        try {
-          DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
-          cleanupOptions.preserveColor = true;
-          Bitmap cleaned = DocumentCleanupProcessor.apply(null, safe, cleanupOptions);
-          if (cleaned != null) previewCleaned = cleaned;
-        } catch (Throwable ignored) {
-          // Best-effort; failure is non-critical
+        Bitmap cached = CleanedPreviewCache.load(page, safe.getWidth(), safe.getHeight());
+        if (cached != null) {
+          previewCleaned = cached;
+        } else {
+          try {
+            DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
+            cleanupOptions.preserveColor = true;
+            Bitmap cleaned = DocumentCleanupProcessor.apply(null, safe, cleanupOptions);
+            if (cleaned != null && cleaned != safe) {
+              previewCleaned = cleaned;
+              CleanedPreviewCache.storeAsync(page, cleaned);
+            }
+          } catch (Throwable ignored) {
+            // Best-effort; failure is non-critical
+          }
         }
       }
     }
@@ -383,7 +396,8 @@ public final class BitmapUtils {
    * output colour shows the result at once. A switch while this runs waits for it and then finds
    * its result.
    */
-  private static void prefetchPreviews(Bitmap safe, DocumentCleanupMode cleanupMode) {
+  private static void prefetchPreviews(
+      Bitmap safe, CleanedPreviewCache.PageRef page, DocumentCleanupMode cleanupMode) {
     PREVIEW_PREFETCH.execute(
         () -> {
           for (int output = 0; output < 3; output++) {
@@ -393,7 +407,7 @@ public final class BitmapUtils {
                   || previewCleanupMode != cleanupMode) {
                 return;
               }
-              previewFor(safe, cleanupMode, output == 1, output == 2);
+              previewFor(safe, page, cleanupMode, output == 1, output == 2);
             }
           }
         });

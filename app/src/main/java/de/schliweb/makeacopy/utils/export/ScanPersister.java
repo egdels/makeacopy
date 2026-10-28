@@ -15,6 +15,7 @@ import android.graphics.Matrix;
 import android.util.Log;
 import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
+import de.schliweb.makeacopy.utils.image.CleanedPreviewCache;
 import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ocr.PageOcrFiles;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
@@ -93,6 +94,8 @@ public final class ScanPersister {
       /* keep original */
     }
     File page = new File(dir, "page.jpg");
+    // The cleaned preview belongs to the old page image
+    CleanedPreviewCache.invalidate(dir);
     try (FileOutputStream fos = new FileOutputStream(page)) {
       baked.compress(Bitmap.CompressFormat.JPEG, PAGE_JPEG_QUALITY, fos);
       fos.flush();
@@ -180,6 +183,7 @@ public final class ScanPersister {
     } catch (Exception e) {
       Log.w(TAG, "Registry insert failed", e);
     }
+    CleanedPreviewCache.prepareAsync(appContext, persisted);
     return persisted;
   }
 

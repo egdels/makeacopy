@@ -374,6 +374,7 @@ public class CacheCleanupService extends Service {
       int tempFilesCleanup = cleanupTempFiles();
       int completedScansCleanup = cleanupCompletedScans();
       int cropSourcesCleanup = cleanupExpiredCropSources();
+      int previewCachesCleanup = cleanupCleanedPreviewCaches();
 
       // Force garbage collection
       System.gc();
@@ -386,13 +387,14 @@ public class CacheCleanupService extends Service {
       Log.i(
           TAG,
           String.format(
-              "Cache cleanup completed in %dms. Files removed: debug=%d, camera=%d, temp=%d, completedScans=%d, cropSources=%d",
+              "Cache cleanup completed in %dms. Files removed: debug=%d, camera=%d, temp=%d, completedScans=%d, cropSources=%d, previewCaches=%d",
               duration,
               debugFilesCleanup,
               cameraFilesCleanup,
               tempFilesCleanup,
               completedScansCleanup,
-              cropSourcesCleanup));
+              cropSourcesCleanup,
+              previewCachesCleanup));
 
     } catch (Exception e) {
       Log.e(TAG, "Error during comprehensive cleanup", e);
@@ -421,6 +423,29 @@ public class CacheCleanupService extends Service {
       return purged;
     } catch (Exception e) {
       Log.e(TAG, "Error cleaning up crop sources", e);
+      return 0;
+    }
+  }
+
+  /**
+   * Removes the cached cleaned export previews of pages outside the active document (they are made
+   * again when such a page is exported), and temporary files left by an interrupted write.
+   *
+   * @return number of files removed
+   */
+  private int cleanupCleanedPreviewCaches() {
+    try {
+      de.schliweb.makeacopy.data.DocumentSession active =
+          de.schliweb.makeacopy.data.DocumentSessionRepository.get(this).getActiveSession();
+      java.util.Set<String> activePageIds =
+          active != null ? new java.util.HashSet<>(active.pageIds()) : new java.util.HashSet<>();
+      int removed =
+          de.schliweb.makeacopy.utils.image.CleanedPreviewCache.purgeInactive(
+              new File(getFilesDir(), "scans"), activePageIds);
+      if (removed > 0) Log.i(TAG, "Removed " + removed + " cached export previews");
+      return removed;
+    } catch (Exception e) {
+      Log.e(TAG, "Error cleaning up cached export previews", e);
       return 0;
     }
   }

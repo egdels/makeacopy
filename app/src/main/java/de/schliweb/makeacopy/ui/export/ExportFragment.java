@@ -163,6 +163,12 @@ public class ExportFragment extends Fragment {
     previewExecutor.execute(
         () -> {
           Bitmap bmp = BitmapUtils.loadPreviewBitmapForCompletedScan(page, reqW, reqH);
+          // A persisted page is stored upright, and its in-memory bitmap (if kept) shows the same
+          // page: an unrotated preview is page.jpg, and its cleaned version may come from the
+          // page's preview cache.
+          if (bmp != null && page.rotationDeg() % 360 == 0) {
+            de.schliweb.makeacopy.utils.image.CleanedPreviewCache.associate(bmp, page);
+          }
           mainHandler.post(
               () -> {
                 if (!isAdded()
