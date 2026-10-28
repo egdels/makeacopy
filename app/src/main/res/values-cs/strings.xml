@@ -124,7 +124,6 @@
     <string name="jpeg_mode_auto">Odstíny šedi</string>
     <string name="jpeg_mode_bw_text">Černobílý</string>
     <string name="pdf_bw_mode_robust">Černobílý</string>
-    <string name="pdf_bw_mode_classic">Č/B (klasický)</string>
     <string name="skip_ocr_export_only">Přeskočit OCR (pouze export)</string>
     <string name="skip_cropping">Přeskočit oříznutí</string>
     <string name="skip_edge_detection">Přeskočit detekci okrajů</string>
@@ -502,9 +501,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Vyčištění dokumentu</string>
     <string name="document_cleanup_original">Originál</string>
-    <string name="document_cleanup_natural">Přirozené</string>
     <string name="document_cleanup_enhanced">Vylepšené</string>
-    <string name="document_cleanup_clean_text">Čistý text</string>
     <string name="workflow_step_description">Krok %1$d z %2$d: %3$s</string>
     <string name="search_scans">Hledat skeny</string>
     <!-- Session 3: persistent document sessions / resume -->

@@ -124,7 +124,6 @@
     <string name="jpeg_mode_bw_text">Чёрно-белый</string>
 
     <string name="pdf_bw_mode_robust">Чёрно-белый</string>
-    <string name="pdf_bw_mode_classic">Ч/Б (классический)</string>
 
     <string name="skip_ocr_export_only">Пропустить OCR (только экспорт)</string>
     <string name="skip_cropping">Пропустить обрезку</string>
@@ -504,9 +503,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Очистка документа</string>
     <string name="document_cleanup_original">Оригинал</string>
-    <string name="document_cleanup_natural">Естественный</string>
     <string name="document_cleanup_enhanced">Улучшенный</string>
-    <string name="document_cleanup_clean_text">Чистый текст</string>
     <string name="workflow_step_description">Шаг %1$d из %2$d: %3$s</string>
     <string name="search_scans">Поиск сканов</string>
     <!-- Session 3: persistent document sessions / resume -->

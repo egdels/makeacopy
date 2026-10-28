@@ -148,26 +148,6 @@ public class PdfCreatorTest {
   }
 
   @Test
-  public void pdfCleanTextGrayscaleDoesNotUseOcrBinarization() {
-    DocumentCleanupOptions options =
-        PdfCreator.buildCleanupOptions(DocumentCleanupMode.CLEAN_TEXT, PdfImageOutput.GRAYSCALE);
-
-    assertEquals(DocumentCleanupMode.CLEAN_TEXT, options.mode);
-    assertFalse(options.preserveColor);
-    assertFalse(options.optimizeForOcr);
-  }
-
-  @Test
-  public void pdfCleanTextBlackWhiteDoesNotUseOcrBinarizationBeforeFinalOutput() {
-    DocumentCleanupOptions options =
-        PdfCreator.buildCleanupOptions(DocumentCleanupMode.CLEAN_TEXT, PdfImageOutput.BLACK_WHITE);
-
-    assertEquals(DocumentCleanupMode.CLEAN_TEXT, options.mode);
-    assertFalse(options.preserveColor);
-    assertFalse(options.optimizeForOcr);
-  }
-
-  @Test
   public void pdfBlackWhiteOutputUsesNonColorCleanupOptionsForAllCleanupModes() {
     for (DocumentCleanupMode mode : DocumentCleanupMode.values()) {
       DocumentCleanupOptions options =
@@ -175,7 +155,6 @@ public class PdfCreatorTest {
 
       assertEquals(mode, options.mode);
       assertFalse(options.preserveColor);
-      assertEquals(mode != DocumentCleanupMode.CLEAN_TEXT, options.optimizeForOcr);
     }
   }
 }

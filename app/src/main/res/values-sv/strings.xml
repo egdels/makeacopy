@@ -123,7 +123,6 @@
     <string name="jpeg_mode_bw_text">Svartvitt</string>
 
     <string name="pdf_bw_mode_robust">Svartvitt</string>
-    <string name="pdf_bw_mode_classic">S/V (klassiskt)</string>
     <string name="skip_ocr_export_only">Hoppa över OCR (endast export)</string>
     <string name="skip_cropping">Hoppa över beskärning</string>
     <string name="skip_edge_detection">Hoppa över kantdetektering</string>
@@ -500,9 +499,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentrensning</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Naturlig</string>
     <string name="document_cleanup_enhanced">Förbättrad</string>
-    <string name="document_cleanup_clean_text">Ren text</string>
     <string name="workflow_step_description">Steg %1$d av %2$d: %3$s</string>
     <string name="search_scans">Sök skanningar</string>
     <!-- Session 3: persistent document sessions / resume -->

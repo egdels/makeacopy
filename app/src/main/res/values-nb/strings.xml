@@ -124,7 +124,6 @@
 
 
     <string name="pdf_bw_mode_robust">Svart/hvitt</string>
-    <string name="pdf_bw_mode_classic">S/H (klassisk)</string>
     <string name="skip_ocr_export_only">Hopp over OCR (kun eksport)</string>
     <string name="skip_cropping">Hopp over beskjæring</string>
     <string name="skip_edge_detection">Hopp over kantdeteksjon</string>
@@ -497,9 +496,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentopprydding</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Naturlig</string>
     <string name="document_cleanup_enhanced">Forbedret</string>
-    <string name="document_cleanup_clean_text">Ren tekst</string>
     <string name="workflow_step_description">Trinn %1$d av %2$d: %3$s</string>
     <string name="search_scans">Søk i skanninger</string>
     <!-- Session 3: persistent document sessions / resume -->

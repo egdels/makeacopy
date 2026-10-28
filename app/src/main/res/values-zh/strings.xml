@@ -118,7 +118,6 @@
     <string name="jpeg_mode_bw_text">黑白</string>
 
     <string name="pdf_bw_mode_robust">黑白</string>
-    <string name="pdf_bw_mode_classic">黑白（经典）</string>
     <string name="skip_ocr_export_only">跳过 OCR（仅导出）</string>
     <string name="skip_cropping">跳过裁剪</string>
     <string name="skip_edge_detection">跳过边缘检测</string>
@@ -485,9 +484,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">文档清理</string>
     <string name="document_cleanup_original">原始</string>
-    <string name="document_cleanup_natural">自然</string>
     <string name="document_cleanup_enhanced">增强</string>
-    <string name="document_cleanup_clean_text">纯文本</string>
     <string name="workflow_step_description">第 %1$d 步，共 %2$d 步：%3$s</string>
     <string name="search_scans">搜索扫描件</string>
     <!-- Session 3: persistent document sessions / resume -->

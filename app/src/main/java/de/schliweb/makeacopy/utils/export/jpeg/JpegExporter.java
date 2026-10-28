@@ -135,10 +135,7 @@ public final class JpegExporter {
       applyCleanup(
           context,
           work,
-          options.cleanupMode,
-          imageOutput == JpegImageOutput.COLOR,
-          imageOutput == JpegImageOutput.BLACK_WHITE
-              && options.cleanupMode != DocumentCleanupMode.CLEAN_TEXT);
+          options.cleanupMode, imageOutput == JpegImageOutput.COLOR);
 
       if (imageOutput == JpegImageOutput.BLACK_WHITE) {
         applyBlackWhiteOutput(work);
@@ -282,10 +279,7 @@ public final class JpegExporter {
       applyCleanup(
           context,
           work,
-          options.cleanupMode,
-          imageOutput == JpegImageOutput.COLOR,
-          imageOutput == JpegImageOutput.BLACK_WHITE
-              && options.cleanupMode != DocumentCleanupMode.CLEAN_TEXT);
+          options.cleanupMode, imageOutput == JpegImageOutput.COLOR);
       if (imageOutput == JpegImageOutput.BLACK_WHITE) {
         applyBlackWhiteOutput(work);
       } else if (imageOutput == JpegImageOutput.GRAYSCALE) {
@@ -331,16 +325,13 @@ public final class JpegExporter {
       Context context,
       Mat bgr,
       DocumentCleanupMode cleanupMode,
-      boolean preserveColor,
-      boolean optimizeForOcr) {
-    DocumentCleanupOptions cleanupOptions =
-        buildCleanupOptions(cleanupMode, preserveColor, optimizeForOcr);
+      boolean preserveColor) {
+    DocumentCleanupOptions cleanupOptions = buildCleanupOptions(cleanupMode, preserveColor);
     if (cleanupOptions.mode == DocumentCleanupMode.ORIGINAL) {
       Imgproc.cvtColor(bgr, bgr, Imgproc.COLOR_BGR2RGBA);
       return;
     }
-    if (cleanupOptions.mode == DocumentCleanupMode.NATURAL
-        || (cleanupOptions.mode == DocumentCleanupMode.ENHANCED && cleanupOptions.preserveColor)) {
+    if (cleanupOptions.preserveColor) {
       DocumentCleanupProcessor.applyInPlace(bgr, cleanupOptions);
       Imgproc.cvtColor(bgr, bgr, Imgproc.COLOR_BGR2RGBA);
       return;
@@ -372,14 +363,12 @@ public final class JpegExporter {
   }
 
   static DocumentCleanupOptions buildCleanupOptions(
-      DocumentCleanupMode cleanupMode, boolean preserveColor, boolean optimizeForOcr) {
+      DocumentCleanupMode cleanupMode, boolean preserveColor) {
     DocumentCleanupOptions cleanupOptions =
         cleanupMode != null
             ? new DocumentCleanupOptions(cleanupMode)
             : DocumentCleanupOptions.original();
     cleanupOptions.preserveColor = preserveColor;
-    cleanupOptions.optimizeForOcr =
-        optimizeForOcr && cleanupOptions.mode != DocumentCleanupMode.CLEAN_TEXT;
     return cleanupOptions;
   }
 

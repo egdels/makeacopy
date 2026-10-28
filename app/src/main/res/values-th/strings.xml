@@ -121,7 +121,6 @@
     <string name="jpeg_mode_bw_text">ขาวดำ</string>
 
     <string name="pdf_bw_mode_robust">ขาวดำ</string>
-    <string name="pdf_bw_mode_classic">ขาวดำ (คลาสสิก)</string>
     <string name="skip_ocr_export_only">ข้าม OCR (ส่งออกเท่านั้น)</string>
     <string name="skip_cropping">ข้ามการครอบตัด</string>
     <string name="skip_edge_detection">ข้ามการตรวจจับขอบ</string>
@@ -494,9 +493,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">การทำความสะอาดเอกสาร</string>
     <string name="document_cleanup_original">ต้นฉบับ</string>
-    <string name="document_cleanup_natural">เป็นธรรมชาติ</string>
     <string name="document_cleanup_enhanced">ปรับปรุง</string>
-    <string name="document_cleanup_clean_text">ข้อความสะอาด</string>
     <string name="workflow_step_description">ขั้นตอนที่ %1$d จาก %2$d: %3$s</string>
     <string name="search_scans">ค้นหาเอกสารสแกน</string>
     <!-- Session 3: persistent document sessions / resume -->

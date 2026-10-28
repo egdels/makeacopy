@@ -22,15 +22,12 @@ public class DocumentCleanupProcessorTest {
     DocumentCleanupOptions options = new DocumentCleanupOptions();
 
     assertEquals(DocumentCleanupMode.ORIGINAL, options.mode);
-    assertEquals(DocumentCleanupOptions.STRENGTH_MEDIUM, options.strength);
     assertTrue(options.preserveColor);
-    assertFalse(options.optimizeForOcr);
     assertEquals(0, options.targetLongEdgePx);
   }
 
   @Test
-  public void cleanupPresetsAreExplicitAndIndependentFromExportFilters() {
-    assertEquals(DocumentCleanupMode.NATURAL, DocumentCleanupOptions.natural().mode);
+  public void enhancedPresetKeepsOrDropsColour() {
     assertEquals(DocumentCleanupMode.ENHANCED, DocumentCleanupOptions.enhanced(false).mode);
     assertFalse(DocumentCleanupOptions.enhanced(false).preserveColor);
     assertEquals(DocumentCleanupMode.ENHANCED, DocumentCleanupOptions.enhanced(true).mode);
@@ -38,22 +35,20 @@ public class DocumentCleanupProcessorTest {
   }
 
   @Test
-  public void cleanTextPresetOptimizesForOcr() {
-    DocumentCleanupOptions options = DocumentCleanupOptions.cleanText();
+  public void explicitOptionsClampTargetSize() {
+    DocumentCleanupOptions options = new DocumentCleanupOptions(DocumentCleanupMode.ENHANCED, true, -1);
 
-    assertEquals(DocumentCleanupMode.CLEAN_TEXT, options.mode);
-    assertEquals(DocumentCleanupOptions.STRENGTH_HIGH, options.strength);
-    assertFalse(options.preserveColor);
-    assertTrue(options.optimizeForOcr);
+    assertEquals(DocumentCleanupMode.ENHANCED, options.mode);
+    assertEquals(0, options.targetLongEdgePx);
   }
 
   @Test
-  public void explicitOptionsClampStrengthAndTargetSize() {
-    DocumentCleanupOptions options =
-        new DocumentCleanupOptions(DocumentCleanupMode.ENHANCED, 10, true, false, -1);
-
-    assertEquals(DocumentCleanupMode.ENHANCED, options.mode);
-    assertEquals(DocumentCleanupOptions.STRENGTH_HIGH, options.strength);
-    assertEquals(0, options.targetLongEdgePx);
+  public void savedFormerPresetsBecomeEnhanced() {
+    assertEquals(DocumentCleanupMode.ENHANCED, DocumentCleanupMode.fromPreference("NATURAL"));
+    assertEquals(DocumentCleanupMode.ENHANCED, DocumentCleanupMode.fromPreference("CLEAN_TEXT"));
+    assertEquals(DocumentCleanupMode.ENHANCED, DocumentCleanupMode.fromPreference("ENHANCED"));
+    assertEquals(DocumentCleanupMode.ORIGINAL, DocumentCleanupMode.fromPreference("ORIGINAL"));
+    assertEquals(DocumentCleanupMode.ORIGINAL, DocumentCleanupMode.fromPreference(null));
+    assertEquals(DocumentCleanupMode.ORIGINAL, DocumentCleanupMode.fromPreference("bogus"));
   }
 }

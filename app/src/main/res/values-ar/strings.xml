@@ -121,7 +121,6 @@
     <string name="jpeg_mode_auto">تدرج الرمادي</string>
     <string name="jpeg_mode_bw_text">أبيض وأسود</string>
     <string name="pdf_bw_mode_robust">أبيض وأسود</string>
-    <string name="pdf_bw_mode_classic">أ&amp;س (كلاسيكي)</string>
     <string name="skip_ocr_export_only">تخطي OCR (تصدير فقط)</string>
     <string name="preview_corner_detection">معاينة اكتشاف الزوايا</string>
     <string name="skip_cropping">تخطي الاقتصاص</string>
@@ -497,9 +496,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">تنظيف المستند</string>
     <string name="document_cleanup_original">أصلي</string>
-    <string name="document_cleanup_natural">طبيعي</string>
     <string name="document_cleanup_enhanced">محسّن</string>
-    <string name="document_cleanup_clean_text">نص نظيف</string>
     <string name="workflow_step_description">الخطوة %1$d من %2$d: %3$s</string>
     <string name="search_scans">البحث في المستندات الممسوحة</string>
     <!-- Session 3: persistent document sessions / resume -->

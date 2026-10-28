@@ -124,7 +124,6 @@
     <string name="jpeg_mode_bw_text">Zwart-wit</string>
 
     <string name="pdf_bw_mode_robust">Zwart-wit</string>
-    <string name="pdf_bw_mode_classic">Z/W (klassiek)</string>
     <string name="skip_ocr_export_only">OCR overslaan (alleen exporteren)</string>
     <string name="skip_cropping">Bijsnijden overslaan</string>
     <string name="skip_edge_detection">Randdetectie overslaan</string>
@@ -502,9 +501,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Documentopschoning</string>
     <string name="document_cleanup_original">Origineel</string>
-    <string name="document_cleanup_natural">Natuurlijk</string>
     <string name="document_cleanup_enhanced">Verbeterd</string>
-    <string name="document_cleanup_clean_text">Schone tekst</string>
     <string name="workflow_step_description">Stap %1$d van %2$d: %3$s</string>
     <string name="search_scans">Scans zoeken</string>
     <!-- Session 3: persistent document sessions / resume -->

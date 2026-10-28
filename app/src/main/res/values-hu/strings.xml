@@ -123,7 +123,6 @@
     <string name="jpeg_mode_bw_text">Fekete-fehér</string>
 
     <string name="pdf_bw_mode_robust">Fekete-fehér</string>
-    <string name="pdf_bw_mode_classic">F/F (klasszikus)</string>
     <string name="skip_ocr_export_only">OCR kihagyása (csak exportálás)</string>
     <string name="skip_cropping">Kivágás kihagyása</string>
     <string name="skip_edge_detection">Szélfelismerés kihagyása</string>
@@ -502,9 +501,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentum tisztítása</string>
     <string name="document_cleanup_original">Eredeti</string>
-    <string name="document_cleanup_natural">Természetes</string>
     <string name="document_cleanup_enhanced">Javított</string>
-    <string name="document_cleanup_clean_text">Tiszta szöveg</string>
     <string name="workflow_step_description">%1$d. lépés a(z) %2$d közül: %3$s</string>
     <string name="search_scans">Szkennelések keresése</string>
     <!-- Session 3: persistent document sessions / resume -->

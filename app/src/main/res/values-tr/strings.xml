@@ -123,7 +123,6 @@
     <string name="jpeg_mode_bw_text">Siyah Beyaz</string>
 
     <string name="pdf_bw_mode_robust">Siyah Beyaz</string>
-    <string name="pdf_bw_mode_classic">S&amp;B (klasik)</string>
     <string name="skip_ocr_export_only">OCR\'yi atla (yalnızca dışa aktar)</string>
     <string name="skip_cropping">Kırpmayı atla</string>
     <string name="skip_edge_detection">Kenar algılamayı atla</string>
@@ -501,9 +500,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Belge temizleme</string>
     <string name="document_cleanup_original">Orijinal</string>
-    <string name="document_cleanup_natural">Doğal</string>
     <string name="document_cleanup_enhanced">Geliştirilmiş</string>
-    <string name="document_cleanup_clean_text">Temiz metin</string>
     <string name="workflow_step_description">Adım %1$d / %2$d: %3$s</string>
     <string name="search_scans">Taramalarda ara</string>
     <!-- Session 3: persistent document sessions / resume -->

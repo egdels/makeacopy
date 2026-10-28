@@ -109,10 +109,12 @@ public final class ExportPrefsHelper {
     return PdfQualityPreset.fromName(presetSaved, def);
   }
 
+  /** ROBUST for black and white (a saved CLASSIC from before counts as ROBUST), else null. */
   public static PdfCreator.BwMode resolveBwMode(Context context) {
     String bw = getPdfBwMode(context);
-    if ("CLASSIC".equalsIgnoreCase(bw)) return PdfCreator.BwMode.CLASSIC;
-    if ("ROBUST".equalsIgnoreCase(bw)) return PdfCreator.BwMode.ROBUST;
+    if ("ROBUST".equalsIgnoreCase(bw) || "CLASSIC".equalsIgnoreCase(bw)) {
+      return PdfCreator.BwMode.ROBUST;
+    }
     return null;
   }
 
@@ -164,13 +166,8 @@ public final class ExportPrefsHelper {
   }
 
   public static DocumentCleanupMode resolveCleanupMode(Context context) {
-    String saved =
-        getPrefs(context).getString("document_cleanup_mode", DocumentCleanupMode.ORIGINAL.name());
-    try {
-      return DocumentCleanupMode.valueOf(saved);
-    } catch (IllegalArgumentException ex) {
-      return DocumentCleanupMode.ORIGINAL;
-    }
+    return DocumentCleanupMode.fromPreference(
+        getPrefs(context).getString("document_cleanup_mode", null));
   }
 
   public static boolean isPendingAddPage(Context context) {

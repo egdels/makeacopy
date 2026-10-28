@@ -69,9 +69,7 @@
     <string name="export_format_label">Μορφή εξαγωγής</string>
     <string name="document_cleanup_title">Καθαρισμός εγγράφου</string>
     <string name="document_cleanup_original">Αρχικό</string>
-    <string name="document_cleanup_natural">Φυσικό</string>
     <string name="document_cleanup_enhanced">Βελτιωμένο</string>
-    <string name="document_cleanup_clean_text">Καθαρό κείμενο</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Εναλλαγή φακού</string>
@@ -120,7 +118,6 @@
     <string name="jpeg_mode_bw_text">Ασπρόμαυρο</string>
     <string name="pdf_bw_mode_none">Χρώμα</string>
     <string name="pdf_bw_mode_robust">Ασπρόμαυρο</string>
-    <string name="pdf_bw_mode_classic">Α/Μ (κλασικό)</string>
     <string name="output_color_title" translatable="false">Χρώμα εξόδου</string>
     <string name="skip_ocr_export_only">Παράλειψη OCR (μόνο εξαγωγή)</string>
     <string name="preview_corner_detection">Προεπισκόπηση ανίχνευσης γωνιών</string>

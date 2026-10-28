@@ -94,6 +94,5 @@ public class ExportOptionsRadioMappingTest {
     assertNull(ExportOptionsPanel.pdfBwModeFor(-1));
     assertEquals("GRAYSCALE", ExportOptionsPanel.pdfBwModeFor(R.id.dialog_pdf_grayscale));
     assertEquals("ROBUST", ExportOptionsPanel.pdfBwModeFor(R.id.dialog_pdf_bw_robust));
-    assertEquals("CLASSIC", ExportOptionsPanel.pdfBwModeFor(R.id.dialog_pdf_bw_classic));
   }
 }

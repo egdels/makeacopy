@@ -124,7 +124,6 @@
     <string name="jpeg_mode_bw_text">Alb-negru</string>
 
     <string name="pdf_bw_mode_robust">Alb-negru</string>
-    <string name="pdf_bw_mode_classic">A/N (clasic)</string>
     <string name="skip_ocr_export_only">Omite OCR (doar export)</string>
     <string name="skip_cropping">Omite decuparea</string>
     <string name="skip_edge_detection">Omite detectarea marginilor</string>
@@ -507,9 +506,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Curățare document</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Natural</string>
     <string name="document_cleanup_enhanced">Îmbunătățit</string>
-    <string name="document_cleanup_clean_text">Text curat</string>
     <string name="workflow_step_description">Pasul %1$d din %2$d: %3$s</string>
     <string name="search_scans">Căutare scanări</string>
     <!-- Session 3: persistent document sessions / resume -->

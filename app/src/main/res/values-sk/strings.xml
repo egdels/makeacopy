@@ -126,7 +126,6 @@
     <string name="jpeg_mode_bw_text">Čiernobiely</string>
 
     <string name="pdf_bw_mode_robust">Čiernobiely</string>
-    <string name="pdf_bw_mode_classic">Č/B (klasický)</string>
     <string name="skip_ocr_export_only">Preskočiť OCR (iba export)</string>
     <string name="skip_cropping">Preskočiť orezanie</string>
     <string name="skip_edge_detection">Preskočiť detekciu okrajov</string>
@@ -505,9 +504,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Vyčistenie dokumentu</string>
     <string name="document_cleanup_original">Originál</string>
-    <string name="document_cleanup_natural">Prirodzené</string>
     <string name="document_cleanup_enhanced">Vylepšené</string>
-    <string name="document_cleanup_clean_text">Čistý text</string>
     <string name="workflow_step_description">Krok %1$d z %2$d: %3$s</string>
     <string name="search_scans">Hľadať skeny</string>
     <!-- Session 3: persistent document sessions / resume -->

@@ -82,9 +82,7 @@
     <string name="export_format_jpeg" translatable="false">JPEG</string>
     <string name="document_cleanup_title">Document cleanup</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Natural</string>
     <string name="document_cleanup_enhanced">Enhanced</string>
-    <string name="document_cleanup_clean_text">Clean Text</string>
 
     <!-- Flashlight options -->
     <string name="toggle_flashlight">Toggle flashlight</string>
@@ -133,7 +131,6 @@
     <string name="jpeg_mode_bw_text">Black &amp; White</string>
     <string name="pdf_bw_mode_none">Color</string>
     <string name="pdf_bw_mode_robust">Black &amp; White</string>
-    <string name="pdf_bw_mode_classic">B&amp;W (classic)</string>
     <string name="output_color_title" translatable="false">Output color</string>
     <string name="skip_ocr_export_only">Skip OCR (export only)</string>
     <string name="preview_corner_detection">Preview corner detection</string>

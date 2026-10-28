@@ -125,7 +125,6 @@
     <string name="jpeg_mode_bw_text">Preto e branco</string>
 
     <string name="pdf_bw_mode_robust">Preto e branco</string>
-    <string name="pdf_bw_mode_classic">P/B (clássico)</string>
 
     <string name="skip_ocr_export_only">Pular OCR (apenas exportar)</string>
     <string name="skip_cropping">Pular corte</string>
@@ -503,9 +502,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Limpeza do documento</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Natural</string>
     <string name="document_cleanup_enhanced">Melhorado</string>
-    <string name="document_cleanup_clean_text">Texto limpo</string>
     <string name="workflow_step_description">Etapa %1$d de %2$d: %3$s</string>
     <string name="search_scans">Pesquisar digitalizações</string>
     <!-- Session 3: persistent document sessions / resume -->

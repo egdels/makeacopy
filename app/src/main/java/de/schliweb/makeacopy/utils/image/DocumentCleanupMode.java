@@ -13,10 +13,18 @@ package de.schliweb.makeacopy.utils.image;
 public enum DocumentCleanupMode {
   /** Keep the corrected page unchanged. */
   ORIGINAL,
-  /** Mild luminance cleanup while preserving color and a natural appearance. */
-  NATURAL,
-  /** Stronger background flattening and local contrast for scanner-like output. */
-  ENHANCED,
-  /** Aggressive readability/OCR-focused cleanup; visual fidelity is secondary. */
-  CLEAN_TEXT
+  /** Background flattening and local contrast for scanner-like output. */
+  ENHANCED;
+
+  /**
+   * The mode for a saved preference value. The former presets Natural and Clean Text map to
+   * Enhanced, anything unknown or missing to Original.
+   */
+  public static DocumentCleanupMode fromPreference(String saved) {
+    if (saved == null) return ORIGINAL;
+    return switch (saved) {
+      case "ENHANCED", "NATURAL", "CLEAN_TEXT" -> ENHANCED;
+      default -> ORIGINAL;
+    };
+  }
 }

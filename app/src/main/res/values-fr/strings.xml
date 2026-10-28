@@ -124,7 +124,6 @@
     <string name="jpeg_mode_bw_text">Noir et blanc</string>
 
     <string name="pdf_bw_mode_robust">Noir et blanc</string>
-    <string name="pdf_bw_mode_classic">N&amp;B (classique)</string>
     <string name="skip_ocr_export_only">Ignorer l’OCR (export seulement)</string>
     <string name="skip_cropping">Ignorer le recadrage</string>
     <string name="skip_edge_detection">Ignorer la détection des bords</string>
@@ -503,9 +502,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Nettoyage du document</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Naturel</string>
     <string name="document_cleanup_enhanced">Amélioré</string>
-    <string name="document_cleanup_clean_text">Texte net</string>
     <string name="workflow_step_description">Étape %1$d sur %2$d : %3$s</string>
     <string name="search_scans">Rechercher des numérisations</string>
     <!-- Session 3: persistent document sessions / resume -->

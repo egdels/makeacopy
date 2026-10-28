@@ -118,7 +118,6 @@
 
     <string name="pdf_bw_mode_none">रंगीन</string>
     <string name="pdf_bw_mode_robust">श्वेत-श्याम</string>
-    <string name="pdf_bw_mode_classic">श्वेत-श्याम (क्लासिक)</string>
     <string name="skip_ocr_export_only">OCR छोड़ें (केवल निर्यात)</string>
     <string name="skip_cropping">क्रॉपिंग छोड़ें</string>
     <string name="skip_edge_detection">किनारा पहचान छोड़ें</string>
@@ -491,9 +490,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">दस्तावेज़ सफ़ाई</string>
     <string name="document_cleanup_original">मूल</string>
-    <string name="document_cleanup_natural">प्राकृतिक</string>
     <string name="document_cleanup_enhanced">उन्नत</string>
-    <string name="document_cleanup_clean_text">स्वच्छ पाठ</string>
     <string name="workflow_step_description">चरण %1$d / %2$d: %3$s</string>
     <string name="search_scans">स्कैन खोजें</string>
     <!-- Session 3: persistent document sessions / resume -->

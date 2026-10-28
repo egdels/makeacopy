@@ -123,7 +123,6 @@
     <string name="jpeg_mode_bw_text">Czarno-biały</string>
 
     <string name="pdf_bw_mode_robust">Czarno-biały</string>
-    <string name="pdf_bw_mode_classic">Cz.-b. (klas.)</string>
     <string name="skip_ocr_export_only">Pomiń OCR (tylko eksport)</string>
     <string name="skip_cropping">Pomiń przycinanie</string>
     <string name="skip_edge_detection">Pomiń wykrywanie krawędzi</string>
@@ -501,9 +500,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Czyszczenie dokumentu</string>
     <string name="document_cleanup_original">Oryginał</string>
-    <string name="document_cleanup_natural">Naturalny</string>
     <string name="document_cleanup_enhanced">Ulepszony</string>
-    <string name="document_cleanup_clean_text">Czysty tekst</string>
     <string name="workflow_step_description">Krok %1$d z %2$d: %3$s</string>
     <string name="search_scans">Szukaj skanów</string>
     <!-- Session 3: persistent document sessions / resume -->

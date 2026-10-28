@@ -35,22 +35,10 @@
             android:text="@string/document_cleanup_original" />
 
         <RadioButton
-            android:id="@+id/dialog_document_cleanup_natural"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/document_cleanup_natural" />
-
-        <RadioButton
             android:id="@+id/dialog_document_cleanup_enhanced"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/document_cleanup_enhanced" />
-
-        <RadioButton
-            android:id="@+id/dialog_document_cleanup_clean_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/document_cleanup_clean_text" />
     </RadioGroup>
 
     <!-- PDF options group (shown when NOT exporting as JPEG, or together with JPEG) -->
@@ -100,13 +88,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/pdf_bw_mode_robust" />
-
-            <RadioButton
-                android:id="@+id/dialog_pdf_bw_classic"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/pdf_bw_mode_classic"
-                android:visibility="gone" />
         </RadioGroup>
 
         <TextView

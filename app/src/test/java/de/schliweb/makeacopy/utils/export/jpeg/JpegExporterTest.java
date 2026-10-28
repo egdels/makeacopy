@@ -35,33 +35,12 @@ public class JpegExporterTest {
   }
 
   @Test
-  public void cleanTextGrayscaleDoesNotUseOcrBinarization() {
-    DocumentCleanupOptions options =
-        JpegExporter.buildCleanupOptions(DocumentCleanupMode.CLEAN_TEXT, false, false);
-
-    assertEquals(DocumentCleanupMode.CLEAN_TEXT, options.mode);
-    assertFalse(options.preserveColor);
-    assertFalse(options.optimizeForOcr);
-  }
-
-  @Test
-  public void cleanTextBlackWhiteDoesNotUseOcrBinarizationBeforeFinalOutput() {
-    DocumentCleanupOptions options =
-        JpegExporter.buildCleanupOptions(DocumentCleanupMode.CLEAN_TEXT, false, true);
-
-    assertEquals(DocumentCleanupMode.CLEAN_TEXT, options.mode);
-    assertFalse(options.preserveColor);
-    assertFalse(options.optimizeForOcr);
-  }
-
-  @Test
   public void blackWhiteOutputUsesNonColorCleanupOptionsForAllCleanupModes() {
     for (DocumentCleanupMode mode : DocumentCleanupMode.values()) {
-      DocumentCleanupOptions options = JpegExporter.buildCleanupOptions(mode, false, true);
+      DocumentCleanupOptions options = JpegExporter.buildCleanupOptions(mode, false);
 
       assertEquals(mode, options.mode);
       assertFalse(options.preserveColor);
-      assertEquals(mode != DocumentCleanupMode.CLEAN_TEXT, options.optimizeForOcr);
     }
   }
 }

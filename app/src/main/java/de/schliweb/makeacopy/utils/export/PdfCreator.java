@@ -1049,10 +1049,7 @@ public class PdfCreator {
 
     PdfImageOutput output = resolvePdfImageOutput(toGray, toBw);
 
-    if (cleanupMode != null
-        && cleanupMode != DocumentCleanupMode.ORIGINAL
-        && !(output == PdfImageOutput.BLACK_WHITE
-            && cleanupMode == DocumentCleanupMode.CLEAN_TEXT)) {
+    if (cleanupMode != null && cleanupMode != DocumentCleanupMode.ORIGINAL) {
       DocumentCleanupOptions cleanupOptions = buildCleanupOptions(cleanupMode, output);
       Bitmap pre = DocumentCleanupProcessor.apply(null, base, cleanupOptions);
       if (pre != null) {
@@ -1068,7 +1065,7 @@ public class PdfCreator {
     }
 
     if (output == PdfImageOutput.BLACK_WHITE) {
-      Bitmap viaCv = applyPdfBwCleanup(base, bwMode, targetDpi, gentleMode);
+      Bitmap viaCv = applyPdfBwCleanup(base, targetDpi, gentleMode);
       if (base != original) {
         try {
           base.recycle();
@@ -1102,23 +1099,11 @@ public class PdfCreator {
       DocumentCleanupMode cleanupMode, PdfImageOutput output) {
     DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
     cleanupOptions.preserveColor = output == PdfImageOutput.COLOR;
-    cleanupOptions.optimizeForOcr =
-        output == PdfImageOutput.BLACK_WHITE && cleanupMode != DocumentCleanupMode.CLEAN_TEXT;
     return cleanupOptions;
   }
 
-  private static Bitmap applyPdfBwCleanup(
-      Bitmap base, BwMode bwMode, int targetDpi, boolean gentleMode) {
-    if (bwMode == null || bwMode == BwMode.ROBUST) {
-      BinarizationUtils.BwOptions opt = new BinarizationUtils.BwOptions();
-      opt.gentleMode = gentleMode;
-      opt.targetDpi = targetDpi > 0 ? targetDpi : 300;
-      return OpenCVUtils.toBw(base, opt);
-    }
+  private static Bitmap applyPdfBwCleanup(Bitmap base, int targetDpi, boolean gentleMode) {
     BinarizationUtils.BwOptions opt = new BinarizationUtils.BwOptions();
-    opt.mode = BinarizationUtils.BwOptions.Mode.OTSU_ONLY;
-    opt.useClahe = true;
-    opt.removeShadows = true;
     opt.gentleMode = gentleMode;
     opt.targetDpi = targetDpi > 0 ? targetDpi : 300;
     return OpenCVUtils.toBw(base, opt);
@@ -2433,8 +2418,7 @@ public class PdfCreator {
   }
 
   public enum BwMode {
-    ROBUST,
-    CLASSIC
+    ROBUST
   }
 
   /**

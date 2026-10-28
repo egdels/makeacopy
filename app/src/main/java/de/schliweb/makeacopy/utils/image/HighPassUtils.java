@@ -29,9 +29,8 @@ import org.opencv.imgproc.Imgproc;
  * The result has an evenly lit, near-white background while preserving local contrast (grayscale
  * edges on small text), which is beneficial both for visual output and for OCR.
  *
- * <p>This utility centralizes the logic that was previously duplicated in {@link BinarizationUtils}
- * and {@link OpenCVUtils#prepareForOCR(Bitmap, boolean)} so that the binarization path, the OCR
- * preprocessing path and new "clean" filter modes all share the exact same base behavior.
+ * <p>This utility centralizes the logic shared by {@link BinarizationUtils} and the Enhanced
+ * document cleanup so that both use the exact same base behavior.
  *
  * <p>This class cannot be instantiated.
  */
@@ -45,11 +44,6 @@ public final class HighPassUtils {
    */
   public static final double KERNEL_FRACTION_BW = 0.08;
 
-  /**
-   * Default kernel fraction used by OCR preprocessing (matches historical behavior of {@link
-   * OpenCVUtils#prepareForOCR(Bitmap, boolean)}): ~3% of the shorter image side.
-   */
-  public static final double KERNEL_FRACTION_OCR = 0.03;
 
   /**
    * Performs background-division normalization on a single-channel 8-bit image ({@link

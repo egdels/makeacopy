@@ -123,7 +123,6 @@
     <string name="jpeg_mode_auto">خاکستری</string>
     <string name="jpeg_mode_bw_text">سیاه و سفید</string>
     <string name="pdf_bw_mode_robust">سیاه و سفید</string>
-    <string name="pdf_bw_mode_classic">سیاه‌وسفید (کلاسیک)</string>
     <string name="skip_ocr_export_only">رد کردن OCR (فقط خروجی)</string>
     <string name="preview_corner_detection">پیش‌نمایش تشخیص گوشه‌ها</string>
     <string name="skip_cropping">رد کردن برش</string>
@@ -499,9 +498,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">پاک‌سازی سند</string>
     <string name="document_cleanup_original">اصلی</string>
-    <string name="document_cleanup_natural">طبیعی</string>
     <string name="document_cleanup_enhanced">بهبود‌یافته</string>
-    <string name="document_cleanup_clean_text">متن تمیز</string>
     <string name="workflow_step_description">مرحله %1$d از %2$d: %3$s</string>
     <string name="search_scans">جستجوی اسکن‌ها</string>
     <!-- Session 3: persistent document sessions / resume -->

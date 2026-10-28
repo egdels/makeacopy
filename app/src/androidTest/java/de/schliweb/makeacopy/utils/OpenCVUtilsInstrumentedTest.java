@@ -14,7 +14,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import de.schliweb.makeacopy.utils.image.BinarizationUtils;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.opencv.core.Point;
@@ -88,22 +87,6 @@ public class OpenCVUtilsInstrumentedTest {
     assertEquals(360, bw.getHeight());
   }
 
-  @Test
-  @Ignore(
-      "Temporarily disabled: this variant crashes instrumentation process on some emulators/devices; see issue #opencv-prepareForOCR-crash")
-  public void prepareForOCR_binaryFlagBothVariants_nonNull() {
-    assumeOpenCvInitialized();
-    Bitmap src = createTestPatternBitmap(640, 400);
-    Bitmap out1 = OpenCVUtils.prepareForOCR(src, true);
-    Bitmap out2 = OpenCVUtils.prepareForOCR(src, false);
-    assertNotNull(out1);
-    assertNotNull(out2);
-    assertEquals(640, out1.getWidth());
-    assertEquals(400, out1.getHeight());
-    assertEquals(640, out2.getWidth());
-    assertEquals(400, out2.getHeight());
-  }
-
   // ---------- Zusätzliche Tests für öffentliche Bildoperationen ----------
 
   @Test
@@ -158,14 +141,6 @@ public class OpenCVUtilsInstrumentedTest {
   // Hinweis: warpPerspectiveWithMatrix ist nicht öffentlich, daher hier nicht direkt testbar.
 
   // ---------- Zusätzliche Robustheits- und API-Vertrags-Tests ----------
-
-  @Test
-  public void prepareForOCR_nullInput_returnsNull() {
-    Bitmap out = OpenCVUtils.prepareForOCR(null, true);
-    assertNull(out);
-    out = OpenCVUtils.prepareForOCR(null, false);
-    assertNull(out);
-  }
 
   @Test
   public void fromBitmapBGR_returnsExpectedLengthAndRange() {

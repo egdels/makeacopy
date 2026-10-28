@@ -273,14 +273,8 @@ public final class BitmapUtils {
       boolean toGray = prefs.getBoolean("convert_to_grayscale", false);
       boolean toBw = false;
       boolean exportAsJpeg = prefs.getBoolean("export_as_jpeg", false);
-      DocumentCleanupMode cleanupMode = DocumentCleanupMode.ORIGINAL;
-      try {
-        cleanupMode =
-            DocumentCleanupMode.valueOf(
-                prefs.getString("document_cleanup_mode", DocumentCleanupMode.ORIGINAL.name()));
-      } catch (Throwable ignored) {
-        cleanupMode = DocumentCleanupMode.ORIGINAL;
-      }
+      DocumentCleanupMode cleanupMode =
+          DocumentCleanupMode.fromPreference(prefs.getString("document_cleanup_mode", null));
 
       if (exportAsJpeg) {
         toGray = false;
@@ -315,8 +309,7 @@ public final class BitmapUtils {
       Bitmap safe = BitmapUtils.ensureDisplaySafe(source);
       Bitmap out = safe;
 
-      if (cleanupMode != DocumentCleanupMode.ORIGINAL
-          && !(toBw && cleanupMode == DocumentCleanupMode.CLEAN_TEXT)) {
+      if (cleanupMode != DocumentCleanupMode.ORIGINAL) {
         try {
           if (!OpenCVUtils.isInitialized()) {
             OpenCVUtils.init(ctx.getApplicationContext());
@@ -327,7 +320,6 @@ public final class BitmapUtils {
         try {
           DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
           cleanupOptions.preserveColor = !toGray && !toBw;
-          cleanupOptions.optimizeForOcr = toBw && cleanupMode != DocumentCleanupMode.CLEAN_TEXT;
           Bitmap cleaned = DocumentCleanupProcessor.apply(ctx, safe, cleanupOptions);
           if (cleaned != null) out = cleaned;
         } catch (Throwable ignored) {
@@ -345,18 +337,7 @@ public final class BitmapUtils {
         }
         try {
           if (toBw) {
-            String bwMode = exportAsJpeg ? "ROBUST" : prefs.getString("pdf_bw_mode", "ROBUST");
-            boolean classicBw = "CLASSIC".equalsIgnoreCase(bwMode);
-            Bitmap bw;
-            if (classicBw) {
-              BinarizationUtils.BwOptions opt = new BinarizationUtils.BwOptions();
-              opt.mode = BinarizationUtils.BwOptions.Mode.OTSU_ONLY;
-              opt.useClahe = true;
-              opt.removeShadows = true;
-              bw = OpenCVUtils.toBw(out, opt);
-            } else {
-              bw = OpenCVUtils.toBw(out);
-            }
+            Bitmap bw = OpenCVUtils.toBw(out);
             if (bw != null) out = bw;
           } else if (toGray) {
             Bitmap gr = OpenCVUtils.toGray(out);

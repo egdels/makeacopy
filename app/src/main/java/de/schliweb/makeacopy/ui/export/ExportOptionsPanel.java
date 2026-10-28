@@ -314,16 +314,12 @@ public final class ExportOptionsPanel {
   // ---- saved option <-> radio button (pure mappings) ----
 
   static int cleanupRadioId(DocumentCleanupMode mode) {
-    if (mode == DocumentCleanupMode.NATURAL) return R.id.dialog_document_cleanup_natural;
     if (mode == DocumentCleanupMode.ENHANCED) return R.id.dialog_document_cleanup_enhanced;
-    if (mode == DocumentCleanupMode.CLEAN_TEXT) return R.id.dialog_document_cleanup_clean_text;
     return R.id.dialog_document_cleanup_original;
   }
 
   static DocumentCleanupMode cleanupModeFor(int radioId) {
-    if (radioId == R.id.dialog_document_cleanup_natural) return DocumentCleanupMode.NATURAL;
     if (radioId == R.id.dialog_document_cleanup_enhanced) return DocumentCleanupMode.ENHANCED;
-    if (radioId == R.id.dialog_document_cleanup_clean_text) return DocumentCleanupMode.CLEAN_TEXT;
     return DocumentCleanupMode.ORIGINAL;
   }
 
@@ -383,7 +379,7 @@ public final class ExportOptionsPanel {
         : JpegExportOptions.Mode.NONE;
   }
 
-  /** A saved CLASSIC is shown as "robust"; only an explicit choice of "classic" saves CLASSIC. */
+  /** A saved CLASSIC (no longer offered) is shown as "robust". */
   static int pdfBwRadioId(String savedMode) {
     if ("GRAYSCALE".equalsIgnoreCase(savedMode)) return R.id.dialog_pdf_grayscale;
     if ("CLASSIC".equalsIgnoreCase(savedMode) || "ROBUST".equalsIgnoreCase(savedMode)) {
@@ -395,7 +391,6 @@ public final class ExportOptionsPanel {
   /** Returns {@code null} for none/original. */
   static String pdfBwModeFor(int radioId) {
     if (radioId == R.id.dialog_pdf_grayscale) return "GRAYSCALE";
-    if (radioId == R.id.dialog_pdf_bw_classic) return "CLASSIC";
     if (radioId == R.id.dialog_pdf_bw_robust) return "ROBUST";
     return null;
   }

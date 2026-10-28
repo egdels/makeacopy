@@ -123,7 +123,6 @@
     <string name="jpeg_mode_bw_text">Schwarz-Weiß</string>
 
     <string name="pdf_bw_mode_robust">Schwarz-Weiß</string>
-    <string name="pdf_bw_mode_classic">S/W (klassisch)</string>
     <string name="output_color_title">Ausgabefarbe</string>
 
     <string name="skip_ocr_export_only">OCR überspringen (nur Export)</string>
@@ -514,9 +513,7 @@
     <!-- Document cleanup -->
     <string name="document_cleanup_title">Dokumentbereinigung</string>
     <string name="document_cleanup_original">Original</string>
-    <string name="document_cleanup_natural">Natürlich</string>
     <string name="document_cleanup_enhanced">Verbessert</string>
-    <string name="document_cleanup_clean_text">Reiner Text</string>
     <string name="workflow_step_description">Schritt %1$d von %2$d: %3$s</string>
     <string name="search_scans">Scans durchsuchen</string>
     <!-- Session 3: persistente Dokument-Sessions / Fortsetzen -->
