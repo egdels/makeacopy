@@ -541,11 +541,6 @@ public class TrapezoidSelectionView extends View {
   private boolean userHasEdited =
       false; // latched once user moved a corner; prevents auto-init overwriting
   private int autoInitIdleDelayMs = 400; // idle time after release before auto-init may run
-
-  // Phase X / Spec compliance: ensure DocQuad is attempted only once per image (until a new image
-  // is set).
-  // This is strictly gated behind docquad_prod_enabled in the callsites.
-  private boolean docQuadAutoInitConsumed = false;
   @Nullable private Runnable adjustIdleClearRunnable = null; // clears isUserAdjusting after idle
 
   public void setAutoInitIdleDelayMs(int ms) {
@@ -1364,56 +1359,10 @@ public class TrapezoidSelectionView extends View {
       Bitmap work, float scaleToOrig, int viewW, int viewH, long budgetMs) {
     long t0 = android.os.SystemClock.uptimeMillis();
     try {
-      // Use the central policy factory (DocQuad with OpenCV fallback).
-      // DocQuad is used only once per image until a new image is set.
-      org.opencv.core.Point[] imgCorners;
-      de.schliweb.makeacopy.ml.corners.Source detectionSource = null;
-      boolean imgCornersAlreadyOriginalScale = false;
-      if (!userHasEdited && !docQuadAutoInitConsumed) {
-        if (BuildConfig.FEATURE_DOCQUAD_CORNERS && BuildConfig.FEATURE_BEST_OF_CROP_CORNERS) {
-          imgCorners = detectBestCropCorners(work, scaleToOrig);
-          if (imgCorners == null || imgCorners.length != 4) return null;
-          imgCornersAlreadyOriginalScale = true;
-        } else {
-          de.schliweb.makeacopy.ml.corners.CornerDetector detector =
-              de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(
-                  getContext(), docQuadOrtRunner);
-
-          DetectionResult r = detector.detect(work, getContext());
-          if (r == null
-              || !r.success
-              || r.cornersOriginalTLTRBRBL == null
-              || r.cornersOriginalTLTRBRBL.length != 4) {
-            return null;
-          }
-          detectionSource = r.source;
-          imgCorners = pointsFromDetectionResult(r);
-        }
-        // Even if the result came from OpenCV fallback inside the composite, we still consider the
-        // attempt consumed.
-        docQuadAutoInitConsumed = true;
-      } else if (!userHasEdited
-          && BuildConfig.FEATURE_DOCQUAD_CORNERS
-          && BuildConfig.FEATURE_BEST_OF_CROP_CORNERS) {
-        // DocQuad was already consumed by a previous (auto) initialization, but the user has not
-        // edited the corners yet. A redundant re-initialization can happen when the view receives
-        // several onSizeChanged events while laying out (e.g. system-inset/IME size jumps). In that
-        // case falling back to plain OpenCV here would overwrite the accurate DocQuad/best-of quad
-        // with the inferior Hough-fallback result. Reuse the same best-of/DocQuad path so every run
-        // yields the same good corners (DocQuad is cached once per image, so this stays cheap).
-        imgCorners = detectBestCropCorners(work, scaleToOrig);
-        if (imgCorners == null || imgCorners.length != 4) return null;
-        imgCornersAlreadyOriginalScale = true;
-      } else {
-        // After a user edit (or when best-of/DocQuad is disabled), use OpenCV directly.
-        imgCorners = OpenCVUtils.detectDocumentCorners(getContext(), work);
-        if (imgCorners == null || imgCorners.length != 4) return null;
-      }
-
-      // back-project to original image scale if we downscaled
-      if (!imgCornersAlreadyOriginalScale) {
-        scaleImageQuadToOriginal(imgCorners, scaleToOrig);
-      }
+      // DocQuad only; there is no contour fallback. A redundant re-initialization (several
+      // onSizeChanged events while laying out) runs the same detection and yields the same corners.
+      org.opencv.core.Point[] imgCorners = detectDocQuadCorners(work, scaleToOrig);
+      if (imgCorners == null) return null;
 
       Bitmap refBmp = imageBitmap != null ? imageBitmap : work;
       if (refBmp == null) {
@@ -1422,25 +1371,8 @@ public class TrapezoidSelectionView extends View {
       }
       clampImageQuadToBounds(imgCorners, refBmp.getWidth(), refBmp.getHeight());
       if (!isValidImageQuad(imgCorners, refBmp.getWidth(), refBmp.getHeight())) {
-        if (detectionSource == de.schliweb.makeacopy.ml.corners.Source.DOCQUAD) {
-          Log.w(TAG, "DocQuad quad is invalid or degenerate — trying OpenCV fallback directly");
-          org.opencv.core.Point[] openCvCorners =
-              OpenCVUtils.detectDocumentCorners(getContext(), work);
-          if (openCvCorners != null && openCvCorners.length == 4) {
-            if (scaleToOrig < 1f) {
-              double inv = 1.0 / scaleToOrig;
-              for (org.opencv.core.Point p : openCvCorners) {
-                p.x *= inv;
-                p.y *= inv;
-              }
-            }
-            imgCorners = openCvCorners;
-          }
-        }
-        if (!isValidImageQuad(imgCorners, refBmp.getWidth(), refBmp.getHeight())) {
-          Log.w(TAG, "Detected quad is invalid or degenerate — using full-image fallback");
-          imgCorners = fullImageQuad(refBmp.getWidth(), refBmp.getHeight());
-        }
+        Log.w(TAG, "DocQuad quad is invalid or degenerate");
+        return null;
       }
 
       // Heuristic: if the detected quad already spans (nearly) the entire image but
@@ -1459,9 +1391,9 @@ public class TrapezoidSelectionView extends View {
       }
 
       // Snap the detected quad onto the strongest image gradients of the full-resolution
-      // bitmap. The detectors run on heavily downscaled inputs (DocQuad: 256px letterbox,
-      // OpenCV: DETECTION_MAX_EDGE), so back-projected corners carry a quantization error of
-      // several pixels; the refiner removes most of it and falls back to the unrefined quad
+      // bitmap. DocQuad runs on a heavily downscaled input (256px letterbox), so back-projected
+      // corners carry a quantization error of several pixels; the refiner removes most of it and
+      // falls back to the unrefined quad
       // whenever the edge evidence is weak or the result would be implausible.
       if (BuildConfig.FEATURE_CORNER_REFINEMENT && refBmp != null) {
         imgCorners =
@@ -1487,124 +1419,17 @@ public class TrapezoidSelectionView extends View {
     }
   }
 
+  /** DocQuad corners in original image coordinates (TL, TR, BR, BL), or null. */
   @Nullable
-  private org.opencv.core.Point[] detectBestCropCorners(Bitmap work, float scaleToOrig) {
-    org.opencv.core.Point[] docQuadCorners = null;
-    Double docQuadConfidence = null;
-    try {
-      DetectionResult docQuadResult =
-          de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.docQuadForCrop(docQuadOrtRunner)
-              .detect(work, getContext());
-      if (docQuadResult != null && docQuadResult.success) {
-        docQuadCorners = pointsFromDetectionResult(docQuadResult);
-        docQuadConfidence = docQuadResult.confidence;
-        scaleImageQuadToOriginal(docQuadCorners, scaleToOrig);
-      }
-    } catch (Throwable t) {
-      Log.w(TAG, "DocQuad crop detection failed in best-of mode: " + t.getMessage());
-    }
-
-    org.opencv.core.Point[] openCvCorners = null;
-    boolean openCvFromHough = false;
-    try {
-      OpenCVUtils.OpenCvCornerDetection openCvDetection =
-          OpenCVUtils.detectDocumentCornersWithOpenCvMetadata(getContext(), work);
-      if (openCvDetection != null && !openCvDetection.fallbackRectangle()) {
-        openCvCorners = openCvDetection.corners();
-        openCvFromHough = openCvDetection.fromHoughFallback();
-      }
-      scaleImageQuadToOriginal(openCvCorners, scaleToOrig);
-    } catch (Throwable t) {
-      Log.w(TAG, "OpenCV crop detection failed in best-of mode: " + t.getMessage());
-    }
-
-    Bitmap refBmp = imageBitmap != null ? imageBitmap : work;
-    if (refBmp == null) return null;
-    return chooseBestCropCorners(
-        docQuadCorners,
-        docQuadConfidence,
-        openCvCorners,
-        openCvFromHough,
-        refBmp.getWidth(),
-        refBmp.getHeight());
-  }
-
-  /**
-   * DocQuad confidence (peak probability × corner/mask agreement) from which its quad is used
-   * without consulting the shape comparison. {@link #scoreImageQuad} is a shape prior only and
-   * systematically prefers "nicer" OpenCV quads over correct but tilted or perspective DocQuad
-   * results; measured on real photos, OpenCV picks made by shape were wrong far more often than
-   * right, while a DocQuad result was almost never beaten by OpenCV. The value depends on the
-   * model's confidence distribution: with the rotation-augmented model the shape comparison only
-   * helps when DocQuad has next to no confidence (re-check after a model change, see
-   * training/EVALUATION.md).
-   */
-  static final double DOCQUAD_TRUSTED_CONFIDENCE = 0.1;
-
-  /**
-   * Best-of policy between the DocQuad and the OpenCV candidate (both in original image
-   * coordinates, TL/TR/BR/BL). A DocQuad result with confidence ≥ {@link
-   * #DOCQUAD_TRUSTED_CONFIDENCE} wins outright; otherwise DocQuad is preferred unless OpenCV leads
-   * by a margin that depends on how trustworthy the OpenCV path was (contour vs. Hough fallback).
-   * Returns {@code null} when neither candidate is a valid image quad. The DocQuad candidate is
-   * clamped in place.
-   */
-  @Nullable
-  static org.opencv.core.Point[] chooseBestCropCorners(
-      @Nullable org.opencv.core.Point[] docQuadCorners,
-      @Nullable Double docQuadConfidence,
-      @Nullable org.opencv.core.Point[] openCvCorners,
-      boolean openCvFromHough,
-      int imgW,
-      int imgH) {
-    clampImageQuadToBounds(docQuadCorners, imgW, imgH);
-    boolean docValid = isValidImageQuad(docQuadCorners, imgW, imgH);
-    boolean openCvValid = isValidImageQuad(openCvCorners, imgW, imgH);
-    if (docValid && docQuadConfidence != null && docQuadConfidence >= DOCQUAD_TRUSTED_CONFIDENCE) {
-      Log.i(TAG, "Best-of crop corners: using DocQuad (confidence " + docQuadConfidence + ")");
-      return docQuadCorners;
-    }
-    if (docValid && openCvValid) {
-      double docScore = scoreImageQuad(docQuadCorners, imgW, imgH);
-      double openCvScore = scoreImageQuad(openCvCorners, imgW, imgH);
-      double requiredOpenCvLead = openCvFromHough && docScore >= 0.55 ? 0.35 : 0.03;
-      if (openCvFromHough && docScore >= 0.70) {
-        requiredOpenCvLead = 0.50;
-      }
-      if (openCvScore > docScore + requiredOpenCvLead) {
-        Log.i(
-            TAG,
-            "Best-of crop corners: using OpenCV"
-                + (openCvFromHough ? " Hough" : " contour")
-                + " (openCv="
-                + openCvScore
-                + ", doc="
-                + docScore
-                + ", requiredLead="
-                + requiredOpenCvLead
-                + ")");
-        return openCvCorners;
-      }
-      if (docScore >= openCvScore) {
-        Log.i(TAG, "Best-of crop corners: using DocQuad (" + docScore + " >= " + openCvScore + ")");
-      } else {
-        Log.i(
-            TAG,
-            "Best-of crop corners: using DocQuad within "
-                + (openCvFromHough ? "Hough guard" : "tolerance")
-                + " (doc="
-                + docScore
-                + ", openCv="
-                + openCvScore
-                + ", requiredLead="
-                + requiredOpenCvLead
-                + ")");
-      }
-      return docQuadCorners;
-    }
-    if (docValid) return docQuadCorners;
-    if (openCvValid) return openCvCorners;
-    return null;
+  private org.opencv.core.Point[] detectDocQuadCorners(Bitmap work, float scaleToOrig) {
+    DetectionResult r =
+        de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(
+                getContext(), docQuadOrtRunner)
+            .detect(work, getContext());
+    if (r == null || !r.success) return null;
+    org.opencv.core.Point[] corners = pointsFromDetectionResult(r);
+    scaleImageQuadToOriginal(corners, scaleToOrig);
+    return corners;
   }
 
   @Nullable
@@ -1822,64 +1647,6 @@ public class TrapezoidSelectionView extends View {
     }
 
     return true;
-  }
-
-  static double scoreImageQuad(org.opencv.core.Point[] quad, int imgW, int imgH) {
-    if (!isValidImageQuad(quad, imgW, imgH)) return Double.NEGATIVE_INFINITY;
-
-    double areaRatio = Math.abs(signedArea(quad)) / ((double) imgW * (double) imgH);
-    double areaScore = 1.0 - Math.min(1.0, Math.abs(areaRatio - 0.60) / 0.60);
-
-    double topLen = distance(quad[0], quad[1]);
-    double rightLen = distance(quad[1], quad[2]);
-    double bottomLen = distance(quad[3], quad[2]);
-    double leftLen = distance(quad[0], quad[3]);
-    double horizontalBalance = ratio(topLen, bottomLen);
-    double verticalBalance = ratio(leftLen, rightLen);
-    double sideBalanceScore = (horizontalBalance + verticalBalance) / 2.0;
-
-    double minAngleScore = 1.0;
-    for (int i = 0; i < 4; i++) {
-      double angle = angleDegrees(quad[(i + 3) % 4], quad[i], quad[(i + 1) % 4]);
-      double angleScore = 1.0 - Math.min(1.0, Math.abs(angle - 90.0) / 90.0);
-      minAngleScore = Math.min(minAngleScore, angleScore);
-    }
-
-    double minX = Double.POSITIVE_INFINITY;
-    double minY = Double.POSITIVE_INFINITY;
-    double maxX = Double.NEGATIVE_INFINITY;
-    double maxY = Double.NEGATIVE_INFINITY;
-    for (org.opencv.core.Point p : quad) {
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    }
-    double bboxCoverage = ((maxX - minX) * (maxY - minY)) / ((double) imgW * (double) imgH);
-    double coverageScore = 1.0 - Math.min(1.0, Math.abs(bboxCoverage - 0.70) / 0.70);
-
-    return 0.35 * areaScore + 0.30 * minAngleScore + 0.20 * sideBalanceScore + 0.15 * coverageScore;
-  }
-
-  private static double distance(org.opencv.core.Point a, org.opencv.core.Point b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-  }
-
-  private static double ratio(double a, double b) {
-    double max = Math.max(a, b);
-    return max > 0 ? Math.min(a, b) / max : 0;
-  }
-
-  private static double angleDegrees(
-      org.opencv.core.Point previous, org.opencv.core.Point center, org.opencv.core.Point next) {
-    double ux = previous.x - center.x;
-    double uy = previous.y - center.y;
-    double vx = next.x - center.x;
-    double vy = next.y - center.y;
-    double denom = Math.hypot(ux, uy) * Math.hypot(vx, vy);
-    if (denom == 0) return 0;
-    double cos = Math.max(-1.0, Math.min(1.0, (ux * vx + uy * vy) / denom));
-    return Math.toDegrees(Math.acos(cos));
   }
 
   private static double signedArea(org.opencv.core.Point[] quad) {
@@ -3659,7 +3426,6 @@ public class TrapezoidSelectionView extends View {
       // New image (or dimension change) should allow fresh auto-init again.
       if (!sameDims) {
         userHasEdited = false;
-        docQuadAutoInitConsumed = false;
         lastAutoInitBitmap = null;
       }
 
@@ -3676,7 +3442,6 @@ public class TrapezoidSelectionView extends View {
       lastBitmapWidth = -1;
       lastBitmapHeight = -1;
       userHasEdited = false;
-      docQuadAutoInitConsumed = false;
       lastAutoInitBitmap = null;
     }
 

@@ -17,9 +17,8 @@ import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
 /**
  * A factory class for creating instances of {@link CornerDetector}. This factory provides
  * specialized configurations of corner detectors for different use cases, such as cropping and live
- * processing. The detectors utilize a combination of DocQuad-based detection and an OpenCV-based
- * fallback for flexibility and robustness. Smoothing mechanisms can also be applied for live
- * detection scenarios.
+ * processing. Both use DocQuad alone; there is no contour fallback. Smoothing is applied for live
+ * detection.
  *
  * <p>This class is not intended to be instantiated.
  */
@@ -28,9 +27,8 @@ public final class CornerDetectorFactory {
   private CornerDetectorFactory() {}
 
   /**
-   * Creates a {@link CornerDetector} optimized for cropping operations. This detector combines a
-   * DocQuad-based detection mechanism with an OpenCV fallback to ensure reliability in diverse
-   * scenarios.
+   * Creates a {@link CornerDetector} for cropping operations: the DocQuad stage of {@link
+   * #docQuadForCrop}.
    *
    * @param ctx the application context used for initializing the detector.
    * @param runner the pre-loaded {@link DocQuadOrtRunner} instance for DocQuad-based detection.
@@ -38,10 +36,7 @@ public final class CornerDetectorFactory {
    */
   @NonNull
   public static CornerDetector forCrop(@NonNull Context ctx, @NonNull DocQuadOrtRunner runner) {
-    if (!BuildConfig.FEATURE_DOCQUAD_CORNERS) {
-      return new OpenCvCornerDetector();
-    }
-    return new CompositeCornerDetector(docQuadForCrop(runner), new OpenCvCornerDetector());
+    return docQuadForCrop(runner);
   }
 
   /**
@@ -59,7 +54,7 @@ public final class CornerDetectorFactory {
   /**
    * Creates a {@link CornerDetector} optimized for live corner detection during real-time
    * processing: throttled DocQuad detection, smoothed with a default One Euro Corner Smoother.
-   * There is no OpenCV fallback: when DocQuad finds nothing, or is unsure (see {@link
+   * There is no contour fallback: when DocQuad finds nothing, or is unsure (see {@link
    * ThrottledDocQuadLiveDetector#MIN_LIVE_CONFIDENCE}), no outline is shown. With the fallback, a
    * covered lens still got an outline, from the contours of the sensor noise.
    *
@@ -70,9 +65,6 @@ public final class CornerDetectorFactory {
   @NonNull
   public static CornerDetector forLive(@NonNull Context ctx, @NonNull DocQuadOrtRunner runner) {
     OneEuroCornerSmoother smoother = OneEuroCornerSmoother.withDefaults();
-    if (!BuildConfig.FEATURE_DOCQUAD_CORNERS) {
-      return new OpenCvCornerDetector();
-    }
     return new ThrottledDocQuadLiveDetector(ctx.getApplicationContext(), runner, smoother);
   }
 }

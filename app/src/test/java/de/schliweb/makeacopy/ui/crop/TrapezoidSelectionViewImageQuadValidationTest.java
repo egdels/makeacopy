@@ -11,7 +11,6 @@ package de.schliweb.makeacopy.ui.crop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -116,74 +115,4 @@ public class TrapezoidSelectionViewImageQuadValidationTest {
     assertFalse(TrapezoidSelectionView.isValidImageQuad(quad, 1000, 1000));
   }
 
-  // A correct but strongly tilted DocQuad result loses the pure shape comparison against a
-  // "nicer" axis-aligned OpenCV quad.
-  private static final Point[] TILTED_DOCQUAD = {
-    new Point(420, 120), new Point(900, 480), new Point(560, 900), new Point(90, 520)
-  };
-  private static final Point[] NICE_OPENCV = {
-    new Point(100, 120), new Point(900, 100), new Point(880, 920), new Point(120, 900)
-  };
-
-  @Test
-  public void chooseBest_withoutConfidence_followsShapeScore() {
-    Point[] doc = TILTED_DOCQUAD.clone();
-    Point[] cv = NICE_OPENCV.clone();
-    assertSame(cv, TrapezoidSelectionView.chooseBestCropCorners(doc, null, cv, false, 1000, 1000));
-    assertSame(
-        cv,
-        TrapezoidSelectionView.chooseBestCropCorners(
-            doc, TrapezoidSelectionView.DOCQUAD_TRUSTED_CONFIDENCE / 2, cv, false, 1000, 1000));
-  }
-
-  @Test
-  public void chooseBest_confidentDocQuad_winsOverNicerOpenCvQuad() {
-    Point[] doc = TILTED_DOCQUAD.clone();
-    Point[] cv = NICE_OPENCV.clone();
-    assertSame(
-        doc,
-        TrapezoidSelectionView.chooseBestCropCorners(
-            doc, TrapezoidSelectionView.DOCQUAD_TRUSTED_CONFIDENCE, cv, false, 1000, 1000));
-  }
-
-  @Test
-  public void chooseBest_confidentButInvalidDocQuad_fallsBackToOpenCv() {
-    Point[] bowTie = {
-      new Point(100, 100), new Point(900, 900), new Point(900, 100), new Point(100, 900)
-    };
-    Point[] cv = NICE_OPENCV.clone();
-    assertSame(cv, TrapezoidSelectionView.chooseBestCropCorners(bowTie, 0.9, cv, false, 1000, 1000));
-  }
-
-  @Test
-  public void scoreImageQuad_prefersPlausibleDocumentOverTinyValidQuad() {
-    Point[] plausible =
-        new Point[] {
-          new Point(100, 120), new Point(900, 100), new Point(880, 920), new Point(120, 900)
-        };
-    Point[] tinyButValid =
-        new Point[] {
-          new Point(100, 100), new Point(260, 100), new Point(260, 260), new Point(100, 260)
-        };
-
-    assertTrue(
-        TrapezoidSelectionView.scoreImageQuad(plausible, 1000, 1000)
-            > TrapezoidSelectionView.scoreImageQuad(tinyButValid, 1000, 1000));
-  }
-
-  @Test
-  public void scoreImageQuad_prefersBalancedQuadOverStronglySkewedQuad() {
-    Point[] balanced =
-        new Point[] {
-          new Point(100, 120), new Point(900, 100), new Point(880, 920), new Point(120, 900)
-        };
-    Point[] skewed =
-        new Point[] {
-          new Point(80, 100), new Point(940, 120), new Point(650, 900), new Point(260, 880)
-        };
-
-    assertTrue(
-        TrapezoidSelectionView.scoreImageQuad(balanced, 1000, 1000)
-            > TrapezoidSelectionView.scoreImageQuad(skewed, 1000, 1000));
-  }
 }

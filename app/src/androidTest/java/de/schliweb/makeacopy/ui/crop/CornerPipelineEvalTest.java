@@ -47,7 +47,7 @@ import org.opencv.core.Point;
  * Measurement harness for the crop corner pipeline on a real-world test set with ground-truth
  * corners. It is the on-device counterpart of {@code training/scripts/evaluate_docquad_models.py}:
  * the Python script measures the model, this test measures what the app actually does with it
- * (OpenCV candidate, best-of selection, edge-snap refinement).
+ * (DocQuad postprocessing, rotation test-time augmentation, edge-snap refinement).
  *
  * <p>The test set uses the layout from {@code training/EVALUATION.md} ({@code images/} + {@code
  * labels/*.json} with {@code corners_px} in TL,TR,BR,BL order) and is bundled into the androidTest
@@ -75,7 +75,7 @@ public class CornerPipelineEvalTest {
   /** IoU threshold for a "match", same default as the Python evaluator. */
   private static final double MATCH_IOU = 0.90;
 
-  private static final String[] BASE_STAGES = {"docquad", "opencv", "bestof"};
+  private static final String[] BASE_STAGES = {"docquad"};
 
   @Test
   public void evaluateCornerPipeline() throws Exception {
@@ -111,7 +111,6 @@ public class CornerPipelineEvalTest {
       stats.put(base, new StageStats());
       stats.put(base + "+refine", new StageStats());
     }
-    SelectionStats selection = new SelectionStats();
     JSONArray samplesJson = new JSONArray();
     JSONArray invalidLabels = new JSONArray();
     int skipped = 0;
@@ -182,50 +181,16 @@ public class CornerPipelineEvalTest {
         if (dr.confidence != null) sampleJson.put("docquad_confidence", dr.confidence);
       }
 
-      t0 = SystemClock.uptimeMillis();
-      OpenCVUtils.OpenCvCornerDetection cv =
-          OpenCVUtils.detectDocumentCornersWithOpenCvMetadata(appCtx, work);
-      long openCvMs = SystemClock.uptimeMillis() - t0;
-      Point[] cvPts = cv != null && !cv.fallbackRectangle() ? cv.corners() : null;
-      boolean cvFromHough = cv != null && cv.fromHoughFallback();
-      TrapezoidSelectionView.scaleImageQuadToOriginal(cvPts, s);
       if (work != bmp) work.recycle();
-
-      // chooseBestCropCorners clamps in place and returns one of its arguments: pass copies so
-      // the raw candidates stay measurable, and identify the pick by reference.
-      Point[] docForChoice = copy(docPts);
-      Point[] cvForChoice = copy(cvPts);
-      Point[] best =
-          TrapezoidSelectionView.chooseBestCropCorners(
-              docForChoice,
-              dr != null && dr.success ? dr.confidence : null,
-              cvForChoice,
-              cvFromHough,
-              w,
-              h);
-      String picked = best == null ? "none" : (best == docForChoice ? "docquad" : "opencv");
-      sampleJson.put("bestof_picked", picked);
-      // Inputs of the best-of policy, so alternative policies can be simulated from the report.
-      if (TrapezoidSelectionView.isValidImageQuad(docForChoice, w, h)) {
-        sampleJson.put("docquad_shape_score", TrapezoidSelectionView.scoreImageQuad(docForChoice, w, h));
-      }
-      if (TrapezoidSelectionView.isValidImageQuad(cvForChoice, w, h)) {
-        sampleJson.put("opencv_shape_score", TrapezoidSelectionView.scoreImageQuad(cvForChoice, w, h));
-      }
-      sampleJson.put("opencv_from_hough", cvFromHough);
       sampleJson.put("docquad_ms", docQuadMs);
-      sampleJson.put("opencv_ms", openCvMs);
 
       Map<String, Point[]> candidates = new LinkedHashMap<>();
       candidates.put("docquad", docPts);
-      candidates.put("opencv", cvPts);
-      candidates.put("bestof", best);
 
-      Map<String, CornerEvalMetrics.QuadError> errors = new LinkedHashMap<>();
       record(stats.get("docquad_plain"), sampleJson, "docquad_plain", plainPts, gt, w, h);
       for (String base : BASE_STAGES) {
         Point[] pts = candidates.get(base);
-        errors.put(base, record(stats.get(base), sampleJson, base, pts, gt, w, h));
+        record(stats.get(base), sampleJson, base, pts, gt, w, h);
 
         Point[] refined = null;
         if (pts != null) {
@@ -234,21 +199,18 @@ public class CornerPipelineEvalTest {
           TrapezoidSelectionView.clampImageQuadToBounds(in, w, h);
           t0 = SystemClock.uptimeMillis();
           refined = EdgeSnapCornerRefiner.refine(bmp, in);
-          if ("bestof".equals(base)) {
-            sampleJson.put("refine_ms", SystemClock.uptimeMillis() - t0);
-          }
+          sampleJson.put("refine_ms", SystemClock.uptimeMillis() - t0);
         }
         String stage = base + "+refine";
-        errors.put(stage, record(stats.get(stage), sampleJson, stage, refined, gt, w, h));
+        record(stats.get(stage), sampleJson, stage, refined, gt, w, h);
       }
-      selection.add(picked, errors.get("docquad"), errors.get("opencv"));
 
       samplesJson.put(sampleJson);
       bmp.recycle();
     }
 
     String markdown =
-        "model: " + modelName + "\n\n" + renderMarkdown(stats, selection, samplesJson.length(), skipped);
+        "model: " + modelName + "\n\n" + renderMarkdown(stats, samplesJson.length(), skipped);
     if (invalidLabels.length() > 0) {
       markdown += "\n## Invalid labels (ground truth outside the image, skipped)\n\n";
       for (int i = 0; i < invalidLabels.length(); i++) {
@@ -272,7 +234,6 @@ public class CornerPipelineEvalTest {
       stagesJson.put(e.getKey(), e.getValue().toJson());
     }
     report.put("stages", stagesJson);
-    report.put("selection", selection.toJson());
     report.put("samples", samplesJson);
 
     File outDir = resolveOutputDir(appCtx);
@@ -351,39 +312,8 @@ public class CornerPipelineEvalTest {
     }
   }
 
-  /** How often the best-of policy picked the candidate that was actually closer to ground truth. */
-  private static final class SelectionStats {
-    int bothAvailable;
-    int pickedBetter;
-    int pickedWorse;
-    final List<Double> regretRel = new ArrayList<>();
-
-    void add(String picked, CornerEvalMetrics.QuadError doc, CornerEvalMetrics.QuadError cv) {
-      if (doc == null || cv == null || "none".equals(picked)) return;
-      bothAvailable++;
-      double pickedErr = "docquad".equals(picked) ? doc.meanRel : cv.meanRel;
-      double otherErr = "docquad".equals(picked) ? cv.meanRel : doc.meanRel;
-      if (pickedErr <= otherErr) {
-        pickedBetter++;
-      } else {
-        pickedWorse++;
-        regretRel.add(pickedErr - otherErr);
-      }
-    }
-
-    JSONObject toJson() throws Exception {
-      JSONObject o = new JSONObject();
-      o.put("both_available", bothAvailable);
-      o.put("picked_better", pickedBetter);
-      o.put("picked_worse", pickedWorse);
-      o.put("regret_rel_mean", nanToNull(CornerEvalMetrics.mean(regretRel)));
-      o.put("regret_rel_worst", nanToNull(CornerEvalMetrics.percentile(regretRel, 1.0)));
-      return o;
-    }
-  }
-
   private static String renderMarkdown(
-      Map<String, StageStats> stats, SelectionStats selection, int samples, int skipped) {
+      Map<String, StageStats> stats, int samples, int skipped) {
     StringBuilder sb = new StringBuilder();
     sb.append("# Corner pipeline evaluation\n\n");
     sb.append(String.format(Locale.US, "samples=%d skipped=%d\n\n", samples, skipped));
@@ -410,17 +340,6 @@ public class CornerPipelineEvalTest {
               st.match,
               st.orderShifted));
     }
-    sb.append("\n## Best-of selection\n\n");
-    sb.append(
-        String.format(
-            Locale.US,
-            "both candidates valid: %d, picked the better one: %d, picked the worse one: %d"
-                + " (mean regret %s, worst %s)\n",
-            selection.bothAvailable,
-            selection.pickedBetter,
-            selection.pickedWorse,
-            pct(CornerEvalMetrics.mean(selection.regretRel)),
-            pct(CornerEvalMetrics.percentile(selection.regretRel, 1.0))));
     return sb.toString();
   }
 

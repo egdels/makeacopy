@@ -557,7 +557,7 @@ public class CropFragment extends Fragment {
 
               boolean hasValid = false;
 
-              // Use DocQuad detector with OpenCV fallback (via forCrop)
+              // DocQuad detector (via forCrop)
               try {
                 de.schliweb.makeacopy.ml.corners.CornerDetector detector =
                     de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(

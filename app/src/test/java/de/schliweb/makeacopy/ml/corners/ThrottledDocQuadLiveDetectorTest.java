@@ -34,9 +34,9 @@ public class ThrottledDocQuadLiveDetectorTest {
 
   @Test
   public void detect_fail_factory() {
-    DetectionResult r = DetectionResult.fail(Source.OPENCV);
+    DetectionResult r = DetectionResult.fail(Source.DOCQUAD);
     assertFalse(r.success);
-    assertEquals(Source.OPENCV, r.source);
+    assertEquals(Source.DOCQUAD, r.source);
     assertNull(r.cornersOriginalTLTRBRBL);
   }
 
