@@ -538,8 +538,6 @@ public class TrapezoidSelectionView extends View {
   // ===== User-adjustment/auto-init suppression state =====
   private boolean isUserAdjusting =
       false; // true while user is dragging a handle or shortly after release
-  private boolean userHasEdited =
-      false; // latched once user moved a corner; prevents auto-init overwriting
   private int autoInitIdleDelayMs = 400; // idle time after release before auto-init may run
   @Nullable private Runnable adjustIdleClearRunnable = null; // clears isUserAdjusting after idle
 
@@ -2731,7 +2729,6 @@ public class TrapezoidSelectionView extends View {
     int curveIdx = findCurveHandleIndex(x, y);
     if (curveIdx == -1) return false;
     activeCurveHandleIndex = curveIdx;
-    userHasEdited = true;
     keepUserAdjusting();
     updateSystemGestureExclusion();
     notifyDragStateChanged(true);
@@ -2745,8 +2742,6 @@ public class TrapezoidSelectionView extends View {
   private boolean startCornerDrag(MotionEvent event, float x, float y) {
     activeCornerIndex = findCornerIndex(x, y);
     if (activeCornerIndex == -1) return false;
-    // Mark that user has edited corners (suppresses DocQuad re-init)
-    userHasEdited = true;
     keepUserAdjusting();
     edgeGlide.start(event.getRawY(), corners[activeCornerIndex].y);
 
@@ -2778,7 +2773,6 @@ public class TrapezoidSelectionView extends View {
     int edgeIdx = findEdgeHitIndex(x, y);
     if (edgeIdx == -1) return false;
     activeEdgeIndex = edgeIdx;
-    userHasEdited = true;
     keepUserAdjusting();
     // Snapshot corner state and edge geometry at touch-down.
     for (int i = 0; i < 4; i++) {
@@ -3375,9 +3369,8 @@ public class TrapezoidSelectionView extends View {
       for (int i = 0; i < 4; i++) {
         relativeCorners[i] = absoluteToRelative(corners[i].x, corners[i].y, viewW, viewH);
       }
-      // Mark as user-edited and initialized so subsequent setImageBitmap calls (e.g. caused
-      // by the rotation observer) do not auto-detect and overwrite the restored selection.
-      userHasEdited = true;
+      // Mark as initialized so subsequent setImageBitmap calls (e.g. caused by the rotation
+      // observer) do not auto-detect and overwrite the restored selection.
       initialized = true;
       suppressInitOnce = true;
       try {
@@ -3425,7 +3418,6 @@ public class TrapezoidSelectionView extends View {
 
       // New image (or dimension change) should allow fresh auto-init again.
       if (!sameDims) {
-        userHasEdited = false;
         lastAutoInitBitmap = null;
       }
 
@@ -3441,7 +3433,6 @@ public class TrapezoidSelectionView extends View {
     } else {
       lastBitmapWidth = -1;
       lastBitmapHeight = -1;
-      userHasEdited = false;
       lastAutoInitBitmap = null;
     }
 
