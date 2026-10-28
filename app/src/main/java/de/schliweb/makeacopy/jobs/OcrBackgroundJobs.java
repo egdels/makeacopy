@@ -63,6 +63,11 @@ public final class OcrBackgroundJobs {
   private static final Set<String> running = Collections.synchronizedSet(new HashSet<>());
   private static final Set<String> cancelled = Collections.synchronizedSet(new HashSet<>());
 
+  /** Whether an OCR job for {@code pageId} is queued or running. */
+  public static boolean isRunning(String pageId) {
+    return pageId != null && running.contains(pageId);
+  }
+
   /**
    * Requests cancellation of a currently running background OCR job for the given page id. The job
    * checks the cancellation flag at well-defined points (before init, between rotation attempts)

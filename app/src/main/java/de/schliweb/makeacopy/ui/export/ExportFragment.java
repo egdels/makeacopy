@@ -219,6 +219,8 @@ public class ExportFragment extends Fragment {
           if (ocrBatchController != null) {
             ocrBatchController.onOcrJobFinished(id, success);
           }
+          ocrJobsAwaitingResult.remove(id);
+          exportOcrWait.onJobFinished(id);
         }
       };
 
@@ -228,6 +230,13 @@ public class ExportFragment extends Fragment {
   private androidx.appcompat.app.AlertDialog ocrBatchProgressDialog;
   private com.google.android.material.progressindicator.LinearProgressIndicator ocrBatchProgressBar;
   private android.widget.TextView ocrBatchProgressLabel;
+
+  // An export waits for OCR jobs still running for pages of the document (OcrExportWait).
+  // Jobs started here stay in ocrJobsAwaitingResult until their result reached the session, so
+  // the export cannot slip in between the job ending and the session being updated.
+  private final OcrExportWait exportOcrWait = new OcrExportWait();
+  private final java.util.Set<String> ocrJobsAwaitingResult = new java.util.HashSet<>();
+  private androidx.appcompat.app.AlertDialog exportOcrWaitDialog;
 
   private de.schliweb.makeacopy.ui.export.session.ExportPagesAdapter pagesAdapter;
   private ActivityResultLauncher<String> createDocumentLauncher;
@@ -1253,6 +1262,7 @@ public class ExportFragment extends Fragment {
   }
 
   private void onExportClicked() {
+    if (awaitRunningOcr(this::onExportClicked)) return;
     // Use last saved options directly to save a click
     Context ctx = requireContext();
     boolean exportAsJpeg = ExportPrefsHelper.isExportAsJpeg(ctx);
@@ -2681,6 +2691,7 @@ public class ExportFragment extends Fragment {
     // completion.
     UIUtils.showToast(
         requireContext(), getString(R.string.ocr_processing_started), Toast.LENGTH_SHORT);
+    ocrJobsAwaitingResult.add(s.id());
     de.schliweb.makeacopy.jobs.OcrBackgroundJobs.enqueueReprocess(
         requireContext().getApplicationContext(),
         s.id(),
@@ -3009,6 +3020,7 @@ public class ExportFragment extends Fragment {
             new de.schliweb.makeacopy.jobs.OcrBatchController.JobStarter() {
               @Override
               public void startOcr(String pageId) {
+                ocrJobsAwaitingResult.add(pageId);
                 de.schliweb.makeacopy.jobs.OcrBackgroundJobs.enqueueReprocess(
                     appContext, pageId, lang, () -> ocrHelperProvider.get());
               }
@@ -3238,6 +3250,95 @@ public class ExportFragment extends Fragment {
     }
   }
 
+  /**
+   * Holds {@code then} back while OCR jobs run for pages of the document and shows a progress
+   * dialog meanwhile; Cancel drops the export, the OCR goes on.
+   *
+   * @return {@code true} if {@code then} runs later, {@code false} if the caller can go on now
+   */
+  private boolean awaitRunningOcr(Runnable then) {
+    List<String> runningIds = new ArrayList<>();
+    List<CompletedScan> pages =
+        exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
+    if (pages != null) {
+      for (CompletedScan p : pages) {
+        String id = p != null ? p.id() : null;
+        if (id == null) continue;
+        if (ocrJobsAwaitingResult.contains(id)
+            || de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id)) {
+          runningIds.add(id);
+        }
+      }
+    }
+    boolean wait =
+        exportOcrWait.await(
+            runningIds,
+            () -> {
+              dismissExportOcrWaitDialog();
+              if (isAdded() && binding != null) then.run();
+            });
+    if (wait) showExportOcrWaitDialog();
+    return wait;
+  }
+
+  private void showExportOcrWaitDialog() {
+    dismissExportOcrWaitDialog();
+    View v =
+        LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_pdf_import_progress, null, false);
+    android.widget.TextView title = v.findViewById(R.id.import_progress_title);
+    title.setText(R.string.ocr_batch_running_title);
+    com.google.android.material.progressindicator.LinearProgressIndicator bar =
+        v.findViewById(R.id.import_progress_bar);
+    bar.setIndeterminate(true);
+    android.widget.TextView label = v.findViewById(R.id.import_progress_label);
+    label.setText(R.string.ocr_processing_started);
+    exportOcrWaitDialog =
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(v)
+            .setCancelable(false)
+            .setNegativeButton(android.R.string.cancel, (dlg, w) -> exportOcrWait.cancel())
+            .create();
+    exportOcrWaitDialog.setOnShowListener(
+        dlg ->
+            DialogUtils.improveAlertDialogButtonContrastForNight(
+                exportOcrWaitDialog, requireContext()));
+    exportOcrWaitDialog.show();
+  }
+
+  private void dismissExportOcrWaitDialog() {
+    if (exportOcrWaitDialog != null) {
+      try {
+        exportOcrWaitDialog.dismiss();
+      } catch (Throwable ignore) {
+        // Best-effort; failure is non-critical
+      }
+      exportOcrWaitDialog = null;
+    }
+  }
+
+  /**
+   * Catches up on OCR results broadcast while the screen was stopped (the receiver was not
+   * registered): applies them to the session and lets a waiting export go on.
+   */
+  private void catchUpOnMissedOcrResults() {
+    java.util.Iterator<String> it = ocrJobsAwaitingResult.iterator();
+    while (it.hasNext()) {
+      String id = it.next();
+      if (de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id)) continue;
+      it.remove();
+      try {
+        SessionOcrUpdater.applyOcrResultToSession(requireContext(), exportSessionViewModel, id);
+      } catch (Exception e) {
+        Log.w(TAG, "Failed to update session after OCR job", e);
+      }
+    }
+    exportOcrWait.refresh(
+        id ->
+            ocrJobsAwaitingResult.contains(id)
+                || de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id));
+  }
+
   @Override
   public void onStart() {
     super.onStart();
@@ -3254,6 +3355,7 @@ public class ExportFragment extends Fragment {
         Log.w(TAG, "Failed to register OCR update receiver", e);
       }
     }
+    catchUpOnMissedOcrResults();
   }
 
   @Override
@@ -3272,6 +3374,8 @@ public class ExportFragment extends Fragment {
 
   @Override
   public void onDestroyView() {
+    exportOcrWait.cancel();
+    dismissExportOcrWaitDialog();
     previewRenderGeneration++;
     previewPageLoadGeneration++;
     super.onDestroyView();
