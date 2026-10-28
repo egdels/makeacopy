@@ -62,6 +62,10 @@
 # Gson uses reflection; obfuscation must not rename these classes/fields.
 -keep class de.schliweb.makeacopy.data.CompletedScanEntry { *; }
 -keep class de.schliweb.makeacopy.data.CompletedScansRegistry$RegistryFile { *; }
+# The document sessions (active draft, page order). Without these R8 drops the field signature
+# of List<SessionEntry>, Gson then yields maps, and every read fails: no draft is ever resumed.
+-keep class de.schliweb.makeacopy.data.DocumentSessionRepository$StoreFile { *; }
+-keep class de.schliweb.makeacopy.data.DocumentSessionRepository$SessionEntry { *; }
 
 -keep class de.schliweb.makeacopy.utils.ocr.OcrModelManager { *; }
 
