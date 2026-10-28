@@ -405,6 +405,9 @@
     <string name="ocr_batch_option_selected">चयनित पृष्ठ…</string>
     <string name="ocr_batch_option_all">सभी पृष्ठ</string>
     <string name="ocr_batch_option_language">OCR भाषा (%1$s)…</string>
+    <string name="ocr_batch_option_review">टेक्स्ट की समीक्षा करें…</string>
+    <string name="ocr_review_no_text">इस पेज पर समीक्षा के लिए कोई OCR टेक्स्ट नहीं है</string>
+    <string name="ocr_review_save_failed">समीक्षा किया गया टेक्स्ट सहेजा नहीं जा सका</string>
     <string name="ocr_batch_select_pages">OCR के लिए पृष्ठ चुनें</string>
     <string name="ocr_batch_running_title">OCR चल रहा है</string>
     <string name="ocr_batch_already_running">OCR पहले से ही चल रहा है</string>

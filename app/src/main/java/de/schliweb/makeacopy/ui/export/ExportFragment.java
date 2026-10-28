@@ -322,10 +322,12 @@ public class ExportFragment extends Fragment {
    *   <li>Hidden when the preview is not visible or no active page can be determined.
    *   <li>Shows {@code [OCR]} on a green background when the active page has an existing OCR text
    *       file on disk.
-   *   <li>Shows {@code [⚠]} on an orange background when OCR is missing; tapping the badge then
-   *       opens the same OCR options as the filmstrip badge via {@link #showOcrBatchOptions(int)}
-   *       (inline OCR for single-page sessions, current/selected/all pages otherwise).
+   *   <li>Shows {@code [⚠]} on an orange background when OCR is missing.
    * </ul>
+   *
+   * <p>Tapping the badge opens the same OCR options as the filmstrip badge via {@link
+   * #showOcrBatchOptions(int)}: OCR of this page (or selected/all pages), the OCR language and,
+   * when the page has OCR words, the Review of its text.
    */
   private void updatePreviewOcrBadge() {
     if (binding == null || binding.previewOcrBadge == null) return;
@@ -372,13 +374,12 @@ public class ExportFragment extends Fragment {
       if (hasOcr) {
         badge.setText("[OCR]");
         badge.setBackgroundColor(0x8032CD32); // semi green
-        badge.setOnClickListener(null);
       } else {
         badge.setText("[\u26A0]");
         badge.setBackgroundColor(0x80FFA500); // semi orange
-        final int pos = idx;
-        badge.setOnClickListener(v -> showOcrBatchOptions(pos));
       }
+      final int pos = idx;
+      badge.setOnClickListener(v -> showOcrBatchOptions(pos));
       badge.setVisibility(View.VISIBLE);
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
@@ -2843,39 +2844,100 @@ public class ExportFragment extends Fragment {
    */
   private void showOcrBatchOptions(int position) {
     List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
-    if (cur == null || cur.size() <= 1) {
-      runInlineOcrForPage(position);
-      return;
-    }
+    if (cur == null || position < 0 || position >= cur.size()) return;
     if (ocrBatchController != null && ocrBatchController.isRunning()) {
       UIUtils.showToast(
           requireContext(), getString(R.string.ocr_batch_already_running), Toast.LENGTH_SHORT);
       return;
     }
-    String[] options =
-        new String[] {
-          getString(R.string.ocr_batch_option_current),
-          getString(R.string.ocr_batch_option_selected),
-          getString(R.string.ocr_batch_option_all),
-          getString(R.string.ocr_batch_option_language, resolveOcrLanguage())
-        };
+    final boolean multi = cur.size() > 1;
+    List<String> labels = new ArrayList<>();
+    List<Runnable> actions = new ArrayList<>();
+    labels.add(getString(R.string.ocr_batch_option_current));
+    actions.add(() -> runInlineOcrForPage(position));
+    if (multi) {
+      labels.add(getString(R.string.ocr_batch_option_selected));
+      actions.add(() -> showOcrPagePicker(position));
+      labels.add(getString(R.string.ocr_batch_option_all));
+      actions.add(this::startOcrAll);
+    }
+    labels.add(getString(R.string.ocr_batch_option_language, resolveOcrLanguage()));
+    actions.add(() -> showOcrLanguagePicker(position));
+    if (FeatureFlags.isOcrReviewEnabled() && hasReviewableOcr(cur.get(position))) {
+      labels.add(getString(R.string.ocr_batch_option_review));
+      actions.add(() -> openReviewForPage(position));
+    }
     new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
         .setTitle(R.string.ocr_batch_title)
-        .setItems(
-            options,
-            (dlg, which) -> {
-              if (which == 0) {
-                runInlineOcrForPage(position);
-              } else if (which == 1) {
-                showOcrPagePicker(position);
-              } else if (which == 2) {
-                startOcrAll();
-              } else {
-                showOcrLanguagePicker(position);
-              }
-            })
+        .setItems(labels.toArray(new String[0]), (dlg, which) -> actions.get(which).run())
         .setNegativeButton(android.R.string.cancel, null)
         .show();
+  }
+
+  /** Whether the page has OCR words that the Review screen can show (in memory or persisted). */
+  private boolean hasReviewableOcr(CompletedScan page) {
+    if (page == null || page.id() == null) return false;
+    if (ocrStateBelongsTo(page)) {
+      List<RecognizedWord> words = getOcrWordsFromState();
+      if (words != null && !words.isEmpty()) return true;
+    }
+    if (page.ocrTextPath() == null) return false;
+    File dir = PageOcrFiles.dir(requireContext(), page.id());
+    return new File(dir, PageOcrFiles.WORDS_FILE).isFile()
+        || new File(dir, PageOcrFiles.EDITED_FILE).isFile();
+  }
+
+  /**
+   * Opens the OCR Review for a session page (#100, #102). A save there writes the page's persisted
+   * OCR result, which the PDF text layer, the TXT export and the library read. The page that last
+   * went through the scan flow is reviewed from the in-memory OCR state on the crop image, like
+   * from the OCR screen; any other page from its persisted words on its own upright image.
+   */
+  private void openReviewForPage(int position) {
+    List<CompletedScan> cur = exportSessionViewModel.getPages().getValue();
+    if (cur == null || position < 0 || position >= cur.size()) return;
+    final CompletedScan page = cur.get(position);
+    if (page == null || page.id() == null) return;
+    final de.schliweb.makeacopy.ui.ocr.review.OcrReviewViewModel rv =
+        new ViewModelProvider(requireActivity())
+            .get(de.schliweb.makeacopy.ui.ocr.review.OcrReviewViewModel.class);
+    if (ocrStateBelongsTo(page)) {
+      rv.setPage(page.id(), null, true);
+      rv.setDoc(
+          de.schliweb.makeacopy.ui.ocr.review.model.OcrDocMapper.fromState(
+              ocrViewModel.getState().getValue()));
+      navigateToReview();
+      return;
+    }
+    new Thread(
+            () -> {
+              List<RecognizedWord> words = loadWordsForSessionPage(page);
+              Bitmap image = de.schliweb.makeacopy.jobs.OcrBackgroundJobs.loadUprightBitmap(page);
+              postToUiSafe(
+                  () -> {
+                    if (words == null || words.isEmpty() || image == null) {
+                      UIUtils.showToast(
+                          requireContext(),
+                          getString(R.string.ocr_review_no_text),
+                          Toast.LENGTH_SHORT);
+                      return;
+                    }
+                    rv.setPage(page.id(), image, false);
+                    rv.setDoc(
+                        de.schliweb.makeacopy.ui.ocr.review.model.OcrDocMapper.fromWords(
+                            words, image.getWidth(), image.getHeight()));
+                    navigateToReview();
+                  });
+            })
+        .start();
+  }
+
+  private void navigateToReview() {
+    try {
+      Navigation.findNavController(requireView()).navigate(R.id.navigation_review);
+    } catch (IllegalArgumentException | IllegalStateException ignored) {
+      // Best-effort; failure is non-critical
+    }
   }
 
   /** Multi-choice page picker for "OCR selected pages" (reuses the picker UX pattern). */

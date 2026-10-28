@@ -9,6 +9,8 @@
  */
 package de.schliweb.makeacopy.ui.ocr.review;
 
+import android.graphics.Bitmap;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -40,6 +42,13 @@ public class OcrReviewViewModel extends ViewModel {
   @Getter private long docVersion = 0;
   private long originalVersion = 0;
 
+  // The session page under review when opened from the export screen; null in the scan flow
+  @Getter @Nullable private String pageId;
+  // That page's upright image (its OCR word space); null: use the crop of the scan flow
+  @Getter @Nullable private Bitmap pageBitmap;
+  // Whether the in-memory OCR state belongs to that page, so a save updates it as well
+  @Getter private boolean pageOwnsOcrState;
+
   public LiveData<OcrDoc> getDoc() {
     return doc;
   }
@@ -62,6 +71,26 @@ public class OcrReviewViewModel extends ViewModel {
     originalVersion = docVersion;
     doc.setValue(d);
     dirty.setValue(false);
+  }
+
+  /**
+   * Reviews a session page of the export screen: a save writes the page's persisted OCR result.
+   *
+   * @param id the page id
+   * @param bitmap the page's upright image, or {@code null} for the crop of the scan flow
+   * @param ownsOcrState whether the in-memory OCR state belongs to the page
+   */
+  public void setPage(String id, @Nullable Bitmap bitmap, boolean ownsOcrState) {
+    pageId = id;
+    pageBitmap = bitmap;
+    pageOwnsOcrState = ownsOcrState;
+  }
+
+  /** Back to reviewing the scan flow's in-memory OCR state. */
+  public void clearPage() {
+    pageId = null;
+    pageBitmap = null;
+    pageOwnsOcrState = false;
   }
 
   /** Returns the current document value. */

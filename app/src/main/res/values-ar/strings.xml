@@ -415,6 +415,9 @@
     <string name="ocr_batch_option_selected">الصفحات المحددة…</string>
     <string name="ocr_batch_option_all">جميع الصفحات</string>
     <string name="ocr_batch_option_language">لغة OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">مراجعة النص…</string>
+    <string name="ocr_review_no_text">لا تحتوي هذه الصفحة على نص OCR للمراجعة</string>
+    <string name="ocr_review_save_failed">تعذّر حفظ النص المُراجَع</string>
     <string name="ocr_batch_select_pages">تحديد الصفحات لـ OCR</string>
     <string name="ocr_batch_running_title">جارٍ تشغيل OCR</string>
     <string name="ocr_batch_already_running">OCR قيد التشغيل بالفعل</string>

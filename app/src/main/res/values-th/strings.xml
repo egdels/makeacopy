@@ -415,6 +415,9 @@
     <string name="ocr_batch_option_selected">หน้าที่เลือก…</string>
     <string name="ocr_batch_option_all">ทุกหน้า</string>
     <string name="ocr_batch_option_language">ภาษา OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">ตรวจทานข้อความ…</string>
+    <string name="ocr_review_no_text">หน้านี้ไม่มีข้อความ OCR ให้ตรวจทาน</string>
+    <string name="ocr_review_save_failed">ไม่สามารถบันทึกข้อความที่ตรวจทานแล้ว</string>
     <string name="ocr_batch_select_pages">เลือกหน้าสำหรับ OCR</string>
     <string name="ocr_batch_running_title">กำลังทำ OCR</string>
     <string name="ocr_batch_already_running">OCR กำลังทำงานอยู่แล้ว</string>

@@ -444,6 +444,9 @@
     <string name="ocr_batch_option_selected">Selected pages…</string>
     <string name="ocr_batch_option_all">All pages</string>
     <string name="ocr_batch_option_language">OCR language (%1$s)…</string>
+    <string name="ocr_batch_option_review">Review text…</string>
+    <string name="ocr_review_no_text">This page has no OCR text to review</string>
+    <string name="ocr_review_save_failed">Could not save the reviewed text</string>
     <string name="ocr_batch_select_pages">Select pages for OCR</string>
     <string name="ocr_batch_running_title">Running OCR</string>
     <string name="ocr_batch_already_running">OCR is already running</string>

@@ -22,15 +22,24 @@ public final class OcrDocMapper {
   private OcrDocMapper() {}
 
   public static OcrDoc fromState(OCRViewModel.OcrUiState state) {
-    OcrDoc doc = new OcrDoc();
-    if (state == null) return doc;
+    if (state == null) return new OcrDoc();
     OCRViewModel.OcrTransform tx = state.transform();
-    if (tx != null) {
-      doc.imageSize.w = tx.dstW();
-      doc.imageSize.h = tx.dstH();
-    }
     // Use effective words (reviewed if available, otherwise original OCR)
-    List<RecognizedWord> words = state.getEffectiveWords();
+    return fromWords(
+        state.getEffectiveWords(), tx != null ? tx.dstW() : 0, tx != null ? tx.dstH() : 0);
+  }
+
+  /**
+   * Maps persisted OCR words of a page to a Review document.
+   *
+   * @param words the words, in the pixel coordinates of the page image
+   * @param imageW the page image width
+   * @param imageH the page image height
+   */
+  public static OcrDoc fromWords(List<RecognizedWord> words, int imageW, int imageH) {
+    OcrDoc doc = new OcrDoc();
+    doc.imageSize.w = imageW;
+    doc.imageSize.h = imageH;
     if (words == null) return doc;
     int id = 1;
     for (RecognizedWord rw : words) {

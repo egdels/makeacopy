@@ -280,8 +280,8 @@ public class ExportPagesAdapter extends RecyclerView.Adapter<ExportPagesAdapter.
     }
     h.badge.setText(badge);
     h.badge.setBackgroundColor(badgeBg);
-    // Inline OCR action: if missing OCR, clicking the badge requests OCR for this page
-    if (!hasOcr && callbacks != null) {
+    // OCR options of this page: OCR when missing, language, and the Review of existing OCR text
+    if (callbacks != null) {
       h.badge.setOnClickListener(v -> callbacks.onOcrRequested(h.getBindingAdapterPosition()));
     } else {
       h.badge.setOnClickListener(null);
@@ -441,7 +441,7 @@ public class ExportPagesAdapter extends RecyclerView.Adapter<ExportPagesAdapter.
     void onReorder(int fromPosition, int toPosition);
 
     /**
-     * Requests running OCR for a specific page (inline OCR action).
+     * Requests the OCR options of a specific page (run OCR, language, review the text).
      *
      * @param position Index of the page in the adapter.
      */

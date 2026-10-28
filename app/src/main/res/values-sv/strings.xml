@@ -418,6 +418,9 @@
     <string name="ocr_batch_option_selected">Valda sidor…</string>
     <string name="ocr_batch_option_all">Alla sidor</string>
     <string name="ocr_batch_option_language">OCR-språk (%1$s)…</string>
+    <string name="ocr_batch_option_review">Granska text…</string>
+    <string name="ocr_review_no_text">Den här sidan har ingen OCR-text att granska</string>
+    <string name="ocr_review_save_failed">Den granskade texten kunde inte sparas</string>
     <string name="ocr_batch_select_pages">Välj sidor för OCR</string>
     <string name="ocr_batch_running_title">Kör OCR</string>
     <string name="ocr_batch_already_running">OCR körs redan</string>

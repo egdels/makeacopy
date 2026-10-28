@@ -424,6 +424,9 @@
     <string name="ocr_batch_option_selected">Выбранные страницы…</string>
     <string name="ocr_batch_option_all">Все страницы</string>
     <string name="ocr_batch_option_language">Язык OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">Проверить текст…</string>
+    <string name="ocr_review_no_text">На этой странице нет текста OCR для проверки</string>
+    <string name="ocr_review_save_failed">Не удалось сохранить проверенный текст</string>
     <string name="ocr_batch_select_pages">Выбрать страницы для OCR</string>
     <string name="ocr_batch_running_title">Выполняется OCR</string>
     <string name="ocr_batch_already_running">OCR уже выполняется</string>

@@ -9,6 +9,7 @@
  */
 package de.schliweb.makeacopy.ui.ocr.review;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.os.Bundle;
@@ -30,7 +31,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import dagger.hilt.android.AndroidEntryPoint;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.R;
+import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.ui.crop.CropViewModel;
+import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.ui.ocr.review.model.OcrDoc;
 import de.schliweb.makeacopy.ui.ocr.review.model.OcrDocReadingOrder;
 import de.schliweb.makeacopy.ui.ocr.review.view.MinimapView;
@@ -42,6 +45,7 @@ import de.schliweb.makeacopy.utils.ocr.OCRPostProcessor;
 import de.schliweb.makeacopy.utils.ocr.OCRUtils;
 import de.schliweb.makeacopy.utils.ocr.OcrModelManager;
 import de.schliweb.makeacopy.utils.ocr.OcrPageSegmentationMode;
+import de.schliweb.makeacopy.utils.ocr.PageOcrFiles;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.UIUtils;
@@ -98,15 +102,10 @@ public class OcrReviewFragment extends Fragment {
   private void updateMinimapThumbnail(@NonNull MinimapView minimap) {
     try {
       if (getContext() == null) return;
-      // Use in-memory bitmap from CropViewModel
       try {
-        CropViewModel cvm =
-            new androidx.lifecycle.ViewModelProvider(requireActivity()).get(CropViewModel.class);
-        Bitmap bm = cvm != null ? cvm.getImageBitmap().getValue() : null;
+        Bitmap bm = sourceBitmap();
         if (bm != null && !bm.isRecycled()) {
-          // Apply user rotation if set
-          Integer userRotDeg = cvm.getUserRotationDegrees().getValue();
-          int rotDeg = (userRotDeg != null) ? userRotDeg : 0;
+          int rotDeg = sourceRotation();
           Bitmap rotatedBm = (rotDeg != 0) ? rotateBitmap(bm, rotDeg) : bm;
           int w0 = rotatedBm.getWidth();
           int h0 = rotatedBm.getHeight();
@@ -145,6 +144,26 @@ public class OcrReviewFragment extends Fragment {
     } catch (Throwable t) {
       dbgWarn("Loading minimap thumbnail failed", t);
     }
+  }
+
+  /**
+   * The image under review: the session page's own image when one was handed over, otherwise the
+   * in-memory crop bitmap of the scan flow. Word boxes are in its coordinates.
+   */
+  @Nullable
+  private Bitmap sourceBitmap() {
+    Bitmap page = viewModel.getPageBitmap();
+    if (page != null) return page;
+    CropViewModel cvm = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
+    return cvm.getImageBitmap().getValue();
+  }
+
+  /** The user rotation to show {@link #sourceBitmap()} with; a session page is stored upright. */
+  private int sourceRotation() {
+    if (viewModel.getPageBitmap() != null) return 0;
+    CropViewModel cvm = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
+    Integer userRotDeg = cvm.getUserRotationDegrees().getValue();
+    return (userRotDeg != null) ? userRotDeg : 0;
   }
 
   /**
@@ -583,12 +602,9 @@ public class OcrReviewFragment extends Fragment {
 
   /** Loads and displays the original document image with the OCR overlay (boxes only). */
   private void showDocumentMode() {
-    CropViewModel cvm = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
-    Bitmap bmp = cvm.getImageBitmap().getValue();
+    Bitmap bmp = sourceBitmap();
     if (bmp != null && !bmp.isRecycled() && documentImage != null) {
-      // Apply user rotation if set
-      Integer userRotDeg = cvm.getUserRotationDegrees().getValue();
-      int rotDeg = (userRotDeg != null) ? userRotDeg : 0;
+      int rotDeg = sourceRotation();
       documentImage.setImageBitmap((rotDeg != 0) ? rotateBitmap(bmp, rotDeg) : bmp);
     }
     if (documentOcrOverlay == null) return;
@@ -1412,11 +1428,10 @@ public class OcrReviewFragment extends Fragment {
     UIUtils.showToast(
         requireContext(), getString(R.string.reocr_processing), android.widget.Toast.LENGTH_SHORT);
 
-    // Get the original image from CropViewModel
+    // Get the original image the word boxes refer to
     android.graphics.Bitmap sourceBitmap = null;
     try {
-      CropViewModel cvm = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
-      sourceBitmap = cvm != null ? cvm.getImageBitmap().getValue() : null;
+      sourceBitmap = sourceBitmap();
     } catch (Throwable t) {
       dbgWarn("Failed to get source bitmap for re-OCR", t);
     }
@@ -1974,7 +1989,7 @@ public class OcrReviewFragment extends Fragment {
 
   /**
    * Handles the SAVE button action. Validates and normalizes the document, then applies the review
-   * result to the OCRViewModel and navigates back.
+   * result to the reviewed session page and/or the OCRViewModel and navigates back.
    */
   private void handleSaveAction() {
     OcrDoc doc = viewModel.getDocValue();
@@ -1997,25 +2012,70 @@ public class OcrReviewFragment extends Fragment {
       }
     }
 
-    // Apply to OCRViewModel
-    try {
-      de.schliweb.makeacopy.ui.ocr.OCRViewModel ocrViewModel =
-          new ViewModelProvider(requireActivity())
-              .get(de.schliweb.makeacopy.ui.ocr.OCRViewModel.class);
-      java.util.List<RecognizedWord> reviewedWords = toRecognizedWords(doc);
-      String reviewedText =
-          OCRPostProcessor.wordsToText(
-              reviewedWords,
-              de.schliweb.makeacopy.utils.ocr.MultiColumnOcrPrefs.isEnabled(getContext()));
-      if (reviewedText == null || reviewedText.isEmpty()) reviewedText = buildFullText(doc);
-      ocrViewModel.applyReviewResult(reviewedText, reviewedWords);
-    } catch (Throwable t) {
-      dbgWarn("Failed to apply review result to OCRViewModel", t);
+    java.util.List<RecognizedWord> reviewedWords = toRecognizedWords(doc);
+    String reviewedText =
+        OCRPostProcessor.wordsToText(
+            reviewedWords,
+            de.schliweb.makeacopy.utils.ocr.MultiColumnOcrPrefs.isEnabled(getContext()));
+    if (reviewedText == null || reviewedText.isEmpty()) reviewedText = buildFullText(doc);
+
+    // A session page of the export screen: its persisted result is what the export reads
+    String pageId = viewModel.getPageId();
+    if (pageId != null && !savePageResult(pageId, reviewedText, reviewedWords)) {
+      UIUtils.showToast(
+          requireContext(),
+          getString(R.string.ocr_review_save_failed),
+          android.widget.Toast.LENGTH_SHORT);
+      return;
+    }
+
+    // Apply to OCRViewModel when the in-memory OCR state is the one under review
+    if (pageId == null || viewModel.isPageOwnsOcrState()) {
+      try {
+        de.schliweb.makeacopy.ui.ocr.OCRViewModel ocrViewModel =
+            new ViewModelProvider(requireActivity())
+                .get(de.schliweb.makeacopy.ui.ocr.OCRViewModel.class);
+        ocrViewModel.applyReviewResult(reviewedText, reviewedWords);
+      } catch (Throwable t) {
+        dbgWarn("Failed to apply review result to OCRViewModel", t);
+      }
     }
 
     // Mark as saved and navigate back
     viewModel.markSaved();
     navigateBack();
+  }
+
+  /**
+   * Writes the reviewed words and text as the persisted OCR result of a session page and points its
+   * registry entry at them, so the PDF text layer, the TXT export and the library use the edits.
+   *
+   * @return whether the result was written
+   */
+  private boolean savePageResult(
+      String pageId, String text, java.util.List<RecognizedWord> words) {
+    Context app = requireContext().getApplicationContext();
+    try {
+      java.io.File wordsFile = PageOcrFiles.write(app, pageId, text, words);
+      CompletedScansRegistry reg = CompletedScansRegistry.get(app);
+      CompletedScan entry = reg.findById(pageId);
+      if (entry != null) {
+        reg.insertOrReplace(
+            entry.withOcr(
+                wordsFile.getAbsolutePath(), "words_json", CompletedScan.STATUS_OCR_COMPLETE));
+      }
+      return true;
+    } catch (java.io.IOException e) {
+      dbgWarn("Failed to save the reviewed page " + pageId, e);
+      return false;
+    }
+  }
+
+  @Override
+  public void onDestroy() {
+    super.onDestroy();
+    // Leaving Review for good: drop the page and its image (kept across configuration changes)
+    if (isRemoving() && viewModel != null) viewModel.clearPage();
   }
 
   /**

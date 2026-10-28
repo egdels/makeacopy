@@ -419,6 +419,9 @@
     <string name="ocr_batch_option_selected">Seçili sayfalar…</string>
     <string name="ocr_batch_option_all">Tüm sayfalar</string>
     <string name="ocr_batch_option_language">OCR dili (%1$s)…</string>
+    <string name="ocr_batch_option_review">Metni gözden geçir…</string>
+    <string name="ocr_review_no_text">Bu sayfada gözden geçirilecek OCR metni yok</string>
+    <string name="ocr_review_save_failed">Gözden geçirilen metin kaydedilemedi</string>
     <string name="ocr_batch_select_pages">OCR için sayfaları seç</string>
     <string name="ocr_batch_running_title">OCR çalıştırılıyor</string>
     <string name="ocr_batch_already_running">OCR zaten çalışıyor</string>

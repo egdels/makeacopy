@@ -16,6 +16,7 @@ import android.util.Log;
 import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.utils.infra.LogSafe;
+import de.schliweb.makeacopy.utils.ocr.PageOcrFiles;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import de.schliweb.makeacopy.utils.ocr.WordsJson;
 import java.io.File;
@@ -187,10 +188,10 @@ public final class ScanPersister {
    *
    * <p>The edited bitmap becomes the new authoritative working copy: page.jpg and thumb.jpg are
    * rewritten in place and the registry entry is replaced. Because the page image changed, any
-   * previous OCR artifacts (text.txt, words.json) are semantically stale and are physically deleted
-   * before persisting, so they can never leak into a later export. The resulting page status is
-   * {@code IMPORTED} (no OCR), never a stale {@code OCR_COMPLETE}. Source provenance ({@code
-   * sourceType}, {@code pdfPageIndex}) is preserved by {@link #persist}.
+   * previous OCR artifacts (text.txt, words.json, page.ocr.json) are semantically stale and are
+   * physically deleted before persisting, so they can never leak into a later export. The resulting
+   * page status is {@code IMPORTED} (no OCR), never a stale {@code OCR_COMPLETE}. Source provenance
+   * ({@code sourceType}, {@code pdfPageIndex}) is preserved by {@link #persist}.
    *
    * @param appContext application context
    * @param edited completed scan carrying the SAME id as the original page plus the freshly edited
@@ -204,7 +205,10 @@ public final class ScanPersister {
       throw new IllegalArgumentException("Invalid arguments for persistEditedPage");
     }
     File dir = new File(appContext.getFilesDir(), "scans/" + edited.id());
-    for (String stale : new String[] {"text.txt", "words.json"}) {
+    for (String stale :
+        new String[] {
+          PageOcrFiles.TEXT_FILE, PageOcrFiles.WORDS_FILE, PageOcrFiles.EDITED_FILE
+        }) {
       File f = new File(dir, stale);
       if (f.exists() && !f.delete()) {
         Log.w(TAG, "persistEditedPage: failed to delete stale OCR artifact " + LogSafe.file(f));

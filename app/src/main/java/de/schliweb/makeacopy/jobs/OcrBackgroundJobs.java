@@ -23,11 +23,9 @@ import de.schliweb.makeacopy.utils.ocr.OCRUtils;
 import de.schliweb.makeacopy.utils.ocr.OcrModelManager;
 import de.schliweb.makeacopy.utils.ocr.OcrPageSegmentationMode;
 import de.schliweb.makeacopy.utils.ocr.OcrRecognitionPipeline;
+import de.schliweb.makeacopy.utils.ocr.PageOcrFiles;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
-import de.schliweb.makeacopy.utils.ocr.WordsJson;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -176,8 +174,11 @@ public final class OcrBackgroundJobs {
     return null;
   }
 
-  /** Decodes the page image (falling back to the thumbnail) and makes sure the text is upright. */
-  private static Bitmap loadUprightBitmap(CompletedScan s) {
+  /**
+   * Decodes the page image (falling back to the thumbnail) and makes sure the text is upright. The
+   * persisted OCR words of the page are in the coordinates of this bitmap.
+   */
+  public static Bitmap loadUprightBitmap(CompletedScan s) {
     Bitmap bmp = null;
     if (s.filePath() != null) bmp = ImageDecodeUtils.decodeFull(s.filePath());
     if (bmp == null && s.thumbPath() != null) bmp = ImageDecodeUtils.decodeFull(s.thumbPath());
@@ -258,32 +259,17 @@ public final class OcrBackgroundJobs {
     return storedMode;
   }
 
-  /** Writes text.txt / words.json and points the registry entry at the new OCR artifact. */
+  /**
+   * Writes text.txt / words.json (dropping earlier Review edits) and points the registry entry at
+   * the new OCR artifact.
+   */
   private static void persistResult(
       Context app, CompletedScansRegistry reg, CompletedScan s, OCRHelper.OcrResultWords bestResult)
       throws java.io.IOException {
     String text = (bestResult != null && bestResult.text != null) ? bestResult.text : "";
     List<RecognizedWord> words = (bestResult != null) ? bestResult.words : null;
 
-    File dir = new File(app.getFilesDir(), "scans/" + s.id());
-    if (!dir.exists()) {
-      //noinspection ResultOfMethodCallIgnored
-      dir.mkdirs();
-    }
-
-    // Write plain text as fallback
-    File txt = new File(dir, "text.txt");
-    try (FileOutputStream fos = new FileOutputStream(txt)) {
-      fos.write(text.getBytes(StandardCharsets.UTF_8));
-      fos.flush();
-    }
-    // Write words.json
-    File wordsFile = new File(dir, "words.json");
-    try (FileOutputStream wos = new FileOutputStream(wordsFile)) {
-      String json = WordsJson.toWordsJson(words);
-      wos.write(json.getBytes(StandardCharsets.UTF_8));
-      wos.flush();
-    }
+    File wordsFile = PageOcrFiles.write(app, s.id(), text, words);
 
     // Update registry to prefer words_json. Preserve multi-page metadata
     // (sourceType/pdfPageIndex) and mark the page as OCR_COMPLETE.

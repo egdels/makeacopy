@@ -417,6 +417,9 @@
     <string name="ocr_batch_option_selected">صفحات انتخاب‌شده…</string>
     <string name="ocr_batch_option_all">همه صفحات</string>
     <string name="ocr_batch_option_language">زبان OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">بازبینی متن…</string>
+    <string name="ocr_review_no_text">این صفحه متن OCR برای بازبینی ندارد</string>
+    <string name="ocr_review_save_failed">ذخیرهٔ متن بازبینی‌شده ممکن نشد</string>
     <string name="ocr_batch_select_pages">انتخاب صفحات برای OCR</string>
     <string name="ocr_batch_running_title">در حال اجرای OCR</string>
     <string name="ocr_batch_already_running">OCR در حال حاضر در حال اجراست</string>

@@ -423,6 +423,9 @@
     <string name="ocr_batch_option_selected">Geselecteerde pagina\'s…</string>
     <string name="ocr_batch_option_all">Alle pagina\'s</string>
     <string name="ocr_batch_option_language">OCR-taal (%1$s)…</string>
+    <string name="ocr_batch_option_review">Tekst controleren…</string>
+    <string name="ocr_review_no_text">Deze pagina heeft geen OCR-tekst om te controleren</string>
+    <string name="ocr_review_save_failed">De gecontroleerde tekst kon niet worden opgeslagen</string>
     <string name="ocr_batch_select_pages">Pagina\'s selecteren voor OCR</string>
     <string name="ocr_batch_running_title">OCR wordt uitgevoerd</string>
     <string name="ocr_batch_already_running">OCR wordt al uitgevoerd</string>

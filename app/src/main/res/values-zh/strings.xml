@@ -399,6 +399,9 @@
     <string name="ocr_batch_option_selected">已选页面…</string>
     <string name="ocr_batch_option_all">所有页面</string>
     <string name="ocr_batch_option_language">OCR 语言 (%1$s)…</string>
+    <string name="ocr_batch_option_review">审阅文本…</string>
+    <string name="ocr_review_no_text">此页面没有可审阅的 OCR 文本</string>
+    <string name="ocr_review_save_failed">无法保存审阅后的文本</string>
     <string name="ocr_batch_select_pages">选择要进行 OCR 的页面</string>
     <string name="ocr_batch_running_title">正在运行 OCR</string>
     <string name="ocr_batch_already_running">OCR 已在运行</string>

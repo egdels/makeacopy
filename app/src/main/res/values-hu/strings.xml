@@ -421,6 +421,9 @@
     <string name="ocr_batch_option_selected">Kijelölt oldalak…</string>
     <string name="ocr_batch_option_all">Összes oldal</string>
     <string name="ocr_batch_option_language">OCR nyelve (%1$s)…</string>
+    <string name="ocr_batch_option_review">Szöveg ellenőrzése…</string>
+    <string name="ocr_review_no_text">Ezen az oldalon nincs ellenőrizhető OCR-szöveg</string>
+    <string name="ocr_review_save_failed">Az ellenőrzött szöveg nem menthető</string>
     <string name="ocr_batch_select_pages">Oldalak kiválasztása OCR-hez</string>
     <string name="ocr_batch_running_title">OCR futtatása</string>
     <string name="ocr_batch_already_running">Az OCR már fut</string>

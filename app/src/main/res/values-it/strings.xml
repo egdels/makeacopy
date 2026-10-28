@@ -427,6 +427,9 @@
     <string name="ocr_batch_option_selected">Pagine selezionate…</string>
     <string name="ocr_batch_option_all">Tutte le pagine</string>
     <string name="ocr_batch_option_language">Lingua OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">Rivedi testo…</string>
+    <string name="ocr_review_no_text">Questa pagina non ha testo OCR da rivedere</string>
+    <string name="ocr_review_save_failed">Impossibile salvare il testo rivisto</string>
     <string name="ocr_batch_select_pages">Seleziona le pagine per l’OCR</string>
     <string name="ocr_batch_running_title">Esecuzione OCR</string>
     <string name="ocr_batch_already_running">L’OCR è già in esecuzione</string>

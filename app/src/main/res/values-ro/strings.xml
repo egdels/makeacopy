@@ -430,6 +430,9 @@
     <string name="ocr_batch_option_selected">Pagini selectate…</string>
     <string name="ocr_batch_option_all">Toate paginile</string>
     <string name="ocr_batch_option_language">Limbă OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">Verifică textul…</string>
+    <string name="ocr_review_no_text">Această pagină nu are text OCR de verificat</string>
+    <string name="ocr_review_save_failed">Textul verificat nu a putut fi salvat</string>
     <string name="ocr_batch_select_pages">Selectați paginile pentru OCR</string>
     <string name="ocr_batch_running_title">Se rulează OCR</string>
     <string name="ocr_batch_already_running">OCR rulează deja</string>

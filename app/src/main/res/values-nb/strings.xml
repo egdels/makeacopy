@@ -418,6 +418,9 @@
     <string name="ocr_batch_option_selected">Valgte sider…</string>
     <string name="ocr_batch_option_all">Alle sider</string>
     <string name="ocr_batch_option_language">OCR-språk (%1$s)…</string>
+    <string name="ocr_batch_option_review">Gå gjennom tekst…</string>
+    <string name="ocr_review_no_text">Denne siden har ingen OCR-tekst å gå gjennom</string>
+    <string name="ocr_review_save_failed">Kunne ikke lagre den gjennomgåtte teksten</string>
     <string name="ocr_batch_select_pages">Velg sider for OCR</string>
     <string name="ocr_batch_running_title">Kjører OCR</string>
     <string name="ocr_batch_already_running">OCR kjører allerede</string>

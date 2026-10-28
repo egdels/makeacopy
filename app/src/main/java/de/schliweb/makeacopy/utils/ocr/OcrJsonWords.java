@@ -56,6 +56,7 @@ public final class OcrJsonWords {
         RecognizedWord rw = new RecognizedWord(text, box, conf);
         rw.setBlockId(w.k);
         rw.setLineId(w.l);
+        rw.setLang(w.lang);
         out.add(rw);
       }
       // Sort by layout structure if available, otherwise by position (Y→X)

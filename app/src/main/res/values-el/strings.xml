@@ -408,6 +408,9 @@
     <string name="ocr_batch_option_selected">Επιλεγμένες σελίδες…</string>
     <string name="ocr_batch_option_all">Όλες οι σελίδες</string>
     <string name="ocr_batch_option_language">Γλώσσα OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">Έλεγχος κειμένου…</string>
+    <string name="ocr_review_no_text">Αυτή η σελίδα δεν έχει κείμενο OCR για έλεγχο</string>
+    <string name="ocr_review_save_failed">Δεν ήταν δυνατή η αποθήκευση του ελεγμένου κειμένου</string>
     <string name="ocr_batch_select_pages">Επιλογή σελίδων για OCR</string>
     <string name="ocr_batch_running_title">Εκτέλεση OCR</string>
     <string name="ocr_batch_already_running">Το OCR εκτελείται ήδη</string>

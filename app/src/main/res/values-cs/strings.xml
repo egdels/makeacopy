@@ -422,6 +422,9 @@
     <string name="ocr_batch_option_selected">Vybrané stránky…</string>
     <string name="ocr_batch_option_all">Všechny stránky</string>
     <string name="ocr_batch_option_language">Jazyk OCR (%1$s)…</string>
+    <string name="ocr_batch_option_review">Zkontrolovat text…</string>
+    <string name="ocr_review_no_text">Tato stránka nemá žádný text OCR ke kontrole</string>
+    <string name="ocr_review_save_failed">Zkontrolovaný text nelze uložit</string>
     <string name="ocr_batch_select_pages">Vybrat stránky pro OCR</string>
     <string name="ocr_batch_running_title">Probíhá OCR</string>
     <string name="ocr_batch_already_running">OCR již probíhá</string>

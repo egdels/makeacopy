@@ -369,6 +369,7 @@ public class OCRFragment extends Fragment {
           OCRViewModel.OcrUiState s = ocrViewModel.getState().getValue();
           de.schliweb.makeacopy.ui.ocr.review.model.OcrDoc doc =
               de.schliweb.makeacopy.ui.ocr.review.model.OcrDocMapper.fromState(s);
+          rv.clearPage();
           rv.setDoc(doc);
           Navigation.findNavController(requireView()).navigate(R.id.navigation_review);
         });
