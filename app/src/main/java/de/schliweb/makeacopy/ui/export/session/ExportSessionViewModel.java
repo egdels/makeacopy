@@ -14,7 +14,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * ViewModel for managing the export session, specifically handling a collection of completed scans
@@ -38,6 +40,22 @@ public class ExportSessionViewModel extends ViewModel {
    * added (a new document) or a persisted session is restored.
    */
   private String documentId;
+
+  /**
+   * Pages whose in-memory OCR state ({@code OCRViewModel}) is outdated: an OCR job from the export
+   * screen has written a newer result to the page's files since the scan flow. Runtime-only.
+   */
+  private final Set<String> ocrStateReplaced = new HashSet<>();
+
+  /** Marks the in-memory OCR state of {@code pageId} as replaced by its persisted result. */
+  public void markOcrStateReplaced(String pageId) {
+    if (pageId != null) ocrStateReplaced.add(pageId);
+  }
+
+  /** Whether an OCR job has replaced the in-memory OCR state of {@code pageId}. */
+  public boolean isOcrStateReplaced(String pageId) {
+    return pageId != null && ocrStateReplaced.contains(pageId);
+  }
 
   /** Returns the persistent document id backing this runtime session, or null. */
   public String getDocumentId() {

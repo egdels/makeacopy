@@ -205,6 +205,8 @@ public class ExportFragment extends Fragment {
           if (id == null) return;
           boolean batchActive = ocrBatchController != null && ocrBatchController.isRunning();
           if (success) {
+            // The page's files now hold a newer result than the scan flow's in-memory state.
+            exportSessionViewModel.markOcrStateReplaced(id);
             try {
               SessionOcrUpdater.applyOcrResultToSession(
                   requireContext(), exportSessionViewModel, id);
@@ -3332,11 +3334,23 @@ public class ExportFragment extends Fragment {
       } catch (Exception e) {
         Log.w(TAG, "Failed to update session after OCR job", e);
       }
+      if (sessionPageOcrComplete(id)) exportSessionViewModel.markOcrStateReplaced(id);
     }
     exportOcrWait.refresh(
         id ->
             ocrJobsAwaitingResult.contains(id)
                 || de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id));
+  }
+
+  private boolean sessionPageOcrComplete(String pageId) {
+    List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
+    if (pages == null) return false;
+    for (CompletedScan p : pages) {
+      if (p != null && pageId.equals(p.id())) {
+        return CompletedScan.STATUS_OCR_COMPLETE.equals(p.pageStatus());
+      }
+    }
+    return false;
   }
 
   @Override
@@ -3420,11 +3434,20 @@ public class ExportFragment extends Fragment {
    * Whether the in-memory OCR state ({@link OCRViewModel}) belongs to {@code page}. OCR runs on the
    * crop bitmap, and the page that last went through the scan flow was created from exactly that
    * bitmap instance. A page restored from disk, or the page left behind after deleting the freshly
-   * scanned one, does not own the state and has to use its own persisted OCR result.
+   * scanned one, does not own the state and has to use its own persisted OCR result. Neither does a
+   * page that an OCR job from the export screen has read again since: its files hold the newer
+   * result.
    */
   private boolean ocrStateBelongsTo(CompletedScan page) {
     return ownsOcrState(
-        page, cropViewModel != null ? cropViewModel.getImageBitmap().getValue() : null);
+            page, cropViewModel != null ? cropViewModel.getImageBitmap().getValue() : null)
+        && !isOcrStateReplaced(page);
+  }
+
+  private boolean isOcrStateReplaced(CompletedScan page) {
+    return page != null
+        && exportSessionViewModel != null
+        && exportSessionViewModel.isOcrStateReplaced(page.id());
   }
 
   /**
@@ -3433,7 +3456,13 @@ public class ExportFragment extends Fragment {
    */
   private java.util.function.Predicate<CompletedScan> ocrOwnershipSnapshot() {
     final Bitmap crop = cropViewModel != null ? cropViewModel.getImageBitmap().getValue() : null;
-    return page -> ownsOcrState(page, crop);
+    final java.util.Set<String> replaced = new java.util.HashSet<>();
+    List<CompletedScan> pages =
+        exportSessionViewModel != null ? exportSessionViewModel.getPages().getValue() : null;
+    if (pages != null) {
+      for (CompletedScan p : pages) if (isOcrStateReplaced(p)) replaced.add(p.id());
+    }
+    return page -> ownsOcrState(page, crop) && (page == null || !replaced.contains(page.id()));
   }
 
   private static boolean ownsOcrState(CompletedScan page, Bitmap cropBitmap) {

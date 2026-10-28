@@ -300,4 +300,14 @@ public class ExportSessionViewModelTest {
     assertEquals("id-A", pages.get(0).id());
     assertEquals("id-B", pages.get(1).id());
   }
+
+  @Test
+  public void ocrStateReplaced_isTrackedPerPage() {
+    assertFalse(vm.isOcrStateReplaced("id-a"));
+    vm.markOcrStateReplaced("id-a");
+    vm.markOcrStateReplaced(null);
+    assertTrue(vm.isOcrStateReplaced("id-a"));
+    assertFalse(vm.isOcrStateReplaced("id-b"));
+    assertFalse(vm.isOcrStateReplaced(null));
+  }
 }
