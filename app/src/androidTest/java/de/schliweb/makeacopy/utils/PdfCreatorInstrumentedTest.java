@@ -325,7 +325,6 @@ public class PdfCreatorInstrumentedTest {
               false,
               false,
               300,
-              null,
               PageFormat.A4,
               DocumentCleanupMode.ORIGINAL,
               PdfCreator.TextLayerMode.WORD_POSITIONED);

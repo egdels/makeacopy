@@ -109,15 +109,6 @@ public final class ExportPrefsHelper {
     return PdfQualityPreset.fromName(presetSaved, def);
   }
 
-  /** ROBUST for black and white (a saved CLASSIC from before counts as ROBUST), else null. */
-  public static PdfCreator.BwMode resolveBwMode(Context context) {
-    String bw = getPdfBwMode(context);
-    if ("ROBUST".equalsIgnoreCase(bw) || "CLASSIC".equalsIgnoreCase(bw)) {
-      return PdfCreator.BwMode.ROBUST;
-    }
-    return null;
-  }
-
   public static PdfCreator.TextLayerMode resolveTextLayerMode(Context context) {
     String saved = getPrefs(context).getString("pdf_text_layer_mode", null);
     try {

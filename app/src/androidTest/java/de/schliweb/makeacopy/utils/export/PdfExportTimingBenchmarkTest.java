@@ -63,15 +63,14 @@ public class PdfExportTimingBenchmarkTest {
 
     PdfQualityPreset high = PdfQualityPreset.HIGH;
     PdfQualityPreset std = PdfQualityPreset.STANDARD;
-    timeSingle(ctx, "1p HIGH color words", page, words, high, false, false, null, null);
-    timeSingle(ctx, "1p HIGH color no-words", page, null, high, false, false, null, null);
-    timeSingle(ctx, "1p STANDARD color words", page, words, std, false, false, null, null);
-    timeSingle(ctx, "1p HIGH gray words", page, words, high, true, false, null, null);
+    timeSingle(ctx, "1p HIGH color words", page, words, high, false, false, null);
+    timeSingle(ctx, "1p HIGH color no-words", page, null, high, false, false, null);
+    timeSingle(ctx, "1p STANDARD color words", page, words, std, false, false, null);
+    timeSingle(ctx, "1p HIGH gray words", page, words, high, true, false, null);
     timeSingle(
-        ctx, "1p HIGH bw-robust words", page, words, high, false, true, PdfCreator.BwMode.ROBUST,
-        null);
+        ctx, "1p HIGH bw-robust words", page, words, high, false, true, null);
     timeSingle(
-        ctx, "1p HIGH enhanced words", page, words, high, false, false, null,
+        ctx, "1p HIGH enhanced words", page, words, high, false, false,
         DocumentCleanupMode.ENHANCED);
 
     File[] files = writePageFiles(ctx, page);
@@ -187,7 +186,6 @@ public class PdfExportTimingBenchmarkTest {
               }
               lastPageEnd[0] = now;
             },
-            null,
             format,
             DocumentCleanupMode.ORIGINAL,
             PdfCreator.TextLayerMode.LINE_BASED,
@@ -250,7 +248,6 @@ public class PdfExportTimingBenchmarkTest {
       PdfQualityPreset preset,
       boolean gray,
       boolean bw,
-      PdfCreator.BwMode bwMode,
       DocumentCleanupMode cleanup) {
     long[] ms = new long[RUNS];
     File out = new File(ctx.getCacheDir(), "bench_single.pdf");
@@ -266,7 +263,6 @@ public class PdfExportTimingBenchmarkTest {
               gray,
               bw,
               preset.targetDpi,
-              bwMode,
               PageFormat.FIT_TO_IMAGE,
               cleanup == null ? DocumentCleanupMode.ORIGINAL : cleanup,
               PdfCreator.TextLayerMode.LINE_BASED,
@@ -315,7 +311,6 @@ public class PdfExportTimingBenchmarkTest {
               false,
               preset.targetDpi,
               (i, n) -> {},
-              null,
               PageFormat.FIT_TO_IMAGE,
               DocumentCleanupMode.ORIGINAL,
               PdfCreator.TextLayerMode.LINE_BASED,

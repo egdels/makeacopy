@@ -121,7 +121,6 @@ public class MultiColumnPdfPaddleTest {
                     false,
                     false,
                     300,
-                    null,
                     PageFormat.A4,
                     DocumentCleanupMode.ORIGINAL,
                     PdfCreator.TextLayerMode.LINE_BASED,

@@ -127,7 +127,6 @@ public class PdfStoredJpegPassthroughTest {
             false,
             high.targetDpi,
             null,
-            null,
             PageFormat.FIT_TO_IMAGE,
             DocumentCleanupMode.ORIGINAL,
             PdfCreator.TextLayerMode.LINE_BASED,

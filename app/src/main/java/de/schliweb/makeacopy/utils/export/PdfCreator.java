@@ -94,45 +94,6 @@ public class PdfCreator {
   }
 
   /**
-   * Creates a searchable PDF document from a bitmap and a list of recognized words. The PDF
-   * contains an image representation of the provided bitmap and includes a searchable text layer
-   * based on the recognized words. The resulting file is saved to the specified output URI.
-   *
-   * @param context the Android context, used to access system resources and file utilities
-   * @param bitmap the bitmap to include in the PDF as an image
-   * @param words a list of recognized words to overlay as a searchable text layer
-   * @param outputUri the URI where the generated PDF will be saved
-   * @param jpegQuality the compression quality (0-100) for the bitmap image in the PDF
-   * @param convertToGrayscale specifies whether the bitmap image should be converted to grayscale
-   * @param convertToBlackWhite specifies whether the bitmap image should be converted to
-   *     black-and-white
-   * @param targetDpi the target DPI (dots per inch) at which the image should be rendered in the
-   *     PDF
-   * @return the URI of the generated searchable PDF file
-   */
-  public static Uri createSearchablePdf(
-      Context context,
-      Bitmap bitmap,
-      List<RecognizedWord> words,
-      Uri outputUri,
-      int jpegQuality,
-      boolean convertToGrayscale,
-      boolean convertToBlackWhite,
-      int targetDpi) {
-    // Back-compat: default to ROBUST when BW is requested
-    return createSearchablePdf(
-        context,
-        bitmap,
-        words,
-        outputUri,
-        jpegQuality,
-        convertToGrayscale,
-        convertToBlackWhite,
-        targetDpi,
-        convertToBlackWhite ? BwMode.ROBUST : null);
-  }
-
-  /**
    * Creates a searchable PDF from the given bitmap and recognized text words, and writes it to the
    * specified URI. The method allows customization of image processing, PDF properties, and OCR
    * text handling.
@@ -148,8 +109,6 @@ public class PdfCreator {
    * @param convertToBlackWhite True to convert the image to black-and-white using thresholding
    *     techniques.
    * @param targetDpi The target resolution (dots per inch) for the output image in the PDF.
-   * @param bwMode The black-and-white conversion mode (e.g., robust or simple thresholding).
-   *     Ignored if {@code convertToBlackWhite} is false.
    * @return The URI pointing to the created PDF, or null if the PDF creation failed.
    */
   public static Uri createSearchablePdf(
@@ -160,8 +119,7 @@ public class PdfCreator {
       int jpegQuality,
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
-      int targetDpi,
-      BwMode bwMode) {
+      int targetDpi) {
     return createSearchablePdf(
         context,
         bitmap,
@@ -171,7 +129,6 @@ public class PdfCreator {
         convertToGrayscale,
         convertToBlackWhite,
         targetDpi,
-        bwMode,
         PageFormat.A4);
   }
 
@@ -191,8 +148,6 @@ public class PdfCreator {
    * @param convertToBlackWhite True to convert the image to black-and-white using thresholding
    *     techniques.
    * @param targetDpi The target resolution (dots per inch) for the output image in the PDF.
-   * @param bwMode The black-and-white conversion mode (e.g., robust or simple thresholding).
-   *     Ignored if {@code convertToBlackWhite} is false.
    * @param pageFormat The page format to use for the PDF (e.g., A4, US Letter, Fit to Image).
    * @return The URI pointing to the created PDF, or null if the PDF creation failed.
    */
@@ -205,7 +160,6 @@ public class PdfCreator {
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
       int targetDpi,
-      BwMode bwMode,
       PageFormat pageFormat) {
     return createSearchablePdf(
         context,
@@ -216,7 +170,6 @@ public class PdfCreator {
         convertToGrayscale,
         convertToBlackWhite,
         targetDpi,
-        bwMode,
         pageFormat,
         DocumentCleanupMode.ORIGINAL);
   }
@@ -230,7 +183,6 @@ public class PdfCreator {
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
       int targetDpi,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode) {
     return createSearchablePdf(
@@ -242,7 +194,6 @@ public class PdfCreator {
         convertToGrayscale,
         convertToBlackWhite,
         targetDpi,
-        bwMode,
         pageFormat,
         cleanupMode,
         TextLayerMode.LINE_BASED);
@@ -257,7 +208,6 @@ public class PdfCreator {
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
       int targetDpi,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode) {
@@ -270,7 +220,6 @@ public class PdfCreator {
         convertToGrayscale,
         convertToBlackWhite,
         targetDpi,
-        bwMode,
         pageFormat,
         cleanupMode,
         textLayerMode,
@@ -279,7 +228,7 @@ public class PdfCreator {
 
   /**
    * Variant of {@link #createSearchablePdf(Context, Bitmap, List, Uri, int, boolean, boolean, int,
-   * BwMode, PageFormat, DocumentCleanupMode, TextLayerMode)} with optional multi-column layout
+   * PageFormat, DocumentCleanupMode, TextLayerMode)} with optional multi-column layout
    * reconstruction (newspapers, magazines). When {@code multiColumn} is {@code true} and the box
    * geometry forms a multi-column layout (see {@link MultiColumnLayoutPolicy}), the invisible text
    * layer is written segment by segment in column reading order so that text extraction and
@@ -296,7 +245,6 @@ public class PdfCreator {
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
       int targetDpi,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode,
@@ -1153,48 +1101,6 @@ public class PdfCreator {
   }
 
   /**
-   * Creates a searchable PDF document from the given list of bitmaps and recognized text data. The
-   * resulting PDF is written to the specified output URI. Options such as grayscale conversion,
-   * black-and-white conversion, JPEG quality, and target DPI are supported for customization.
-   *
-   * @param context The application context, required for accessing resources and file paths.
-   * @param bitmaps A list of bitmap images representing the pages of the document.
-   * @param perPageWords A list containing recognized words for each corresponding bitmap page.
-   * @param outputUri The URI where the generated PDF will be saved.
-   * @param jpegQuality The quality of JPEG compression (0-100) for the bitmap images.
-   * @param convertToGrayscale If true, the bitmaps will be converted to grayscale before addition
-   *     to the PDF.
-   * @param convertToBlackWhite If true, the bitmaps will be converted to black-and-white using the
-   *     default mode.
-   * @param targetDpi The target resolution in DPI for the bitmap images in the PDF.
-   * @param listener A listener to track and report the progress of the PDF creation process.
-   * @return The URI of the generated searchable PDF.
-   */
-  public static Uri createSearchablePdf(
-      Context context,
-      List<Bitmap> bitmaps,
-      List<List<RecognizedWord>> perPageWords,
-      Uri outputUri,
-      int jpegQuality,
-      boolean convertToGrayscale,
-      boolean convertToBlackWhite,
-      int targetDpi,
-      ProgressListener listener) {
-    // Back-compat: default to ROBUST when BW is requested
-    return createSearchablePdf(
-        context,
-        bitmaps,
-        perPageWords,
-        outputUri,
-        jpegQuality,
-        convertToGrayscale,
-        convertToBlackWhite,
-        targetDpi,
-        listener,
-        convertToBlackWhite ? BwMode.ROBUST : null);
-  }
-
-  /**
    * Creates a searchable PDF from a collection of bitmap images and their corresponding recognized
    * words.
    *
@@ -1210,7 +1116,6 @@ public class PdfCreator {
    *     black-and-white
    * @param targetDpi the target resolution in dots per inch (DPI) for the PDF pages
    * @param listener a progress listener to receive updates on the processing of pages
-   * @param bwMode the black-and-white processing mode to be used if convertToBlackWhite is true
    * @return the URI of the generated PDF file, or null if an error occurred
    */
   public static Uri createSearchablePdf(
@@ -1222,8 +1127,7 @@ public class PdfCreator {
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
       int targetDpi,
-      ProgressListener listener,
-      BwMode bwMode) {
+      ProgressListener listener) {
     return createSearchablePdf(
         context,
         bitmaps,
@@ -1234,7 +1138,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         PageFormat.A4);
   }
 
@@ -1252,7 +1155,6 @@ public class PdfCreator {
    *     black-and-white
    * @param targetDpi the target resolution in dots per inch (DPI) for the PDF pages
    * @param listener a progress listener to receive updates on the processing of pages
-   * @param bwMode the black-and-white processing mode
    * @param pageFormat the page format to use for the PDF
    * @return the URI of the generated PDF file, or null if an error occurred
    */
@@ -1266,7 +1168,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat) {
     return createSearchablePdf(
         context,
@@ -1278,7 +1179,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         pageFormat,
         DocumentCleanupMode.ORIGINAL);
   }
@@ -1293,7 +1193,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode) {
     return createSearchablePdf(
@@ -1306,7 +1205,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         pageFormat,
         cleanupMode,
         TextLayerMode.LINE_BASED);
@@ -1322,7 +1220,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode) {
@@ -1336,7 +1233,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         pageFormat,
         cleanupMode,
         textLayerMode,
@@ -1361,7 +1257,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode,
@@ -1403,7 +1298,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         pageFormat,
         cleanupMode,
         textLayerMode,
@@ -1486,7 +1380,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode) {
@@ -1499,7 +1392,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         pageFormat,
         cleanupMode,
         textLayerMode,
@@ -1509,8 +1401,8 @@ public class PdfCreator {
 
   /**
    * Variant of {@link #createSearchablePdf(Context, PageSource, Uri, int, boolean, boolean, int,
-   * ProgressListener, BwMode, PageFormat, DocumentCleanupMode, TextLayerMode)} with optional
-   * multi-column layout reconstruction (see {@link MultiColumnLayoutPolicy}).
+   * ProgressListener, PageFormat, DocumentCleanupMode, TextLayerMode)} with optional multi-column
+   * layout reconstruction (see {@link MultiColumnLayoutPolicy}).
    *
    * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
    */
@@ -1523,7 +1415,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode,
@@ -1537,7 +1428,6 @@ public class PdfCreator {
         convertToBlackWhite,
         targetDpi,
         listener,
-        bwMode,
         pageFormat,
         cleanupMode,
         textLayerMode,
@@ -1554,7 +1444,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode,
@@ -1597,7 +1486,6 @@ public class PdfCreator {
                 convertToBlackWhite,
                 targetDpi,
                 listener,
-                bwMode,
                 pageFormat,
                 cleanupMode,
                 textLayerMode,
@@ -1678,7 +1566,6 @@ public class PdfCreator {
                     convertToGrayscale,
                     convertToBlackWhite,
                     targetDpi,
-                    bwMode,
                     pageFormat,
                     cleanupMode,
                     textLayerMode,
@@ -1799,7 +1686,6 @@ public class PdfCreator {
       boolean convertToBlackWhite,
       int targetDpi,
       ProgressListener listener,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode,
@@ -1836,7 +1722,6 @@ public class PdfCreator {
                           convertToGrayscale,
                           convertToBlackWhite,
                           targetDpi,
-                          bwMode,
                           pageFormat,
                           cleanupMode,
                           skipNullBitmaps)));
@@ -1914,7 +1799,6 @@ public class PdfCreator {
       boolean toGray,
       boolean toBw,
       int targetDpi,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       boolean skipNullBitmaps)
@@ -2145,7 +2029,6 @@ public class PdfCreator {
       boolean convertToGrayscale,
       boolean convertToBlackWhite,
       int targetDpi,
-      BwMode bwMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
       TextLayerMode textLayerMode,
@@ -2311,10 +2194,6 @@ public class PdfCreator {
         cs.restoreGraphicsState();
       }
     }
-  }
-
-  public enum BwMode {
-    ROBUST
   }
 
   /**

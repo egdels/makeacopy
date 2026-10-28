@@ -128,7 +128,6 @@ public class PdfCreatorStreamingTest {
         },
         null,
         null,
-        null,
         null);
   }
 

@@ -1645,7 +1645,6 @@ public class ExportFragment extends Fragment {
             appContext, preset.forceGrayscale, convertToGrayscale);
     final boolean convertGrayEffective = grayBw[0];
     final boolean convertBwEffective = grayBw[1];
-    final PdfCreator.BwMode bwMode = ExportPrefsHelper.resolveBwMode(appContext);
     final de.schliweb.makeacopy.utils.image.DocumentCleanupMode cleanupMode =
         ExportPrefsHelper.resolveCleanupMode(appContext);
     final PageFormat pageFormat = ExportPrefsHelper.resolvePageFormat(appContext);
@@ -1665,7 +1664,6 @@ public class ExportFragment extends Fragment {
           convertGrayEffective,
           convertBwEffective,
           preset.targetDpi,
-          bwMode,
           pageFormat,
           cleanupMode,
           textLayerMode,
@@ -1694,7 +1692,6 @@ public class ExportFragment extends Fragment {
         (pageIndex, total) ->
             postToUiSafe(
                 () -> exportViewModel.setExportProgress(Math.max(0, Math.min(pageIndex, total)))),
-        bwMode,
         pageFormat,
         cleanupMode,
         textLayerMode,
