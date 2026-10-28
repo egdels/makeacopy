@@ -9,8 +9,6 @@
  */
 package de.schliweb.makeacopy.utils.export;
 
-import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
-
 /**
  * Supported page formats for PDF export.
  *
@@ -33,23 +31,23 @@ public enum PageFormat {
   LEGAL;
 
   /**
-   * Returns the {@link PDRectangle} for this format. For {@link #FIT_TO_IMAGE} the caller must
-   * provide the prepared bitmap dimensions; the page is sized so that the longer edge equals the A4
-   * long edge (842 pt) and the shorter edge is proportional to the image aspect ratio.
+   * Returns the page size for this format. For {@link #FIT_TO_IMAGE} the caller must provide the
+   * prepared bitmap dimensions; the page is sized so that the longer edge equals the A4 long edge
+   * (842 pt) and the shorter edge is proportional to the image aspect ratio.
    *
    * @param imageWidth width of the prepared bitmap (only used for {@link #FIT_TO_IMAGE})
    * @param imageHeight height of the prepared bitmap (only used for {@link #FIT_TO_IMAGE})
-   * @return a {@link PDRectangle} representing the page size in PDF points (1/72 in)
+   * @return {width, height} of the page in PDF points (1/72 in)
    */
-  public PDRectangle toPageRectangle(int imageWidth, int imageHeight) {
+  public float[] toPageSize(int imageWidth, int imageHeight) {
     switch (this) {
       case US_LETTER:
-        return PDRectangle.LETTER;
+        return new float[] {612f, 792f}; // 8.5 × 11 in @ 72 DPI
       case LEGAL:
-        return new PDRectangle(612f, 1008f); // 8.5 × 14 in @ 72 DPI
+        return new float[] {612f, 1008f}; // 8.5 × 14 in @ 72 DPI
       case FIT_TO_IMAGE:
         {
-          float maxDim = Math.max(PDRectangle.A4.getWidth(), PDRectangle.A4.getHeight());
+          float maxDim = A4_HEIGHT_PT;
           float imgAspect = (float) imageWidth / imageHeight;
           float w, h;
           if (imgAspect >= 1f) {
@@ -59,13 +57,18 @@ public enum PageFormat {
             h = maxDim;
             w = maxDim * imgAspect;
           }
-          return new PDRectangle(w, h);
+          return new float[] {w, h};
         }
       case A4:
       default:
-        return PDRectangle.A4;
+        return new float[] {A4_WIDTH_PT, A4_HEIGHT_PT};
     }
   }
+
+  /** ISO A4 in points (1/72 in): 210 × 297 mm. */
+  private static final float A4_WIDTH_PT = 210f / 25.4f * 72f;
+
+  private static final float A4_HEIGHT_PT = 297f / 25.4f * 72f;
 
   /**
    * Returns the maximum pixel dimensions for this format at the given DPI. For {@link

@@ -9,14 +9,7 @@
  */
 package de.schliweb.makeacopy.utils.export;
 
-import android.content.Context;
-import android.util.Log;
-import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
-import com.tom_roush.pdfbox.pdmodel.font.PDFont;
-import com.tom_roush.pdfbox.pdmodel.font.PDType1Font;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.experimental.UtilityClass;
 
@@ -29,7 +22,6 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class PdfTextUtils {
-  private static final String TAG = "PdfTextUtils";
 
   /**
    * Determines if a line of recognized words is predominantly RTL (Right-to-Left) script. This is
@@ -208,120 +200,5 @@ public final class PdfTextUtils {
     }
 
     return text;
-  }
-
-  /**
-   * The font for the invisible text layer: {@link GlyphlessFont}, one font for every script.
-   * Before, a Noto font per script was embedded (12.6 MB of assets) only because PDFBox' {@code
-   * showText} needs a glyph for each character; the text layer is never painted. Helvetica (not
-   * embedded, WinAnsi only) remains as a last resort should the font not build.
-   *
-   * @param document the PDF document instance the font objects are created in
-   * @param context unused; kept for the callers
-   * @return a one-element list with the font
-   */
-  public static List<PDFont> loadFontsWithFallbacks(PDDocument document, Context context) {
-    List<PDFont> fonts = new ArrayList<>();
-    try {
-      fonts.add(GlyphlessFont.create(document));
-    } catch (Exception e) {
-      Log.w(TAG, "Glyphless font could not be built, falling back to Helvetica (not embedded)", e);
-      fonts.add(PDType1Font.HELVETICA);
-    }
-    return fonts;
-  }
-
-  /**
-   * Writes text to a PDF page content stream with support for font fallbacks.
-   *
-   * @param cs the {@link PDPageContentStream} used to draw the text
-   * @param token the text string to be displayed
-   * @param fontSize the font size for rendering the text
-   * @param fonts a {@link List} of {@link PDFont} objects to try for displaying the text
-   * @throws Exception if there is an error during text drawing or font operations
-   */
-  public static void showTextWithFallbacks(
-      PDPageContentStream cs, String token, float fontSize, List<PDFont> fonts) throws Exception {
-    if (token == null || token.isEmpty()) return;
-    if (fonts == null || fonts.isEmpty()) throw new IllegalStateException("No fonts available");
-    if (GlyphlessFont.is(fonts.get(0))) {
-      // One font for every script: the UTF-16 code units are the codes, no glyph lookup.
-      cs.setFont(fonts.get(0), fontSize);
-      GlyphlessFont.showText(cs, token);
-      return;
-    }
-
-    final int len = token.length();
-    int i = 0;
-    while (i < len) {
-      // 1) Find a suitable font for this code point
-      int cp = token.codePointAt(i);
-      String ch = new String(Character.toChars(cp));
-
-      int fontIdx = -1;
-      for (int f = 0; f < fonts.size(); f++) {
-        try {
-          fonts.get(f).encode(ch); // probe-encode
-          fontIdx = f;
-          break;
-        } catch (Exception ignore) {
-          // Best-effort; failure is non-critical
-        }
-      }
-      if (fontIdx < 0) {
-        // Fallback: replace with U+FFFD using the first font
-        cs.setFont(fonts.get(0), fontSize);
-        try {
-          cs.showText("\uFFFD");
-        } catch (Exception ignore) {
-          // Best-effort; failure is non-critical
-        }
-        i += Character.charCount(cp);
-        continue;
-      }
-
-      // 2) Collect consecutive characters that use the same font
-      PDFont chosenFont = fonts.get(fontIdx);
-      StringBuilder run = new StringBuilder();
-      run.append(ch);
-      i += Character.charCount(cp);
-
-      while (i < len) {
-        int nextCp = token.codePointAt(i);
-        String nextCh = new String(Character.toChars(nextCp));
-        boolean ok = false;
-        try {
-          chosenFont.encode(nextCh);
-          ok = true;
-        } catch (Exception ignore) {
-          // Best-effort; failure is non-critical
-        }
-        if (!ok) break;
-        run.append(nextCh);
-        i += Character.charCount(nextCp);
-      }
-
-      // 3) Emit the run
-      cs.setFont(chosenFont, fontSize);
-      try {
-        cs.showText(run.toString());
-      } catch (Exception e) {
-        // Fallback: emit char-by-char, replacing failures with U+FFFD
-        for (int j = 0; j < run.length(); ) {
-          int c = run.codePointAt(j);
-          String s = new String(Character.toChars(c));
-          try {
-            cs.showText(s);
-          } catch (Exception ignore) {
-            try {
-              cs.showText("\uFFFD");
-            } catch (Exception ignore2) {
-              // Best-effort; failure is non-critical
-            }
-          }
-          j += Character.charCount(c);
-        }
-      }
-    }
   }
 }

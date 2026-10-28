@@ -222,8 +222,9 @@ dependencies {
     // Onnx-Runtime dependency
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    // PdfBox-Android dependency
-    implementation libs.pdfbox.android
+    // PdfBox-Android: only the tests read the exported PDFs with it; the app writes them itself
+    testImplementation libs.pdfbox.android
+    androidTestImplementation libs.pdfbox.android
     implementation libs.exifinterface
     implementation libs.documentfile
 
@@ -595,20 +596,14 @@ tasks.withType(JavaCompile).configureEach {
         excludedPaths = ".*/data_binding_base_class_source_out/.*"
     }
 }
-// Light edition after asset merge: only the Latin PaddleOCR recognition model (plus detection) and
-// no CJK CMap files (saves ~3 MB, not needed without CJK OCR support). The app offers the language
-// groups whose model is bundled (OcrModelManager.getAvailableLanguageCodes).
+// Light edition after asset merge: only the Latin PaddleOCR recognition model (plus detection). The
+// app offers the language groups whose model is bundled (OcrModelManager.getAvailableLanguageCodes).
 def lightRecModels = ["latin_PP-OCRv5_mobile_rec"]
 if (isLight) {
     tasks.whenTaskAdded { task ->
         if (task.name.matches("merge(Debug|Release)Assets")) {
             task.doLast {
                 def outDir = task.outputDir.get().asFile
-                def cmapDir = new File(outDir, "com/tom_roush/fontbox/resources/cmap")
-                if (cmapDir.exists()) {
-                    def deleted = cmapDir.deleteDir()
-                    println "Deleted CJK CMap assets from light edition: ${deleted}"
-                }
                 def paddleDir = new File(outDir, "paddleocr/v5")
                 def dropped = []
                 paddleDir.listFiles()?.each { f ->

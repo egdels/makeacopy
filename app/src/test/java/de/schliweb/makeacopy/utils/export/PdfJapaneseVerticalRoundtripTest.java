@@ -13,20 +13,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDPage;
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
-import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
-import com.tom_roush.pdfbox.pdmodel.font.PDFont;
-import com.tom_roush.pdfbox.pdmodel.font.PDType0Font;
-import com.tom_roush.pdfbox.pdmodel.graphics.state.RenderingMode;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
-import com.tom_roush.pdfbox.util.Matrix;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -39,9 +27,8 @@ import org.junit.Test;
  *   <li>D: every required code point survives the text layer (one glyphless font for all).
  * </ul>
  *
- * <p>The columns are written exactly like {@code PdfCreator.addVerticalColumnsImageSpace} does
- * (same helpers: {@link PdfVerticalTextUtils} + {@link PdfTextUtils#showTextWithFallbacks}), but
- * without the Android-only bitmap/context plumbing (RectF is stubbed in JVM unit tests).
+ * <p>The columns are written like {@link PdfTextLayer} does (same {@link PdfVerticalTextUtils}
+ * matrix and text run), without the Android-only plumbing (RectF is stubbed in JVM unit tests).
  */
 public class PdfJapaneseVerticalRoundtripTest {
 
@@ -58,16 +45,9 @@ public class PdfJapaneseVerticalRoundtripTest {
     return s.replaceAll("\\s+", "");
   }
 
-  private List<PDFont> loadFonts(PDDocument doc) throws Exception {
-    // As PdfTextUtils.loadFontsWithFallbacks: the glyphless font alone.
-    List<PDFont> fonts = new ArrayList<>();
-    fonts.add(GlyphlessFont.create(doc));
-    return fonts;
-  }
-
   /**
-   * Writes the three vertical example columns (right, middle, left) using the same matrix and
-   * fallback logic as PdfCreator and returns the extracted text.
+   * Writes the three vertical example columns (right, middle, left) with the same matrix as
+   * PdfTextLayer and returns the extracted text.
    */
   private String writeColumnsAndExtract() throws Exception {
     final int imgW = 1000;
@@ -79,31 +59,17 @@ public class PdfJapaneseVerticalRoundtripTest {
       {220f, 100f, 40f, 1250f} // left column
     };
     String[] texts = {COL_RIGHT, COL_MIDDLE, COL_LEFT};
-
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    try (PDDocument doc = new PDDocument()) {
-      PDPage page = new PDPage(new PDRectangle(imgW, imgH));
-      doc.addPage(page);
-      List<PDFont> fonts = loadFonts(doc);
-
-      try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-        for (int i = 0; i < boxes.length; i++) {
-          float[] b = boxes[i];
-          float fontSize = PdfVerticalTextUtils.columnFontSize(b[2]);
-          float[] m =
-              PdfVerticalTextUtils.columnTextMatrix(
-                  b[0], b[1], b[3], /* measured */ b[3], imgW, imgH);
-          cs.beginText();
-          cs.setRenderingMode(RenderingMode.NEITHER);
-          cs.setTextMatrix(new Matrix(m[0], m[1], m[2], m[3], m[4], m[5]));
-          PdfTextUtils.showTextWithFallbacks(cs, texts[i], fontSize, fonts);
-          cs.endText();
-        }
-      }
-      doc.save(out);
+    StringBuilder content = new StringBuilder();
+    for (int i = 0; i < boxes.length; i++) {
+      float[] b = boxes[i];
+      float fontSize = PdfVerticalTextUtils.columnFontSize(b[2]);
+      float[] m =
+          PdfVerticalTextUtils.columnTextMatrix(
+              b[0], b[1], b[3], GlyphlessFont.width(texts[i], fontSize), imgW, imgH);
+      content.append(PdfTextLayer.textRun(texts[i], fontSize, m));
     }
-
-    try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(out.toByteArray()))) {
+    byte[] pdf = PdfWriterTest.onePage(imgW, imgH, content.toString());
+    try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(pdf))) {
       PDFTextStripper stripper = new PDFTextStripper();
       // Content-stream order == logical order written by PdfCreator (no positional re-sort).
       stripper.setSortByPosition(false);

@@ -15,17 +15,9 @@ import static org.junit.Assert.assertTrue;
 import com.tom_roush.fontbox.ttf.TTFParser;
 import com.tom_roush.fontbox.ttf.TrueTypeFont;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDPage;
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
-import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
-import com.tom_roush.pdfbox.pdmodel.font.PDFont;
 import com.tom_roush.pdfbox.pdmodel.font.PDType0Font;
-import com.tom_roush.pdfbox.pdmodel.graphics.state.RenderingMode;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
-import com.tom_roush.pdfbox.util.Matrix;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.Collections;
 import org.junit.Test;
 
 /** The glyphless text-layer font: a valid TrueType, and text in any script comes back out. */
@@ -46,28 +38,15 @@ public class GlyphlessFontTest {
     String[] lines = {
       "Grüße, Œuvre, Łódź", "مرحبا بالعالم", "नमस्ते दुनिया", "สวัสดีชาวโลก", "Привет, мир", "Γειά σου"
     };
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    try (PDDocument doc = new PDDocument()) {
-      PDPage page = new PDPage(PDRectangle.A4);
-      doc.addPage(page);
-      PDFont font = GlyphlessFont.create(doc);
-      try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-        for (int i = 0; i < lines.length; i++) {
-          cs.beginText();
-          cs.setRenderingMode(RenderingMode.NEITHER);
-          cs.setTextMatrix(Matrix.getTranslateInstance(50, 800 - 40 * i));
-          // As PdfCreator: right-to-left lines go in visual order, the extraction turns them back.
-          String shown =
-              PdfTextUtils.isRtlText(lines[i])
-                  ? PdfTextUtils.logicalToVisual(lines[i], true)
-                  : lines[i];
-          PdfTextUtils.showTextWithFallbacks(cs, shown, 20f, Collections.singletonList(font));
-          cs.endText();
-        }
-      }
-      doc.save(out);
+    // As PdfCreator: right-to-left lines go in visual order, the extraction turns them back.
+    StringBuilder content = new StringBuilder();
+    for (int i = 0; i < lines.length; i++) {
+      String shown =
+          PdfTextUtils.isRtlText(lines[i]) ? PdfTextUtils.logicalToVisual(lines[i], true) : lines[i];
+      content.append(PdfTextLayer.textRun(shown, 20f, new float[] {1, 0, 0, 1, 50, 800 - 40 * i}));
     }
-    try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(out.toByteArray()))) {
+    byte[] out = PdfWriterTest.onePage(595, 842, content.toString());
+    try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(out))) {
       String text = new PDFTextStripper().getText(doc);
       for (String line : lines) {
         String expected = line.replace(" ", "");

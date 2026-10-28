@@ -186,9 +186,6 @@
     <string name="pdf_preset_standard">Padrão (200 dpi, q72)</string>
     <string name="pdf_preset_small">Pequeno (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">Muito pequeno (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">Camada de texto PDF</string>
-    <string name="pdf_text_layer_mode_line_based">Baseada em linhas (recomendado)</string>
-    <string name="pdf_text_layer_mode_word_positioned">Posicionada por palavra (compatibilidade)</string>
     <string name="btn_options">Opções</string>
     <string name="btn_save">Salvar</string>
     <string name="btn_new">Nova digitalização</string>

@@ -5,7 +5,6 @@ import static org.junit.Assert.*;
 import android.view.View;
 import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.utils.export.PageFormat;
-import de.schliweb.makeacopy.utils.export.PdfCreator;
 import de.schliweb.makeacopy.utils.export.PdfQualityPreset;
 import de.schliweb.makeacopy.utils.export.jpeg.JpegExportOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
@@ -34,18 +33,6 @@ public class ExportOptionsRadioMappingTest {
     }
     assertEquals(R.id.dialog_radio_page_a4, ExportOptionsPanel.pageFormatRadioId(PageFormat.A4));
     assertEquals(PageFormat.FIT_TO_IMAGE, ExportOptionsPanel.pageFormatFor(-1));
-  }
-
-  @Test
-  public void textLayerMode_roundTrips() {
-    for (PdfCreator.TextLayerMode mode : PdfCreator.TextLayerMode.values()) {
-      int radioId = ExportOptionsPanel.textLayerRadioId(mode);
-      PdfCreator.TextLayerMode expected =
-          mode == PdfCreator.TextLayerMode.WORD_POSITIONED
-              ? PdfCreator.TextLayerMode.WORD_POSITIONED
-              : PdfCreator.TextLayerMode.LINE_BASED;
-      assertEquals(expected, ExportOptionsPanel.textLayerModeFor(radioId));
-    }
   }
 
   @Test

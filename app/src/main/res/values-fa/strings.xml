@@ -183,9 +183,6 @@
     <string name="pdf_preset_standard">استاندارد (200 dpi، q72)</string>
     <string name="pdf_preset_small">کوچک (150 dpi، q62)</string>
     <string name="pdf_preset_very_small">خیلی کوچک (110 dpi، q52)</string>
-    <string name="pdf_text_layer_mode_title">لایهٔ متن PDF</string>
-    <string name="pdf_text_layer_mode_line_based">مبتنی بر خط (توصیه‌شده)</string>
-    <string name="pdf_text_layer_mode_word_positioned">موقعیت‌دهی بر اساس واژه (سازگاری)</string>
     <string name="btn_options">گزینه‌ها</string>
     <string name="btn_save">ذخیره</string>
     <string name="btn_new">اسکن جدید</string>

@@ -25,6 +25,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
+import de.schliweb.makeacopy.testutil.PdfBoxTesting;
 import de.schliweb.makeacopy.utils.export.PageFormat;
 import de.schliweb.makeacopy.utils.export.PdfCreator;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
@@ -123,7 +124,6 @@ public class MultiColumnPdfPaddleTest {
                     300,
                     PageFormat.A4,
                     DocumentCleanupMode.ORIGINAL,
-                    PdfCreator.TextLayerMode.LINE_BASED,
                     true);
             assertNotNull("PDF export must succeed", out);
         } finally {
@@ -131,6 +131,7 @@ public class MultiColumnPdfPaddleTest {
         }
         try {
             String text;
+            PdfBoxTesting.init();
             try (PDDocument doc = PDDocument.load(outFile)) {
                 text = new PDFTextStripper().getText(doc);
             }

@@ -83,10 +83,13 @@ public class OCRPostProcessor {
    * @param words the recognized words (non-null, non-empty)
    * @return the reconstructed text
    */
-  private static String horizontalWordsToText(List<RecognizedWord> words) {
-    // One line-grouping rule for the whole app (see LineGrouping): a drop cap or a headline word
-    // next to body text neither widens the tolerance beyond the line pitch nor lands in the
-    // wrong line.
+  /**
+   * The words grouped into lines, top to bottom, by the one line-grouping rule of the whole app
+   * (see {@link LineGrouping}): a drop cap or a headline word next to body text neither widens the
+   * tolerance beyond the line pitch nor lands in the wrong line. The text and the PDF text layer
+   * both use it, so they read the page in the same order.
+   */
+  public static List<List<RecognizedWord>> groupLines(List<RecognizedWord> words) {
     int n = words.size();
     float[] lefts = new float[n];
     float[] tops = new float[n];
@@ -105,6 +108,11 @@ public class OCRPostProcessor {
       for (int idx : line) members.add(words.get(idx));
       lines.add(members);
     }
+    return lines;
+  }
+
+  private static String horizontalWordsToText(List<RecognizedWord> words) {
+    List<List<RecognizedWord>> lines = groupLines(words);
 
     // Calculate average line height for paragraph detection
     float totalLineHeight = 0;

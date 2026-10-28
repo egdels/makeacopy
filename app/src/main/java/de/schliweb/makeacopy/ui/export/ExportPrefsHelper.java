@@ -12,7 +12,6 @@ package de.schliweb.makeacopy.ui.export;
 import android.content.Context;
 import android.content.SharedPreferences;
 import de.schliweb.makeacopy.utils.export.PageFormat;
-import de.schliweb.makeacopy.utils.export.PdfCreator;
 import de.schliweb.makeacopy.utils.export.PdfQualityPreset;
 import de.schliweb.makeacopy.utils.export.jpeg.JpegExportOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
@@ -107,17 +106,6 @@ public final class ExportPrefsHelper {
     String presetSaved = getPdfPreset(context);
     PdfQualityPreset def = (pageCount > 1) ? PdfQualityPreset.STANDARD : PdfQualityPreset.HIGH;
     return PdfQualityPreset.fromName(presetSaved, def);
-  }
-
-  public static PdfCreator.TextLayerMode resolveTextLayerMode(Context context) {
-    String saved = getPrefs(context).getString("pdf_text_layer_mode", null);
-    try {
-      return saved == null
-          ? PdfCreator.TextLayerMode.LINE_BASED
-          : PdfCreator.TextLayerMode.valueOf(saved);
-    } catch (IllegalArgumentException ex) {
-      return PdfCreator.TextLayerMode.LINE_BASED;
-    }
   }
 
   /**

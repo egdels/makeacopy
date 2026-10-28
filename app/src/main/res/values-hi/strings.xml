@@ -177,9 +177,6 @@
     <string name="pdf_preset_standard">मानक (200 dpi, q72)</string>
     <string name="pdf_preset_small">छोटा (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">बहुत छोटा (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">PDF टेक्स्ट लेयर</string>
-    <string name="pdf_text_layer_mode_line_based">लाइन-आधारित (अनुशंसित)</string>
-    <string name="pdf_text_layer_mode_word_positioned">शब्द-स्थित (संगतता)</string>
     <!-- Page format selection (PDF export) -->
     <string name="page_format_label">पृष्ठ आकार</string>
     <string name="page_format_fit">चित्र के अनुसार (अनुशंसित)</string>

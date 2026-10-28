@@ -183,9 +183,6 @@
     <string name="pdf_preset_standard">Standart (200 dpi, q72)</string>
     <string name="pdf_preset_small">Küçük (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">Çok küçük (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">PDF metin katmanı</string>
-    <string name="pdf_text_layer_mode_line_based">Satır tabanlı (önerilir)</string>
-    <string name="pdf_text_layer_mode_word_positioned">Kelime konumlu (uyumluluk)</string>
     <string name="btn_options">Seçenekler</string>
     <string name="btn_save">Kaydet</string>
     <string name="btn_new">Yeni tarama</string>

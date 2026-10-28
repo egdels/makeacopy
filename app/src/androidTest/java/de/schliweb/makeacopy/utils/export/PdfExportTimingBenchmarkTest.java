@@ -12,15 +12,10 @@ import android.os.SystemClock;
 import android.util.Log;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
-import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDPage;
-import com.tom_roush.pdfbox.pdmodel.font.PDFont;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.ocr.OcrEngine;
 import de.schliweb.makeacopy.utils.ocr.paddle.PaddleEngineFactory;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
@@ -53,13 +48,10 @@ public class PdfExportTimingBenchmarkTest {
     Assume.assumeTrue(
         "1".equals(InstrumentationRegistry.getArguments().getString("RUN_BENCHMARKS")));
     Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    PDFBoxResourceLoader.init(ctx);
 
     List<RecognizedWord> words = new ArrayList<>();
     Bitmap page = renderTextPage(words);
     Log.i(TAG, "page " + PAGE_W + "x" + PAGE_H + ", words=" + words.size());
-
-    timeFonts(ctx);
 
     PdfQualityPreset high = PdfQualityPreset.HIGH;
     PdfQualityPreset std = PdfQualityPreset.STANDARD;
@@ -90,7 +82,6 @@ public class PdfExportTimingBenchmarkTest {
     Assume.assumeTrue(
         "1".equals(InstrumentationRegistry.getArguments().getString("RUN_BENCHMARKS")));
     Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    PDFBoxResourceLoader.init(ctx);
     Bitmap full = renderTextPage(new ArrayList<>());
     Bitmap a4 = Bitmap.createScaledBitmap(full, 2480, 3508, true);
     full.recycle();
@@ -188,7 +179,6 @@ public class PdfExportTimingBenchmarkTest {
             },
             format,
             DocumentCleanupMode.ORIGINAL,
-            PdfCreator.TextLayerMode.LINE_BASED,
             false);
     long total = SystemClock.elapsedRealtime() - t0;
     Log.i(
@@ -218,28 +208,6 @@ public class PdfExportTimingBenchmarkTest {
     }
   }
 
-  /** Font setup alone: loading the six fonts and saving a document that holds no text. */
-  private void timeFonts(Context ctx) throws Exception {
-    long[] load = new long[RUNS];
-    long[] save = new long[RUNS];
-    for (int r = 0; r < RUNS; r++) {
-      try (PDDocument doc = new PDDocument()) {
-        doc.addPage(new PDPage());
-        long t0 = SystemClock.elapsedRealtime();
-        List<PDFont> fonts = PdfTextUtils.loadFontsWithFallbacks(doc, ctx);
-        long t1 = SystemClock.elapsedRealtime();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        doc.save(out);
-        long t2 = SystemClock.elapsedRealtime();
-        load[r] = t1 - t0;
-        save[r] = t2 - t1;
-        if (r == 0) Log.i(TAG, "fonts loaded: " + fonts.size() + ", empty pdf " + out.size() + " B");
-      }
-    }
-    report("fonts load (6 fonts)", load);
-    report("fonts subset+save, empty page", save);
-  }
-
   private void timeSingle(
       Context ctx,
       String label,
@@ -265,7 +233,6 @@ public class PdfExportTimingBenchmarkTest {
               preset.targetDpi,
               PageFormat.FIT_TO_IMAGE,
               cleanup == null ? DocumentCleanupMode.ORIGINAL : cleanup,
-              PdfCreator.TextLayerMode.LINE_BASED,
               false);
       ms[r] = SystemClock.elapsedRealtime() - t0;
       if (uri == null) Log.w(TAG, label + ": export returned null");
@@ -313,7 +280,6 @@ public class PdfExportTimingBenchmarkTest {
               (i, n) -> {},
               PageFormat.FIT_TO_IMAGE,
               DocumentCleanupMode.ORIGINAL,
-              PdfCreator.TextLayerMode.LINE_BASED,
               false);
       ms[r] = SystemClock.elapsedRealtime() - t0;
       if (uri == null) Log.w(TAG, label + ": export returned null");

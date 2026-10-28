@@ -181,9 +181,6 @@
     <string name="pdf_preset_standard">มาตรฐาน (200 dpi, q72)</string>
     <string name="pdf_preset_small">เล็ก (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">เล็กมาก (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">เลเยอร์ข้อความ PDF</string>
-    <string name="pdf_text_layer_mode_line_based">ตามบรรทัด (แนะนำ)</string>
-    <string name="pdf_text_layer_mode_word_positioned">วางตำแหน่งตามคำ (ความเข้ากันได้)</string>
     <string name="btn_options">ตัวเลือก</string>
     <string name="btn_save">บันทึก</string>
     <string name="btn_new">สแกนใหม่</string>

@@ -183,9 +183,6 @@
     <string name="pdf_preset_standard">Τυπική (200 dpi, q72)</string>
     <string name="pdf_preset_small">Μικρή (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">Πολύ μικρή (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">Επίπεδο κειμένου PDF</string>
-    <string name="pdf_text_layer_mode_line_based">Βασισμένο σε γραμμές (συνιστάται)</string>
-    <string name="pdf_text_layer_mode_word_positioned">Τοποθέτηση ανά λέξη (συμβατότητα)</string>
     <!-- Page format selection (PDF export) -->
     <string name="page_format_label">Μέγεθος σελίδας</string>
     <string name="page_format_fit">Προσαρμογή στην εικόνα (συνιστάται)</string>

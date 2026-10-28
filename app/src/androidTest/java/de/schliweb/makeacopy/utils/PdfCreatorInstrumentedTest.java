@@ -9,7 +9,8 @@ import android.graphics.RectF;
 import android.net.Uri;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import androidx.test.platform.app.InstrumentationRegistry;
+import de.schliweb.makeacopy.testutil.PdfBoxTesting;
 import com.tom_roush.pdfbox.cos.COSName;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
@@ -53,7 +54,7 @@ public class PdfCreatorInstrumentedTest {
   @BeforeClass
   public static void setupOnce() {
     context = ApplicationProvider.getApplicationContext();
-    PDFBoxResourceLoader.init(context);
+    PdfBoxTesting.init();
   }
 
   /**
@@ -312,9 +313,8 @@ public class PdfCreatorInstrumentedTest {
       File out = new File(ctx.getCacheDir(), "test_ocr_align.pdf");
       Uri uri = Uri.fromFile(out);
 
-      // Exact per-word overlay alignment is only guaranteed by WORD_POSITIONED mode.
-      // The default LINE_BASED mode writes each line as a single horizontally scaled
-      // text run, so inner word boundaries are only approximately aligned.
+      // Each line is one horizontally scaled text run, so inner word boundaries are only
+      // approximately aligned; the regions below allow for that.
       Uri res =
           PdfCreator.createSearchablePdf(
               ctx,
@@ -326,8 +326,7 @@ public class PdfCreatorInstrumentedTest {
               false,
               300,
               PageFormat.A4,
-              DocumentCleanupMode.ORIGINAL,
-              PdfCreator.TextLayerMode.WORD_POSITIONED);
+              DocumentCleanupMode.ORIGINAL);
       assertNotNull("PDF creation failed", res);
 
       try (PDDocument doc = PDDocument.load(out)) {

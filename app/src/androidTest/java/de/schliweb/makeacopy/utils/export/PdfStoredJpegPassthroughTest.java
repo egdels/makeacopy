@@ -17,7 +17,7 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import de.schliweb.makeacopy.testutil.PdfBoxTesting;
 import com.tom_roush.pdfbox.cos.COSName;
 import com.tom_roush.pdfbox.io.IOUtils;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
@@ -49,7 +49,7 @@ public class PdfStoredJpegPassthroughTest {
   @Test
   public void storedJpegIsEmbeddedUnchangedAndMatchesTheDecodePath() throws Exception {
     Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    PDFBoxResourceLoader.init(ctx);
+    PdfBoxTesting.init();
     List<RecognizedWord> words = new ArrayList<>();
     Bitmap page = renderPage(words);
     File jpeg = new File(ctx.getCacheDir(), "passthrough_page.jpg");
@@ -129,7 +129,6 @@ public class PdfStoredJpegPassthroughTest {
             null,
             PageFormat.FIT_TO_IMAGE,
             DocumentCleanupMode.ORIGINAL,
-            PdfCreator.TextLayerMode.LINE_BASED,
             false);
     assertNotNull("export of " + name, uri);
     return out;

@@ -1648,8 +1648,6 @@ public class ExportFragment extends Fragment {
     final de.schliweb.makeacopy.utils.image.DocumentCleanupMode cleanupMode =
         ExportPrefsHelper.resolveCleanupMode(appContext);
     final PageFormat pageFormat = ExportPrefsHelper.resolvePageFormat(appContext);
-    final PdfCreator.TextLayerMode textLayerMode =
-        ExportPrefsHelper.resolveTextLayerMode(appContext);
 
     if (multiPages == null) {
       Log.d(TAG, "performExport: Creating PDF for single page session");
@@ -1666,7 +1664,6 @@ public class ExportFragment extends Fragment {
           preset.targetDpi,
           pageFormat,
           cleanupMode,
-          textLayerMode,
           MultiColumnOcrPrefs.isEnabled(appContext));
     }
 
@@ -1694,7 +1691,6 @@ public class ExportFragment extends Fragment {
                 () -> exportViewModel.setExportProgress(Math.max(0, Math.min(pageIndex, total)))),
         pageFormat,
         cleanupMode,
-        textLayerMode,
         MultiColumnOcrPrefs.isEnabled(appContext));
   }
 

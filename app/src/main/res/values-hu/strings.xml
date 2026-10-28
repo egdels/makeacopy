@@ -182,9 +182,6 @@
     <string name="pdf_preset_standard">Normál (200 dpi, q72)</string>
     <string name="pdf_preset_small">Kicsi (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">Nagyon kicsi (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">PDF szövegréteg</string>
-    <string name="pdf_text_layer_mode_line_based">Soralapú (ajánlott)</string>
-    <string name="pdf_text_layer_mode_word_positioned">Szavanként pozicionált (kompatibilitás)</string>
     <string name="btn_options">Beállítások</string>
     <string name="btn_save">Mentés</string>
     <string name="btn_new">Új szkennelés</string>

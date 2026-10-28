@@ -179,9 +179,6 @@
     <string name="pdf_preset_standard">标准（200 dpi，q72）</string>
     <string name="pdf_preset_small">小（150 dpi，q62）</string>
     <string name="pdf_preset_very_small">很小（110 dpi，q52）</string>
-    <string name="pdf_text_layer_mode_title">PDF 文本层</string>
-    <string name="pdf_text_layer_mode_line_based">基于行（推荐）</string>
-    <string name="pdf_text_layer_mode_word_positioned">按词定位（兼容性）</string>
     <string name="btn_options">选项</string>
     <string name="btn_save">保存</string>
     <string name="btn_new">新扫描</string>

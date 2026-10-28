@@ -188,9 +188,6 @@
     <string name="pdf_preset_standard">Štandardná (200 dpi, q72)</string>
     <string name="pdf_preset_small">Malá (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">Veľmi malá (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">Textová vrstva PDF</string>
-    <string name="pdf_text_layer_mode_line_based">Podľa riadkov (odporúčané)</string>
-    <string name="pdf_text_layer_mode_word_positioned">Podľa pozícií slov (kompatibilita)</string>
     <string name="btn_options">Možnosti</string>
     <string name="btn_save">Uložiť</string>
     <string name="btn_new">Nové skenovanie</string>

@@ -184,9 +184,6 @@
     <string name="pdf_preset_standard">Standard (200 dpi, q72)</string>
     <string name="pdf_preset_small">Petite (150 dpi, q62)</string>
     <string name="pdf_preset_very_small">Très petite (110 dpi, q52)</string>
-    <string name="pdf_text_layer_mode_title">Calque de texte PDF</string>
-    <string name="pdf_text_layer_mode_line_based">Basé sur les lignes (recommandé)</string>
-    <string name="pdf_text_layer_mode_word_positioned">Positionné par mot (compatibilité)</string>
     <string name="btn_options">Options</string>
     <string name="btn_save">Enregistrer</string>
     <string name="btn_new">Nouveau scan</string>

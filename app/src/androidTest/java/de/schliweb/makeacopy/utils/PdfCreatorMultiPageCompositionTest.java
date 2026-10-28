@@ -9,7 +9,7 @@ import android.graphics.RectF;
 import android.net.Uri;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import de.schliweb.makeacopy.testutil.PdfBoxTesting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import de.schliweb.makeacopy.utils.export.PdfCreator;
@@ -34,7 +34,7 @@ public class PdfCreatorMultiPageCompositionTest {
   @BeforeClass
   public static void setup() {
     context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    PDFBoxResourceLoader.init(context);
+    PdfBoxTesting.init();
   }
 
   @Test

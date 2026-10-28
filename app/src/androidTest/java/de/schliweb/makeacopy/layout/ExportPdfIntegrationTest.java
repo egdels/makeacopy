@@ -26,7 +26,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import de.schliweb.makeacopy.testutil.PdfBoxTesting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 
@@ -75,7 +75,7 @@ public class ExportPdfIntegrationTest {
     public void setUp() {
         testContext = InstrumentationRegistry.getInstrumentation().getContext();
         appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        PDFBoxResourceLoader.init(appContext);
+        PdfBoxTesting.init();
     }
 
     // ==================== Test Cases ====================

@@ -9,7 +9,7 @@ import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import de.schliweb.makeacopy.testutil.PdfBoxTesting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.font.PDFont;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
@@ -45,7 +45,7 @@ public class ArabicPersianPdfExportTest {
   public static void setup() {
     context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     // Initialize PDFBox for Android
-    PDFBoxResourceLoader.init(context);
+    PdfBoxTesting.init();
   }
 
   /**

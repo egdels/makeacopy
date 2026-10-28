@@ -179,9 +179,6 @@
     <string name="pdf_preset_standard">قياسية (200 dpi، q72)</string>
     <string name="pdf_preset_small">صغيرة (150 dpi، q62)</string>
     <string name="pdf_preset_very_small">صغيرة جدًا (110 dpi، q52)</string>
-    <string name="pdf_text_layer_mode_title">طبقة نص PDF</string>
-    <string name="pdf_text_layer_mode_line_based">مستندة إلى الأسطر (موصى بها)</string>
-    <string name="pdf_text_layer_mode_word_positioned">موضوعة حسب الكلمات (للتوافق)</string>
     <string name="btn_options">خيارات</string>
     <string name="btn_save">حفظ</string>
     <string name="btn_new">مسح جديد</string>

@@ -11,26 +11,13 @@ package de.schliweb.makeacopy.utils.export;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.RectF;
 import android.net.Uri;
 import android.util.Log;
 import androidx.annotation.VisibleForTesting;
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
-import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDPage;
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
-import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
-import com.tom_roush.pdfbox.pdmodel.font.PDFont;
-import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory;
-import com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory;
-import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject;
-import com.tom_roush.pdfbox.pdmodel.graphics.state.RenderingMode;
-import com.tom_roush.pdfbox.util.Matrix;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
 import de.schliweb.makeacopy.utils.image.ImageOps;
-import de.schliweb.makeacopy.utils.ocr.BidiWordOrder;
 import de.schliweb.makeacopy.utils.ocr.MultiColumnLayoutPolicy;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import java.io.File;
@@ -39,7 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -50,21 +36,11 @@ import java.util.List;
  */
 public class PdfCreator {
   private static final String TAG = "PdfCreator";
-  // Text sizing (relative to OCR box height in image space)
-  private static final float TEXT_SIZE_RATIO = 0.70f;
-  private static final float MIN_FONT_PT = 2f; // lower bound for tiny boxes
-  private static final float MIN_LINE_TEXT_SCALE_X = 0.50f;
-  private static final float MAX_LINE_TEXT_SCALE_X = 2.00f;
 
   public enum PdfImageOutput {
     COLOR,
     GRAYSCALE,
     BLACK_WHITE
-  }
-
-  public enum TextLayerMode {
-    LINE_BASED,
-    WORD_POSITIONED
   }
 
   /**
@@ -196,43 +172,16 @@ public class PdfCreator {
         targetDpi,
         pageFormat,
         cleanupMode,
-        TextLayerMode.LINE_BASED);
-  }
-
-  public static Uri createSearchablePdf(
-      Context context,
-      Bitmap bitmap,
-      List<RecognizedWord> words,
-      Uri outputUri,
-      int jpegQuality,
-      boolean convertToGrayscale,
-      boolean convertToBlackWhite,
-      int targetDpi,
-      PageFormat pageFormat,
-      DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode) {
-    return createSearchablePdf(
-        context,
-        bitmap,
-        words,
-        outputUri,
-        jpegQuality,
-        convertToGrayscale,
-        convertToBlackWhite,
-        targetDpi,
-        pageFormat,
-        cleanupMode,
-        textLayerMode,
         false);
   }
 
   /**
    * Variant of {@link #createSearchablePdf(Context, Bitmap, List, Uri, int, boolean, boolean, int,
-   * PageFormat, DocumentCleanupMode, TextLayerMode)} with optional multi-column layout
-   * reconstruction (newspapers, magazines). When {@code multiColumn} is {@code true} and the box
-   * geometry forms a multi-column layout (see {@link MultiColumnLayoutPolicy}), the invisible text
-   * layer is written segment by segment in column reading order so that text extraction and
-   * copy/paste follow the columns instead of interleaving them line by line.
+   * PageFormat, DocumentCleanupMode)} with optional multi-column layout reconstruction (newspapers,
+   * magazines). When {@code multiColumn} is {@code true} and the box geometry forms a multi-column
+   * layout (see {@link MultiColumnLayoutPolicy}), the invisible text layer is written segment by
+   * segment in column reading order so that text extraction and copy/paste follow the columns
+   * instead of interleaving them line by line.
    *
    * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
    */
@@ -247,600 +196,44 @@ public class PdfCreator {
       int targetDpi,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode,
       boolean multiColumn) {
-    Log.d(
-        TAG,
-        "createSearchablePdf: uri="
-            + outputUri
-            + ", words="
-            + (words == null ? 0 : words.size())
-            + ", format="
-            + pageFormat);
     if (bitmap == null || outputUri == null) return null;
-    if (pageFormat == null) pageFormat = PageFormat.A4;
-    if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
-
-    try {
-      PDFBoxResourceLoader.init(context);
-    } catch (Throwable t) {
-      Log.e(TAG, "PDFBox init failed", t);
-      return null;
-    }
-
-    Bitmap prepared = null;
-    try {
-      prepared =
-          processImageForPdf(
-              bitmap, convertToGrayscale, convertToBlackWhite, targetDpi, pageFormat, cleanupMode);
-      if (prepared == null) {
-        Log.e(TAG, "Image preparation failed");
-        return null;
-      }
-
-      try (PDDocument document = new PDDocument()) {
-        try {
-          document.getDocument().setVersion(1.5f);
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-        document.getDocumentInformation().setCreator("MakeACopy");
-        document.getDocumentInformation().setProducer("MakeACopy");
-
-        PDRectangle pageSize =
-            pageFormat.toPageRectangle(prepared.getWidth(), prepared.getHeight());
-        float pageW = pageSize.getWidth();
-        float pageH = pageSize.getHeight();
-
-        PDPage page = new PDPage(pageSize);
-        // Harmonize page boxes to avoid viewer-specific cropping/offset interpretations
-        try {
-          page.setMediaBox(pageSize);
-          page.setCropBox(pageSize);
-          page.setBleedBox(pageSize);
-          page.setTrimBox(pageSize);
-          page.setArtBox(pageSize);
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-        document.addPage(page);
-
-        // Fit image into page while preserving aspect ratio (letterboxing if needed)
-        float scale = calculateScale(prepared.getWidth(), prepared.getHeight(), pageW, pageH);
-        float drawW = prepared.getWidth() * scale;
-        float drawH = prepared.getHeight() * scale;
-        float offsetX = (pageW - drawW) / 2f;
-        float offsetY = (pageH - drawH) / 2f;
-
-        float q = Math.max(0f, Math.min(1f, jpegQuality / 100f));
-        // Remove alpha channel before JPEG encoding to avoid OOM in
-        // JPEGFactory.createAlphaFromARGBImage which allocates a large ByteArrayOutputStream.
-        Bitmap opaqueForJpeg = (jpegQuality < 100) ? removeAlphaChannel(prepared) : null;
-        PDImageXObject pdImg;
-        try {
-          pdImg =
-              (jpegQuality < 100)
-                  ? JPEGFactory.createFromImage(document, opaqueForJpeg, q)
-                  : LosslessFactory.createFromImage(document, prepared);
-        } finally {
-          if (opaqueForJpeg != null && opaqueForJpeg != prepared) {
-            try {
-              opaqueForJpeg.recycle();
-            } catch (Throwable t) {
-              Log.w(TAG, "Failed to recycle opaque bitmap", t);
-            }
+    // One page; the caller keeps the bitmap.
+    PageSource source =
+        new PageSource() {
+          @Override
+          public int getPageCount() {
+            return 1;
           }
-        }
 
-        // Load embedded fonts with fallbacks (file-based; subset-embedded by default)
-        List<PDFont> fonts = loadFontsWithFallbacks(document, context);
-
-        try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-          // 1) Draw image in page coordinates
-          cs.drawImage(pdImg, offsetX, offsetY, drawW, drawH);
-
-          // 2) Draw OCR text in the EXACT SAME transform as the image
-          if (words != null && !words.isEmpty()) {
-            cs.saveGraphicsState();
-            cs.transform(new Matrix(scale, 0, 0, scale, offsetX, offsetY)); // identical CTM
-            // Normalize OCR boxes from source bitmap space to prepared bitmap space if needed
-            List<RecognizedWord> normWords;
-            if (bitmap.getWidth() != prepared.getWidth()
-                || bitmap.getHeight() != prepared.getHeight()) {
-              float sxImg = (float) prepared.getWidth() / (float) bitmap.getWidth();
-              float syImg = (float) prepared.getHeight() / (float) bitmap.getHeight();
-              normWords = new ArrayList<>(words.size());
-              for (RecognizedWord w : words) {
-                normWords.add(
-                    w.transform(sxImg, syImg, 0f, 0f)
-                        .clipTo(prepared.getWidth(), prepared.getHeight()));
-              }
-            } else {
-              normWords = words;
-            }
-            Log.d(TAG, "createSearchablePdf: " + normWords.size() + " OCR words");
-            // now output text in IMAGE coordinates (0..imgW / 0..imgH)
-            addTextLayerImageSpace(
-                cs,
-                normWords,
-                fonts,
-                prepared.getWidth(),
-                prepared.getHeight(),
-                textLayerMode,
-                multiColumn);
-            cs.restoreGraphicsState();
+          @Override
+          public Bitmap loadBitmap(int index) {
+            return bitmap;
           }
-        }
 
-        try (OutputStream os = context.getContentResolver().openOutputStream(outputUri)) {
-          if (os == null) {
-            Log.e(TAG, "createSearchablePdf: openOutputStream returned null");
-            return null;
+          @Override
+          public List<RecognizedWord> loadWords(int index) {
+            return words;
           }
-          document.save(os);
-        }
-        return outputUri;
-      }
-    } catch (Exception e) {
-      Log.e(TAG, "Error creating PDF", e);
-      return null;
-    } finally {
-      if (prepared != null && prepared != bitmap) {
-        try {
-          prepared.recycle();
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-      }
-    }
-  }
 
-  private static List<PDFont> loadFontsWithFallbacks(PDDocument document, Context context) {
-    return PdfTextUtils.loadFontsWithFallbacks(document, context);
-  }
-
-  private static void showTextWithFallbacks(
-      PDPageContentStream cs, String token, float fontSize, List<PDFont> fonts) throws Exception {
-    PdfTextUtils.showTextWithFallbacks(cs, token, fontSize, fonts);
-  }
-
-  /**
-   * Adds a text layer to the PDF page content stream using image-space coordinates. This method
-   * processes a list of recognized words, validates their bounding boxes, clusters them into lines,
-   * and renders them as invisible but selectable text on the PDF document.
-   *
-   * @param cs The content stream of the PDF page where the text layer will be added.
-   * @param words The list of recognized words that contain text and their respective bounding
-   *     boxes.
-   * @param fonts A list of fonts used to render the text. The method handles font fallbacks if
-   *     necessary.
-   * @param imageWidth The width of the image, used to clamp and transform bounding box coordinates.
-   * @param imageHeight The height of the image, used to clamp and transform bounding box
-   *     coordinates.
-   * @throws Exception If there is an error while adding the text layer to the content stream.
-   */
-  private static void addTextLayerImageSpace(
-      PDPageContentStream cs,
-      List<RecognizedWord> words,
-      List<PDFont> fonts,
-      int imageWidth,
-      int imageHeight,
-      TextLayerMode textLayerMode,
-      boolean multiColumn)
-      throws Exception {
-    if (words == null || words.isEmpty()) return;
-    if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
-
-    // --- 1) Clean and validate ---
-    List<RecognizedWord> clean = new ArrayList<>(words.size());
-    for (RecognizedWord w : words) {
-      if (w == null || w.getBoundingBox() == null) continue;
-      RectF b = new RectF(w.getBoundingBox());
-
-      // Replace NaN/Inf with 0
-      if (!Float.isFinite(b.left)) b.left = 0f;
-      if (!Float.isFinite(b.top)) b.top = 0f;
-      if (!Float.isFinite(b.right)) b.right = 0f;
-      if (!Float.isFinite(b.bottom)) b.bottom = 0f;
-
-      // Ensure normal ordering
-      if (b.right < b.left) {
-        float t = b.left;
-        b.left = b.right;
-        b.right = t;
-      }
-      if (b.bottom < b.top) {
-        float t = b.top;
-        b.top = b.bottom;
-        b.bottom = t;
-      }
-
-      // Clip to image bounds
-      b.left = clamp(b.left, 0f, imageWidth);
-      b.right = clamp(b.right, 0f, imageWidth);
-      b.top = clamp(b.top, 0f, imageHeight);
-      b.bottom = clamp(b.bottom, 0f, imageHeight);
-
-      // Discard if too small/empty
-      if (b.width() <= 0.5f || b.height() <= 0.5f) continue;
-
-      // Use a copy with the clipped rect
-      clean.add(new RecognizedWord(w.getText(), b, w.getConfidence()));
-    }
-    if (clean.isEmpty()) return;
-
-    // --- 1b) Split off vertical CJK columns (issue #88) ---
-    // PaddleOCR emits vertical Japanese columns as one word per column with a tall, narrow box
-    // and the text in logical top-to-bottom order. They must not fall into the horizontal
-    // Y-center line clustering below (which would merge all columns into one left-to-right
-    // "line" and derive a huge font size from the column height). Columns are rendered as
-    // rotated text runs in right-to-left order; all other words use the unchanged paths.
-    List<RecognizedWord> verticalColumns = new ArrayList<>();
-    for (int i = clean.size() - 1; i >= 0; i--) {
-      RecognizedWord w = clean.get(i);
-      RectF b = w.getBoundingBox();
-      if (PdfVerticalTextUtils.isVerticalCjkColumn(w.getText(), b.width(), b.height())) {
-        verticalColumns.add(w);
-        clean.remove(i);
-      }
-    }
-    if (!verticalColumns.isEmpty()) {
-      verticalColumns.sort(
-          (a, b) ->
-              PdfVerticalTextUtils.compareColumnsRightToLeft(
-                  a.getBoundingBox().centerX(), b.getBoundingBox().centerX()));
-      addVerticalColumnsImageSpace(cs, verticalColumns, fonts, imageWidth, imageHeight);
-    }
-    if (clean.isEmpty()) return;
-
-    // --- 1c) Multi-column layout (issue #87): write the text layer segment by segment ---
-    // The Y-center line clustering below merges the lines of side-by-side columns into one
-    // left-to-right "line", which destroys the reading order of the extracted text. When the
-    // user option is enabled and the box geometry forms a multi-column layout, the boxes are
-    // grouped into reading-order segments (full-width bands, then each column top-to-bottom)
-    // and each segment is rendered independently with the unchanged line-based logic. The
-    // glyph positions stay identical; only the order in the content stream changes.
-    if (multiColumn) {
-      List<int[]> segments = groupCleanWordsIntoColumnSegments(clean);
-      if (!segments.isEmpty()) {
-        for (int[] segment : segments) {
-          List<RecognizedWord> segmentWords = new ArrayList<>(segment.length);
-          for (int i : segment) segmentWords.add(clean.get(i));
-          renderHorizontalWordsImageSpace(
-              cs, segmentWords, fonts, imageWidth, imageHeight, textLayerMode);
-        }
-        return;
-      }
-    }
-
-    renderHorizontalWordsImageSpace(cs, clean, fonts, imageWidth, imageHeight, textLayerMode);
-  }
-
-  /**
-   * Groups the cleaned word boxes into multi-column reading-order segments via {@link
-   * MultiColumnLayoutPolicy}. Returns an empty list when the geometry does not form a reliable
-   * multi-column layout — the caller then falls back to the regular single-flow rendering.
-   */
-  private static List<int[]> groupCleanWordsIntoColumnSegments(List<RecognizedWord> clean) {
-    int n = clean.size();
-    float[] lefts = new float[n];
-    float[] tops = new float[n];
-    float[] rights = new float[n];
-    float[] bottoms = new float[n];
-    for (int i = 0; i < n; i++) {
-      RectF b = clean.get(i).getBoundingBox();
-      lefts[i] = b.left;
-      tops[i] = b.top;
-      rights[i] = b.right;
-      bottoms[i] = b.bottom;
-    }
-    boolean rtl = containsRtlText(clean);
-    return MultiColumnLayoutPolicy.groupIntoColumnSegments(lefts, tops, rights, bottoms, rtl);
-  }
-
-  /**
-   * Renders horizontal words as invisible, selectable text: clusters them into visual lines by
-   * Y-center proximity and writes the lines top-to-bottom (extracted from the former single-flow
-   * body of {@code addTextLayerImageSpace}; called once per reading-order segment for multi-column
-   * pages).
-   */
-  private static void renderHorizontalWordsImageSpace(
-      PDPageContentStream cs,
-      List<RecognizedWord> clean,
-      List<PDFont> fonts,
-      int imageWidth,
-      int imageHeight,
-      TextLayerMode textLayerMode)
-      throws Exception {
-    if (clean.isEmpty()) return;
-
-    // Compute dynamic tolerance based on median word height.
-    // Words within this Y-distance are considered on the same line.
-    final float lineToleranceY = calculateLineToleranceY(clean);
-
-    // Stable tie-breaker: original index
-    java.util.IdentityHashMap<RecognizedWord, Integer> idx = new java.util.IdentityHashMap<>();
-    for (int i = 0; i < clean.size(); i++) idx.put(clean.get(i), i);
-
-    // --- 2) Sort words by Y-center first, then by X (left-to-right) ---
-    // This ensures we process words top-to-bottom, left-to-right
-    clean.sort(
-        (a, b) -> {
-          float yCenterA = (a.getBoundingBox().top + a.getBoundingBox().bottom) * 0.5f;
-          float yCenterB = (b.getBoundingBox().top + b.getBoundingBox().bottom) * 0.5f;
-          int c = Float.compare(yCenterA, yCenterB);
-          if (c != 0) return c;
-          c = Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
-          if (c != 0) return c;
-          return Integer.compare(idx.get(a), idx.get(b));
-        });
-
-    // --- 3) Cluster into lines using proximity-based grouping ---
-    // Words are on the same line if their Y-centers are within lineToleranceY
-    // of the line's reference Y (first word's Y-center in that line)
-    List<List<RecognizedWord>> lines = new ArrayList<>();
-    for (RecognizedWord w : clean) {
-      float yCenter = (w.getBoundingBox().top + w.getBoundingBox().bottom) * 0.5f;
-
-      // Try to find an existing line where this word fits
-      boolean added = false;
-      for (List<RecognizedWord> line : lines) {
-        if (line.isEmpty()) continue;
-        // Use the average Y-center of the line for comparison
-        float lineYSum = 0f;
-        for (RecognizedWord lw : line) {
-          lineYSum += (lw.getBoundingBox().top + lw.getBoundingBox().bottom) * 0.5f;
-        }
-        float lineYAvg = lineYSum / line.size();
-
-        if (Math.abs(yCenter - lineYAvg) <= lineToleranceY) {
-          line.add(w);
-          added = true;
-          break;
-        }
-      }
-
-      if (!added) {
-        // Start a new line
-        List<RecognizedWord> newLine = new ArrayList<>();
-        newLine.add(w);
-        lines.add(newLine);
-      }
-    }
-
-    // Sort lines by their average Y position (top to bottom)
-    lines.sort(
-        (lineA, lineB) -> {
-          float avgYA = 0f, avgYB = 0f;
-          for (RecognizedWord w : lineA)
-            avgYA += (w.getBoundingBox().top + w.getBoundingBox().bottom) * 0.5f;
-          for (RecognizedWord w : lineB)
-            avgYB += (w.getBoundingBox().top + w.getBoundingBox().bottom) * 0.5f;
-          avgYA /= lineA.size();
-          avgYB /= lineB.size();
-          return Float.compare(avgYA, avgYB);
-        });
-
-    if (textLayerMode == TextLayerMode.WORD_POSITIONED) {
-      addWordPositionedTextLayerImageSpace(cs, lines, fonts, imageWidth, imageHeight, idx);
-      return;
-    }
-
-    // --- 4) Render lines in logical reading order (for correct copy/paste and search) ---
-    // Each OCR line is written as one text run and horizontally scaled to the OCR line box.
-    // For RTL scripts: words must be written in logical order (first word of sentence first),
-    // which means sorting by X position from RIGHT to LEFT (rightmost word = first in sentence).
-    // For LTR scripts: words are sorted LEFT to RIGHT (leftmost word = first in sentence).
-    for (List<RecognizedWord> line : lines) {
-      if (line.isEmpty()) continue;
-
-      // Detect if this line is predominantly RTL (Arabic/Persian/Hebrew)
-      boolean isRtl = isRtlLine(line);
-
-      // Sort words left to right; an RTL line is then put into LOGICAL reading order (rightmost
-      // Arabic word first, embedded Latin words keep their own order, issue #101), an LTR line
-      // stays in visual order (its RTL words are turned into glyph order below).
-      line.sort(
-          (a, b) -> {
-            int c = Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
-            if (c != 0) return c;
-            c = Float.compare(a.getBoundingBox().top, b.getBoundingBox().top);
-            if (c != 0) return c;
-            return Integer.compare(idx.get(a), idx.get(b));
-          });
-      if (isRtl) BidiWordOrder.toLogical(line, RecognizedWord::getText, true);
-
-      float medianH = medianHeight(line); // px in image
-      float fontSize = Math.max(MIN_FONT_PT, medianH * TEXT_SIZE_RATIO);
-
-      StringBuilder lineText = new StringBuilder();
-      RecognizedWord anchor = null;
-      for (RecognizedWord w : line) {
-        String tokenRaw = safeText(w.getText()).trim();
-        if (tokenRaw.isEmpty()) continue;
-        if (anchor == null) anchor = w;
-        if (lineText.length() > 0) lineText.append(' ');
-
-        // PDFBox writes the complete line as one positioned PDF text run. Positioning every word
-        // independently makes some PDF extractors interpret the visual gaps as multiple spaces or
-        // line breaks. An LTR line keeps its words in place and only turns each RTL word into
-        // glyph order; an RTL line is laid out as a whole below, so that the first word lands on
-        // the right where the ink is. Both stay isolated from the logical text used by
-        // OCRFragment/OCRReview/TXT export.
-        lineText.append(isRtl ? tokenRaw : PdfTextUtils.reorderRtlForPdf(tokenRaw));
-      }
-      if (anchor == null || lineText.length() == 0) continue;
-
-      String token =
-          java.text.Normalizer.normalize(
-              PdfTextUtils.logicalToVisual(lineText.toString(), isRtl),
-              java.text.Normalizer.Form.NFC);
-
-      RectF lineBox = getLineBoundingBox(line);
-      float boxH = lineBox.height();
-      float targetTextWidth = Math.max(1f, lineBox.width());
-      float measuredTextWidth = measureTextWidth(token, fontSize, fonts);
-      float scaleX =
-          measuredTextWidth > 0f
-              ? clamp(
-                  targetTextWidth / measuredTextWidth, MIN_LINE_TEXT_SCALE_X, MAX_LINE_TEXT_SCALE_X)
-              : 1f;
-
-      float baselineImgY = baselineInBox(lineBox.bottom, boxH);
-
-      // Invert Y (image space → PDF Y-up)
-      float x_img = clamp(lineBox.left, 0f, imageWidth);
-      float y_img = clamp((imageHeight - baselineImgY), 0f, imageHeight);
-
-      cs.beginText();
-      try {
-        cs.setRenderingMode(RenderingMode.NEITHER); // unsichtbar aber auswählbar
-        cs.setTextMatrix(new Matrix(scaleX, 0f, 0f, 1f, x_img, y_img));
-        showTextWithFallbacks(cs, token, fontSize, fonts);
-      } finally {
-        cs.endText();
-      }
-    }
-  }
-
-  /**
-   * Renders vertical CJK columns (issue #88) as invisible, selectable text runs.
-   *
-   * <p>Each column is written as one text object whose text matrix rotates the writing direction by
-   * -90° (down the page). The characters therefore stay in logical top-to-bottom Unicode order in
-   * the content stream, so extraction/search/copy yield the correct text, while the glyph positions
-   * overlay the visible vertical column. The caller passes the columns already sorted right-to-left
-   * (Japanese vertical reading order).
-   *
-   * @param cs the content stream (image-space CTM already applied)
-   * @param columns the vertical column words, sorted right-to-left
-   * @param fonts fallback font list
-   * @param imageWidth image width in pixels
-   * @param imageHeight image height in pixels
-   * @throws Exception if writing to the content stream fails
-   */
-  private static void addVerticalColumnsImageSpace(
-      PDPageContentStream cs,
-      List<RecognizedWord> columns,
-      List<PDFont> fonts,
-      int imageWidth,
-      int imageHeight)
-      throws Exception {
-    for (RecognizedWord w : columns) {
-      String tokenRaw = safeText(w.getText()).trim();
-      if (tokenRaw.isEmpty()) continue;
-      String token = java.text.Normalizer.normalize(tokenRaw, java.text.Normalizer.Form.NFC);
-
-      RectF b = w.getBoundingBox();
-      float fontSize = PdfVerticalTextUtils.columnFontSize(b.width());
-      float measured = measureTextWidth(token, fontSize, fonts);
-      float[] m =
-          PdfVerticalTextUtils.columnTextMatrix(
-              b.left, b.top, b.height(), measured, imageWidth, imageHeight);
-
-      cs.beginText();
-      try {
-        cs.setRenderingMode(RenderingMode.NEITHER); // invisible but selectable
-        cs.setTextMatrix(new Matrix(m[0], m[1], m[2], m[3], m[4], m[5]));
-        showTextWithFallbacks(cs, token, fontSize, fonts);
-      } finally {
-        cs.endText();
-      }
-    }
-  }
-
-  private static void addWordPositionedTextLayerImageSpace(
-      PDPageContentStream cs,
-      List<List<RecognizedWord>> lines,
-      List<PDFont> fonts,
-      int imageWidth,
-      int imageHeight,
-      java.util.IdentityHashMap<RecognizedWord, Integer> idx)
-      throws Exception {
-    for (List<RecognizedWord> line : lines) {
-      if (line == null || line.isEmpty()) continue;
-      boolean isRtl = isRtlLine(line);
-      line.sort(
-          (a, b) -> {
-            int c = Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
-            if (c != 0) return c;
-            c = Float.compare(a.getBoundingBox().top, b.getBoundingBox().top);
-            if (c != 0) return c;
-            return Integer.compare(idx.get(a), idx.get(b));
-          });
-      // Every word sits at its own box; the content stream carries them in reading order.
-      BidiWordOrder.toLogical(line, RecognizedWord::getText, isRtl);
-
-      float medianH = medianHeight(line);
-      float fontSize = Math.max(MIN_FONT_PT, medianH * TEXT_SIZE_RATIO);
-
-      for (RecognizedWord w : line) {
-        String tokenRaw = safeText(w.getText());
-        if (tokenRaw.trim().isEmpty()) continue;
-        String token =
-            java.text.Normalizer.normalize(
-                PdfTextUtils.reorderRtlForPdf(tokenRaw) + " ", java.text.Normalizer.Form.NFC);
-        RectF b = w.getBoundingBox();
-        float boxH = b.height();
-        float baselineImgY = baselineInBox(b.bottom, boxH);
-        float x_img = clamp(b.left, 0f, imageWidth);
-        float y_img = clamp((imageHeight - baselineImgY), 0f, imageHeight);
-
-        cs.beginText();
-        try {
-          cs.setRenderingMode(RenderingMode.NEITHER);
-          cs.setTextMatrix(Matrix.getTranslateInstance(x_img, y_img));
-          showTextWithFallbacks(cs, token, fontSize, fonts);
-        } finally {
-          cs.endText();
-        }
-      }
-    }
-  }
-
-  private static RectF getLineBoundingBox(List<RecognizedWord> line) {
-    RectF result = null;
-    for (RecognizedWord w : line) {
-      if (w == null || w.getBoundingBox() == null || safeText(w.getText()).trim().isEmpty()) {
-        continue;
-      }
-      RectF b = w.getBoundingBox();
-      if (result == null) {
-        result = new RectF(b);
-      } else {
-        result.left = Math.min(result.left, b.left);
-        result.top = Math.min(result.top, b.top);
-        result.right = Math.max(result.right, b.right);
-        result.bottom = Math.max(result.bottom, b.bottom);
-      }
-    }
-    return result != null ? result : new RectF(0f, 0f, 1f, 1f);
-  }
-
-  private static float measureTextWidth(String text, float fontSize, List<PDFont> fonts) {
-    if (text == null || text.isEmpty() || fonts == null || fonts.isEmpty()) return 0f;
-
-    float width = 0f;
-    for (int i = 0; i < text.length(); ) {
-      int cp = text.codePointAt(i);
-      String ch = new String(Character.toChars(cp));
-      width += measureCharacterWidth(ch, fontSize, fonts);
-      i += Character.charCount(cp);
-    }
-    return width;
-  }
-
-  private static float measureCharacterWidth(String ch, float fontSize, List<PDFont> fonts) {
-    for (PDFont font : fonts) {
-      if (GlyphlessFont.is(font)) return GlyphlessFont.width(ch, fontSize);
-      try {
-        font.encode(ch);
-        return font.getStringWidth(ch) / 1000f * fontSize;
-      } catch (Exception ignore) {
-        // Try the next fallback font, matching showTextWithFallbacks behavior.
-      }
-    }
-    return fontSize * 0.5f;
+          @Override
+          public void releasePage(int index, Bitmap page) {
+            // The caller owns the bitmap.
+          }
+        };
+    return createSearchablePdfStreaming(
+        context,
+        source,
+        outputUri,
+        jpegQuality,
+        convertToGrayscale,
+        convertToBlackWhite,
+        targetDpi,
+        null,
+        pageFormat,
+        cleanupMode,
+        /* skipNullBitmaps= */ false,
+        multiColumn);
   }
 
   /**
@@ -872,10 +265,10 @@ public class PdfCreator {
     int effectiveDpi = targetDpi <= 0 ? 300 : targetDpi;
     int[] formatPx = pageFormat.pixelsForDpi(effectiveDpi);
     if (formatPx != null) return formatPx;
-    PDRectangle page = pageFormat.toPageRectangle(imageW, imageH);
+    float[] page = pageFormat.toPageSize(imageW, imageH);
     return new int[] {
-      Math.max(1, Math.round(page.getWidth() / 72f * effectiveDpi)),
-      Math.max(1, Math.round(page.getHeight() / 72f * effectiveDpi))
+      Math.max(1, Math.round(page[0] / 72f * effectiveDpi)),
+      Math.max(1, Math.round(page[1] / 72f * effectiveDpi))
     };
   }
 
@@ -982,62 +375,6 @@ public class PdfCreator {
     canvas.drawColor(android.graphics.Color.WHITE);
     canvas.drawBitmap(src, 0f, 0f, null);
     return opaque;
-  }
-
-  private static float medianHeight(List<RecognizedWord> line) {
-    List<Float> heights = new ArrayList<>();
-    for (RecognizedWord w : line) heights.add(w.getBoundingBox().height());
-    Collections.sort(heights);
-    int n = heights.size();
-    if (n == 0) return 0;
-    if (n % 2 == 1) return heights.get(n / 2);
-    return (heights.get(n / 2 - 1) + heights.get(n / 2)) / 2f;
-  }
-
-  static float calculateLineToleranceY(List<RecognizedWord> words) {
-    float medianH = medianHeight(words);
-    return Math.max(4f, medianH * 0.45f);
-  }
-
-  /**
-   * Ensures that the given text is sanitized by replacing all control characters, except for
-   * carriage return, new line, and tab, with a space.
-   *
-   * @param t the input text to sanitize; can be null.
-   * @return the sanitized text, or an empty string if the input is null.
-   */
-  private static String safeText(String t) {
-    if (t == null) return "";
-    return t.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ");
-  }
-
-  /**
-   * Baseline for a text run inside an OCR box (image Y grows downward): a fifth of the box height
-   * above its bottom, leaving room for descenders. A baseline below the box makes the selectable
-   * text layer hang under the visible scan text.
-   */
-  static float baselineInBox(float boxBottom, float boxHeight) {
-    return boxBottom - boxHeight * 0.20f;
-  }
-
-  /**
-   * Restricts a given value to lie within the specified minimum and maximum bounds.
-   *
-   * @param v The value to be clamped.
-   * @param min The minimum bound to which the value can be clamped.
-   * @param max The maximum bound to which the value can be clamped.
-   * @return The clamped value, lying between the specified minimum and maximum bounds.
-   */
-  private static float clamp(float v, float min, float max) {
-    return Math.max(min, Math.min(max, v));
-  }
-
-  private static boolean isRtlLine(List<RecognizedWord> line) {
-    return PdfTextUtils.isRtlLine(line);
-  }
-
-  private static boolean containsRtlText(List<RecognizedWord> words) {
-    return PdfTextUtils.containsRtlText(words);
   }
 
   /**
@@ -1207,35 +544,6 @@ public class PdfCreator {
         listener,
         pageFormat,
         cleanupMode,
-        TextLayerMode.LINE_BASED);
-  }
-
-  public static Uri createSearchablePdf(
-      Context context,
-      List<Bitmap> bitmaps,
-      List<List<RecognizedWord>> perPageWords,
-      Uri outputUri,
-      int jpegQuality,
-      boolean convertToGrayscale,
-      boolean convertToBlackWhite,
-      int targetDpi,
-      ProgressListener listener,
-      PageFormat pageFormat,
-      DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode) {
-    return createSearchablePdf(
-        context,
-        bitmaps,
-        perPageWords,
-        outputUri,
-        jpegQuality,
-        convertToGrayscale,
-        convertToBlackWhite,
-        targetDpi,
-        listener,
-        pageFormat,
-        cleanupMode,
-        textLayerMode,
         false);
   }
 
@@ -1259,7 +567,6 @@ public class PdfCreator {
       ProgressListener listener,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode,
       boolean multiColumn) {
     if (bitmaps == null || bitmaps.isEmpty() || outputUri == null) return null;
     // Legacy eager path: wrap the pre-loaded lists into a PageSource. The caller keeps
@@ -1300,7 +607,6 @@ public class PdfCreator {
         listener,
         pageFormat,
         cleanupMode,
-        textLayerMode,
         /* skipNullBitmaps= */ true,
         multiColumn);
   }
@@ -1381,8 +687,7 @@ public class PdfCreator {
       int targetDpi,
       ProgressListener listener,
       PageFormat pageFormat,
-      DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode) {
+      DocumentCleanupMode cleanupMode) {
     return createSearchablePdfStreaming(
         context,
         source,
@@ -1394,15 +699,14 @@ public class PdfCreator {
         listener,
         pageFormat,
         cleanupMode,
-        textLayerMode,
         /* skipNullBitmaps= */ false,
         /* multiColumn= */ false);
   }
 
   /**
    * Variant of {@link #createSearchablePdf(Context, PageSource, Uri, int, boolean, boolean, int,
-   * ProgressListener, PageFormat, DocumentCleanupMode, TextLayerMode)} with optional multi-column
-   * layout reconstruction (see {@link MultiColumnLayoutPolicy}).
+   * ProgressListener, PageFormat, DocumentCleanupMode)} with optional multi-column layout
+   * reconstruction (see {@link MultiColumnLayoutPolicy}).
    *
    * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
    */
@@ -1417,7 +721,6 @@ public class PdfCreator {
       ProgressListener listener,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode,
       boolean multiColumn) {
     return createSearchablePdfStreaming(
         context,
@@ -1430,7 +733,6 @@ public class PdfCreator {
         listener,
         pageFormat,
         cleanupMode,
-        textLayerMode,
         /* skipNullBitmaps= */ false,
         multiColumn);
   }
@@ -1446,161 +748,39 @@ public class PdfCreator {
       ProgressListener listener,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode,
       boolean skipNullBitmaps,
       boolean multiColumn) {
     if (source == null || source.getPageCount() <= 0 || outputUri == null) return null;
     if (pageFormat == null) pageFormat = PageFormat.A4;
-    if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
-    try {
-      PDFBoxResourceLoader.init(context);
-    } catch (Throwable t) {
-      Log.e(TAG, "PDFBox init failed", t);
-      return null;
-    }
-    try (PDDocument document = new PDDocument()) {
-      try {
-        document.getDocument().setVersion(1.5f);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
+    PageOptions options =
+        new PageOptions(
+            jpegQuality,
+            convertToGrayscale,
+            convertToBlackWhite,
+            targetDpi,
+            pageFormat,
+            cleanupMode,
+            skipNullBitmaps,
+            multiColumn);
+    int total = source.getPageCount();
+    long startMs = android.os.SystemClock.elapsedRealtime();
+    int workers = exportWorkerCount(context, total);
+    try (OutputStream os = context.getContentResolver().openOutputStream(outputUri)) {
+      if (os == null) {
+        Log.e(TAG, "createSearchablePdf: openOutputStream returned null");
+        return null;
       }
-      document.getDocumentInformation().setCreator("MakeACopy");
-      document.getDocumentInformation().setProducer("MakeACopy");
-
-      // Load fonts once (file-based; subset-embedded)
-      List<PDFont> fonts = loadFontsWithFallbacks(document, context);
-
-      int total = source.getPageCount();
-      int embeddedAsStored = 0;
-      long startMs = android.os.SystemClock.elapsedRealtime();
-      int workers = exportWorkerCount(context, total);
-      if (workers > 1) {
-        embeddedAsStored =
-            renderPagesParallel(
-                document,
-                fonts,
-                source,
-                workers,
-                jpegQuality,
-                convertToGrayscale,
-                convertToBlackWhite,
-                targetDpi,
-                listener,
-                pageFormat,
-                cleanupMode,
-                textLayerMode,
-                skipNullBitmaps,
-                multiColumn);
-        if (embeddedAsStored < 0) return null;
-      } else {
-        for (int i = 0; i < total; i++) {
-          int[] stored =
-              storedJpegPassthrough(
-                  source,
-                  i,
-                  jpegQuality,
-                  convertToGrayscale,
-                  convertToBlackWhite,
-                  targetDpi,
-                  pageFormat,
-                  cleanupMode);
-          if (stored != null
-              && renderStoredJpegIntoDocument(
-                  document,
-                  fonts,
-                  source.storedJpeg(i),
-                  stored[0],
-                  stored[1],
-                  loadWordsSafely(source, i),
-                  i,
-                  pageFormat,
-                  textLayerMode,
-                  multiColumn)) {
-            embeddedAsStored++;
-            try {
-              source.releasePage(i, null);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-            if (listener != null) {
-              try {
-                listener.onPageProcessed(i + 1, total);
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-            }
-            continue;
-          }
-          Bitmap src;
-          try {
-            src = source.loadBitmap(i);
-          } catch (Throwable t) {
-            Log.e(TAG, "Failed to load bitmap for page " + (i + 1), t);
-            return null;
-          }
-          if (src == null) {
-            if (skipNullBitmaps) {
-              // Legacy List<Bitmap> semantics: skip null entries defensively.
-              if (listener != null)
-                try {
-                  listener.onPageProcessed(i + 1, total);
-                } catch (Throwable ignore) {
-                  // Best-effort; failure is non-critical
-                }
-              continue;
-            }
-            Log.e(TAG, "PageSource returned null bitmap for page " + (i + 1));
-            return null;
-          }
-          boolean rendered;
-          try {
-            List<RecognizedWord> pageWords = loadWordsSafely(source, i);
-            rendered =
-                renderPageIntoDocument(
-                    document,
-                    fonts,
-                    src,
-                    pageWords,
-                    i,
-                    jpegQuality,
-                    convertToGrayscale,
-                    convertToBlackWhite,
-                    targetDpi,
-                    pageFormat,
-                    cleanupMode,
-                    textLayerMode,
-                    multiColumn);
-          } finally {
-            // Ownership contract: the source releases the bitmap exactly once per page.
-            try {
-              source.releasePage(i, src);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          }
-          if (!rendered) {
-            return null;
-          }
-          if (listener != null) {
-            try {
-              listener.onPageProcessed(i + 1, total);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          }
-        }
+      PdfWriter writer = new PdfWriter(new java.io.BufferedOutputStream(os, 1 << 16), "MakeACopy");
+      int embeddedAsStored = renderPages(writer, source, workers, options, listener);
+      if (embeddedAsStored < 0) return null;
+      if (writer.pageCount() == 0) {
+        Log.e(TAG, "createSearchablePdf: no page to write");
+        return null;
       }
-
-      try (OutputStream os = context.getContentResolver().openOutputStream(outputUri)) {
-        if (os == null) {
-          Log.e(TAG, "createSearchablePdf(multi): openOutputStream returned null");
-          return null;
-        }
-        document.save(os);
-      }
+      writer.finish();
       Log.i(
           TAG,
-          "createSearchablePdf(multi): "
+          "createSearchablePdf: "
               + total
               + " pages, "
               + embeddedAsStored
@@ -1611,10 +791,21 @@ public class PdfCreator {
               + " ms");
       return outputUri;
     } catch (Exception e) {
-      Log.e(TAG, "Error creating multi-page PDF", e);
+      Log.e(TAG, "Error creating PDF", e);
       return null;
     }
   }
+
+  /** The export settings every page is prepared with. */
+  private record PageOptions(
+      int jpegQuality,
+      boolean toGray,
+      boolean toBw,
+      int targetDpi,
+      PageFormat pageFormat,
+      DocumentCleanupMode cleanupMode,
+      boolean skipNullBitmaps,
+      boolean multiColumn) {}
 
   /** Upper bound for parallel page preparation; more threads mostly add memory, not speed. */
   private static final int MAX_EXPORT_WORKERS = 3;
@@ -1669,39 +860,31 @@ public class PdfCreator {
   }
 
   /**
-   * Renders all pages of {@code source} with {@code workers} threads preparing pages (load,
-   * process, encode) ahead of the calling thread, which adds them to the document in page order. At
-   * most {@code workers + 1} pages are prepared or waiting at any time.
+   * Prepares the pages (on {@code workers} threads when more than one, at most {@code workers + 1}
+   * pages ahead) and writes them in order.
    *
-   * @return the number of pages embedded from their stored JPEG, or {@code -1} on failure (the
-   *     export is aborted)
+   * @return the number of pages embedded as their stored JPEG, or -1 on failure
    */
-  private static int renderPagesParallel(
-      PDDocument document,
-      List<PDFont> fonts,
+  private static int renderPages(
+      PdfWriter writer,
       PageSource source,
       int workers,
-      int jpegQuality,
-      boolean convertToGrayscale,
-      boolean convertToBlackWhite,
-      int targetDpi,
-      ProgressListener listener,
-      PageFormat pageFormat,
-      DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode,
-      boolean skipNullBitmaps,
-      boolean multiColumn) {
+      PageOptions options,
+      ProgressListener listener)
+      throws IOException {
     final int total = source.getPageCount();
     final java.util.concurrent.atomic.AtomicBoolean aborted =
         new java.util.concurrent.atomic.AtomicBoolean(false);
     java.util.concurrent.ExecutorService pool =
-        java.util.concurrent.Executors.newFixedThreadPool(
-            workers,
-            r -> {
-              Thread th = new Thread(r, "pdf-page");
-              th.setPriority(Thread.NORM_PRIORITY - 1);
-              return th;
-            });
+        workers > 1
+            ? java.util.concurrent.Executors.newFixedThreadPool(
+                workers,
+                r -> {
+                  Thread th = new Thread(r, "pdf-page");
+                  th.setPriority(Thread.NORM_PRIORITY - 1);
+                  return th;
+                })
+            : null;
     java.util.ArrayDeque<java.util.concurrent.Future<PreparedPage>> inFlight =
         new java.util.ArrayDeque<>();
     int next = 0;
@@ -1709,36 +892,29 @@ public class PdfCreator {
     boolean ok = false;
     try {
       for (int i = 0; i < total; i++) {
-        while (next < total && inFlight.size() <= workers) {
-          final int index = next++;
-          inFlight.add(
-              pool.submit(
-                  () ->
-                      preparePage(
-                          source,
-                          index,
-                          aborted,
-                          jpegQuality,
-                          convertToGrayscale,
-                          convertToBlackWhite,
-                          targetDpi,
-                          pageFormat,
-                          cleanupMode,
-                          skipNullBitmaps)));
-        }
         PreparedPage page;
-        try {
-          page = inFlight.poll().get();
-        } catch (java.util.concurrent.ExecutionException e) {
-          Log.e(TAG, "Failed to prepare page " + (i + 1), e.getCause());
-          return -1;
+        if (pool == null) {
+          try {
+            page = preparePage(source, i, aborted, options);
+          } catch (Exception e) {
+            Log.e(TAG, "Failed to prepare page " + (i + 1), e);
+            return -1;
+          }
+        } else {
+          while (next < total && inFlight.size() <= workers) {
+            final int index = next++;
+            inFlight.add(pool.submit(() -> preparePage(source, index, aborted, options)));
+          }
+          try {
+            page = inFlight.poll().get();
+          } catch (java.util.concurrent.ExecutionException e) {
+            Log.e(TAG, "Failed to prepare page " + (i + 1), e.getCause());
+            return -1;
+          }
         }
         try {
           if (!page.skipped) {
-            if (!addPreparedPage(
-                document, fonts, page, i, pageFormat, textLayerMode, multiColumn)) {
-              return -1;
-            }
+            if (!addPreparedPage(writer, page, i, options)) return -1;
             if (page.fromStoredJpeg) embeddedAsStored++;
           }
         } finally {
@@ -1759,27 +935,28 @@ public class PdfCreator {
       Log.e(TAG, "Interrupted while preparing pages", e);
       return -1;
     } finally {
-      if (!ok) {
-        aborted.set(true);
-        for (java.util.concurrent.Future<PreparedPage> f : inFlight) f.cancel(false);
-      }
-      pool.shutdown();
-      // Wait for running workers so every loaded page is released before the export returns.
-      try {
-        if (!pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
-          Log.w(TAG, "Page workers did not finish in time");
+      if (pool != null) {
+        if (!ok) {
+          aborted.set(true);
+          for (java.util.concurrent.Future<PreparedPage> f : inFlight) f.cancel(false);
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-      if (!ok) {
-        for (java.util.concurrent.Future<PreparedPage> f : inFlight) {
-          if (f.isDone() && !f.isCancelled()) {
-            try {
-              PreparedPage p = f.get();
-              if (p != null) p.recycle();
-            } catch (Exception ignore) {
-              // Already logged or cancelled
+        pool.shutdown();
+        try {
+          if (!pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS)) {
+            Log.w(TAG, "Page workers did not finish in time");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+        if (!ok) {
+          for (java.util.concurrent.Future<PreparedPage> f : inFlight) {
+            if (f.isDone() && !f.isCancelled()) {
+              try {
+                PreparedPage p = f.get();
+                if (p != null) p.recycle();
+              } catch (Exception ignore) {
+                // Best-effort; failure is non-critical
+              }
             }
           }
         }
@@ -1795,14 +972,15 @@ public class PdfCreator {
       PageSource source,
       int index,
       java.util.concurrent.atomic.AtomicBoolean aborted,
-      int jpegQuality,
-      boolean toGray,
-      boolean toBw,
-      int targetDpi,
-      PageFormat pageFormat,
-      DocumentCleanupMode cleanupMode,
-      boolean skipNullBitmaps)
+      PageOptions options)
       throws Exception {
+    final int jpegQuality = options.jpegQuality();
+    final boolean toGray = options.toGray();
+    final boolean toBw = options.toBw();
+    final int targetDpi = options.targetDpi();
+    final PageFormat pageFormat = options.pageFormat();
+    final DocumentCleanupMode cleanupMode = options.cleanupMode();
+    final boolean skipNullBitmaps = options.skipNullBitmaps();
     PreparedPage page = new PreparedPage();
     if (aborted.get()) return page;
     int[] stored =
@@ -1843,7 +1021,6 @@ public class PdfCreator {
       page.imgW = prepared.getWidth();
       page.imgH = prepared.getHeight();
       if (jpegQuality < 100) {
-        // Same encoding as JPEGFactory.createFromImage, done here so it runs in parallel.
         Bitmap opaque = removeAlphaChannel(prepared);
         try {
           java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(1 << 20);
@@ -1868,56 +1045,96 @@ public class PdfCreator {
     return page;
   }
 
-  /** Consumer side of {@link #renderPagesParallel}: adds one prepared page to the document. */
+  /** Writes {@code page}: its image fitted onto the page and the text layer over it. */
   private static boolean addPreparedPage(
-      PDDocument document,
-      List<PDFont> fonts,
-      PreparedPage page,
-      int pageIndex,
-      PageFormat pageFormat,
-      TextLayerMode textLayerMode,
-      boolean multiColumn) {
+      PdfWriter writer, PreparedPage page, int pageIndex, PageOptions options) {
     try {
-      PDImageXObject pdImg;
+      PdfWriter.Image image;
       if (page.jpeg != null) {
         try {
-          pdImg = JPEGFactory.createFromByteArray(document, page.jpeg);
-        } catch (Exception e) {
+          image = PdfWriter.Image.jpeg(page.jpeg);
+        } catch (IllegalArgumentException e) {
           if (!page.fromStoredJpeg) throw e;
-          // A stored JPEG PdfBox cannot take: decode it and re-encode as usual.
           Log.w(TAG, "Embedding the stored JPEG failed for page " + (pageIndex + 1), e);
           Bitmap decoded =
               android.graphics.BitmapFactory.decodeByteArray(page.jpeg, 0, page.jpeg.length);
           if (decoded == null) return false;
           try {
-            pdImg =
-                JPEGFactory.createFromImage(
-                    document, decoded, ScanPersister.PAGE_JPEG_QUALITY / 100f);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(1 << 20);
+            if (!decoded.compress(
+                Bitmap.CompressFormat.JPEG, ScanPersister.PAGE_JPEG_QUALITY, out)) {
+              return false;
+            }
+            image = PdfWriter.Image.jpeg(out.toByteArray());
           } finally {
             decoded.recycle();
           }
           page.fromStoredJpeg = false;
         }
       } else {
-        pdImg = LosslessFactory.createFromImage(document, page.lossless);
+        int w = page.lossless.getWidth();
+        int h = page.lossless.getHeight();
+        int[] px = new int[w * h];
+        page.lossless.getPixels(px, 0, w, 0, 0, w, h);
+        image = PdfWriter.Image.lossless(px, w, h);
       }
-      addImagePage(
-          document,
-          fonts,
-          pdImg,
-          page.imgW,
-          page.imgH,
-          page.srcW,
-          page.srcH,
-          page.words,
-          pageFormat,
-          textLayerMode,
-          multiColumn);
+      float[] size = options.pageFormat().toPageSize(page.imgW, page.imgH);
+      writer.addPage(size[0], size[1], image, pageContent(size, page, options.multiColumn()));
       return true;
     } catch (Exception e) {
       Log.e(TAG, "Error rendering page " + (pageIndex + 1), e);
       return false;
     }
+  }
+
+  /**
+   * The page's content: the image fitted into the page and centred (letterboxed when the aspect
+   * ratios differ), and the text layer in the image's own pixel space via the same transform.
+   */
+  private static String pageContent(float[] pageSize, PreparedPage page, boolean multiColumn) {
+    float pageW = pageSize[0];
+    float pageH = pageSize[1];
+    float scale = calculateScale(page.imgW, page.imgH, pageW, pageH);
+    float drawW = page.imgW * scale;
+    float drawH = page.imgH * scale;
+    float offsetX = (pageW - drawW) / 2f;
+    float offsetY = (pageH - drawH) / 2f;
+    StringBuilder c = new StringBuilder();
+    c.append("q ")
+        .append(PdfWriter.num(drawW))
+        .append(" 0 0 ")
+        .append(PdfWriter.num(drawH))
+        .append(' ')
+        .append(PdfWriter.num(offsetX))
+        .append(' ')
+        .append(PdfWriter.num(offsetY))
+        .append(" cm /Im0 Do Q\n");
+    List<RecognizedWord> words = page.words;
+    if (words == null || words.isEmpty()) return c.toString();
+    // OCR boxes are in the source bitmap's pixels; the image may have been scaled since.
+    if (page.srcW != page.imgW || page.srcH != page.imgH) {
+      float sx = (float) page.imgW / page.srcW;
+      float sy = (float) page.imgH / page.srcH;
+      List<RecognizedWord> scaled = new ArrayList<>(words.size());
+      for (RecognizedWord w : words) {
+        scaled.add(w.transform(sx, sy, 0f, 0f).clipTo(page.imgW, page.imgH));
+      }
+      words = scaled;
+    }
+    String text = PdfTextLayer.build(words, page.imgW, page.imgH, multiColumn);
+    if (text.isEmpty()) return c.toString();
+    c.append("q ")
+        .append(String.format(java.util.Locale.ROOT, "%.6f", scale))
+        .append(" 0 0 ")
+        .append(String.format(java.util.Locale.ROOT, "%.6f", scale))
+        .append(' ')
+        .append(PdfWriter.num(offsetX))
+        .append(' ')
+        .append(PdfWriter.num(offsetY))
+        .append(" cm\n")
+        .append(text)
+        .append("Q\n");
+    return c.toString();
   }
 
   /** The page's OCR words; a broken or missing OCR payload yields {@code null} (image only). */
@@ -2010,189 +1227,6 @@ public class PdfCreator {
       }
     } catch (IOException e) {
       return null;
-    }
-  }
-
-  /**
-   * Renders a single page (image + optional OCR text layer) into the given document. Does not
-   * recycle {@code src}; intermediate prepared bitmaps are recycled internally.
-   *
-   * @return {@code true} on success, {@code false} on failure
-   */
-  private static boolean renderPageIntoDocument(
-      PDDocument document,
-      List<PDFont> fonts,
-      Bitmap src,
-      List<RecognizedWord> pageWords,
-      int pageIndex,
-      int jpegQuality,
-      boolean convertToGrayscale,
-      boolean convertToBlackWhite,
-      int targetDpi,
-      PageFormat pageFormat,
-      DocumentCleanupMode cleanupMode,
-      TextLayerMode textLayerMode,
-      boolean multiColumn) {
-    Bitmap prepared = null;
-    try {
-      prepared =
-          processImageForPdf(
-              src, convertToGrayscale, convertToBlackWhite, targetDpi, pageFormat, cleanupMode);
-      if (prepared == null) {
-        Log.e(TAG, "Image preparation failed for page " + (pageIndex + 1));
-        return false;
-      }
-
-      float q = Math.max(0f, Math.min(1f, jpegQuality / 100f));
-      // Remove alpha channel before JPEG encoding to avoid OOM in
-      // JPEGFactory.createAlphaFromARGBImage.
-      Bitmap opaqueForJpeg = (jpegQuality < 100) ? removeAlphaChannel(prepared) : null;
-      PDImageXObject pdImg;
-      try {
-        pdImg =
-            (jpegQuality < 100)
-                ? JPEGFactory.createFromImage(document, opaqueForJpeg, q)
-                : LosslessFactory.createFromImage(document, prepared);
-      } finally {
-        if (opaqueForJpeg != null && opaqueForJpeg != prepared) {
-          try {
-            opaqueForJpeg.recycle();
-          } catch (Throwable t) {
-            Log.w(TAG, "Failed to recycle opaque bitmap", t);
-          }
-        }
-      }
-
-      addImagePage(
-          document,
-          fonts,
-          pdImg,
-          prepared.getWidth(),
-          prepared.getHeight(),
-          src.getWidth(),
-          src.getHeight(),
-          pageWords,
-          pageFormat,
-          textLayerMode,
-          multiColumn);
-      return true;
-    } catch (Exception e) {
-      Log.e(TAG, "Error rendering page " + (pageIndex + 1), e);
-      return false;
-    } finally {
-      if (prepared != null && prepared != src) {
-        try {
-          prepared.recycle();
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-      }
-    }
-  }
-
-  /**
-   * Embeds a stored page JPEG as is (no decode, no re-encode) and adds its text layer. The caller
-   * has checked with {@link #storedJpegPassthrough} that nothing would change the image.
-   *
-   * @return {@code true} on success, {@code false} on failure (the caller then takes the bitmap
-   *     path)
-   */
-  private static boolean renderStoredJpegIntoDocument(
-      PDDocument document,
-      List<PDFont> fonts,
-      File jpeg,
-      int width,
-      int height,
-      List<RecognizedWord> pageWords,
-      int pageIndex,
-      PageFormat pageFormat,
-      TextLayerMode textLayerMode,
-      boolean multiColumn) {
-    try {
-      PDImageXObject pdImg;
-      try (InputStream in = new FileInputStream(jpeg)) {
-        pdImg = JPEGFactory.createFromStream(document, in);
-      }
-      addImagePage(
-          document,
-          fonts,
-          pdImg,
-          width,
-          height,
-          width,
-          height,
-          pageWords,
-          pageFormat,
-          textLayerMode,
-          multiColumn);
-      return true;
-    } catch (Exception e) {
-      Log.w(TAG, "Embedding the stored JPEG failed for page " + (pageIndex + 1), e);
-      return false;
-    }
-  }
-
-  /**
-   * Adds a page holding {@code pdImg} (an image of {@code imgW x imgH}) fitted into the page
-   * format, plus the OCR text layer. The words are in the coordinates of the source bitmap ({@code
-   * srcW x srcH}) and are scaled to the image when the two differ.
-   */
-  private static void addImagePage(
-      PDDocument document,
-      List<PDFont> fonts,
-      PDImageXObject pdImg,
-      int imgW,
-      int imgH,
-      int srcW,
-      int srcH,
-      List<RecognizedWord> pageWords,
-      PageFormat pageFormat,
-      TextLayerMode textLayerMode,
-      boolean multiColumn)
-      throws Exception {
-    PDRectangle pageSize = pageFormat.toPageRectangle(imgW, imgH);
-    float pageW = pageSize.getWidth();
-    float pageH = pageSize.getHeight();
-
-    PDPage page = new PDPage(pageSize);
-    // Harmonize page boxes to avoid viewer-specific cropping/offset interpretations
-    try {
-      page.setMediaBox(pageSize);
-      page.setCropBox(pageSize);
-      page.setBleedBox(pageSize);
-      page.setTrimBox(pageSize);
-      page.setArtBox(pageSize);
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
-    }
-    document.addPage(page);
-
-    float scale = calculateScale(imgW, imgH, pageW, pageH);
-    float drawW = imgW * scale;
-    float drawH = imgH * scale;
-    float offsetX = (pageW - drawW) / 2f;
-    float offsetY = (pageH - drawH) / 2f;
-
-    try (PDPageContentStream cs = new PDPageContentStream(document, page)) {
-      cs.drawImage(pdImg, offsetX, offsetY, drawW, drawH);
-      if (pageWords != null && !pageWords.isEmpty()) {
-        cs.saveGraphicsState();
-        cs.transform(new Matrix(scale, 0, 0, scale, offsetX, offsetY));
-        // Normalize OCR boxes from source bitmap space to image space if needed
-        List<RecognizedWord> normWords;
-        if (srcW != imgW || srcH != imgH) {
-          float sxImg = (float) imgW / (float) srcW;
-          float syImg = (float) imgH / (float) srcH;
-          normWords = new ArrayList<>(pageWords.size());
-          for (RecognizedWord w : pageWords) {
-            normWords.add(w.transform(sxImg, syImg, 0f, 0f).clipTo(imgW, imgH));
-          }
-        } else {
-          normWords = pageWords;
-        }
-        addTextLayerImageSpace(cs, normWords, fonts, imgW, imgH, textLayerMode, multiColumn);
-        cs.restoreGraphicsState();
-      }
     }
   }
 

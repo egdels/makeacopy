@@ -101,7 +101,6 @@ public final class SettingsCatalog {
           str("document_cleanup_mode", "ORIGINAL", Group.EXPORT), // DocumentCleanupMode
           str("pdf_bw_mode", null, Group.EXPORT), // GRAYSCALE, ROBUST, CLASSIC; null = colour
           str("page_format", "FIT_TO_IMAGE", Group.EXPORT), // PageFormat
-          str("pdf_text_layer_mode", "LINE_BASED", Group.EXPORT), // PdfCreator.TextLayerMode
           str("pdf_preset", null, Group.EXPORT), // PdfQualityPreset; null = by page count
           str("jpeg_mode", "NONE", Group.EXPORT), // JpegExportOptions.Mode
           bool("jpeg_output_grayscale", false, Group.EXPORT),

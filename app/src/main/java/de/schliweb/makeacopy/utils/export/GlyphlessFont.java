@@ -9,19 +9,9 @@
  */
 package de.schliweb.makeacopy.utils.export;
 
-import com.tom_roush.pdfbox.cos.COSArray;
-import com.tom_roush.pdfbox.cos.COSDictionary;
-import com.tom_roush.pdfbox.cos.COSInteger;
-import com.tom_roush.pdfbox.cos.COSName;
-import com.tom_roush.pdfbox.cos.COSStream;
-import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
-import com.tom_roush.pdfbox.pdmodel.font.PDFont;
-import com.tom_roush.pdfbox.pdmodel.font.PDType0Font;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
@@ -34,10 +24,9 @@ import java.util.TreeMap;
  * Noto font per script (12.6 MB in the full edition). The text is drawn in render mode 3
  * (invisible) anyway, so no glyph is ever painted.
  *
- * <p>PDFBox' {@code showText} needs a glyph for every character and cannot draw with this font;
- * {@link #showText} writes the codes into the content stream itself, and widths are {@link #width}.
- * The FontDescriptor's descent is -1, as Tesseract's: with 0, macOS (PDFKit, Preview) cannot work
- * out the font's height and finds no text at all.
+ * <p>{@link PdfWriter} writes the font objects and shows the codes as hex strings; widths are
+ * {@link #width}. The FontDescriptor's descent is -1, as Tesseract's: with 0, macOS (PDFKit,
+ * Preview) cannot work out the font's height and finds no text at all.
  *
  * <p>Characters outside the Basic Multilingual Plane (emoji, mathematical alphanumerics) take two
  * codes, one per surrogate, and come out of a text extraction as U+FFFD, as with Tesseract's font;
@@ -52,7 +41,7 @@ public final class GlyphlessFont {
 
   private static final int UNITS_PER_EM = 1000;
 
-  private static final String TO_UNICODE =
+  static final String TO_UNICODE =
       "/CIDInit /ProcSet findresource begin\n"
           + "12 dict begin\n"
           + "begincmap\n"
@@ -73,81 +62,6 @@ public final class GlyphlessFont {
   private static byte[] fontBytes;
 
   private GlyphlessFont() {}
-
-  /** Whether {@code font} is one created by {@link #create}. */
-  public static boolean is(PDFont font) {
-    return font != null && NAME.equals(font.getName());
-  }
-
-  /** Creates the font's objects in {@code document} and returns it, ready for {@code setFont}. */
-  public static PDFont create(PDDocument document) throws IOException {
-    byte[] ttf = bytes();
-    COSStream fontFile = document.getDocument().createCOSStream();
-    fontFile.setInt(COSName.LENGTH1, ttf.length);
-    try (OutputStream out = fontFile.createOutputStream()) {
-      out.write(ttf);
-    }
-
-    COSDictionary descriptor = new COSDictionary();
-    descriptor.setItem(COSName.TYPE, COSName.FONT_DESC);
-    descriptor.setName(COSName.FONT_NAME, NAME);
-    descriptor.setInt(COSName.FLAGS, 5);
-    COSArray bbox = new COSArray();
-    bbox.add(COSInteger.get(0));
-    bbox.add(COSInteger.get(0));
-    bbox.add(COSInteger.get(ADVANCE));
-    bbox.add(COSInteger.get(UNITS_PER_EM));
-    descriptor.setItem(COSName.FONT_BBOX, bbox);
-    descriptor.setInt(COSName.ITALIC_ANGLE, 0);
-    descriptor.setInt(COSName.ASCENT, UNITS_PER_EM);
-    descriptor.setInt(COSName.DESCENT, -1);
-    descriptor.setInt(COSName.CAP_HEIGHT, UNITS_PER_EM);
-    descriptor.setInt(COSName.STEM_V, 80);
-    descriptor.setItem(COSName.FONT_FILE2, fontFile);
-
-    COSDictionary systemInfo = new COSDictionary();
-    systemInfo.setString(COSName.REGISTRY, "Adobe");
-    systemInfo.setString(COSName.ORDERING, "Identity");
-    systemInfo.setInt(COSName.SUPPLEMENT, 0);
-
-    COSDictionary cidFont = new COSDictionary();
-    cidFont.setItem(COSName.TYPE, COSName.FONT);
-    cidFont.setItem(COSName.SUBTYPE, COSName.CID_FONT_TYPE2);
-    cidFont.setName(COSName.BASE_FONT, NAME);
-    cidFont.setItem(COSName.CIDSYSTEMINFO, systemInfo);
-    cidFont.setItem(COSName.FONT_DESC, descriptor);
-    cidFont.setInt(COSName.DW, ADVANCE);
-    cidFont.setItem(COSName.CID_TO_GID_MAP, COSName.IDENTITY);
-
-    COSStream toUnicode = document.getDocument().createCOSStream();
-    try (OutputStream out = toUnicode.createOutputStream()) {
-      out.write(TO_UNICODE.getBytes(StandardCharsets.US_ASCII));
-    }
-
-    COSArray descendants = new COSArray();
-    descendants.add(cidFont);
-    COSDictionary type0 = new COSDictionary();
-    type0.setItem(COSName.TYPE, COSName.FONT);
-    type0.setItem(COSName.SUBTYPE, COSName.TYPE0);
-    type0.setName(COSName.BASE_FONT, NAME);
-    type0.setItem(COSName.ENCODING, COSName.IDENTITY_H);
-    type0.setItem(COSName.DESCENDANT_FONTS, descendants);
-    type0.setItem(COSName.TO_UNICODE, toUnicode);
-    return new PDType0Font(type0);
-  }
-
-  /**
-   * Shows {@code text} with the current font, which must be one from {@link #create}: its UTF-16
-   * code units as a hex string and {@code Tj}.
-   */
-  @SuppressWarnings("deprecation") // appendRawCommands: the codes bypass PDFBox' glyph lookup
-  public static void showText(PDPageContentStream cs, String text) throws IOException {
-    StringBuilder sb = new StringBuilder(4 * text.length() + 6).append('<');
-    for (int i = 0; i < text.length(); i++) {
-      sb.append(String.format(java.util.Locale.ROOT, "%04X", (int) text.charAt(i)));
-    }
-    cs.appendRawCommands(sb.append("> Tj\n").toString());
-  }
 
   /** Width of {@code text} at {@code fontSize}: {@link #ADVANCE} per UTF-16 code unit. */
   public static float width(String text, float fontSize) {

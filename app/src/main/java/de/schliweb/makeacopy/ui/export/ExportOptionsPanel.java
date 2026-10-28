@@ -24,7 +24,6 @@ import androidx.annotation.Nullable;
 import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.settings.SettingsCatalog;
 import de.schliweb.makeacopy.utils.export.PageFormat;
-import de.schliweb.makeacopy.utils.export.PdfCreator;
 import de.schliweb.makeacopy.utils.export.PdfQualityPreset;
 import de.schliweb.makeacopy.utils.export.jpeg.JpegExportOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
@@ -55,7 +54,6 @@ public final class ExportOptionsPanel {
   public static final String BUNDLE_JPEG_MODE = "jpeg_mode"; // enum name
   public static final String BUNDLE_PDF_PRESET = "pdf_preset"; // enum name
   public static final String BUNDLE_PAGE_FORMAT = "page_format"; // enum name
-  public static final String BUNDLE_PDF_TEXT_LAYER_MODE = "pdf_text_layer_mode"; // enum name
 
   private final View root;
   private final CheckBox cbIncludeOcr;
@@ -102,8 +100,6 @@ public final class ExportOptionsPanel {
     DocumentCleanupMode cleanupMode = cleanupModeFor(checkedId(R.id.dialog_document_cleanup_group));
     PdfQualityPreset preset = presetFor(checkedId(R.id.dialog_pdf_preset_group));
     PageFormat pageFormat = pageFormatFor(checkedId(R.id.dialog_page_format_group));
-    PdfCreator.TextLayerMode textLayerMode =
-        textLayerModeFor(checkedId(R.id.dialog_pdf_text_layer_mode_group));
 
     SharedPreferences.Editor editor =
         prefs(ctx)
@@ -114,8 +110,7 @@ public final class ExportOptionsPanel {
             .putBoolean("jpeg_output_grayscale", jpegGray)
             .putString("document_cleanup_mode", cleanupMode.name())
             .putString("pdf_preset", preset.name())
-            .putString("page_format", pageFormat.name())
-            .putString("pdf_text_layer_mode", textLayerMode.name());
+            .putString("page_format", pageFormat.name());
     if (pdfBwMode != null) editor.putString("pdf_bw_mode", pdfBwMode);
     else editor.remove("pdf_bw_mode");
     editor.apply();
@@ -129,14 +124,12 @@ public final class ExportOptionsPanel {
     if (pdfBwMode != null) result.putString("pdf_bw_mode", pdfBwMode);
     result.putString(BUNDLE_PDF_PRESET, preset.name());
     result.putString(BUNDLE_PAGE_FORMAT, pageFormat.name());
-    result.putString(BUNDLE_PDF_TEXT_LAYER_MODE, textLayerMode.name());
     return result;
   }
 
-  /** Greys out the options that only make sense with OCR: the text file and the PDF text layer. */
+  /** Greys out the options that only make sense with OCR: the text file. */
   public void setOcrDependentEnabled(boolean enabled) {
     UIUtils.setEnabledWithAlpha(cbIncludeOcr, enabled);
-    UIUtils.setEnabledWithAlpha(root.findViewById(R.id.dialog_pdf_text_layer_mode_group), enabled);
   }
 
   /** The host's document-tree launcher delivered a folder: remember it and switch inbox mode on. */
@@ -192,9 +185,6 @@ public final class ExportOptionsPanel {
     check(
         R.id.dialog_page_format_group,
         pageFormatRadioId(PageFormat.fromName(pageFormatSaved, PageFormat.FIT_TO_IMAGE)));
-    check(
-        R.id.dialog_pdf_text_layer_mode_group,
-        textLayerRadioId(ExportPrefsHelper.resolveTextLayerMode(ctx)));
     check(R.id.dialog_pdf_preset_group, presetRadioId(preset));
     check(
         R.id.dialog_jpeg_mode_group,
@@ -337,18 +327,6 @@ public final class ExportOptionsPanel {
     if (radioId == R.id.dialog_radio_page_letter) return PageFormat.US_LETTER;
     if (radioId == R.id.dialog_radio_page_legal) return PageFormat.LEGAL;
     return PageFormat.FIT_TO_IMAGE;
-  }
-
-  static int textLayerRadioId(PdfCreator.TextLayerMode mode) {
-    return mode == PdfCreator.TextLayerMode.WORD_POSITIONED
-        ? R.id.dialog_pdf_text_layer_word_positioned
-        : R.id.dialog_pdf_text_layer_line_based;
-  }
-
-  static PdfCreator.TextLayerMode textLayerModeFor(int radioId) {
-    return radioId == R.id.dialog_pdf_text_layer_word_positioned
-        ? PdfCreator.TextLayerMode.WORD_POSITIONED
-        : PdfCreator.TextLayerMode.LINE_BASED;
   }
 
   /** Returns {@link View#NO_ID} for a preset without a radio button. */

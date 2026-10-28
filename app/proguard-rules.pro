@@ -22,13 +22,6 @@
     public static *** v(...);
 }
 
-# PdfBox-Android rules
--keep class com.tom_roush.pdfbox.** { *; }
--keep class com.tom_roush.harmony.** { *; }
--keep class com.tom_roush.fontbox.** { *; }
--dontwarn com.tom_roush.pdfbox.**
--dontwarn com.tom_roush.harmony.**
--dontwarn com.tom_roush.fontbox.**
 
 # Keep native methods
 -keepclasseswithmembernames class * {

@@ -127,31 +127,6 @@
                 android:text="@string/page_format_legal" />
         </RadioGroup>
 
-        <TextView
-            style="@style/Widget.MakeACopy.OptionsLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/pdf_text_layer_mode_title" />
-
-        <RadioGroup
-            android:id="@+id/dialog_pdf_text_layer_mode_group"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <RadioButton
-                android:id="@+id/dialog_pdf_text_layer_line_based"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="@string/pdf_text_layer_mode_line_based" />
-
-            <RadioButton
-                android:id="@+id/dialog_pdf_text_layer_word_positioned"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/pdf_text_layer_mode_word_positioned" />
-        </RadioGroup>
 
         <TextView
             style="@style/Widget.MakeACopy.OptionsLabel"
