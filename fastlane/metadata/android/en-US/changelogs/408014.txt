@@ -1,0 +1,7 @@
+MakeACopy 4.8.1
+* New: review and correct the OCR text of imported or added pages from the page menu.
+* Improved: OCR about 12 % faster on pages with many lines.
+* Fixed: Latin words next to Arabic text keep their order in the PDF.
+* Fixed: saving waits for OCR still running on a page instead of losing its text.
+* Fixed: running OCR again in the export screen now reaches the PDF of a fresh scan.
+* Fixed: the app code is the same for every ABI, so F-Droid can verify the build.
