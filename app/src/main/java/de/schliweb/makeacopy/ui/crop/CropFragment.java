@@ -1566,6 +1566,45 @@ public class CropFragment extends Fragment {
         });
   }
 
+  /** Lower bound for the live depth preview's longer edge, should the view not be laid out. */
+  private static final int DEPTH_PREVIEW_MIN_EDGE = 1080;
+
+  /** The displayed bitmap scaled down for the live depth preview, and what it was made from. */
+  private Bitmap depthPreviewSourceOf;
+
+  private Bitmap depthPreviewSource;
+
+  /**
+   * The displayed bitmap scaled natively to at most {@code maxEdge}, cached for the drag: every
+   * slider step renders from the same source. Dropped when the drag ends.
+   */
+  private synchronized Bitmap depthPreviewSource(Bitmap displayed, int maxEdge) {
+    if (depthPreviewSourceOf == displayed
+        && depthPreviewSource != null
+        && !depthPreviewSource.isRecycled()) {
+      return depthPreviewSource;
+    }
+    double s =
+        Math.min(1.0, maxEdge / (double) Math.max(displayed.getWidth(), displayed.getHeight()));
+    Bitmap scaled =
+        s < 1.0
+            ? Bitmap.createScaledBitmap(
+                displayed,
+                Math.max(1, (int) Math.round(displayed.getWidth() * s)),
+                Math.max(1, (int) Math.round(displayed.getHeight() * s)),
+                true)
+            : displayed;
+    // The previous one is left to the GC: a render still running may be reading it.
+    depthPreviewSourceOf = displayed;
+    depthPreviewSource = scaled;
+    return scaled;
+  }
+
+  private static de.schliweb.makeacopy.utils.geom.Point scalePoint(
+      de.schliweb.makeacopy.utils.geom.Point p, double s) {
+    return new de.schliweb.makeacopy.utils.geom.Point(p.x * s, p.y * s);
+  }
+
   /** Debounce interval for {@link #scheduleDepthPreviewRender()} (Issue #91, Phase 4). */
   private static final long DEPTH_PREVIEW_DEBOUNCE_MS = 80;
 
@@ -1655,22 +1694,32 @@ public class CropFragment extends Fragment {
     final int userDeg = normalizeDegrees(cropViewModel.getUserRotationDegrees().getValue());
     final int generation = depthPreviewRenderGeneration.incrementAndGet();
     final View postTarget = binding.trapezoidSelection;
+    // The preview only needs screen resolution: dewarping the full photo in Java on every slider
+    // step took seconds. The edge profiles are fractions of the edge length, so they stay.
+    final int previewMaxEdge =
+        Math.max(
+            DEPTH_PREVIEW_MIN_EDGE,
+            Math.max(binding.imageToCrop.getWidth(), binding.imageToCrop.getHeight()));
 
     new Thread(
             () -> {
               Bitmap preview = null;
               try {
+                Bitmap source = depthPreviewSource(displayedBitmap, previewMaxEdge);
+                double s = source.getWidth() / (double) displayedBitmap.getWidth();
                 de.schliweb.makeacopy.utils.image.DewarpModel model =
                     de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
-                        imgCorners, topMid, bottomMid);
+                        scalePoints(imgCorners, s, s),
+                        scalePoint(topMid, s),
+                        scalePoint(bottomMid, s));
                 if (model != null) {
                   if (topProfile != null || bottomProfile != null) {
                     model = model.withEdgeProfiles(topProfile, bottomProfile);
                   }
                   model = model.withDepth(depth);
                   preview =
-                      ImageOps.applyDewarp(
-                          displayedBitmap, model, ImageOps.WarpMode.AUTO_PROJECTIVE, null);
+                      ImageOps.applyDewarp(source, model, ImageOps.WarpMode.AUTO_PROJECTIVE, null);
+                  if (preview == source) preview = null;
                   if (preview != null && preview != displayedBitmap && userDeg != 0) {
                     Bitmap rotated = rotateBitmap(preview, userDeg);
                     if (rotated != preview) {
@@ -1714,6 +1763,10 @@ public class CropFragment extends Fragment {
    * in-flight depth-preview render (Issue #91, Phase 4). Called when the depth-slider drag ends.
    */
   private void restoreDepthPreviewImage() {
+    synchronized (this) {
+      depthPreviewSourceOf = null;
+      depthPreviewSource = null;
+    }
     if (binding == null) return;
     depthPreviewRenderGeneration.incrementAndGet();
     if (pendingDepthPreviewRender != null) {

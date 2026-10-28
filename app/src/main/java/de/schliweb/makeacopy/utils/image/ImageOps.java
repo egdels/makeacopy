@@ -23,7 +23,6 @@ import de.schliweb.makeacopy.utils.image.raster.Gray;
 import de.schliweb.makeacopy.utils.image.raster.Homography;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -103,7 +102,6 @@ public final class ImageOps {
     try {
       int sw = originalBitmap.getWidth();
       int sh = originalBitmap.getHeight();
-      int[] src = pixels(originalBitmap);
       Size targetSize = computeDewarpTargetSize(corners, mode, targetShortOverLong, sw, sh);
       int outW = Math.max(1, (int) Math.round(targetSize.width));
       int outH = Math.max(1, (int) Math.round(targetSize.height));
@@ -128,25 +126,7 @@ public final class ImageOps {
           gy[j * g + i] = (float) ((1.0 - w) * pTop.y + w * pBottom.y);
         }
       }
-      int[] out = new int[outW * outH];
-      IntStream.range(0, outH)
-          .parallel()
-          .forEach(
-              y -> {
-                double fy = clamp((y + 0.5) * g / outH - 0.5, 0, g - 1);
-                int y0 = (int) fy;
-                int y1 = Math.min(g - 1, y0 + 1);
-                double ty = fy - y0;
-                for (int x = 0; x < outW; x++) {
-                  double fx = clamp((x + 0.5) * g / outW - 0.5, 0, g - 1);
-                  int x0 = (int) fx;
-                  int x1 = Math.min(g - 1, x0 + 1);
-                  double tx = fx - x0;
-                  double sx = lerp2(gx, g, x0, x1, y0, y1, tx, ty);
-                  double sy = lerp2(gy, g, x0, x1, y0, y1, tx, ty);
-                  out[y * outW + x] = Homography.sample(src, sw, sh, sx, sy);
-                }
-              });
+      Bitmap out = renderMesh(originalBitmap, gx, gy, g, outW, outH);
       Log.d(
           TAG,
           "applyDewarp: done, out="
@@ -156,11 +136,88 @@ public final class ImageOps {
               + ", maxSagitta="
               + Math.round(model.maxSagitta())
               + "px");
-      return Bitmap.createBitmap(out, outW, outH, Bitmap.Config.ARGB_8888);
+      return out;
     } catch (Throwable t) {
       Log.e(TAG, "applyDewarp failed; returning original bitmap", t);
       return originalBitmap;
     }
+  }
+
+  /** Vertices per axis of the triangle mesh that {@link #renderMesh} draws. */
+  private static final int DEWARP_MESH_SIZE = 129;
+
+  /**
+   * Draws {@code src} remapped through the coarse grid {@code gx/gy} ({@code g x g} source
+   * positions of the output's pixel centres, interpolated bilinearly in between) into an {@code
+   * outW x outH} bitmap. A fine triangle mesh carries the bilinear grid and Skia samples the source
+   * natively with bilinear filtering: pixel by pixel in Java took seconds for a photo.
+   */
+  private static Bitmap renderMesh(Bitmap src, float[] gx, float[] gy, int g, int outW, int outH) {
+    Bitmap readable =
+        src.getConfig() == Bitmap.Config.HARDWARE ? src.copy(Bitmap.Config.ARGB_8888, false) : src;
+    int n = DEWARP_MESH_SIZE;
+    float[] verts = new float[2 * n * n];
+    float[] texs = new float[2 * n * n];
+    for (int j = 0; j < n; j++) {
+      double y = outH * j / (double) (n - 1);
+      double fy = clamp(y * g / outH - 0.5, 0, g - 1);
+      int y0 = (int) fy;
+      int y1 = Math.min(g - 1, y0 + 1);
+      double ty = fy - y0;
+      for (int i = 0; i < n; i++) {
+        double x = outW * i / (double) (n - 1);
+        double fx = clamp(x * g / outW - 0.5, 0, g - 1);
+        int x0 = (int) fx;
+        int x1 = Math.min(g - 1, x0 + 1);
+        double tx = fx - x0;
+        int k = 2 * (j * n + i);
+        verts[k] = (float) x;
+        verts[k + 1] = (float) y;
+        // Grid positions are pixel centres; the shader puts pixel centres at +0.5.
+        texs[k] = (float) (lerp2(gx, g, x0, x1, y0, y1, tx, ty) + 0.5);
+        texs[k + 1] = (float) (lerp2(gy, g, x0, x1, y0, y1, tx, ty) + 0.5);
+      }
+    }
+    short[] indices = new short[6 * (n - 1) * (n - 1)];
+    int m = 0;
+    for (int j = 0; j < n - 1; j++) {
+      for (int i = 0; i < n - 1; i++) {
+        short a = (short) (j * n + i);
+        short b = (short) (a + 1);
+        short c = (short) (a + n);
+        short d = (short) (c + 1);
+        indices[m++] = a;
+        indices[m++] = b;
+        indices[m++] = c;
+        indices[m++] = b;
+        indices[m++] = d;
+        indices[m++] = c;
+      }
+    }
+    Bitmap out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
+    android.graphics.Paint paint =
+        new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
+    paint.setShader(
+        new android.graphics.BitmapShader(
+            readable,
+            android.graphics.Shader.TileMode.CLAMP,
+            android.graphics.Shader.TileMode.CLAMP));
+    new android.graphics.Canvas(out)
+        .drawVertices(
+            android.graphics.Canvas.VertexMode.TRIANGLES,
+            verts.length,
+            verts,
+            0,
+            texs,
+            0,
+            null,
+            0,
+            indices,
+            0,
+            indices.length,
+            paint);
+    if (readable != src) readable.recycle();
+    return out;
   }
 
   private static double lerp2(
