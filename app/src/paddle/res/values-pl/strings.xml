@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Lepsze rozpoznawanie tekstu; podświetlanie na poziomie słów może być mniej precyzyjne niż w Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR jest zintegrowany w tej kompilacji. Modele Tesseract nie są tutaj używane.</string>
-</resources>

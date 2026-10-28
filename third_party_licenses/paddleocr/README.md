@@ -3,7 +3,7 @@
 This directory documents the upstream source, license, and provenance of the
 PaddleOCR **PP-OCRv5 mobile** detection and recognition models that are
 shipped — only in the `paddle` build flavor — as **ORT** assets under
-`app/src/paddle/assets/paddleocr/v5/`.
+`app/src/main/assets/paddleocr/v5/`.
 
 This file replaces the previous single-recognition-model documentation
 (`det.onnx` / `rec.onnx` / `rec_dict.txt` / fixed `V=438`). The runtime is
@@ -62,7 +62,7 @@ The intermediate `*.onnx` files are spike / conversion artifacts only and
 are **never** shipped as release assets. Two independent gates enforce this:
 
 - **Build-time:** the Gradle task `failOnPaddleOnnxAssets` fails the build
-  if any `*.onnx` is found under `app/src/paddle/assets/paddleocr/v5/`.
+  if any `*.onnx` is found under `app/src/main/assets/paddleocr/v5/`.
 - **Runtime:** `PaddleAssets.rejectOnnxAssetsOrThrow` refuses to start the
   Paddle engine if a `.onnx` ever appears in the extracted asset cache.
 
@@ -153,5 +153,5 @@ The reason `*.ort` files are *not* pinned:
   asset-internal `SHA256SUMS`.
 
 The `*_dict.txt` hashes in this file MUST stay identical to the corresponding
-entries in `app/src/paddle/assets/paddleocr/v5/SHA256SUMS` (the latter is the
+entries in `app/src/main/assets/paddleocr/v5/SHA256SUMS` (the latter is the
 file actually consumed by the build).

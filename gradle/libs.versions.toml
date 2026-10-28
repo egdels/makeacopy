@@ -17,7 +17,6 @@ navigationUi = "2.9.8"
 # Added for MakeACopy
 camerax = "1.6.1"
 roomRuntime = "2.8.4"
-tesseract = "4.9.0"
 lombok = "1.18.46"
 pdfbox = "2.0.27.0"
 activity = "1.13.0"
@@ -64,8 +63,6 @@ camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = 
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 # See: https://github.com/adaptech-cz/Tesseract4Android/issues/86
-# tesseract = { group = "cz.adaptech.tesseract4android", name = "tesseract4android-openmp", version.ref = "tesseract" }
-tesseract = { group = "cz.adaptech.tesseract4android", name = "tesseract4android", version.ref = "tesseract" }
 
 # Lombok dependency
 lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }

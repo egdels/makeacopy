@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Daha iyi metin tanıma; kelime düzeyinde vurgulama Tesseract’a göre daha az hassas olabilir.</string>
-    <string name="ocr_models_hint">PaddleOCR bu derlemeye entegre edilmiştir. Tesseract modelleri burada kullanılmaz.</string>
-</resources>

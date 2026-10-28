@@ -416,7 +416,6 @@
     <!-- Options: Layout analysis for complex documents -->
     <string name="opt_layout_analysis">Layout analysis (columns, tables)
     </string>
-    <!-- Options: PaddleOCR strings live in src/paddle/res/values/strings.xml (paddle flavor only). -->
     <!-- Options: Experimental directional mapping fallback -->    <!-- Developer / Debug options -->    <!-- Library / Collections (developer strings kept non-translatable for now) -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">Unknown file type</string>
     <string name="error_unsupported_file_type">This file type is not supported</string>

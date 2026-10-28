@@ -120,7 +120,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Code Quality
-        run: ./gradlew :app:compileStandardDebugJavaWithJavac :app:compilePaddleDebugJavaWithJavac :app:testStandardDebugUnitTest :app:testPaddleDebugUnitTest :app:lintStandardDebug :app:lintPaddleDebug
+        run: ./gradlew :app:compileDebugJavaWithJavac :app:testDebugUnitTest :app:lintDebug
 
       # Keystore nur für TAG-Builds dekodieren (PRs/branch: überspringen)
       - name: Decode Keystore (tags only)
@@ -171,7 +171,7 @@ jobs:
           ./gradlew --no-daemon :app:bundleRelease -PenableAbiSplits=false $EXTRA_PROPS
           ./gradlew --no-daemon :app:assembleRelease -PenableAbiSplits=true $EXTRA_PROPS
 
-      # Verify that no test data leaks into release APKs (CI gate, both flavors).
+      # Verify that no test data leaks into release APKs (CI gate).
 
       # The keystore is not needed after signing: remove it before any later step, including the
       # third-party release action, can read it (security audit F-03)
@@ -181,32 +181,21 @@ jobs:
       - name: Verify no test data in release APKs
         run: ./gradlew --no-daemon :app:verifyNoTestDataInApk
 
-      # Collect APKs/AABs from per-flavor output dirs into a single staging dir,
-      # renaming so that `standard` keeps the historical name and `paddle` gets
-      # a `-paddle` suffix (analogous to `MakeACopy-Light-...`).
-      - name: Rename Full artifacts (standard + paddle)
+      - name: Rename Full artifacts
         run: |
           set -euo pipefail
           VERSION="${{ steps.extract_version.outputs.VERSION }}"
           STAGE_APK="app/build/outputs/apk/release"
           STAGE_AAB="app/build/outputs/bundle/release"
-          mkdir -p "$STAGE_APK" "$STAGE_AAB"
+          mkdir -p "$STAGE_AAB"
           shopt -s nullglob
-          # APKs: app-<flavor>-<abi>-release[-unsigned].apk -> staged + renamed
-          for apk in app/build/outputs/apk/standard/release/app-standard-*-release*.apk; do
-            abi=$(basename "$apk" | sed -n 's/^app-standard-\(.*\)-release\(-unsigned\)\{0,1\}\.apk$/\1/p')
+          # APKs: app-<abi>-release[-unsigned].apk -> MakeACopy-v<version>-<abi>-release.apk
+          for apk in "$STAGE_APK"/app-*-release*.apk; do
+            abi=$(basename "$apk" | sed -n 's/^app-\(.*\)-release\(-unsigned\)\{0,1\}\.apk$/\1/p')
             [ -n "$abi" ] && mv "$apk" "$STAGE_APK/MakeACopy-v${VERSION}-${abi}-release.apk"
           done
-          for apk in app/build/outputs/apk/paddle/release/app-paddle-*-release*.apk; do
-            abi=$(basename "$apk" | sed -n 's/^app-paddle-\(.*\)-release\(-unsigned\)\{0,1\}\.apk$/\1/p')
-            [ -n "$abi" ] && mv "$apk" "$STAGE_APK/MakeACopy-v${VERSION}-${abi}-paddle-release.apk"
-          done
-          # AABs: standard keeps unsuffixed historical name, paddle gets -paddle suffix
-          if [ -f app/build/outputs/bundle/standardRelease/app-standard-release.aab ]; then
-            mv app/build/outputs/bundle/standardRelease/app-standard-release.aab "$STAGE_AAB/MakeACopy-v${VERSION}-release.aab"
-          fi
-          if [ -f app/build/outputs/bundle/paddleRelease/app-paddle-release.aab ]; then
-            mv app/build/outputs/bundle/paddleRelease/app-paddle-release.aab "$STAGE_AAB/MakeACopy-v${VERSION}-paddle-release.aab"
+          if [ -f "$STAGE_AAB/app-release.aab" ]; then
+            mv "$STAGE_AAB/app-release.aab" "$STAGE_AAB/MakeACopy-v${VERSION}-release.aab"
           fi
           ls -la "$STAGE_APK" "$STAGE_AAB"
 
@@ -288,18 +277,8 @@ jobs:
             app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-armeabi-v7a-release.apk.sha256
             app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-x86_64-release.apk.sha256
             app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-x86-release.apk.sha256
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-arm64-v8a-paddle-release.apk
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-armeabi-v7a-paddle-release.apk
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-x86_64-paddle-release.apk
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-x86-paddle-release.apk
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-arm64-v8a-paddle-release.apk.sha256
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-armeabi-v7a-paddle-release.apk.sha256
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-x86_64-paddle-release.apk.sha256
-            app/build/outputs/apk/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-x86-paddle-release.apk.sha256
             app/build/outputs/bundle/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-release.aab
             app/build/outputs/bundle/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-release.aab.sha256
-            app/build/outputs/bundle/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-paddle-release.aab
-            app/build/outputs/bundle/release/MakeACopy-v${{ steps.extract_version.outputs.VERSION }}-paddle-release.aab.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -320,19 +299,6 @@ jobs:
           path: |
             app/src/main/jniLibs/
             app/libs/
-
-      - name: Upload OpenCV-only native libraries for Light build
-        run: |
-          mkdir -p /tmp/opencv-only-jniLibs
-          for abi_dir in app/src/main/jniLibs/*/; do
-            abi=$(basename "$abi_dir")
-            mkdir -p "/tmp/opencv-only-jniLibs/src/main/jniLibs/$abi"
-            cp "$abi_dir"libopencv_*.so "/tmp/opencv-only-jniLibs/src/main/jniLibs/$abi/"
-          done
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: native-libs-opencv-only
-          path: /tmp/opencv-only-jniLibs/
 
   build-light:
     runs-on: ubuntu-latest
@@ -355,39 +321,12 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      # Python für deterministische CMake-Skripte pinnen
-      - name: Set up Python 3.11.2
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11.2'
-
       # NDK installieren
       - name: Install Android SDK NDK 28.0.13004108
         run: |
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} "ndk;28.0.13004108"
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-
-      - name: Set up CMake 3.31.6
-        uses: jwlawson/actions-setup-cmake@0d6a7d60b009d01c9e7523be22153ff8f19460d3 # v2.2.0
-        with:
-          cmake-version: '3.31.6'
-
-      - name: Install Python deps for ONNX Runtime minimal build
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install flatbuffers
-          python3 -c "import flatbuffers; print('flatbuffers OK:', flatbuffers.__file__)"
-
-      - name: Export ANDROID_*, CMake and Python paths
-        run: |
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "BUILD_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
-          echo "ORT_CMAKE=$(which cmake)" >> $GITHUB_ENV
-          echo "PY3_BIN=$(which python3)" >> $GITHUB_ENV
-          cmake --version
-          python3 --version
 
       - name: Set deterministic environment
         run: |
@@ -397,26 +336,15 @@ jobs:
           echo "LANG=C" >> $GITHUB_ENV
           echo "PYTHONHASHSEED=0" >> $GITHUB_ENV
 
-      - name: Download OpenCV-only native libraries from Full build
+      - name: Download native libraries from Full build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: native-libs-opencv-only
+          name: native-libs
           path: app
 
-      - name: Verify OpenCV native libraries
+      - name: Verify native libraries
         run: |
-          echo "=== jniLibs (OpenCV only) ==="
-          find app/src/main/jniLibs -type f | head -20 || echo "jniLibs NOT found"
-
-      - name: Build ONNX Runtime (minimal AAR)
-        run: |
-          chmod +x scripts/build_minimal_onnxruntime.sh
-          ./scripts/build_minimal_onnxruntime.sh
-
-      - name: Verify ONNX Runtime AAR
-        run: |
-          echo "=== libs (AAR) ==="
-          ls -la app/libs/ || echo "libs/ NOT found"
+          find app/src/main/jniLibs app/libs -type f
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -449,13 +377,10 @@ jobs:
           echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       # Build Light (unsigned) – PRs/branches
-      # Light edition is `standard`-flavor only (Paddle requires the full ORT runtime
-      # with merged DocQuad+PaddleOCR ops; the minimal AAR in the Light job ships
-      # without Paddle ops on purpose).
       - name: Build Light (unsigned) – PRs/branches
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
-          ./gradlew --no-daemon :app:assembleStandardRelease -PenableAbiSplits=true -Pedition=light
+          ./gradlew --no-daemon :app:assembleRelease -PenableAbiSplits=true -Pedition=light
 
       # Build Light (signed) – tags
       - name: Build Light (signed) – tags
@@ -472,7 +397,7 @@ jobs:
             echo "::error::Signing secrets are missing; a tag must not produce an unsigned release."
             exit 1
           fi
-          ./gradlew --no-daemon :app:assembleStandardRelease -PenableAbiSplits=true -Pedition=light $EXTRA_PROPS
+          ./gradlew --no-daemon :app:assembleRelease -PenableAbiSplits=true -Pedition=light $EXTRA_PROPS
 
 
       # The keystore is not needed after signing: remove it before any later step, including the
@@ -487,8 +412,8 @@ jobs:
           STAGE_APK="app/build/outputs/apk/release"
           mkdir -p "$STAGE_APK"
           shopt -s nullglob
-          for apk in app/build/outputs/apk/standard/release/app-standard-*-release*.apk; do
-            abi=$(basename "$apk" | sed -n 's/^app-standard-\(.*\)-release\(-unsigned\)\{0,1\}\.apk$/\1/p')
+          for apk in "$STAGE_APK"/app-*-release*.apk; do
+            abi=$(basename "$apk" | sed -n 's/^app-\(.*\)-release\(-unsigned\)\{0,1\}\.apk$/\1/p')
             [ -n "$abi" ] && mv "$apk" "$STAGE_APK/MakeACopy-Light-v${VERSION}-${abi}-release.apk"
           done
 

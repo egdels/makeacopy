@@ -1,1 +1,0 @@
-More accurate Tesseract Best models for Latin languages. Add-on for MakeACopy.

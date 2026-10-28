@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">การรู้จำข้อความดีขึ้น การไฮไลต์ระดับคำอาจแม่นยำน้อยกว่า Tesseract</string>
-    <string name="ocr_models_hint">PaddleOCR ถูกรวมไว้ในบิลด์นี้ ไม่ได้ใช้โมเดล Tesseract ที่นี่</string>
-</resources>

@@ -403,7 +403,6 @@
     <!-- Options: OCR post-processing toggle -->
     <string name="opt_ocr_post_processing">OCR-Nachbearbeitung (häufige Fehler korrigieren)</string>
     <string name="opt_layout_analysis">Layout-Analyse (Spalten, Tabellen)</string>
-    <!-- Options: PaddleOCR-Strings liegen in src/paddle/res/values-de/strings.xml (nur paddle-Flavor). -->
     <!-- Options: Experimental directional mapping fallback -->
     <!-- Developer / Debug options -->
     <!-- Library / Collections -->    <!-- Reorder A11y controls (defined above) -->

@@ -17,10 +17,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         // Add JitPack for tesseract4android
-        maven { url = uri('https://jitpack.io') }
     }
 }
 
 rootProject.name = "MakeACopy"
 include ':app'
-include ':langpack-latin-best'

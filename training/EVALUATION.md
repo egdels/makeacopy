@@ -429,7 +429,7 @@ A small reduction in MAE alone does **not** justify a model that increases FAILs
 `evaluate_docquad_models.py` measures the **model**. What the user sees in the crop screen is the result of the whole Android pipeline: DocQuad postprocessing (with test-time rotation) and the edge-snap refinement; there is no contour fallback. `CornerPipelineEvalTest` (instrumented test, `app/src/androidTest/.../ui/crop/`) measures exactly that on the **same test set layout** (`images/` + `labels/*.json`).
 
 ```bash
-./gradlew :app:connectedStandardDebugAndroidTest \
+./gradlew :app:connectedDebugAndroidTest \
   -PcornerEvalDir=training/data/docquad_real_eval \
   -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.ui.crop.CornerPipelineEvalTest
 ```
@@ -447,10 +447,10 @@ A small reduction in MAE alone does **not** justify a model that increases FAILs
 Install both APKs in place and start the instrumentation yourself — nothing gets uninstalled:
 
 ```bash
-./gradlew :app:assembleStandardDebug :app:assembleStandardDebugAndroidTest \
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest \
   -PcornerEvalDir=training/data/<eval_set>
-adb install -r -t app/build/outputs/apk/standard/debug/app-standard-arm64-v8a-debug.apk
-adb install -r -t app/build/outputs/apk/androidTest/standard/debug/app-standard-debug-androidTest.apk
+adb install -r -t app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w \
   -e class de.schliweb.makeacopy.ui.crop.CornerPipelineEvalTest \
   de.schliweb.makeacopy.test/androidx.test.runner.AndroidJUnitRunner
@@ -464,7 +464,7 @@ adb pull /sdcard/Android/data/de.schliweb.makeacopy/files/corner_eval_report/ .
 `-PcornerEvalModel=<file.ort>` additionally bundles a model into the test APK; the harness then evaluates it instead of the shipped asset, which stays untouched. The report header and `meta.model` name the model that was used.
 
 ```bash
-./gradlew :app:assembleStandardDebugAndroidTest \
+./gradlew :app:assembleDebugAndroidTest \
   -PcornerEvalDir=training/data/<eval_set> \
   -PcornerEvalModel=training/runs/<run>/ort/<distinct_name>.ort
 ```

@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">更好的文字识别；逐词高亮可能不如 Tesseract 精确。</string>
-    <string name="ocr_models_hint">此构建已集成 PaddleOCR。这里不使用 Tesseract 模型。</string>
-</resources>

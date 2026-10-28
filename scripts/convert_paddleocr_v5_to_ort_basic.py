@@ -35,7 +35,7 @@ def optimize_basic(src_dir: str) -> None:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("dir", default="app/src/paddle/assets/paddleocr/v5", nargs="?")
+    p.add_argument("dir", default="app/src/main/assets/paddleocr/v5", nargs="?")
     args = p.parse_args()
     optimize_basic(args.dir)
     # Now convert the *basic*-optimized ONNX files to ORT (also runs internal opts; but

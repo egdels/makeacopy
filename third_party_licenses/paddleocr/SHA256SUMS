@@ -3,11 +3,11 @@
 # These SHA-256 hashes pin the byte-for-byte content of the *dictionary* files
 # that are redistributed in this repository under the `paddle` build flavor at
 #
-#   app/src/paddle/assets/paddleocr/v5/
+#   app/src/main/assets/paddleocr/v5/
 #
 # This file is the third-party / license-side mirror of the asset-internal
 # SHA256SUMS file shipped next to the assets themselves
-# (`app/src/paddle/assets/paddleocr/v5/SHA256SUMS`). They MUST stay identical
+# (`app/src/main/assets/paddleocr/v5/SHA256SUMS`). They MUST stay identical
 # for the *_dict.txt entries; the asset-internal file is the one consumed by
 # the Gradle build (`verifyPaddleAssetSha256`) and at runtime by
 # `de.schliweb.makeacopy.utils.ocr.paddle.PaddleAssets`.

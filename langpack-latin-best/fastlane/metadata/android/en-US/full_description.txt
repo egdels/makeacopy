@@ -1,8 +1,0 @@
-This add-on provides the higher-accuracy Tesseract “Best” models for English, German, French, Italian, Spanish, Portuguese, Dutch, Polish, Czech, Slovak, Hungarian, Romanian, Danish, Norwegian, and Swedish.
-
-• No permissions, no internet – data only
-• Works only with MakeACopy
-• Import the models inside MakeACopy after installing
-• Recommended for small fonts or challenging scans
-
-Note: This package has no launcher icon. Open MakeACopy → OCR → tools icon (“Manage OCR models”) → Import.

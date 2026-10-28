@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SRC="paddle-spike/onnx"
-DST="app/src/paddle/assets/paddleocr/v5"
+DST="app/src/main/assets/paddleocr/v5"
 
 mkdir -p "$DST"
 

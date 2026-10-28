@@ -59,7 +59,7 @@ This significantly increases the app size, but avoids any cloud dependencies or 
 
 **100 MB are not a sign of excess, but of consistency.**
 
-### Editions and Flavors
+### Editions
 
 MakeACopy is available in two editions (controlled via the Gradle property `edition`):
 
@@ -70,14 +70,7 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 
 Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition additionally ships fewer OCR language models, and uses a minimal ONNX Runtime AAR to further reduce APK size.
 
-In addition, MakeACopy is built in two product flavors (`ocr` flavor dimension):
-
-| Flavor | OCR Backend | Notes |
-|--------|-------------|-------|
-| **paddle** | PaddleOCR V5 | Published flavor for F-Droid and Google Play. Uses PaddleOCR only, without Tesseract runtime, Tesseract language data, or OCR dictionaries. |
-| **standard** | Tesseract only | Legacy flavor for existing Tesseract language data and workflows. Available via GitHub Releases. No PaddleOCR assets bundled. |
-
-The Full + `paddle` combination is what is published on F-Droid and Google Play. The `standard` Tesseract flavor and the Light edition are available via [GitHub Releases](https://github.com/egdels/makeacopy/releases).
+OCR runs on PaddleOCR V5 in both editions. The Full edition is what is published on F-Droid and Google Play; the Light edition is available via [GitHub Releases](https://github.com/egdels/makeacopy/releases).
 
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
 alt="Get it on F-Droid"
@@ -119,7 +112,7 @@ apksigner verify --print-certs MakeACopy-vX.Y.Z.apk
 - **Edge Detection**: Automatic document edge detection using OpenCV, enhanced with a custom-trained machine learning model (ONNX, Apache 2.0)
 - **Perspective Correction**: Adjust and crop documents with manual or automatic perspective correction
 - **Image Enhancement**: Apply filters (grayscale, contrast, sharpening)
-- **OCR**: Offline text recognition with PaddleOCR in the published `paddle` flavor
+- **OCR**: Offline text recognition with PaddleOCR
 - **OCR Review**: Interactive review and correction of OCR results with word-level editing, dictionary-based suggestions, confidence highlighting, and re-OCR for individual words
 - **PDF Export**: Save as searchable PDF with recognized text
 - **JPEG Export**: Export scans as high-quality JPEG images (configurable quality, color/BW)
@@ -146,7 +139,7 @@ apksigner verify --print-certs MakeACopy-vX.Y.Z.apk
 
 ### OCR Languages
 
-MakeACopy supports fully offline OCR. The published `paddle` flavor uses PaddleOCR; choose the closest script or language group in the OCR language selector during the OCR step.
+MakeACopy supports fully offline OCR with PaddleOCR; choose the closest script or language group in the OCR language selector during the OCR step.
 
 Supported out of the box:
 - English (English)
@@ -157,7 +150,7 @@ Supported out of the box:
 - Hindi (Devanagari)
 - Greek (Greek)
 
-In the `paddle` flavor, select the visible OCR language group for your document:
+Select the visible OCR language group for your document:
 
 | Document language | Choose in the OCR language selector |
 |-------------------|-------------------------------------|
@@ -169,8 +162,6 @@ In the `paddle` flavor, select the visible OCR language group for your document:
 | Arabic and Persian/Farsi | Arabic |
 | Hindi | Devanagari |
 | Greek | Greek |
-
-The F-Droid and Google Play links point to the `paddle` flavor. Use GitHub Releases if you need the `standard` Tesseract flavor.
 
 Notes:
 - All OCR runs fully offline on-device.
@@ -189,7 +180,7 @@ Notes:
 
 ### F-Droid
 
-MakeACopy is F-Droid compliant. The F-Droid listing provides the `paddle` flavor. The app builds all required native components from source during CI/local builds:
+MakeACopy is F-Droid compliant. The app builds all required native components from source during CI/local builds:
 
 1. **OpenCV Java Classes**: The required OpenCV Java wrapper classes are directly included in the app's source tree (copied from OpenCV but now part of this project). They are no longer used from the submodule.
 2. **OpenCV Native Libraries**: All OpenCV native libraries are built from source using the official OpenCV code provided via the Git submodule at `external/opencv`.
@@ -199,7 +190,7 @@ This approach ensures F-Droid compatibility by not including any pre-compiled bi
 
 ### GitHub Releases
 
-You can download the latest APKs from the [Releases](https://github.com/egdels/makeacopy/releases) page. Use GitHub Releases if you need the `standard` Tesseract flavor or the Light edition.
+You can download the latest APKs from the [Releases](https://github.com/egdels/makeacopy/releases) page. Use GitHub Releases if you need the Light edition.
 
 #### Automated Builds
 
@@ -218,14 +209,14 @@ The workflow contains two parallel jobs:
 - Collects reproducibility evidence for native builds (scripts/collect_repro_evidence.sh)
 - Integrates OpenCV artifacts into the app via scripts/prepare_opencv.sh
 - Builds ONNX Runtime for Android (CPU execution provider, Java bindings) via scripts/build_onnxruntime_android.sh — the operator config supports DocQuad corner detection and PaddleOCR V5
-- Builds the Full edition Android app with Gradle for both flavors (`paddle` and `standard`), producing the published Paddle artifacts and the Tesseract legacy artifacts
+- Builds the Full edition Android app with Gradle
 - Verifies that no test data leaks into release APKs via `:app:verifyNoTestDataInApk`
-- Renames artifacts to `MakeACopy-vX.Y.Z-<abi>-release.apk` (standard) and `MakeACopy-vX.Y.Z-<abi>-paddle-release.apk` (paddle), plus release AABs
+- Renames artifacts to `MakeACopy-vX.Y.Z-<abi>-release.apk`, plus the release AAB
 
 **Light build** (`build-light`):
 - Depends on the Full build job and downloads the native libraries (jniLibs and JARs) built from source
 - Sets up JDK 21 only (no native build scripts needed)
-- Builds the Light edition for the `standard` flavor only: `./gradlew :app:assembleStandardRelease -Pedition=light` (PaddleOCR is not part of the Light edition)
+- Builds the Light edition: `./gradlew :app:assembleRelease -Pedition=light`
 - Produces per-ABI APKs named `MakeACopy-Light-vX.Y.Z-<abi>-release.apk`
 
 Behavior by event type:
@@ -235,10 +226,10 @@ Behavior by event type:
 - Tag (refs/tags/vX.Y.Z):
   - Optionally decodes a keystore from repository secrets and signs the builds
   - Verifies APK signatures using apksigner
-  - Renames artifacts to `MakeACopy-vX.Y.Z-<abi>-release.apk` (standard), `MakeACopy-vX.Y.Z-<abi>-paddle-release.apk` (paddle), `MakeACopy-Light-vX.Y.Z-<abi>-release.apk`, plus release AABs
+  - Renames artifacts to `MakeACopy-vX.Y.Z-<abi>-release.apk` and `MakeACopy-Light-vX.Y.Z-<abi>-release.apk`, plus the release AAB
   - Generates SHA-256 checksum files for each artifact
   - Loads release notes from fastlane/metadata/android/en-US/changelogs/<versionCode>.txt
-  - Creates a GitHub Release and attaches all Full `paddle`, Full `standard`, and Light APKs, release AABs, and their .sha256 files
+  - Creates a GitHub Release and attaches all Full and Light APKs, the release AAB, and their .sha256 files
   - Uploads artifacts to the workflow as well
 
 How to trigger a release build:
@@ -248,7 +239,7 @@ How to trigger a release build:
 
 Notes:
 - All native components are built from source to stay F-Droid compatible; no prebuilt binaries are stored in the repo.
-- Both editions use an operator-stripped ONNX Runtime build. The Full edition's ONNX Runtime is built via `scripts/build_onnxruntime_android.sh` (CPU execution provider only; `ORT_USE_XNNPACK=1` / `ORT_USE_NNAPI=1` build the optional providers in again, e.g. for benchmarking). The Light edition reuses the OpenCV native libraries from the Full build and builds a minimal ONNX Runtime AAR (without XNNPACK/NNAPI) from source via `scripts/build_minimal_onnxruntime.sh`, further reducing APK size.
+- Both editions use an operator-stripped ONNX Runtime build. The Full edition's ONNX Runtime is built via `scripts/build_onnxruntime_android.sh` (CPU execution provider only; `ORT_USE_XNNPACK=1` / `ORT_USE_NNAPI=1` build the optional providers in again, e.g. for benchmarking). The Light edition reuses the native libraries (OpenCV and ONNX Runtime) from the Full build.
 - The edition is controlled via the Gradle property `edition` (default: `full`). F-Droid builds use the default and require no special configuration.
 - A look at [.github/workflows/build-release.yml](.github/workflows/build-release.yml) shows you how the build process works and how you can reproduce it in your own development environment.
 
@@ -266,7 +257,7 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 
 - **Camera Fragment**: Capture via CameraX/Camera2
 - **Crop Fragment**: Perspective correction
-- **OCR Fragment**: Engine-specific offline recognition via PaddleOCR in the published `paddle` flavor or Tesseract in the `standard` legacy flavor
+- **OCR Fragment**: Offline recognition via PaddleOCR
 - **Export Fragment**: PDF/text export
 
 ## Libraries Used
@@ -276,9 +267,7 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 | Image Processing | [OpenCV](https://opencv.org) 4.13.0 | Apache 2.0 |
 | ML Inference | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT |
 | Document Corner Detection | Custom-trained ONNX model | Apache 2.0 |
-| OCR (`paddle` flavor) | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, exported to ORT) | Apache 2.0 |
-| OCR (`standard` legacy flavor) | [Tesseract4Android](https://github.com/adaptech-cz/Tesseract4Android) 4.9.0 | Apache 2.0 |
-| OCR Language Data (`standard` legacy flavor) | [tessdata](https://github.com/tesseract-ocr/tessdata) | Apache 2.0 |
+| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, exported to ORT) | Apache 2.0 |
 | PDF | Android PdfDocument, pdfbox-android | Apache 2.0 |
 | UI | Material Components | Apache 2.0 |
 | OCR Dictionaries | [FrequencyWords](https://github.com/hermitdave/FrequencyWords) | CC BY-SA 4.0 |
@@ -305,30 +294,6 @@ Included dictionaries cover 23 languages: Arabic (ara), Czech (ces), Danish (dan
   - Built from source via scripts/build_onnxruntime_android.sh (CPU execution provider, Java bindings).
   - Artifacts integrated into app/src/main/jniLibs/<ABI>/ (libonnxruntime.so, libonnxruntime4j_jni.so) and app/libs/ (onnxruntime-*.jar).
   - See [NOTICE](NOTICE) for attributions.
-
-### Optional OCR Language-Packs for the `standard` Tesseract flavor
-
-The published `paddle` flavor uses PaddleOCR models and does not use Tesseract Language-Pack APKs. If you use the `standard` Tesseract flavor from GitHub Releases and want **higher accuracy OCR**, you can install optional *Language-Pack APKs*:
-
-- **MakeACopy OCR Latin (Best)** → Includes best-quality models for  
-  English (eng), German (deu), French (fra), Italian (ita), Spanish (spa), Portuguese (por), Dutch (nld), Polish (pol), Czech (ces), Slovak (slk), Hungarian (hun), Romanian (ron), Danish (dan), Norwegian (nor), Swedish (swe).
-
-How it works:
-- Language-Packs are separate, permissionless APKs.
-- They only contain `.traineddata` files, no code, no network.
-- MakeACopy discovers installed packs locally and lets you import the models.
-- Once imported, the best models appear in the OCR language selection.
-
-📦 [GitHub Release Page](https://github.com/egdels/makeacopy/releases/tag/langpack-latin-best-v1.1.0)
-
-Notes:
-- Packs are signed with the same key as the main app, so you can verify them with `apksigner`.
-- They rarely change (only when new Tesseract models are published).
-
-Alternatively: You can also use the original Tesseract "best" models from the official tessdata repository.
-- Source: https://github.com/tesseract-ocr/tessdata_best
-- Tesseract project: https://github.com/tesseract-ocr/tesseract  
-  Install or download the desired `.traineddata` files and add them via the same import dialog in MakeACopy.
 
 ## Training data & models
 
@@ -446,7 +411,7 @@ Contributions welcome!
 ## Future Enhancements
 
 - Add more languages to OCR detection
-- Extend and refine the PaddleOCR V5 path in the published `paddle` flavor
+- Extend and refine the PaddleOCR V5 path
 ## 🙌 Community Hall of Fame
 
 A big thank you to the people who make *MakeACopy* better:

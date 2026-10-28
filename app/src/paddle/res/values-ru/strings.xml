@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Улучшенное распознавание текста; подсветка отдельных слов может быть менее точной, чем в Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR встроен в эту сборку. Модели Tesseract здесь не используются.</string>
-</resources>

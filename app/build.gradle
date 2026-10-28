@@ -57,7 +57,7 @@ android {
         buildConfigField "boolean", "FEATURE_CROP_PAN_ZOOM", "true"
         buildConfigField "boolean", "FEATURE_CORNER_REFINEMENT", "true"
         buildConfigField "boolean", "FEATURE_DOCQUAD_ROTATION_TTA", "true"
-        buildConfigField "boolean", "FEATURE_PADDLE_OCR", "false"
+        buildConfigField "boolean", "FEATURE_PADDLE_OCR", "true"
         buildConfigField "boolean", "FEATURE_FOCUS_QUALITY_INDICATOR", "true"
         buildConfigField "boolean", "IS_LIGHT", isLight ? "true" : "false"
 
@@ -97,25 +97,6 @@ android {
                 keyAlias signingKeyAlias
                 keyPassword signingKeyPassword
             }
-        }
-    }
-
-    flavorDimensions += "ocr"
-    productFlavors {
-        standard {
-            dimension "ocr"
-            // F-Droid-Default, ohne Paddle-Assets
-            proguardFiles 'proguard-tesseract.pro'
-            versionNameSuffix "-standard"
-        }
-        paddle {
-            dimension "ocr"
-            // Hinweis: ndk.abiFilters wird hier nicht gesetzt, weil das mit dem
-            // globalen splits.abi-Block kollidiert. Die Beschränkung auf
-            // arm64-v8a für den paddle-Flavor erfolgt stattdessen in
-            // androidComponents.beforeVariants weiter unten.
-            buildConfigField "boolean", "FEATURE_PADDLE_OCR", "true"
-            //versionNameSuffix "-paddle"
         }
     }
 
@@ -178,39 +159,11 @@ android {
             ]
             jniLibs.srcDirs = ['src/main/jniLibs']
         }
-        standard {
-            assets.srcDirs += [isLight ? 'src/light/assets' : 'src/full/assets']
-        }
-        // Flavor-Asset-Verzeichnisse explizit deklarieren, damit AGP sie zusätzlich
-        // zu den oben überschriebenen main-Asset-Pfaden mergt.
-        paddle {
-            assets.srcDirs += [layout.buildDirectory.dir("generated/assets/paddle_edition"), 'src/paddle/assets']
-        }
         // Add test assets to the debug APK so target-context based asset loading works
         // (e.g. ApplicationProvider.getApplicationContext().getAssets()). The release build
         // is verified separately to ensure no test data leaks into production.
-        standardDebug {
-            assets.srcDirs += [
-                    layout.buildDirectory.dir("generated/assets/test_assets").get().asFile,
-                    'src/androidTest/assets'
-            ]
-        }
-        // Paddle instrumentation tests must stay Tesseract-free. The shared
-        // src/androidTest/java directory contains Tesseract-only tests, so it is
-        // compiled exclusively for the standard flavor (androidTestStandard).
-        // This is a static split so that plain `connectedAndroidTest` invocations
-        // (which build all flavors) also compile the paddle test variant.
-        androidTest {
-            java.srcDirs = []
-            assets.srcDirs = []
-        }
-        androidTestStandard {
-            java.srcDirs = ['src/androidTest/java', 'src/androidTestStandard/java']
-            assets.srcDirs = ['src/androidTestStandard/assets', 'src/androidTest/assets']
-        }
-        androidTestPaddle {
-            java.srcDirs = ['src/androidTestPaddle/java']
-            assets.srcDirs = ['src/androidTestPaddle/assets', 'src/androidTest/assets']
+        debug {
+            assets.srcDirs += ['src/androidTest/assets']
         }
     }
 }
@@ -243,7 +196,7 @@ if (cornerEvalDir != null) {
         }
         into cornerEvalAssets.map { it.dir('corner_eval') }
     }
-    android.sourceSets.androidTestStandard.assets.srcDirs += [cornerEvalAssets.get().asFile]
+    android.sourceSets.androidTest.assets.srcDirs += [cornerEvalAssets.get().asFile]
     tasks.configureEach { t ->
         if (t.name.startsWith('merge') && t.name.endsWith('AndroidTestAssets')) {
             t.dependsOn(syncCornerEvalAssets)
@@ -275,16 +228,8 @@ dependencies {
     implementation libs.camerax.lifecycle
     implementation libs.camerax.view
 
-    // Tesseract OCR dependency (standard flavor only; paddle flavor must stay Tesseract-free)
-    standardImplementation libs.tesseract
-
     // Onnx-Runtime dependency
-    if(!isLight) {
-        implementation fileTree(dir: 'libs', include: ['*.jar'])
-    }
-    else {
-        implementation fileTree(dir: 'libs', include: ['*.aar'])
-    }
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     // PdfBox-Android dependency
     implementation libs.pdfbox.android
@@ -369,62 +314,17 @@ tasks.named("preBuild").configure {
     dependsOn("copyNotices", "copyDocs")
 }
 
-tasks.register("copyPaddleEditionAssets", Sync) {
-    description = "Copies edition assets for the paddle flavor without Tesseract traineddata or OCR dictionaries"
-    from(isLight ? 'src/light/assets' : 'src/full/assets') {
-        exclude 'tessdata/**'
-        exclude 'dictionaries/**'
-    }
-    into(layout.buildDirectory.dir("generated/assets/paddle_edition"))
-}
-
-// Copy Best model from langpack-latin-best to generated assets directory for instrumented tests
-tasks.register("copyBestModelsForTest", Copy) {
-    description = "Copies the Best Tesseract models from langpack-latin-best for OCR comparison tests"
-    from("$rootDir/langpack-latin-best/src/main/assets/tessdata")
-    into(layout.buildDirectory.dir("generated/assets/test_assets/tessdata_best"))
-}
-
-
-// Delete test_jpegs and bestmodels from generated assets after instrumented tests
-tasks.register("deleteTestAssetsAfterTest", Delete) {
-    description = "Deletes test assets from generated assets after tests"
-    delete(layout.buildDirectory.dir("generated/assets/test_assets"))
-}
-
-// Wire copy tasks to run before connected Android tests and delete tasks to run after
-// Also ensure mergeDebugAssets depends on copy tasks to avoid implicit dependency errors
-tasks.configureEach { task ->
-    if (task.name.startsWith("connectedDebugAndroidTest") || task.name.startsWith("connectedAndroidTest")) {
-        task.dependsOn("copyBestModelsForTest")
-        task.finalizedBy("deleteTestAssetsAfterTest")
-    }
-    // Ensure Tesseract Best models are available when assembling/merging assets for
-    // the debug variant (and consequently for the androidTest variant which depends
-    // on the debug assets). Test PDFs/JPEGs live directly under
-    // app/src/androidTest/assets/instrumented_test_data/ and are picked up via the
-    // debug.assets.srcDirs += 'src/androidTest/assets' wiring in the android {} block.
-    // Match flavor-aware merge tasks: mergeDebugAssets, mergePaddleDebugAssets,
-    // mergeStandardDebugAssets, and the corresponding *AndroidTestAssets variants.
-    // The previous hook only matched the non-flavor names and therefore never fired
-    // for the `paddle`/`standard` flavors, so tessdata_best/ was missing in the APK.
-    if (task.name ==~ /merge(Standard)?Debug(AndroidTest)?Assets/) {
-        task.dependsOn("copyBestModelsForTest")
-    }
-}
-
-// Verifies that the PaddleOCR V5 multi-model assets shipped in the `paddle` flavor
-// match the pinned SHA256 hashes from the asset-side SHA256SUMS (which is the source
-// of truth for the multi-model architecture, see
+// Verifies that the PaddleOCR V5 multi-model assets match the pinned SHA256 hashes from the
+// asset-side SHA256SUMS (which is the source of truth for the multi-model architecture, see
 // docs/paddleocr_v5_integration_concept.md §0/§A).
 //
 // Only *_dict.txt entries are pinned (basic-opt *.ort artifacts are not byte-reproducible
 // across toolchains; their integrity is checked by existence + non-zero size and by the
-// reduced ORT runtime ops config). The `standard` flavor is unaffected.
+// reduced ORT runtime ops config).
 tasks.register("verifyPaddleAssetSha256") {
-    description = "Verifies SHA256 of PaddleOCR V5 dict assets against src/paddle/assets/paddleocr/v5/SHA256SUMS and checks that all *.ort/*_dict.txt files exist"
+    description = "Verifies SHA256 of PaddleOCR V5 dict assets against src/main/assets/paddleocr/v5/SHA256SUMS and checks that all *.ort/*_dict.txt files exist"
     group = "verification"
-    def assetsDir = file("$projectDir/src/paddle/assets/paddleocr/v5")
+    def assetsDir = file("$projectDir/src/main/assets/paddleocr/v5")
     def sumsFile = new File(assetsDir, "SHA256SUMS")
     inputs.dir(assetsDir)
     doLast {
@@ -496,13 +396,13 @@ tasks.register("verifyPaddleAssetSha256") {
     }
 }
 
-// Build-time gate: fail the paddle-flavor build if any *.onnx file is shipped under
-// src/paddle/assets/paddleocr/v5/. Intentionally early (build) instead of late
-// (PaddleAssets.rejectOnnxAssetsOrThrow at runtime). The `standard` flavor is unaffected.
+// Build-time gate: fail the build if any *.onnx file is shipped under
+// src/main/assets/paddleocr/v5/. Intentionally early (build) instead of late
+// (PaddleAssets.rejectOnnxAssetsOrThrow at runtime).
 tasks.register("failOnPaddleOnnxAssets") {
-    description = "Fails the paddle-flavor build if any *.onnx asset is present under src/paddle/assets/paddleocr/v5/"
+    description = "Fails the build if any *.onnx asset is present under src/main/assets/paddleocr/v5/"
     group = "verification"
-    def assetsDir = file("$projectDir/src/paddle/assets/paddleocr/v5")
+    def assetsDir = file("$projectDir/src/main/assets/paddleocr/v5")
     inputs.dir(assetsDir)
     doLast {
         if (!assetsDir.exists()) {
@@ -524,59 +424,11 @@ tasks.register("failOnPaddleOnnxAssets") {
     }
 }
 
-tasks.register("verifyNoTesseractModelsInPaddleApk") {
-    description = "Checks that paddle APKs do not contain bundled Tesseract traineddata or OCR dictionary assets"
-    group = "verification"
-    doLast {
-        def apkDir = layout.buildDirectory.dir("outputs/apk/paddle").get().asFile
-        if (!apkDir.exists()) {
-            logger.lifecycle("verifyNoTesseractModelsInPaddleApk: ${apkDir.absolutePath} does not exist (no paddle APKs assembled)")
-            return
-        }
-        def checked = 0
-        apkDir.eachFileRecurse { f ->
-            if (f.name.endsWith(".apk") && !f.name.contains("androidTest")) {
-                checked++
-                def offenders = []
-                def zip = new java.util.zip.ZipFile(f)
-                try {
-                    zip.entries().each { entry ->
-                        if (entry.name ==~ /assets\/tessdata\/.*\.traineddata/
-                                || entry.name ==~ /assets\/dictionaries\/.*/) {
-                            offenders << entry.name
-                        }
-                    }
-                } finally {
-                    zip.close()
-                }
-                if (!offenders.isEmpty()) {
-                    throw new GradleException(
-                        "Tesseract traineddata/OCR dictionary assets found in ${f.name}:\n" +
-                        "  - " + offenders.join("\n  - "))
-                }
-                logger.lifecycle("✓ ${f.name}: no Tesseract traineddata or OCR dictionary assets found")
-            }
-        }
-        if (checked == 0) {
-            logger.lifecycle("verifyNoTesseractModelsInPaddleApk: no paddle APKs found under ${apkDir.absolutePath} (nothing to check)")
-        } else {
-            logger.lifecycle("verifyNoTesseractModelsInPaddleApk: ${checked} paddle APK(s) verified clean")
-        }
-    }
-}
-
-// Hook the verify + onnx-gate tasks into the paddle-flavor asset merge so they run as
-// part of assemblePaddleDebug / assemblePaddleRelease without touching the standard flavor.
+// Hook the verify + onnx-gate tasks into the asset merge so they run as part of
+// assembleDebug / assembleRelease.
 tasks.whenTaskAdded { task ->
-    if (task.name == "mergePaddleDebugAssets" || task.name == "mergePaddleReleaseAssets") {
-        task.dependsOn("copyPaddleEditionAssets", "failOnPaddleOnnxAssets", "verifyPaddleAssetSha256")
-    }
-}
-
-tasks.configureEach { task ->
-    if (task.name.toLowerCase(Locale.ROOT).contains("paddle")
-            && task.name.toLowerCase(Locale.ROOT).contains("lint")) {
-        task.dependsOn("copyPaddleEditionAssets")
+    if (task.name == "mergeDebugAssets" || task.name == "mergeReleaseAssets") {
+        task.dependsOn("failOnPaddleOnnxAssets", "verifyPaddleAssetSha256")
     }
 }
 
@@ -587,9 +439,8 @@ tasks.register("verifyNoTestDataInApk") {
     doLast {
         def forbidden = ["instrumented_test_data", "layout_test_data", "test_pdfs",
                          "ground_truth", "layout_ground_truth"]
-        // APK output layout: app/build/outputs/apk/<flavor>/release/*.apk
-        // (e.g. paddle/release, standard/release). Walk the whole apk dir and
-        // pick up all release APKs across all flavors.
+        // APK output layout: app/build/outputs/apk/release/*.apk. Walk the whole apk dir and
+        // pick up all release APKs.
         def apkDir = layout.buildDirectory.dir("outputs/apk").get().asFile
         if (!apkDir.exists()) {
             logger.lifecycle("verifyNoTestDataInApk: ${apkDir.absolutePath} does not exist (no release APKs assembled)")
@@ -626,7 +477,7 @@ tasks.register("verifyNoTestDataInApk") {
     }
 }
 
-// Pulls JSON eval reports written by PaddleVsTesseractEvalTest from the connected
+// Pulls JSON eval reports written by the Paddle eval tests (e.g. PaddlePdfEvalTest) from the connected
 // device's externalFilesDir("eval") into app/build/eval-reports/. Used by
 // step 10c of the PaddleOCR-V5 integration plan (see
 // docs/paddleocr_v5_integration_concept.md §13.3 and docs/eval/README.md).
@@ -682,14 +533,14 @@ tasks.register("pullEvalReports") {
         if (lsResult.exitValue != 0) {
             throw new GradleException(
                 "Could not list ${remoteDir} on device. " +
-                "Did you run :app:connectedPaddleDebugAndroidTest first?\n" +
+                "Did you run :app:connectedDebugAndroidTest first?\n" +
                 "adb stderr: ${lsErr.toString().trim()}")
         }
         def files = lsOut.toString().readLines().findAll { it.trim().endsWith(".json") }
         if (files.isEmpty()) {
             throw new GradleException(
                 "No JSON eval reports found under ${remoteDir}. " +
-                "Run :app:connectedPaddleDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.utils.ocr.PaddleVsTesseractEvalTest first.")
+                "Run :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.utils.ocr.PaddlePdfEvalTest first.")
         }
 
         files.each { name ->
@@ -709,13 +560,9 @@ tasks.register("pullEvalReports") {
 }
 
 androidComponents {
-    // paddle-Flavor: KEIN ABI-Gate mehr.
     // Die reduced ORT Runtime (libonnxruntime.so) liegt für alle vier ABIs
     // (arm64-v8a, armeabi-v7a, x86, x86_64) unter src/main/jniLibs/, F-Droid liefert
-    // pro ABI ein eigenes APK aus. Sprachunterstützung wird zur Laufzeit durch
-    // PaddleLanguageRouter geregelt; nicht routbare Sprachen fallen still auf
-    // Tesseract zurück. Damit bleibt die ABI-Auswahl rein der existierenden
-    // enableAbiSplits-Mechanik überlassen (gilt jetzt einheitlich für standard und paddle).
+    // pro ABI ein eigenes APK aus. Die ABI-Auswahl bleibt der enableAbiSplits-Mechanik überlassen.
 
     // Assign per-ABI versionCode: baseVersionCode * 10 + abiCode
     onVariants(selector().all()) { variant ->
@@ -783,12 +630,9 @@ spotless {
     }
 }
 
-// JaCoCo coverage report for the default 'standard' flavor (debug build type).
-// Note: AGP generates per-flavor unit-test tasks once a flavor dimension is declared,
-// so the historical 'testDebugUnitTest' task no longer exists. We wire JaCoCo to
-// 'testStandardDebugUnitTest' (matches the F-Droid default flavor).
+// JaCoCo coverage report for the debug build type.
 tasks.register("jacocoTestReport", JacocoReport) {
-    dependsOn "testStandardDebugUnitTest"
+    dependsOn "testDebugUnitTest"
     reports {
         xml.required.set(true)
         html.required.set(true)
@@ -796,14 +640,14 @@ tasks.register("jacocoTestReport", JacocoReport) {
     def mainSrc = "$projectDir/src/main/java"
     sourceDirectories.setFrom(mainSrc)
     classDirectories.setFrom(
-            fileTree("$buildDir/intermediates/javac/standardDebug") {
+            fileTree("$buildDir/intermediates/javac/debug") {
                 exclude("**/R.class", "**/R\$*.class", "**/BuildConfig.class")
             }
     )
     executionData.setFrom(fileTree(buildDir) {
         include(
-                "jacoco/testStandardDebugUnitTest.exec",
-                "outputs/unit_test_code_coverage/standardDebugUnitTest/testStandardDebugUnitTest.exec"
+                "jacoco/testDebugUnitTest.exec",
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec"
         )
     })
 }

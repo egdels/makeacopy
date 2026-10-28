@@ -1,4 +1,0 @@
-Internal build optimization
-
-• Disabled Lint checks automatically in CI/F-Droid builds to speed up the release pipeline.
-• No functional changes to the app itself.

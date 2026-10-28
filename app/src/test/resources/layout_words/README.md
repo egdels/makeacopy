@@ -1,7 +1,7 @@
 # Word-box fixtures of the synthetic layout pages
 
 `<name>.words.json` holds the words (text, left/top/right/bottom, confidence) that the Paddle
-pipeline produced for `app/src/androidTestPaddle/assets/synth/<name>.png`, dumped by
+pipeline produced for `app/src/androidTest/assets/synth/<name>.png`, dumped by
 `SyntheticPageRegressionTest` on the emulator (see its `dumpWords`). `<name>.gt.txt` is the
 page's reference, copied from the same asset folder.
 

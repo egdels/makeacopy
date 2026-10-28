@@ -171,7 +171,7 @@ The following datasets were used:
     - License: Apache License, Version 2.0
     - Notes: Only included in the experimental `paddle` product flavor (not in
       the default `standard` / F-Droid flavor). The shipped artifacts under
-      app/src/paddle/assets/paddleocr/v5/ are:
+      app/src/main/assets/paddleocr/v5/ are:
         * 1× detection model: PP-OCRv5_mobile_det.ort
         * 9× recognition models: en_, latin_, eslav_, cyrillic_, arabic_,
           devanagari_, th_, el_, and the generic PP-OCRv5_mobile_rec.ort

@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Recunoaștere mai bună a textului; evidențierea la nivel de cuvânt poate fi mai puțin precisă decât cu Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR este integrat în această versiune. Modelele Tesseract nu sunt folosite aici.</string>
-</resources>

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Options: PaddleOCR-Backend (nur sichtbar bei arm64-v8a + paddle-Flavor) -->
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Bessere Texterkennung; Wortmarkierungen können weniger präzise ausfallen als bei Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR ist in diesem Build integriert. Tesseract-Modelle werden hier nicht verwendet.</string>
-</resources>

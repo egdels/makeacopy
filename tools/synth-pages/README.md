@@ -1,6 +1,6 @@
 # Synthetic test pages for the Paddle OCR pipeline
 
-`gen_issue87_pages.py` renders four pages (see `app/src/androidTestPaddle/assets/synth/README.md`)
+`gen_issue87_pages.py` renders four pages (see `app/src/androidTest/assets/synth/README.md`)
 with Pillow and the bundled Liberation fonts (SIL Open Font License, see `fonts/LICENSE`).
 
     python3 gen_issue87_pages.py <output dir>

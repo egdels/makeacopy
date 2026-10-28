@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Jobb szövegfelismerés; a szószintű kiemelés kevésbé pontos lehet, mint a Tesseract esetén.</string>
-    <string name="ocr_models_hint">A PaddleOCR be van építve ebbe a buildbe. A Tesseract-modellek itt nem használatosak.</string>
-</resources>

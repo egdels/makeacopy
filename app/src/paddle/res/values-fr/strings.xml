@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Meilleure reconnaissance du texte ; la mise en évidence mot par mot peut être moins précise qu’avec Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR est intégré à cette version. Les modèles Tesseract ne sont pas utilisés ici.</string>
-</resources>

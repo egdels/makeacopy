@@ -54,7 +54,7 @@ import org.opencv.core.Point;
  * APK only on request:
  *
  * <pre>
- * ./gradlew :app:connectedStandardDebugAndroidTest \
+ * ./gradlew :app:connectedDebugAndroidTest \
  *   -PcornerEvalDir=training/data/docquad_real_eval \
  *   -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.ui.crop.CornerPipelineEvalTest
  * </pre>

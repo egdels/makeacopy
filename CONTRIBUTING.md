@@ -354,7 +354,7 @@ Reports are generated at:
 Error Prone runs automatically during every Java compilation — no separate command needed. All findings are reported as **warnings** in the compiler output.
 
 ```bash
-./gradlew :app:compileStandardDebugJavaWithJavac
+./gradlew :app:compileDebugJavaWithJavac
 ```
 
 > **Note:** Error Prone only analyses Java sources (not Kotlin). OpenCV sources under `org.opencv` are excluded from analysis.
@@ -364,7 +364,7 @@ Error Prone runs automatically during every Java compilation — no separate com
 Android Lint checks for accessibility issues, unused resources, performance problems, and more.
 
 ```bash
-./gradlew :app:lintStandardDebug :app:lintPaddleDebug
+./gradlew :app:lintDebug :app:lintDebug
 ```
 
 The HTML reports are generated at:
@@ -376,7 +376,7 @@ The HTML reports are generated at:
 ### Run All Quality Checks Together
 
 ```bash
-./gradlew :app:spotlessCheck :app:lintStandardDebug :app:lintPaddleDebug :app:jacocoTestReport
+./gradlew :app:spotlessCheck :app:lintDebug :app:lintDebug :app:jacocoTestReport
 ```
 
 This checks formatting (Spotless), runs Android Lint, compiles the code (Error Prone runs automatically), executes unit tests, and generates the coverage report (JaCoCo).

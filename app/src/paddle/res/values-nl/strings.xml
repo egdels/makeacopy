@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Betere tekstherkenning; markering op woordniveau kan minder nauwkeurig zijn dan met Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR is geïntegreerd in deze build. Tesseract-modellen worden hier niet gebruikt.</string>
-</resources>

@@ -4,7 +4,7 @@
 Renders the sample text from the issue report in both vertical layout
 (columns top-to-bottom, right-to-left) and horizontal layout, using the
 bundled Noto Sans CJK font. Output goes to
-app/src/androidTestPaddle/assets/eval/ as JPEG + ground-truth text files.
+app/src/androidTest/assets/eval/ as JPEG + ground-truth text files.
 
 Vertical typesetting details reproduced here:
  - Ideographic punctuation (、 。) sits in the top-right quadrant of its cell.
@@ -21,7 +21,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONT = os.path.join(ROOT, "app/src/full/assets/fonts/NotoSansCJKsc-Regular.ttf")
 FONT_KANA = os.path.join(ROOT, "app/src/full/assets/fonts/NotoSansJP-Kana.ttf")
-OUT = os.path.join(ROOT, "app/src/androidTestPaddle/assets/eval/jpn")
+OUT = os.path.join(ROOT, "app/src/androidTest/assets/eval/jpn")
 
 LINES = [
     "すると、１億円を受け取った親は家に帰らなくなった。",

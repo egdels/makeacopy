@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="opt_paddle_ocr">PaddleOCR</string>
-    <string name="opt_paddle_ocr_subtitle">Bedre tekstgjenkjenning; utheving på ordnivå kan være mindre presis enn med Tesseract.</string>
-    <string name="ocr_models_hint">PaddleOCR er integrert i denne versjonen. Tesseract-modeller brukes ikke her.</string>
-</resources>
