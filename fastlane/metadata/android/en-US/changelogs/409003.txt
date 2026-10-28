@@ -1,0 +1,7 @@
+MakeACopy 4.9.0
+* Changed: PaddleOCR is the only OCR engine, the Tesseract build is discontinued.
+* Changed: the Light edition reads Latin-script languages with PaddleOCR.
+* Changed: page cleanup is Original or Enhanced, with one black-and-white mode.
+* Improved: app about 20 MB smaller, image processing no longer needs OpenCV.
+* Improved: black-and-white PDFs are about 9 times smaller.
+* Fixed: an unfinished document is offered again after the app restarts.
