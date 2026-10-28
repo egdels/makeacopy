@@ -156,16 +156,15 @@ public class SyntheticPageRegressionTest {
     List<String> gt = readLines(am, DIR + "/" + name + ".gt.txt");
 
     OCRHelper helper = new OCRHelper(ctx);
-    helper.setReinitPerRun(false);
     helper.setLanguage("deu");
     helper.setPaddleHighQualityDetectionEnabled(true);
-    assertTrue("engine init", helper.initTesseract());
+    assertTrue("engine init", helper.isLanguageAvailable(helper.getLanguage()));
     try {
       OcrRecognitionPipeline.Outcome outcome =
           OcrRecognitionPipeline.recognizeBestRotation(
               helper,
               bm,
-              new OcrRecognitionPipeline.Options(OCRHelper.OCR_MODE_PADDLE, false, false),
+              new OcrRecognitionPipeline.Options(false),
               () -> false);
       assertNotNull("no OCR result", outcome.best());
       List<RecognizedWord> words = outcome.best().result().words;

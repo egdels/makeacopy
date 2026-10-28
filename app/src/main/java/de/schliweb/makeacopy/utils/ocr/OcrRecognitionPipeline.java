@@ -13,16 +13,14 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.util.Log;
 import androidx.annotation.Nullable;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
 /**
  * Recognition pipeline shared by the foreground OCR ({@code OCRFragment.performOCR()}) and the
- * background jobs ({@code OcrBackgroundJobs}): adaptive preprocessing (uneven-lighting →
- * ROBUST/forceBinary), optional auto-rotation across 0/90/180/270° with deterministic best-result
- * selection and early-exit, and optional layout analysis with a full-page fallback.
+ * background jobs ({@code OcrBackgroundJobs}): optional auto-rotation across 0/90/180/270° with
+ * deterministic best-result selection and early-exit. PaddleOCR reads the rotated bitmap as it is,
+ * without preprocessing.
  *
  * <p>UI- and ViewModel-only steps (toasts, navigation, transform pushes) stay with the callers.
  */
@@ -41,11 +39,9 @@ public final class OcrRecognitionPipeline {
   /**
    * User preferences that steer a recognition run.
    *
-   * @param prepMode one of the {@code OCRHelper.OCR_MODE_*} constants
    * @param autoRotate try 0/90/180/270° instead of the current orientation only
-   * @param layoutAnalysis run region-based OCR with a full-page fallback
    */
-  public record Options(int prepMode, boolean autoRotate, boolean layoutAnalysis) {}
+  public record Options(boolean autoRotate) {}
 
   /**
    * One OCR attempt. Holds dimensions only (no bitmaps) so callers can derive the coordinate
@@ -90,16 +86,8 @@ public final class OcrRecognitionPipeline {
         Log.w(TAG, "rotateBitmap failed (extraRot=" + extra + "), skipping attempt", t);
         continue;
       }
-      Bitmap inputForOcr = preprocess(helper, rotated, options.prepMode(), extra);
-      if (inputForOcr == null) {
-        Log.w(TAG, "prepareForOCR returned null (extraRot=" + extra + "), skipping attempt");
-        continue;
-      }
-
-      OCRHelper.OcrResultWords r =
-          options.layoutAnalysis()
-              ? runOcrWithLayoutAndFallback(helper, inputForOcr)
-              : helper.runOcrWithRetry(inputForOcr);
+      Bitmap inputForOcr = rotated;
+      OCRHelper.OcrResultWords r = helper.runOcrWithWords(inputForOcr);
 
       throwIfCancelled(cancelled, "after OCR run (extraRot=" + extra + ")");
       if (r == null) continue;
@@ -128,124 +116,6 @@ public final class OcrRecognitionPipeline {
 
   private static void throwIfCancelled(BooleanSupplier cancelled, String stage) {
     if (cancelled.getAsBoolean()) throw new CancelledException("Cancelled " + stage);
-  }
-
-  /**
-   * Applies the selected recognition mode (preprocessing) and keeps region-OCR (layout analysis
-   * path) in sync with the page-level mode. Adaptive behavior:
-   *
-   * <ol>
-   *   <li>QUICK + uneven lighting -> upgrade to ROBUST (Quick is a wrapper around the robust
-   *       grayscale pipeline anyway, but the explicit upgrade also activates path 2).
-   *   <li>ROBUST + uneven lighting -> additionally trigger the Sauvola/Retinex binary branch at the
-   *       page level AND for every region in the layout-analysis path (via {@code
-   *       OCRHelper.setForceBinaryRobust}). Otsu clipping on heavy shadows is the dominant failure
-   *       mode for grayscale-only preprocessing on phone photos.
-   * </ol>
-   *
-   * ORIGINAL is always honored as-is.
-   *
-   * @return the bitmap to feed into OCR, or {@code null} if preprocessing failed
-   */
-  private static Bitmap preprocess(OCRHelper helper, Bitmap rotated, int prepMode, int extra) {
-    int effectiveMode = prepMode;
-    boolean unevenLighting = hasUnevenLighting(rotated);
-    if (effectiveMode == OCRHelper.OCR_MODE_QUICK && unevenLighting) {
-      effectiveMode = OCRHelper.OCR_MODE_ROBUST;
-      Log.d(TAG, "Adaptive: QUICK -> ROBUST (uneven lighting, extraRot=" + extra + ")");
-    }
-    boolean forceBinary = (effectiveMode == OCRHelper.OCR_MODE_ROBUST) && unevenLighting;
-    if (forceBinary) {
-      Log.d(
-          TAG,
-          "Adaptive: ROBUST forces binary preprocessing (uneven lighting, extraRot=" + extra + ")");
-    }
-
-    Bitmap inputForOcr;
-    if (effectiveMode == OCRHelper.OCR_MODE_ORIGINAL
-        || effectiveMode == OCRHelper.OCR_MODE_PADDLE) {
-      // PADDLE: skip preprocessing entirely; the Paddle engine consumes the original (rotated)
-      // bitmap. If the engine cannot be initialized at runtime, OCRHelper transparently falls back
-      // to Tesseract on the same un-preprocessed bitmap, matching ORIGINAL behavior.
-      inputForOcr = rotated;
-    } else if (effectiveMode == OCRHelper.OCR_MODE_QUICK) {
-      inputForOcr = OpenCVUtils.prepareForOCRQuick(rotated);
-    } else { // OCR_MODE_ROBUST
-      // Default: grayscale output preserves fine details and holes in letters (e.g. 'o'),
-      // avoiding over-aggressive binarization artifacts that can cause substitutions like
-      // 'Oktober' → 'Okteber'. With uneven lighting we switch to the binary Sauvola/Retinex
-      // branch which handles shadows much better.
-      inputForOcr = OpenCVUtils.prepareForOCR(rotated, /*binaryOutput*/ forceBinary);
-    }
-    try {
-      helper.setRecognitionMode(effectiveMode);
-      helper.setForceBinaryRobust(forceBinary);
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
-    }
-    return inputForOcr;
-  }
-
-  /**
-   * Layout-aware OCR. If layout analysis produced too few words or a very low mean confidence, the
-   * page was likely mis-segmented (false table detection, sparse-text PSM on the main body, …): run
-   * one additional full-page OCR pass and keep the better result. This is a no-op cost on documents
-   * where layout analysis works well, since {@link OcrFallbackPolicy} does not fire.
-   */
-  private static OCRHelper.OcrResultWords runOcrWithLayoutAndFallback(
-      OCRHelper helper, Bitmap inputForOcr) {
-    OCRHelper.OcrResultWithLayout layoutResult = helper.runOcrWithLayout(inputForOcr);
-    // Collect all words from all regions, preserving layout structure
-    List<RecognizedWord> allWords = new ArrayList<>();
-    int regionIdx = 1;
-    for (OCRHelper.RegionOcrResult regionResult : layoutResult.regionResults) {
-      if (regionResult.ocrResult() != null && regionResult.ocrResult().words != null) {
-        for (RecognizedWord w : regionResult.ocrResult().words) {
-          w.setBlockId(regionIdx);
-        }
-        allWords.addAll(regionResult.ocrResult().words);
-      }
-      regionIdx++;
-    }
-    OCRHelper.OcrResultWords r =
-        new OCRHelper.OcrResultWords(layoutResult.text, layoutResult.meanConfidence, allWords);
-
-    int laWords = wordCount(r);
-    int laConf = meanConfidence(r);
-    if (!OcrFallbackPolicy.shouldRunFullPageFallback(laWords, laConf)) return r;
-
-    Log.d(
-        TAG,
-        "Layout-analysis poor (words="
-            + laWords
-            + ", meanConf="
-            + laConf
-            + "), running full-page fallback OCR");
-    OCRHelper.OcrResultWords fb = helper.runOcrWithRetry(inputForOcr);
-    if (fb == null) return r;
-    boolean fbBetter = isFallbackBetter(fb, r);
-    Log.d(
-        TAG,
-        "Fallback result: words="
-            + wordCount(fb)
-            + ", meanConf="
-            + meanConfidence(fb)
-            + ", taken="
-            + fbBetter);
-    return fbBetter ? fb : r;
-  }
-
-  /**
-   * The full-page fallback wins with more words, or with as many words and a clearly higher mean
-   * confidence. Word count is the dominant signal because the problem the fallback solves is "too
-   * few words".
-   */
-  static boolean isFallbackBetter(
-      OCRHelper.OcrResultWords fallback, OCRHelper.OcrResultWords layout) {
-    int fbWords = wordCount(fallback);
-    int laWords = wordCount(layout);
-    return fbWords > laWords
-        || (fbWords >= laWords && meanConfidence(fallback) > meanConfidence(layout) + 1);
   }
 
   /** Decision delegated to {@link OcrEarlyExitPolicy}, tuned against real production samples. */
@@ -314,39 +184,5 @@ public final class OcrRecognitionPipeline {
     Matrix m = new Matrix();
     m.postRotate(deg);
     return Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), m, true);
-  }
-
-  /**
-   * Heuristic for the adaptive Quick→Robust / forceBinary switch: returns {@code true} when the
-   * input bitmap shows strongly uneven illumination (shadow/lighting gradient typical for phone
-   * photos).
-   *
-   * <p>The actual decision logic lives in {@link UnevenLightingPolicy} so it can be unit-tested
-   * without an Android device. This method only handles bitmap downsampling and pixel extraction.
-   */
-  private static boolean hasUnevenLighting(Bitmap b) {
-    if (b == null || b.isRecycled()) return false;
-    try {
-      int w = b.getWidth();
-      int h = b.getHeight();
-      if (w < 4 || h < 4) return false;
-      // Downsample to keep this cheap regardless of input size.
-      int target = 192;
-      int longSide = Math.max(w, h);
-      double scale = longSide > target ? (double) target / (double) longSide : 1.0;
-      int dw = Math.max(4, (int) Math.round(w * scale));
-      int dh = Math.max(4, (int) Math.round(h * scale));
-      Bitmap small = (dw == w && dh == h) ? b : Bitmap.createScaledBitmap(b, dw, dh, true);
-      try {
-        int[] px = new int[dw * dh];
-        small.getPixels(px, 0, dw, 0, 0, dw, dh);
-        return UnevenLightingPolicy.isUneven(px, dw, dh);
-      } finally {
-        if (small != b && !small.isRecycled()) small.recycle();
-      }
-    } catch (Throwable t) {
-      // On any failure, be conservative and do not trigger the adaptive switch.
-      return false;
-    }
   }
 }

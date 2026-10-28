@@ -11,8 +11,6 @@ Features:
 • Dark mode: System-based Material 3 theme with light and dark appearance
 • Privacy-focused: Fully offline — no data leaves your device
 
-The F-Droid and Google Play listings provide the paddle flavor with PaddleOCR. The standard flavor with Tesseract remains available through GitHub Releases for users who still need Tesseract language data or workflows.
-
 MakeACopy is F-Droid compliant and builds native libraries from source during the build process, ensuring that no prebuilt binaries are included in the repository. All components are open source and respect your privacy.
 
 MakeACopy is free and open source. If you find it useful, please consider supporting development: https://ko-fi.com/egdels

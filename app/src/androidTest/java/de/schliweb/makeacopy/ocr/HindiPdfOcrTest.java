@@ -94,12 +94,12 @@ public class HindiPdfOcrTest {
     OCRHelper helper = new OCRHelper(context);
     try {
       helper.setLanguage(langCode);
-      boolean initialized = helper.initTesseract();
+      boolean initialized = helper.isLanguageAvailable(helper.getLanguage());
       if (!initialized) {
         throw new RuntimeException("Failed to initialize Tesseract for language: " + langCode);
       }
 
-      OCRHelper.OcrResultWords result = helper.runOcrWithRetry(bitmap);
+      OCRHelper.OcrResultWords result = helper.runOcrWithWords(bitmap);
       return result != null ? result.text : null;
     } finally {
       helper.shutdown();
@@ -142,7 +142,7 @@ public class HindiPdfOcrTest {
     OCRHelper helper = new OCRHelper(context);
     try {
       helper.setLanguage("hin");
-      boolean initialized = helper.initTesseract();
+      boolean initialized = helper.isLanguageAvailable(helper.getLanguage());
       assertTrue("Tesseract should initialize with 'hin' language", initialized);
     } finally {
       helper.shutdown();
@@ -155,7 +155,7 @@ public class HindiPdfOcrTest {
     OCRHelper helper = new OCRHelper(context);
     try {
       helper.setLanguage("hin+eng");
-      boolean initialized = helper.initTesseract();
+      boolean initialized = helper.isLanguageAvailable(helper.getLanguage());
       assertTrue("Tesseract should initialize with 'hin+eng'", initialized);
     } finally {
       helper.shutdown();

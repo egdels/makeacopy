@@ -129,10 +129,6 @@ excludes:
       reason: "DATA_FILE_OF"
       comment: "ONNX Runtime model files (binary ML models)."
 
-    - pattern: "**/*.traineddata"
-      reason: "DATA_FILE_OF"
-      comment: "Tesseract OCR trained data files (binary)."
-
     - pattern: "**/*.ttf"
       reason: "DATA_FILE_OF"
       comment: "Font files (binary)."

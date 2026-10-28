@@ -47,10 +47,6 @@
     <string name="ocr_found_rotation_with_score">تم العثور على دوران: %1$d° — درجة OCR: %2$d%%</string>
 
     <!-- Extra explanation appended in “Explain recognition modes” dialog -->
-    <string name="ocr_prep_modes_autorotate_note">التدوير التلقائي لـ OCR: عند التفعيل، يحاول OCR الصفحة بزوايا 90°
-        (0/90/180/270) ويختار أفضل نتيجة. يمكن تطبيق التدوير الذي تم العثور عليه تلقائيًا أثناء التصدير إذا لم تقم
-        بالتدوير يدويًا. يمكنك تبديل هذا الخيار في «اختيار وضع التعرّف».
-    </string>
 
     <string name="initializing_camera">جارٍ تهيئة الكاميرا…</string>
     <string name="resetting_camera">جارٍ إعادة ضبط الكاميرا…</string>
@@ -207,50 +203,15 @@
     <string name="rotate_right_cd">تدوير الصفحة 90 درجة باتجاه عقارب الساعة</string>
 
     <!-- OCR models management (prototype) -->
-    <string name="ocr_models_manage">نماذج OCR</string>
-    <string name="ocr_import_manual">استيراد ‎.traineddata…</string>
-    <string name="ocr_discover_packs">استكشاف حزم اللغات</string>
-    <string name="ocr_no_packs_found">لم يتم العثور على حزم لغات</string>
-    <string name="ocr_choose_pack">اختر حزمة لغة</string>
-    <string name="ocr_no_models_in_pack">لم يتم العثور على نماذج في هذه الحزمة</string>
-    <string name="ocr_choose_model">اختر نموذجًا للاستيراد</string>
-    <string name="ocr_import_success">تم استيراد النموذج</string>
-    <string name="ocr_import_failed">فشل الاستيراد</string>
 
     <!-- OCR models: delete local Best -->
-    <string name="ocr_delete_best_model">حذف نموذج Best</string>
-    <string name="ocr_nothing_to_delete">لا يوجد نموذج Best لحذفه للغة الحالية</string>
-    <string name="ocr_delete_confirm_title">حذف نموذج Best؟</string>
-    <string name="ocr_delete_confirm_msg">هل تريد حذف نموذج Best المُستورد لـ %1$s؟ سيبقى نموذج Fast المدمج متاحًا.
-    </string>
-    <string name="ocr_delete_success">تم حذف النموذج</string>
-    <string name="ocr_delete_failed">فشل الحذف</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">للتعرّف الأسرع، يتم تضمين نماذج مدمجة. ولدقة أعلى، يمكنك تثبيت نماذج أكبر من نوع
-        \"Best\". لا يلزم اتصال بالإنترنت.
-    </string>
 
     <!-- OCR prep modes explanation -->
-    <string name="ocr_explain_prep_modes">شرح أوضاع التعرّف</string>
-    <string name="ocr_prep_modes_title">أوضاع التعرّف: شرح مبسط</string>
-    <string name="ocr_prep_modes_message">هناك طريقتان لإدخال الصور إلى محرّك التعرّف الضوئي على النص (OCR):\n\n•
-        الأصلي (بدون معالجة مسبقة) — الأسرع. يتم إرسال الصورة كما هي. مناسب للصور النظيفة وعالية التباين. قد يفوّت
-        النصوص الباهتة أو المشوَّشة.\n\n•
-        OpenCV المتقدّم — مُعاد تصميمه لتحقيق أعلى دقّة مع الصفحات الصعبة. يقوم بتصحيح الميل، وتوحيد الظلال والإضاءة،
-        وتطبيق تقليل ضوضاء يحافظ على الحواف، مع تكبير ذكي. والأهم أنه يزوّد Tesseract بصورة عالية الجودة بتدرّج رمادي
-        (وليس أبيض وأسود صارم) للحفاظ على التفاصيل الدقيقة مثل حلقات حرف “o” والأرقام الصغيرة. يوفّر أفضل دقّة مع
-        الصفحات الصعبة، لكنه أبطأ ويستهلك ذاكرة أكبر.\n\nالمعالجة اللاحقة لـ OCR: تصحّح أخطاء التعرّف الشائعة مثل
-        الالتباس (0↔O، 1↔l↔I، rn↔m)، وتتحقّق من الكلمات غير المؤكّدة باستخدام قاموس. مفعّلة افتراضيًا؛ عطّلها عند معالجة
-        الأكواد التقنية أو الأرقام التسلسلية.
-    </string>
 
 
     <!-- OCR prep modes selection -->
-    <string name="ocr_choose_prep_mode_menu">وضع التعرّف…</string>
-    <string name="ocr_mode_original">الأصلية (بدون معالجة مسبقة)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (سريع)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (جودة عالية)</string>
     <string name="opt_paddle_best_ocr">أفضل جودة Paddle OCR (أبطأ)</string>
     <string name="opt_multi_column_ocr">تخطيط متعدد الأعمدة (صحف ومجلات)</string>
 
@@ -385,11 +346,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">الدوران التلقائي لـ OCR (وتطبيقه أيضًا عند التصدير)</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">معالجة OCR اللاحقة (تصحيح الأخطاء الشائعة)</string>
-    <string name="opt_layout_analysis">تحليل التخطيط (الأعمدة، الجداول)
-    </string>    <!-- Options: Experimental directional mapping fallback -->    <!-- Developer / Debug options -->    <!-- Library / Collections (developer strings kept non-translatable for now) -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">نوع الملف غير معروف</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">نوع هذا الملف غير مدعوم</string>
     <string name="error_cannot_open_pdf">تعذّر فتح ملف PDF</string>
     <string name="error_pdf_empty">ملف PDF لا يحتوي على أي صفحات</string>
@@ -430,8 +388,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">اختر لغات التعرّف الضوئي على الحروف</string>
-    <string name="ocr_max_languages_warning">يُسمح بحد أقصى لغتين</string>
-    <string name="ocr_no_language_selected">يرجى اختيار لغة واحدة على الأقل</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">تجاهل التغييرات؟</string>
     <string name="msg_discard_changes">لديك تغييرات غير محفوظة. هل تريد تجاهلها؟</string>

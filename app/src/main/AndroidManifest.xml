@@ -2,13 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Package visibility for discovering installed Language-Packs (Android 11+) -->
-    <queries>
-        <intent>
-            <action android:name="de.schliweb.makeacopy.ACTION_TESSDATA" />
-        </intent>
-    </queries>
-
     <!-- Camera permission for document scanning -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Haptic ticks on capture, crop, OCR and export, plus Accessibility Mode cues (no runtime prompt required) -->

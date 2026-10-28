@@ -45,9 +45,6 @@
     <string name="ocr_found_rotation_with_score">检测到旋转：%1$d° — OCR 评分：%2$d%%</string>
 
     <!-- 在“解释识别模式”对话框中附加的额外说明 -->
-    <string name="ocr_prep_modes_autorotate_note">OCR 自动旋转：启用后，OCR 会以 90°
-        步进（0/90/180/270）尝试页面，并选择最佳结果。如果你没有手动旋转页面，检测到的旋转角度可在导出时自动应用。你可以在“选择识别模式”中开启或关闭此选项。
-    </string>
 
     <string name="initializing_camera">正在初始化相机…</string>
     <string name="resetting_camera">正在重置相机…</string>
@@ -207,43 +204,13 @@
     <string name="rotate_right_cd">将页面顺时针旋转 90 度</string>
 
     <!-- OCR 模型管理（原型） -->
-    <string name="ocr_models_manage">OCR 模型</string>
-    <string name="ocr_import_manual">导入 .traineddata…</string>
-    <string name="ocr_discover_packs">发现语言包</string>
-    <string name="ocr_no_packs_found">未找到语言包</string>
-    <string name="ocr_choose_pack">选择语言包</string>
-    <string name="ocr_no_models_in_pack">此语言包中未找到模型</string>
-    <string name="ocr_choose_model">选择要导入的模型</string>
-    <string name="ocr_import_success">模型已导入</string>
-    <string name="ocr_import_failed">导入失败</string>
 
-    <string name="ocr_delete_best_model">删除 Best 模型</string>
-    <string name="ocr_nothing_to_delete">当前语言没有可删除的 Best 模型</string>
-    <string name="ocr_delete_confirm_title">删除 Best 模型？</string>
-    <string name="ocr_delete_confirm_msg">删除 %1$s 的已导入 Best 模型？内置的 Fast 模型将继续可用。</string>
-    <string name="ocr_delete_success">模型已删除</string>
-    <string name="ocr_delete_failed">删除失败</string>
 
     <!-- OCR 模型提示 -->
-    <string name="ocr_models_hint">
-        为加快识别速度，已包含紧凑型模型。若需更高精度，可以安装更大的“Best”模型。无需互联网连接。
-    </string>
 
     <!-- OCR 识别模式 – 说明 -->
-    <string name="ocr_explain_prep_modes">说明识别模式</string>
-    <string name="ocr_prep_modes_title">识别模式：简单说明</string>
-    <string name="ocr_prep_modes_message">将图像送入 OCR 引擎有两种方式：\n\n• 原始（无预处理）—
-        速度最快。照片按原样发送。适合已经干净、对比度高的扫描件。可能会遗漏较淡或有噪点的文字。\n\n•
-        OpenCV 强化 — 为在困难页面上获得最高准确率而重新设计。可校正倾斜、规范化阴影和光照，应用保边去噪和智能放大。重要的是，它会向
-        Tesseract 提供高质量的灰度图像（而非硬性的黑白图像），以保留诸如字母“o”的环形细节和较小的数字。在复杂页面上提供最佳准确率，但速度较慢且占用更多内存。\n\nOCR
-        后处理：纠正常见的识别错误，例如混淆（0↔O、1↔l↔I、rn↔m），并使用词典检查不确定的词语。默认启用；对于技术代码或序列号可将其关闭。
-    </string>
 
     <!-- OCR 识别模式选择 -->
-    <string name="ocr_choose_prep_mode_menu">识别模式…</string>
-    <string name="ocr_mode_original">原始（无预处理）</string>
-    <string name="ocr_mode_quick">OpenCV Quick（快速）</string>
-    <string name="ocr_mode_robust">OpenCV Robust（高质量）</string>
     <string name="opt_paddle_best_ocr">最佳 Paddle OCR 质量（较慢）</string>
     <string name="opt_multi_column_ocr">多栏版式（报纸、杂志）</string>
 
@@ -367,13 +334,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR 自动旋转（导出时也应用）</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR 后处理（纠正常见错误）</string>
-    <string name="opt_layout_analysis">布局分析（列、表格）
-    </string>    <!-- Options: Experimental directional mapping fallback -->
-    <!-- Developer / Debug options -->
-    <!-- Library / Collections -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">未知的文件类型</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">不支持此文件类型</string>
     <string name="error_cannot_open_pdf">无法打开 PDF</string>
     <string name="error_pdf_empty">PDF 不包含任何页面</string>
@@ -414,8 +376,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">选择 OCR 语言</string>
-    <string name="ocr_max_languages_warning">最多只能选择 2 种语言</string>
-    <string name="ocr_no_language_selected">请至少选择一种语言</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">放弃更改？</string>
     <string name="msg_discard_changes">你有未保存的更改。是否要放弃？</string>

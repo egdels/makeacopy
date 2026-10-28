@@ -78,20 +78,9 @@ includes third-party components under their respective licenses as noted below.
 3) Noto Sans CJK / Noto Sans JP – no longer bundled (the PDF text layer uses a glyphless
     font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
 
-4) Tesseract OCR language data (tessdata)
-    - Project: https://github.com/tesseract-ocr/tessdata
-    - License: Apache License, Version 2.0
-    - Notes: Extended to include chi_sim and chi_tra for Chinese OCR where
-      applicable. The license notice is included at
-      third_party_licenses/tessdata_LICENSE.txt.
+4) Tesseract OCR language data (tessdata) – no longer bundled (OCR runs on PaddleOCR only)
 
-5) Tesseract4Android (Android Tesseract wrapper)
-    - Project: https://github.com/adaptech-cz/Tesseract4Android
-    - Version: 4.9.0
-    - License: Apache License, Version 2.0
-    - Notes: Used as a Gradle dependency (cz.adaptech.tesseract4android) to
-      provide Tesseract OCR functionality on Android. The Apache 2.0 license
-      text is included at third_party_licenses/Tesseract4Android_LICENSE.txt.
+5) Tesseract4Android (Android Tesseract wrapper) – no longer used (OCR runs on PaddleOCR only)
 
 6) Noto Sans – no longer bundled (the PDF text layer uses a glyphless
     font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
@@ -102,13 +91,8 @@ includes third-party components under their respective licenses as noted below.
 8) Noto Sans Devanagari – no longer bundled (the PDF text layer uses a glyphless
     font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
 
-9) FrequencyWords (OCR dictionaries)
-    - Project: https://github.com/hermitdave/FrequencyWords
-    - License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
-    - Notes: Word frequency dictionaries derived from Wikipedia are used for OCR
-      post-processing to improve text recognition accuracy. Dictionaries for 23
-      languages are included. The license notice is included at
-      app/src/main/assets/dictionaries/LICENSE.txt.
+9) FrequencyWords (OCR dictionaries) – no longer bundled (the dictionary-based
+    post-processing belonged to the Tesseract OCR path)
 
 10) Training Datasets (not redistributed)
 

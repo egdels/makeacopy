@@ -146,7 +146,7 @@
             automatiquement
         </li>
         <li><strong>Amélioration d’image</strong> : appliquez des filtres (niveaux de gris, contraste, netteté)</li>
-        <li><strong>OCR</strong> : reconnaissance de texte hors ligne avec PaddleOCR dans le flavor paddle publié, qui suit les lignes même sur une page légèrement inclinée ; le flavor standard avec Tesseract reste disponible via GitHub Releases</li>
+        <li><strong>OCR</strong> : reconnaissance de texte hors ligne avec PaddleOCR qui suit les lignes même sur une page légèrement inclinée</li>
         <li><strong>OCR Review</strong> : révision et correction interactives des résultats OCR avec édition au niveau
             des mots, suggestions basées sur le dictionnaire, mise en évidence de la confiance et re-OCR pour les mots
             individuels
@@ -165,7 +165,7 @@
     </ul>
 
     <h2>Langues OCR</h2>
-    <p>MakeACopy prend en charge l’OCR hors ligne via PaddleOCR dans le flavor paddle publié. Vous pouvez sélectionner la langue ou le groupe d’écriture lors de l’étape
+    <p>MakeACopy prend en charge l’OCR hors ligne via PaddleOCR. Vous pouvez sélectionner la langue ou le groupe d’écriture lors de l’étape
         OCR.</p>
     <ul>
         <li>Anglais (Anglais)</li>
@@ -197,13 +197,9 @@
         Elle utilise une police minuscule sans glyphes visibles, intégrée à l’application, comme le font Tesseract et OCRmyPDF :
         le texte de toute écriture, y compris le chinois, le japonais, l’arabe, le persan et l’hindi, peut ainsi être recherché et copié sans embarquer de polices.</p>
 
-    <h2>Variantes de l’application et moteurs OCR</h2>
-    <p>MakeACopy publie le flavor paddle avec PaddleOCR sur F-Droid et Google Play. Le flavor standard avec Tesseract reste disponible pour les utilisateurs qui ont encore besoin des données de langue ou des workflows Tesseract :</p>
-    <ul>
-        <li><strong>Flavor paddle</strong> : la variante publiée avec PaddleOCR uniquement, sans moteur Tesseract ni données de langue Tesseract.</li>
-        <li><strong>Flavor standard (Tesseract)</strong> : la variante basée sur Tesseract avec les APKs optionnels de packs de langues, proposée via GitHub Releases.</li>
-    </ul>
-    <p>Dans le flavor paddle, choisissez dans le fragment OCR l’écriture ou le groupe de langues le plus adapté. Pour les documents en allemand, choisissez par exemple <strong>Latin</strong>.</p>
+    <h2>Éditions et OCR</h2>
+    <p>MakeACopy reconnaît le texte avec PaddleOCR. L’édition <strong>Full</strong> sur F-Droid, Google Play et GitHub Releases apporte tous les groupes de langues ; l’édition <strong>Light</strong> sur GitHub Releases n’apporte que l’écriture latine et fait environ la moitié de la taille.</p>
+    <p>Choisissez dans le fragment OCR l’écriture ou le groupe de langues le plus adapté. Pour les documents en allemand, choisissez par exemple <strong>Latin</strong>.</p>
     <table>
         <thead>
         <tr><th>Langue du document</th><th>Choix dans le fragment OCR</th></tr>
@@ -219,7 +215,6 @@
         <tr><td>Grec</td><td>Grec</td></tr>
         </tbody>
     </table>
-    <p>Les liens F-Droid et Google Play pointent vers le flavor paddle. Utilisez GitHub Releases si vous avez besoin du flavor standard avec Tesseract.</p>
 
     <h2>Captures d’écran</h2>
     <p align="center">
@@ -262,7 +257,6 @@
         sous-module <code>external/opencv</code>) et ONNX Runtime (fournisseur d’exécution CPU, liaisons Java) depuis <code>external/onnxruntime</code>.
         Les bibliothèques résultantes sont intégrées à l’application pendant la construction ; aucun binaire précompilé
         n’est stocké dans le dépôt.</p>
-    <p>Les fiches F-Droid et Google Play fournissent le flavor paddle. Le flavor standard avec Tesseract est proposé via GitHub Releases.</p>
 
     <h3>GitHub Releases</h3>
     <p>Vous pouvez télécharger la dernière APK sur la page <a href="https://github.com/egdels/makeacopy/releases">Releases</a>.
@@ -399,10 +393,7 @@ appverifier verify MakeACopy-vX.Y.Z.apk
             - Évitez les caractères trop petits — remplissez davantage la page ou rapprochez‑vous (sans flou).
         </li>
         <li><strong>Mauvaise langue / les accents ne sont pas reconnus</strong><br>
-            - Choisissez la langue OCR appropriée dans l’application. <br>
-            - Pour une meilleure précision dans les langues latines, installez le <em>Language Pack : MakeACopy OCR
-                Latin (Best)</em> (lien Play Store ci‑dessus sur cette page).
-        </li>
+            - Choisissez la langue OCR appropriée dans l’application. </li>
         <li><strong>Langues mélangées dans le document</strong><br>
             - Si possible, numérisez les sections séparément par langue. <br>
             - Sinon, choisissez la langue principale ; le texte mixte peut réduire la précision.
@@ -435,57 +426,6 @@ appverifier verify MakeACopy-vX.Y.Z.apk
             - Vérifiez si la langue sélectionnée est correcte ; une mauvaise langue produit un texte reconnu non
             concordant. <br>
             - Vous pouvez aussi exporter le texte OCR séparément en fichier TXT.
-        </li>
-        <li><strong>Que signifient les modes de reconnaissance ?</strong><br>
-            Dans l’application, avant la reconnaissance de texte, vous pouvez choisir comment préparer l’image pour
-            Tesseract :
-            <br>
-            - <strong>Original (sans prétraitement)</strong> : Le plus rapide. La photo est transmise telle quelle à
-            l’OCR. Idéal pour des scans propres et très contrastés ; peut manquer du texte pâle ou « sale ». <br>
-            - <strong>OpenCV Rapide</strong> : Prétraitement léger et rapide (niveaux de gris, léger débruitage,
-            noir/blanc automatique, éventuellement léger agrandissement). Bon réglage par défaut pour la plupart des
-            photos — bon équilibre entre vitesse et qualité. <br>
-            - <strong>OpenCV Robuste</strong> : Précision maximale pour des pages difficiles (redressement/deskew,
-            normalisation de l’éclairage, débruitage préservant les contours, agrandissement intelligent). Produit une
-            image en niveaux de gris de haute qualité pour Tesseract. Meilleure précision, mais plus lent et plus
-            gourmand en mémoire. <br>
-            <em>Remarque :</em> Pour la plupart des cas, « OpenCV Rapide » est recommandé ; pour des pages très
-            difficiles, utilisez « OpenCV Robuste ».
-        </li>
-        <li id="faq-ocr-post-processing"><strong>Que fait l'option « Post‑traitement OCR (corriger les erreurs
-            courantes) » ?</strong><br>
-            Cette option améliore automatiquement le texte reconnu après le traitement OCR. Elle est activée par défaut
-            et peut être activée/désactivée dans le dialogue « Choisir le mode de reconnaissance ».<br>
-            <br>
-            <strong>Qu'est‑ce qui est corrigé ?</strong><br>
-            - <em>Confusions de caractères</em> : 0 ↔ O (zéro vs. lettre O), 1 ↔ l ↔ I (un vs. L minuscule vs. I
-            majuscule), 5 ↔ S, 8 ↔ B, 2 ↔ Z<br>
-            - <em>Corrections de ligatures</em> : « rn » → « m », « cl » → « d », « vv » → « w » (séquences de
-            caractères ressemblant à d'autres lettres)<br>
-            - <em>Corrections contextuelles</em> : Dans les séquences numériques, les lettres sont corrigées en chiffres
-            (p. ex. « 1O23 » → « 1023 ») ; dans les passages de texte, les chiffres sont corrigés en lettres (p. ex. «
-            H0use » → « House »)<br>
-            - <em>Correction basée sur le dictionnaire</em> : Les mots avec une faible confiance de reconnaissance
-            (inférieure à 70 %) sont vérifiés dans un dictionnaire et remplacés si une correspondance est trouvée<br>
-            - <em>Corrections spécifiques à la langue</em> : Pour l'allemand, p. ex. correction des trémas et du ß («
-            Strasse » → « Straße »)<br>
-            <br>
-            <strong>Quand désactiver ?</strong><br>
-            Dans la plupart des cas, le post‑traitement améliore la qualité du texte. Cependant, il peut être utile de
-            le désactiver si le texte contient de nombreux codes techniques ou numéros de série, des mélanges
-            intentionnels de lettres et de chiffres, ou si le texte original doit être préservé exactement.
-        </li>
-        <li><strong>Comment gérer les packs de langue / modèles OCR ?</strong><br>
-            - Ouvrez la vue OCR d’un scan et touchez le menu (⋮) → « Modèles OCR ». <br>
-            - « Importer .traineddata… » : importer un fichier modèle Tesseract unique depuis l’appareil/le stockage.
-            <br>
-            - « Découvrir les packs de langue » : trouver les applications Language‑Pack installées (p. ex. « MakeACopy
-            OCR Latin (Best) ») et y importer des modèles. <br>
-            - « Supprimer le modèle Best » : retirer un modèle Best précédemment importé pour la langue actuellement
-            sélectionnée (le modèle rapide intégré reste disponible). <br>
-            <em>Astuce :</em> L’application inclut des modèles compacts et rapides. Pour une meilleure précision, vous
-            pouvez installer en option des modèles « Best » plus volumineux via un Language‑Pack (lien en haut de cette
-            page). Aucune connexion Internet n’est requise.
         </li>
     </ul>
 

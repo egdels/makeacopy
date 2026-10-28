@@ -48,10 +48,6 @@
     <string name="ocr_found_rotation_with_score">ตรวจพบการหมุน: %1$d° — คะแนน OCR: %2$d%%</string>
 
     <!-- คำอธิบายเพิ่มเติมที่แสดงในกล่องโต้ตอบ “อธิบายโหมดการรู้จำ” -->
-    <string name="ocr_prep_modes_autorotate_note">การหมุนอัตโนมัติของ OCR: เมื่อเปิดใช้งาน OCR จะทดสอบหน้าเอกสารในขั้นละ
-        90° (0/90/180/270) และเลือกผลลัพธ์ที่ดีที่สุด การหมุนที่ตรวจพบสามารถนำไปใช้โดยอัตโนมัติระหว่างการส่งออก
-        หากคุณไม่ได้หมุนหน้าด้วยตนเอง คุณสามารถเปิดหรือปิดตัวเลือกนี้ได้ใน “เลือกโหมดการรู้จำ”
-    </string>
 
     <string name="initializing_camera">กำลังเริ่มต้นกล้อง…</string>
     <string name="resetting_camera">กำลังกำหนดค่ากล้องใหม่…</string>
@@ -212,49 +208,13 @@
 
 
     <!-- การจัดการโมเดล OCR (ต้นแบบ) -->
-    <string name="ocr_models_manage">โมเดล OCR</string>
-    <string name="ocr_import_manual">นำเข้า .traineddata…</string>
-    <string name="ocr_discover_packs">ค้นหาแพ็กภาษา</string>
-    <string name="ocr_no_packs_found">ไม่พบแพ็กภาษา</string>
-    <string name="ocr_choose_pack">เลือกแพ็กภาษา</string>
-    <string name="ocr_no_models_in_pack">ไม่พบโมเดลในแพ็กนี้</string>
-    <string name="ocr_choose_model">เลือกโมเดลเพื่อนำเข้า</string>
-    <string name="ocr_import_success">นำเข้าโมเดลสำเร็จ</string>
-    <string name="ocr_import_failed">นำเข้าไม่สำเร็จ</string>
 
-    <string name="ocr_delete_best_model">ลบโมเดล Best</string>
-    <string name="ocr_nothing_to_delete">ไม่มีโมเดล Best สำหรับภาษาปัจจุบันให้ลบ</string>
-    <string name="ocr_delete_confirm_title">ลบโมเดล Best?</string>
-    <string name="ocr_delete_confirm_msg">ต้องการลบโมเดล Best ที่นำเข้าสำหรับ %1$s หรือไม่? โมเดล Fast
-        ที่มากับระบบจะยังคงใช้งานได้อยู่
-    </string>
-    <string name="ocr_delete_success">ลบโมเดลแล้ว</string>
-    <string name="ocr_delete_failed">การลบล้มเหลว</string>
 
     <!-- คำแนะนำเกี่ยวกับโมเดล OCR -->
-    <string name="ocr_models_hint">เพื่อการรู้จำที่เร็วขึ้น มีโมเดลแบบกะทัดรัดรวมมาให้แล้ว หากต้องการความแม่นยำสูงขึ้น
-        คุณสามารถติดตั้งโมเดล "Best" ที่มีขนาดใหญ่กว่าได้ โดยไม่ต้องเชื่อมต่ออินเทอร์เน็ต
-    </string>
 
     <!-- โหมดการรู้จำ OCR – คำอธิบาย -->
-    <string name="ocr_explain_prep_modes">อธิบายโหมดการรู้จำ</string>
-    <string name="ocr_prep_modes_title">โหมดการรู้จำ: คำอธิบายแบบง่าย</string>
-    <string name="ocr_prep_modes_message">มีสองวิธีในการส่งภาพไปยังเอนจิน OCR:\n\n• ต้นฉบับ (ไม่มีการประมวลผลล่วงหน้า) —
-        เร็วที่สุด ภาพจะถูกส่งตามสภาพเดิม เหมาะสำหรับการสแกนที่สะอาดและมีคอนทราสต์สูง
-        อาจพลาดข้อความที่จางหรือมีสัญญาณรบกวน\n\n• OpenCV ขั้นสูง —
-        ออกแบบใหม่เพื่อความแม่นยำสูงสุดสำหรับหน้าที่ยากต่อการประมวลผล แก้ไขความเอียง ปรับความสม่ำเสมอของเงาและแสง
-        ใช้การลดสัญญาณรบกวนแบบรักษาขอบ และการปรับขนาดอัจฉริยะ สิ่งสำคัญคือ Tesseract จะได้รับภาพระดับสีเทาคุณภาพสูง
-        (ไม่ใช่ขาวดำแบบแข็ง) เพื่อรักษารายละเอียดเล็ก ๆ เช่น ห่วงของตัวอักษร “o” และตัวเลขขนาดเล็ก
-        ให้ความแม่นยำดีที่สุดสำหรับหน้าที่ยาก แต่ช้ากว่าและใช้หน่วยความจำมากกว่า\n\nการประมวลผลหลัง OCR:
-        แก้ไขข้อผิดพลาดในการรู้จำที่พบบ่อย เช่น ความสับสน (0↔O, 1↔l↔I, rn↔m) และตรวจสอบคำที่ไม่แน่ชัดด้วยพจนานุกรม
-        เปิดใช้งานโดยค่าเริ่มต้น; ปิดใช้งานสำหรับรหัสทางเทคนิคหรือหมายเลขซีเรียล
-    </string>
 
     <!-- การเลือกโหมดการรู้จำ OCR -->
-    <string name="ocr_choose_prep_mode_menu">โหมดการรู้จำ…</string>
-    <string name="ocr_mode_original">ต้นฉบับ (ไม่ประมวลผลล่วงหน้า)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (รวดเร็ว)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (คุณภาพสูง)</string>
     <string name="opt_paddle_best_ocr">คุณภาพ Paddle OCR ดีที่สุด (ช้าลง)</string>
     <string name="opt_multi_column_ocr">เลย์เอาต์หลายคอลัมน์ (หนังสือพิมพ์ นิตยสาร)</string>
 
@@ -383,13 +343,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">หมุน OCR อัตโนมัติ (ใช้กับการส่งออกด้วย)</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">การประมวลผล OCR ภายหลัง (แก้ไขข้อผิดพลาดทั่วไป)</string>
-    <string name="opt_layout_analysis">การวิเคราะห์เค้าโครง (คอลัมน์, ตาราง)
-    </string>    <!-- Options: Experimental directional mapping fallback -->
-    <!-- Developer / Debug options -->
-    <!-- Library / Collections -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">ไม่ทราบประเภทไฟล์</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">ไม่รองรับไฟล์ประเภทนี้</string>
     <string name="error_cannot_open_pdf">ไม่สามารถเปิดไฟล์ PDF ได้</string>
     <string name="error_pdf_empty">ไฟล์ PDF ไม่มีหน้า</string>
@@ -430,8 +385,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">เลือกภาษา OCR</string>
-    <string name="ocr_max_languages_warning">อนุญาตให้เลือกได้สูงสุด 2 ภาษา</string>
-    <string name="ocr_no_language_selected">โปรดเลือกอย่างน้อยหนึ่งภาษา</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">ยกเลิกการเปลี่ยนแปลง?</string>
     <string name="msg_discard_changes">คุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการยกเลิกหรือไม่?</string>

@@ -70,9 +70,9 @@ public class ArabicPersianPdfExportTest {
       // Step 2: Perform OCR
       ocrHelper = new OCRHelper(context);
       ocrHelper.setLanguage("fas");
-      assertTrue("Tesseract should initialize", ocrHelper.initTesseract());
+      assertTrue("OCR language should be bundled", ocrHelper.isLanguageAvailable(ocrHelper.getLanguage()));
 
-      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithRetry(page);
+      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithWords(page);
       assertNotNull("OCR result should not be null", ocrResult);
       assertNotNull("OCR words should not be null", ocrResult.words);
 
@@ -133,9 +133,9 @@ public class ArabicPersianPdfExportTest {
       // Step 2: Perform OCR
       ocrHelper = new OCRHelper(context);
       ocrHelper.setLanguage("ara");
-      assertTrue("Tesseract should initialize", ocrHelper.initTesseract());
+      assertTrue("OCR language should be bundled", ocrHelper.isLanguageAvailable(ocrHelper.getLanguage()));
 
-      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithRetry(page);
+      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithWords(page);
       assertNotNull("OCR result should not be null", ocrResult);
       assertNotNull("OCR words should not be null", ocrResult.words);
 
@@ -194,9 +194,9 @@ public class ArabicPersianPdfExportTest {
 
       ocrHelper = new OCRHelper(context);
       ocrHelper.setLanguage("ara");
-      assertTrue("Tesseract should initialize", ocrHelper.initTesseract());
+      assertTrue("OCR language should be bundled", ocrHelper.isLanguageAvailable(ocrHelper.getLanguage()));
 
-      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithRetry(page);
+      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithWords(page);
       assertNotNull("OCR result should not be null", ocrResult);
 
       // Export to PDF
@@ -283,9 +283,9 @@ public class ArabicPersianPdfExportTest {
 
       ocrHelper = new OCRHelper(context);
       ocrHelper.setLanguage("ara");
-      assertTrue("Tesseract should initialize", ocrHelper.initTesseract());
+      assertTrue("OCR language should be bundled", ocrHelper.isLanguageAvailable(ocrHelper.getLanguage()));
 
-      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithRetry(page);
+      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithWords(page);
       assertNotNull("OCR result should not be null", ocrResult);
 
       // Export to PDF
@@ -349,9 +349,9 @@ public class ArabicPersianPdfExportTest {
 
       ocrHelper = new OCRHelper(context);
       ocrHelper.setLanguage("fas");
-      assertTrue("Tesseract should initialize", ocrHelper.initTesseract());
+      assertTrue("OCR language should be bundled", ocrHelper.isLanguageAvailable(ocrHelper.getLanguage()));
 
-      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithRetry(page);
+      OCRHelper.OcrResultWords ocrResult = ocrHelper.runOcrWithWords(page);
       assertNotNull("OCR result should not be null", ocrResult);
 
       // Export to PDF

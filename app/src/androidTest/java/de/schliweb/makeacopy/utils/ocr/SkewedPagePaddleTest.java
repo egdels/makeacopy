@@ -56,7 +56,7 @@ public class SkewedPagePaddleTest {
           gt = new String(is.readAllBytes(), StandardCharsets.UTF_8);
         }
         OCRHelper.OcrResultWords result = engine.run(bm);
-        double cer = PaddleVsTesseractEvalTest.cer(normalize(gt), normalize(result.text));
+        double cer = OcrErrorRates.cer(normalize(gt), normalize(result.text));
         Log.i(TAG, name + " cer=" + String.format(java.util.Locale.US, "%.4f", cer));
         assertTrue(name + " cer " + cer, cer < limits[i]);
       }

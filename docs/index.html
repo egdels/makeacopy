@@ -125,7 +125,7 @@
         <li><strong>Edge Detection</strong>: A custom-trained model (DocQuadNet) finds the page on the photo and snaps the outline onto the paper's edges without mistaking a printed border line for them. With <em>Preview corner detection</em> enabled in the options (always in accessibility mode), it also outlines the page live in the camera, but only when it is sure of it</li>
         <li><strong>Perspective Correction</strong>: Adjust and crop documents with manual or automatic perspective correction</li>
         <li><strong>Image Enhancement</strong>: Apply filters (grayscale, contrast, sharpening)</li>
-        <li><strong>OCR</strong>: Offline text recognition with PaddleOCR in the published paddle flavor, following text lines even when the page is slightly tilted; the standard Tesseract flavor remains available via GitHub Releases</li>
+        <li><strong>OCR</strong>: Offline text recognition with PaddleOCR following text lines even when the page is slightly tilted</li>
         <li><strong>OCR Review</strong>: Interactive review and correction of OCR results with word-level editing, dictionary-based suggestions, confidence highlighting, and re-OCR for individual words</li>
         <li><strong>PDF Export</strong>: Save as searchable PDF with recognized text</li>
         <li><strong>JPEG Export</strong>: Export scans as high-quality JPEG images (configurable quality, color/BW)</li>
@@ -138,7 +138,7 @@
     </ul>
     
     <h2>OCR Languages</h2>
-    <p>MakeACopy supports offline OCR using PaddleOCR in the published paddle flavor. You can select the language or script group during the OCR step.</p>
+    <p>MakeACopy supports offline OCR using PaddleOCR. You can select the language or script group during the OCR step.</p>
     <ul>
         <li>English (English)</li>
         <li>German (Latin)</li>
@@ -167,13 +167,9 @@
     </ul>
     <p><em>Note:</em> The searchable text of a PDF export is an invisible layer over the page image. It uses a tiny font without visible glyphs that is built into the app, as Tesseract and OCRmyPDF do, so text in every script, Chinese, Japanese, Arabic, Persian and Hindi included, can be searched and copied without bundling fonts.</p>
 
-    <h2>App variants and OCR backends</h2>
-    <p>MakeACopy publishes the paddle flavor with PaddleOCR for F-Droid and Google Play. The standard Tesseract flavor remains available for users who still need Tesseract language data or workflows:</p>
-    <ul>
-        <li><strong>Paddle flavor</strong>: the published app variant using PaddleOCR only, without Tesseract runtime or Tesseract language data.</li>
-        <li><strong>Standard flavor (Tesseract)</strong>: the Tesseract-based variant with optional language-pack APKs, offered via GitHub Releases.</li>
-    </ul>
-    <p>In the paddle flavor, choose the closest script or language group in the OCR language selector. For example, choose <strong>Latin</strong> for German documents.</p>
+    <h2>Editions and OCR</h2>
+    <p>MakeACopy recognizes text with PaddleOCR. The <strong>Full</strong> edition on F-Droid, Google Play and GitHub Releases brings all language groups; the <strong>Light</strong> edition on GitHub Releases brings only the Latin script group and is about half the size.</p>
+    <p>Choose the closest script or language group in the OCR language selector. For example, choose <strong>Latin</strong> for German documents.</p>
     <table>
         <thead>
         <tr><th>Document language</th><th>Choose in the OCR language selector</th></tr>
@@ -189,7 +185,6 @@
         <tr><td>Greek</td><td>Greek</td></tr>
         </tbody>
     </table>
-    <p>The F-Droid and Google Play links point to the paddle flavor. Use GitHub Releases if you need the standard Tesseract flavor.</p>
 
     <h2>Screenshots</h2>
     
@@ -233,7 +228,6 @@
         <code>external/opencv</code> submodule) and ONNX Runtime (CPU execution provider, Java bindings) from
         <code>external/onnxruntime</code>. The resulting libraries are integrated into the app during the build; no prebuilt
         binaries are stored in the repository.</p>
-    <p>The F-Droid and Google Play listings provide the paddle flavor. The standard Tesseract flavor is offered through GitHub Releases.</p>
     
     <h3>GitHub Releases</h3>
     
@@ -360,9 +354,7 @@ appverifier verify MakeACopy-vX.Y.Z.apk
             - Avoid very small text — fill more of the page or scan closer (without blur).
         </li>
         <li><strong>Wrong language / accents are not recognized</strong><br>
-            - Choose the appropriate OCR language in the app. <br>
-            - For higher accuracy in Latin languages, install the <em>Language Pack: MakeACopy OCR Latin (Best)</em> (Play Store link above on this page).
-        </li>
+            - Choose the appropriate OCR language in the app. </li>
         <li><strong>Mixed languages in the document</strong><br>
             - If possible, scan sections separately per language. <br>
             - Alternatively, choose the primary language; mixed text can reduce recognition accuracy.
@@ -384,34 +376,6 @@ appverifier verify MakeACopy-vX.Y.Z.apk
         <li><strong>Search in the PDF does not work</strong><br>
             - Check whether the selected language was correct; the wrong language produces mismatched recognized text. <br>
             - Alternatively, you can export the OCR text separately as a TXT file.
-        </li>
-        <li><strong>What do the recognition modes mean?</strong><br>
-            In the app, before text recognition you can choose how to prepare the image for Tesseract:
-            <br>
-            - <strong>Original (no pre-processing)</strong>: Fastest. The photo is passed to OCR unchanged. Good for already clean, high-contrast scans; may miss faint or "dirty" text. <br>
-            - <strong>OpenCV Quick</strong>: Fast, light pre-processing (grayscale, slight denoising, automatic black/white, optionally slight upscaling). A good default for most photos — a solid balance of speed and quality. <br>
-            - <strong>OpenCV Robust</strong>: Maximum accuracy for difficult pages (deskew, normalize lighting, edge-preserving denoising, smart upscaling). Produces a high-quality grayscale image for Tesseract. Best accuracy, but slower and more memory intensive. <br>
-            <em>Note:</em> For most cases, “OpenCV Quick” is recommended; for very tough pages use “OpenCV Robust”.
-        </li>
-        <li id="faq-ocr-post-processing"><strong>What does the "OCR post-processing (correct common errors)" option do?</strong><br>
-            This option automatically improves the recognized text after OCR processing. It is enabled by default and can be toggled in the "Choose recognition mode" dialog.<br>
-            <br>
-            <strong>What gets corrected?</strong><br>
-            - <em>Character confusions</em>: 0 ↔ O (zero vs. letter O), 1 ↔ l ↔ I (one vs. lowercase L vs. uppercase I), 5 ↔ S, 8 ↔ B, 2 ↔ Z<br>
-            - <em>Ligature corrections</em>: "rn" → "m", "cl" → "d", "vv" → "w" (character sequences that look like other letters)<br>
-            - <em>Context-aware corrections</em>: In numeric sequences, letters are corrected to digits (e.g., "1O23" → "1023"); in text passages, digits are corrected to letters (e.g., "H0use" → "House")<br>
-            - <em>Dictionary-based correction</em>: Words with low recognition confidence (below 70%) are checked against a dictionary and replaced if a match is found<br>
-            - <em>Language-specific corrections</em>: For German, e.g., correction of umlauts and ß ("Strasse" → "Straße")<br>
-            <br>
-            <strong>When to disable?</strong><br>
-            In most cases, post-processing improves text quality. However, it may be useful to disable it if the text contains many technical codes or serial numbers, intentional mixtures of letters and numbers, or if the original text must be preserved exactly.
-        </li>
-        <li><strong>How do I manage language packs / OCR models?</strong><br>
-            - Open the OCR view of a scan and tap the menu (⋮) → “OCR models”. <br>
-            - “Import .traineddata…”: Import a single Tesseract model file from the device/storage. <br>
-            - “Discover language packs”: Find installed Language‑Pack apps (e.g., “MakeACopy OCR Latin (Best)”) and import models from them. <br>
-            - “Delete Best model”: Remove a previously imported Best model for the currently selected language (the built‑in fast model remains available). <br>
-            <em>Tip:</em> The app ships with compact, fast models. For higher accuracy you can optionally install larger “Best” models via a Language‑Pack (link above on this page). No internet connection is required.
         </li>
     </ul>
 

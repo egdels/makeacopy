@@ -59,11 +59,9 @@ import org.junit.runner.RunWith;
  * </ol>
  *
  * <p>Der Test aktiviert via Reflection den paket-privaten {@code
- * PaddleAssets.enableRecOverride(...)}-Hook, fährt {@link PaddleVsTesseractEvalTest}-kompatible
- * Metriken (CER/WER/meanConfidence/Latenzen) auf der Paddle-Engine und schreibt den Report nach
- * {@code Context.getExternalFilesDir("eval")/report-paddle-latin-<timestamp>.json}. Tesseract
- * wird nicht erneut gemessen — der bestehende Tesseract-Report aus {@link
- * PaddleVsTesseractEvalTest} ist die Vergleichsbasis.
+ * PaddleAssets.enableRecOverride(...)}-Hook, misst CER/WER ({@link OcrErrorRates}),
+ * meanConfidence und Latenzen auf der Paddle-Engine und schreibt den Report nach
+ * {@code Context.getExternalFilesDir("eval")/report-paddle-latin-<timestamp>.json}.
  *
  * <p>Wenn die Spike-Artefakte fehlen, wird der Test mit {@link org.junit.Assume} übersprungen
  * statt fehlzuschlagen — er ist explizit ein Spike-Schalter, kein verpflichtender CI-Test.
@@ -250,7 +248,7 @@ public class LatinSpikeEvalTest {
     }
 
     // ---------------------------------------------------------------------
-    // Eval-Loop (CER/WER aus PaddleVsTesseractEvalTest wiederverwendet).
+    // Eval-Loop (CER/WER aus OcrErrorRates).
     // ---------------------------------------------------------------------
 
     private static Report runEngine(String name, OcrEngine engine, List<Sample> samples)
@@ -269,8 +267,8 @@ public class LatinSpikeEvalTest {
             String pred = (res != null && res.text != null) ? res.text : "";
             String gt = s.groundTruth == null ? "" : s.groundTruth.replace("\r\n", "\n").trim();
             String prN = pred.replace("\r\n", "\n").trim();
-            double cer = PaddleVsTesseractEvalTest.cer(gt, prN);
-            double wer = PaddleVsTesseractEvalTest.wer(gt, prN);
+            double cer = OcrErrorRates.cer(gt, prN);
+            double wer = OcrErrorRates.wer(gt, prN);
             cerSum += cer;
             werSum += wer;
             if (res != null && res.meanConfidence != null) {

@@ -71,8 +71,8 @@ Recadrer, OCR et Exporter. Tout ce qui se règle se trouve sous
   l'aperçu.
 - **Caméra** : correction d'exposition, mise au point manuelle, et si
   l'application propose la lampe quand la lumière est faible.
-- **OCR** : le mode de reconnaissance et le post-traitement qui corrige
-  les erreurs de reconnaissance courantes.
+- **OCR** : la rotation automatique, la détection du texte en haute
+  résolution et l'ordre de lecture des pages à plusieurs colonnes.
 - **Exporter** : format de page, qualité, couleur, la couche de texte du
   PDF, un fichier TXT séparé avec le texte, et le mode Boîte de
   réception.

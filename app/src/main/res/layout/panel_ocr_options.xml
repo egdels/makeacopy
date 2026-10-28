@@ -1,79 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The OCR options (recognition mode and post-processing switches), without padding or
-     scrolling, so that the OCR screen's dialog and the camera options dialog can both include
-     them. OcrOptionsPanel binds this layout. -->
+<!-- The OCR options (PaddleOCR switches), without padding or scrolling, so that the OCR
+     screen's dialog and the camera options dialog can both include them. OcrOptionsPanel binds
+     this layout. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/ocr_options_panel"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <RadioGroup
-        android:id="@+id/rg_ocr_modes"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <RadioButton
-            android:id="@+id/rbtn_mode_original"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/ocr_mode_original" />
-
-        <RadioButton
-            android:id="@+id/rbtn_mode_quick"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/ocr_mode_quick"
-            android:visibility="gone" />
-
-        <RadioButton
-            android:id="@+id/rbtn_mode_robust"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/ocr_mode_robust" />
-
-        <RadioButton
-            android:id="@+id/rbtn_mode_paddle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/ocr_mode_paddle"
-            android:visibility="gone" />
-    </RadioGroup>
-
     <CheckBox
         android:id="@+id/checkbox_ocr_auto_rotate_apply_export_dialog"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
         android:text="@string/opt_ocr_auto_rotate_apply_export" />
-
-    <CheckBox
-        android:id="@+id/checkbox_ocr_post_processing_dialog"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/opt_ocr_post_processing" />
-
-    <CheckBox
-        android:id="@+id/checkbox_layout_analysis_dialog"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/opt_layout_analysis" />
 
     <CheckBox
         android:id="@+id/checkbox_paddle_best_ocr_dialog"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/opt_paddle_best_ocr"
-        android:visibility="gone" />
+        android:text="@string/opt_paddle_best_ocr" />
 
     <CheckBox
         android:id="@+id/checkbox_multi_column_ocr_dialog"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/opt_multi_column_ocr"
-        android:visibility="gone" />
+        android:text="@string/opt_multi_column_ocr" />
 </LinearLayout>

@@ -52,11 +52,6 @@
     <string name="ocr_found_rotation_with_score">Rotation détectée : %1$d° — score OCR : %2$d%%</string>
 
     <!-- Explication supplémentaire ajoutée dans la boîte de dialogue « Expliquer les modes de reconnaissance » -->
-    <string name="ocr_prep_modes_autorotate_note">Rotation automatique OCR : Lorsqu’elle est activée, l’OCR teste
-        également la page par pas de 90° (0/90/180/270) et sélectionne le meilleur résultat. La rotation détectée peut
-        être appliquée automatiquement lors de l’export si vous n’avez pas effectué de rotation manuelle. Cette option
-        peut être activée ou désactivée dans « Choisir le mode de reconnaissance ».
-    </string>
 
     <string name="initializing_camera">Initialisation de la caméra…</string>
     <string name="resetting_camera">Réinitialisation de la caméra…</string>
@@ -214,51 +209,13 @@
     <string name="rotate_right_cd">Faire pivoter la page de 90° dans le sens horaire</string>
 
     <!-- Gestion des modèles OCR (prototype) -->
-    <string name="ocr_models_manage">Modèles OCR</string>
-    <string name="ocr_import_manual">Importer .traineddata…</string>
-    <string name="ocr_discover_packs">Découvrir des packs de langue</string>
-    <string name="ocr_no_packs_found">Aucun pack de langue trouvé</string>
-    <string name="ocr_choose_pack">Choisir un pack de langue</string>
-    <string name="ocr_no_models_in_pack">Aucun modèle trouvé dans ce pack</string>
-    <string name="ocr_choose_model">Choisir le modèle à importer</string>
-    <string name="ocr_import_success">Modèle importé</string>
-    <string name="ocr_import_failed">Échec de l\'importation</string>
 
-    <string name="ocr_delete_best_model">Supprimer le modèle Best</string>
-    <string name="ocr_nothing_to_delete">Aucun modèle Best à supprimer pour la langue actuelle</string>
-    <string name="ocr_delete_confirm_title">Supprimer le modèle Best ?</string>
-    <string name="ocr_delete_confirm_msg">Supprimer le modèle Best importé pour %1$s ? Le modèle Fast intégré restera
-        disponible.
-    </string>
-    <string name="ocr_delete_success">Modèle supprimé</string>
-    <string name="ocr_delete_failed">Échec de la suppression</string>
 
     <!-- Astuce sur les modèles OCR -->
-    <string name="ocr_models_hint">Pour une reconnaissance plus rapide, des modèles compacts sont inclus. Pour une
-        meilleure précision, vous pouvez installer des modèles « Best » plus volumineux. Aucune connexion Internet n’est
-        requise.
-    </string>
 
     <!-- Modes de reconnaissance OCR – explication -->
-    <string name="ocr_explain_prep_modes">Expliquer les modes de reconnaissance</string>
-    <string name="ocr_prep_modes_title">Modes de reconnaissance : explication simple</string>
-    <string name="ocr_prep_modes_message">Il existe deux façons d’envoyer des images au moteur OCR :\n\n• Original
-        (sans prétraitement) — le plus rapide. La photo est envoyée telle quelle. Idéal pour des scans déjà propres et à
-        fort contraste. Peut manquer du texte pâle ou bruité.\n\n• OpenCV Robuste — repensé pour une précision maximale sur les pages difficiles. Corrige
-        l’inclinaison, normalise les ombres et l’éclairage, applique une réduction du bruit préservant les contours et
-        un agrandissement intelligent. Point important : Tesseract reçoit une image en niveaux de gris de haute qualité
-        (et non un noir et blanc strict) afin de préserver les détails fins comme les boucles du « o » et les petits
-        chiffres. Offre la meilleure précision sur les pages complexes, mais est plus lent et consomme plus de
-        mémoire.\n\nPost-traitement OCR : Corrige les erreurs de reconnaissance courantes telles que les confusions
-        (0↔O, 1↔l↔I, rn↔m) et vérifie les mots incertains à l’aide d’un dictionnaire. Activé par défaut ; désactivez-le
-        pour les codes techniques ou les numéros de série.
-    </string>
 
     <!-- Sélection du mode de reconnaissance OCR -->
-    <string name="ocr_choose_prep_mode_menu">Mode de reconnaissance…</string>
-    <string name="ocr_mode_original">Original (sans prétraitement)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (rapide)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (haute qualité)</string>
     <string name="opt_paddle_best_ocr">Meilleure qualité Paddle OCR (plus lent)</string>
     <string name="opt_multi_column_ocr">Mise en page multicolonne (journaux, magazines)</string>
 
@@ -393,8 +350,6 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">Rotation automatique OCR (appliquer aussi à l’export)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">Post-traitement OCR (corriger les erreurs courantes)</string>
-    <string name="opt_layout_analysis">Analyse de mise en page (colonnes, tableaux)</string>
     <!-- Options: Experimental directional mapping fallback -->
     <!-- Developer / Debug options -->
     <!-- Library / Collections -->    <!-- PDF Import -->
@@ -439,8 +394,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Sélectionner les langues OCR</string>
-    <string name="ocr_max_languages_warning">Maximum de 2 langues autorisées</string>
-    <string name="ocr_no_language_selected">Veuillez sélectionner au moins une langue</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Ignorer les modifications ?</string>
     <string name="msg_discard_changes">Tu as des modifications non enregistrées. Veux-tu les ignorer ?</string>

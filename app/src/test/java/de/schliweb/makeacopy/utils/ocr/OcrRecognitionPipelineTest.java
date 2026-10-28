@@ -69,21 +69,4 @@ public class OcrRecognitionPipelineTest {
     assertFalse(OcrRecognitionPipeline.hasContent(null, null));
   }
 
-  // ==================== isFallbackBetter ====================
-
-  @Test
-  public void isFallbackBetter_moreWordsWins() {
-    assertTrue(OcrRecognitionPipeline.isFallbackBetter(result("t", 10, 6), result("t", 90, 5)));
-  }
-
-  @Test
-  public void isFallbackBetter_sameWordsNeedsClearlyHigherConfidence() {
-    assertTrue(OcrRecognitionPipeline.isFallbackBetter(result("t", 52, 5), result("t", 50, 5)));
-    assertFalse(OcrRecognitionPipeline.isFallbackBetter(result("t", 51, 5), result("t", 50, 5)));
-  }
-
-  @Test
-  public void isFallbackBetter_fewerWordsNeverWins() {
-    assertFalse(OcrRecognitionPipeline.isFallbackBetter(result("t", 99, 4), result("t", 10, 5)));
-  }
 }

@@ -9,7 +9,6 @@
  */
 package de.schliweb.makeacopy.settings;
 
-import de.schliweb.makeacopy.BuildConfig;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -92,13 +91,10 @@ public final class SettingsCatalog {
           bool("focus_quality_indicator_enabled", false, Group.CAMERA),
           bool("low_light_prompt_enabled", true, Group.CAMERA),
           // OCR
-          str("ocr_language", null, Group.OCR), // "eng" or "deu+eng"; null = system language
-          new Setting(PREFS_MAIN, "ocr_prep_mode", Type.INT, 2, Group.OCR), // 2 = Robust
+          str("ocr_language", null, Group.OCR), // language group, e.g. "latin"; null = system
           bool("ocr_auto_rotate_apply_export", false, Group.OCR),
-          bool("ocr_post_processing", true, Group.OCR),
-          bool("layout_analysis", false, Group.OCR), // behind FeatureFlags.isLayoutAnalysisEnabled
-          bool("paddle_best_ocr", BuildConfig.FEATURE_PADDLE_OCR, Group.OCR), // paddle: on
-          bool("multi_column_ocr", false, Group.OCR), // paddle flavor only
+          bool("paddle_best_ocr", true, Group.OCR),
+          bool("multi_column_ocr", false, Group.OCR),
           // Export
           bool("include_ocr", false, Group.EXPORT),
           bool("export_as_jpeg", false, Group.EXPORT),
@@ -159,7 +155,6 @@ public final class SettingsCatalog {
           "max_temp_age_hours",
           "memory_threshold_percent",
           // Legacy keys that are read for migration only
-          "pref_ocr_paddle_enabled",
           "convert_to_grayscale",
           "jpeg_force_bw");
 

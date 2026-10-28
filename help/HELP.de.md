@@ -71,8 +71,8 @@ der Schieberegler-Taste auf dem Kamerabildschirm.
   Kameravorschau zeigen.
 - **Kamera**: Belichtungskorrektur, manueller Fokus und ob die App bei
   wenig Licht die Taschenlampe anbietet.
-- **OCR**: der Erkennungsmodus und die Nachbearbeitung, die typische
-  Erkennungsfehler korrigiert.
+- **OCR**: automatisches Drehen, hochauflösende Texterkennung und die
+  Lesereihenfolge bei mehrspaltigen Seiten.
 - **Exportieren**: Seitengröße, Qualität, Farbe, die Textebene im PDF,
   eine eigene TXT-Datei mit dem Text und der Inbox-Modus.
 - **App**: Barrierefreiheitsmodus, Schutz der Scans vor Screenshots und

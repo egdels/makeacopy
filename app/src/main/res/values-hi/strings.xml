@@ -44,8 +44,6 @@
     <string name="ocr_score">OCR स्कोर: %1$d%%</string>
     <string name="ocr_found_rotation_with_score">पाया गया रोटेशन: %1$d° — OCR स्कोर: %2$d%%</string>
 
-    <string name="ocr_prep_modes_autorotate_note">OCR ऑटो-रोटेट: सक्षम होने पर, OCR पृष्ठ को 90° चरणों (0/90/180/270) में भी जाँचता है और सबसे अच्छा परिणाम चुनता है। पाया गया रोटेशन निर्यात के दौरान स्वचालित रूप से लागू किया जा सकता है यदि आपने मैन्युअल रूप से रोटेट नहीं किया। आप इसे \"पहचान मोड चुनें\" में टॉगल कर सकते हैं।
-    </string>
 
     <string name="initializing_camera">कैमरा प्रारंभ हो रहा है…</string>
     <string name="resetting_camera">कैमरा रीसेट हो रहा है…</string>
@@ -210,40 +208,14 @@
     <string name="rotate_right_cd">पृष्ठ को 90 डिग्री दक्षिणावर्त घुमाएँ</string>
 
     <!-- OCR models management -->
-    <string name="ocr_models_manage">OCR मॉडल</string>
-    <string name="ocr_import_manual">.traineddata आयात करें…</string>
-    <string name="ocr_discover_packs">भाषा पैक खोजें</string>
-    <string name="ocr_no_packs_found">कोई भाषा पैक नहीं मिला</string>
-    <string name="ocr_choose_pack">भाषा पैक चुनें</string>
-    <string name="ocr_no_models_in_pack">इस पैक में कोई मॉडल नहीं मिला</string>
-    <string name="ocr_choose_model">आयात करने के लिए मॉडल चुनें</string>
-    <string name="ocr_import_success">मॉडल आयात किया गया</string>
-    <string name="ocr_import_failed">आयात विफल</string>
 
     <!-- OCR models: delete local Best -->
-    <string name="ocr_delete_best_model">Best मॉडल हटाएँ</string>
-    <string name="ocr_nothing_to_delete">वर्तमान भाषा के लिए कोई Best मॉडल नहीं</string>
-    <string name="ocr_delete_confirm_title">Best मॉडल हटाएँ?</string>
-    <string name="ocr_delete_confirm_msg">%1$s के लिए आयातित Best मॉडल हटाएँ? अंतर्निहित Fast मॉडल उपलब्ध रहेगा।
-    </string>
-    <string name="ocr_delete_success">मॉडल हटाया गया</string>
-    <string name="ocr_delete_failed">हटाना विफल</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">तेज़ पहचान के लिए कॉम्पैक्ट मॉडल शामिल हैं। अधिक सटीकता के लिए आप बड़े \"Best\" मॉडल इंस्टॉल कर सकते हैं। इंटरनेट कनेक्शन आवश्यक नहीं है।
-    </string>
 
     <!-- OCR prep modes explanation -->
-    <string name="ocr_explain_prep_modes">पहचान मोड समझाएँ</string>
-    <string name="ocr_prep_modes_title">पहचान मोड: सरल व्याख्या</string>
-    <string name="ocr_prep_modes_message">OCR इंजन को चित्र देने के दो तरीके हैं:\n\n• मूल (कोई प्रीप्रोसेसिंग नहीं) — सबसे तेज़। फ़ोटो जैसी है वैसी भेजी जाती है। पहले से साफ़, उच्च-कंट्रास्ट स्कैन के लिए सर्वोत्तम। धुंधला या शोरयुक्त टेक्स्ट छूट सकता है।\n\n• OpenCV रोबस्ट — कठिन पृष्ठों पर अधिकतम सटीकता के लिए। तिरछापन ठीक करता है, छाया/रोशनी सामान्य करता है, किनारा-संरक्षित शोर कमी और स्मार्ट अपस्केलिंग लागू करता है। Tesseract को उच्च-गुणवत्ता ग्रेस्केल चित्र मिलता है। सर्वोत्तम सटीकता; धीमा।\n\nOCR पोस्ट-प्रोसेसिंग: सामान्य पहचान त्रुटियाँ (0↔O, 1↔l↔I, rn↔m) ठीक करता है और शब्दकोश से जाँचता है। डिफ़ॉल्ट रूप से सक्षम।
-    </string>
 
     <!-- OCR prep modes selection -->
-    <string name="ocr_choose_prep_mode_menu">पहचान मोड…</string>
-    <string name="ocr_mode_original">मूल (कोई प्रीप्रोसेसिंग नहीं)</string>
-    <string name="ocr_mode_quick">OpenCV क्विक (तेज़)</string>
-    <string name="ocr_mode_robust">OpenCV रोबस्ट (उच्च गुणवत्ता)</string>
     <string name="opt_paddle_best_ocr">सर्वोत्तम Paddle OCR गुणवत्ता (धीमा)</string>
     <string name="opt_multi_column_ocr">बहु-स्तंभ लेआउट (समाचार पत्र, पत्रिकाएँ)</string>
 
@@ -375,8 +347,6 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR ऑटो-रोटेट (निर्यात में भी लागू करें)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR पोस्ट-प्रोसेसिंग (सामान्य त्रुटियाँ ठीक करें)</string>
-    <string name="opt_layout_analysis">लेआउट विश्लेषण (कॉलम, टेबल)</string>
 
     <!-- PDF Import -->
     <string name="error_unknown_file_type">अज्ञात फ़ाइल प्रकार</string>
@@ -420,8 +390,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR भाषाएँ चुनें</string>
-    <string name="ocr_max_languages_warning">अधिकतम 2 भाषाएँ अनुमत हैं</string>
-    <string name="ocr_no_language_selected">कृपया कम से कम एक भाषा चुनें</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">परिवर्तन छोड़ें?</string>
     <string name="msg_discard_changes">आपके पास सहेजे नहीं गए परिवर्तन हैं। क्या आप उन्हें छोड़ना चाहते हैं?</string>

@@ -52,10 +52,6 @@
     <string name="ocr_found_rotation_with_score">Nalezena rotace: %1$d° — skóre OCR: %2$d%%</string>
 
     <!-- Dodatečné vysvětlení připojené v dialogu „Vysvětlit režimy rozpoznávání“ -->
-    <string name="ocr_prep_modes_autorotate_note">OCR automatická rotace: Je-li povolena, OCR také zkouší stránku v
-        krocích po 90° (0/90/180/270) a vybere nejlepší výsledek. Nalezená rotace může být automaticky použita při
-        exportu, pokud jste stránku ručně neotočili. Tuto volbu lze přepnout v „Vybrat režim rozpoznávání“.
-    </string>
 
     <string name="initializing_camera">Inicializuji fotoaparát…</string>
     <string name="resetting_camera">Obnovuji fotoaparát…</string>
@@ -214,49 +210,13 @@
     <string name="rotate_right_cd">Otočit stránku o 90° doprava</string>
 
     <!-- OCR models management -->
-    <string name="ocr_models_manage">Modely OCR</string>
-    <string name="ocr_import_manual">Importovat .traineddata…</string>
-    <string name="ocr_discover_packs">Najít jazykové balíčky</string>
-    <string name="ocr_no_packs_found">Nebyl nalezen žádný jazykový balíček</string>
-    <string name="ocr_choose_pack">Vyberte jazykový balíček</string>
-    <string name="ocr_no_models_in_pack">V tomto balíčku nebyly nalezeny žádné modely</string>
-    <string name="ocr_choose_model">Vyberte model k importu</string>
-    <string name="ocr_import_success">Model importován</string>
-    <string name="ocr_import_failed">Import selhal</string>
 
-    <string name="ocr_delete_best_model">Odstranit model Best</string>
-    <string name="ocr_nothing_to_delete">Pro aktuální jazyk není k dispozici žádný model Best k odstranění</string>
-    <string name="ocr_delete_confirm_title">Odstranit model Best?</string>
-    <string name="ocr_delete_confirm_msg">Odstranit importovaný model Best pro %1$s? Vestavěný model Fast zůstane
-        dostupný.
-    </string>
-    <string name="ocr_delete_success">Model byl odstraněn</string>
-    <string name="ocr_delete_failed">Odstranění se nezdařilo</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">Pro rychlejší rozpoznávání jsou zahrnuty kompaktní modely. Pro vyšší přesnost můžete
-        nainstalovat větší „Best“ modely. Není vyžadováno internetové připojení.
-    </string>
 
     <!-- OCR přípravné režimy – vysvětlení -->
-    <string name="ocr_explain_prep_modes">Vysvětlit režimy rozpoznávání</string>
-    <string name="ocr_prep_modes_title">Režimy rozpoznávání: jednoduché vysvětlení</string>
-    <string name="ocr_prep_modes_message">Existují dva způsoby, jak předat obrázky do OCR enginu:\n\n• Originál (bez
-        předzpracování) — nejrychlejší. Fotografie se odešle tak, jak je. Vhodné pro již čisté snímky s vysokým
-        kontrastem. Může přehlédnout slabý nebo zašuměný text.\n\n• OpenCV Robustní — přepracováno pro
-        maximální přesnost u obtížných stránek. Provádí narovnání (deskew), normalizaci stínů a osvětlení, odstranění
-        šumu se zachováním hran a inteligentní zvětšení. Důležité je, že Tesseractu předává vysoce kvalitní obraz ve
-        stupních šedi (nikoli tvrdý černobílý), aby se zachovaly jemné detaily, jako jsou smyčky u písmene „o“ a malé
-        číslice. Nabízí nejlepší přesnost u náročných stránek, je však pomalejší a náročnější na paměť.\n\nNásledné
-        zpracování OCR: Opravuje typické chyby rozpoznávání, například záměny (0↔O, 1↔l↔I, rn↔m), a ověřuje nejistá
-        slova pomocí slovníku. Ve výchozím nastavení je zapnuto; vypněte jej pro technické kódy nebo sériová čísla.
-    </string>
 
     <!-- Výběr OCR přípravného režimu -->
-    <string name="ocr_choose_prep_mode_menu">Režim rozpoznávání…</string>
-    <string name="ocr_mode_original">Originál (bez předzpracování)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (rychlý)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (vysoká kvalita)</string>
     <string name="opt_paddle_best_ocr">Nejlepší kvalita Paddle OCR (pomalejší)</string>
     <string name="opt_multi_column_ocr">Vícesloupcové rozvržení (noviny, časopisy)</string>
 
@@ -390,13 +350,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">Automatické otáčení OCR (použít také při exportu)</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR následné zpracování (opravit běžné chyby)</string>
-    <string name="opt_layout_analysis">Analýza rozložení (sloupce, tabulky)
-    </string>    <!-- Options: Experimental directional mapping fallback -->
-    <!-- Developer / Debug options -->
-    <!-- Library / Collections -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">Neznámý typ souboru</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">Tento typ souboru není podporován</string>
     <string name="error_cannot_open_pdf">Nelze otevřít PDF</string>
     <string name="error_pdf_empty">PDF neobsahuje žádné stránky</string>
@@ -437,8 +392,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Vyberte jazyky OCR</string>
-    <string name="ocr_max_languages_warning">Jsou povoleny maximálně 2 jazyky</string>
-    <string name="ocr_no_language_selected">Vyberte prosím alespoň jeden jazyk</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Zahodit změny?</string>
     <string name="msg_discard_changes">Máte neuložené změny. Chcete je zahodit?</string>

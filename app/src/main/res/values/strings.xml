@@ -51,10 +51,6 @@
     <string name="ocr_found_rotation_with_score">Found rotation: %1$d° — OCR score: %2$d%%</string>
 
     <!-- Extra explanation appended in “Explain recognition modes” dialog -->
-    <string name="ocr_prep_modes_autorotate_note">OCR Auto‑Rotate: When enabled, OCR also tries the page at 90° steps
-        (0/90/180/270) and picks the best result. The found rotation can be applied automatically during export if you
-        didn’t rotate manually. You can toggle this in “Choose recognition mode”.
-    </string>
 
     <string name="initializing_camera">Initializing camera…</string>
     <string name="resetting_camera">Resetting camera…</string>
@@ -235,50 +231,14 @@
     <string name="rotate_right_cd">Rotate page 90 degrees clockwise</string>
 
     <!-- OCR models management (prototype) -->
-    <string name="ocr_models_manage">OCR models</string>
-    <string name="ocr_import_manual">Import .traineddata…</string>
-    <string name="ocr_discover_packs">Discover language packs</string>
-    <string name="ocr_no_packs_found">No language packs found</string>
-    <string name="ocr_choose_pack">Choose language pack</string>
-    <string name="ocr_no_models_in_pack">No models found in this pack</string>
-    <string name="ocr_choose_model">Choose model to import</string>
-    <string name="ocr_import_success">Model imported</string>
-    <string name="ocr_import_failed">Import failed</string>
 
     <!-- OCR models: delete local Best -->
-    <string name="ocr_delete_best_model">Delete Best model</string>
-    <string name="ocr_nothing_to_delete">No Best model to delete for the current language</string>
-    <string name="ocr_delete_confirm_title">Delete Best model?</string>
-    <string name="ocr_delete_confirm_msg">Delete the imported Best model for %1$s? The built-in Fast model will remain
-        available.
-    </string>
-    <string name="ocr_delete_success">Model deleted</string>
-    <string name="ocr_delete_failed">Delete failed</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">For faster recognition, compact models are included. For higher accuracy, you can
-        install larger \"Best\" models. No internet connection is required.
-    </string>
 
     <!-- OCR prep modes explanation -->
-    <string name="ocr_explain_prep_modes">Explain recognition modes</string>
-    <string name="ocr_prep_modes_title">Recognition modes: simple explanation</string>
-    <string name="ocr_prep_modes_message">There are two ways to feed images into the OCR engine:\n\n• Original (no
-        preprocessing) — fastest. We send the photo as-is. Best for already clean, high-contrast scans. May miss faint
-        or noisy text.\n\n• OpenCV Robust — rebuilt for maximum accuracy on difficult pages. It deskews, normalizes
-        shadows/illumination, applies edge‑preserving denoise and smart upscaling. Importantly, it feeds Tesseract a
-        high‑quality grayscale image (not hard black/white) to preserve fine details like loops in “o” and small
-        digits. Best accuracy on tough pages; slower and uses more memory. Recommended default for most photos.\n\nOCR
-        Post-Processing: Corrects typical recognition errors like confusions (0↔O, 1↔l↔I, rn↔m) and checks uncertain
-        words against a dictionary. Enabled by default; disable for technical codes or serial numbers.
-    </string>
 
     <!-- OCR prep modes selection -->
-    <string name="ocr_choose_prep_mode_menu">Recognition mode…</string>
-    <string name="ocr_mode_original">Original (no preprocessing)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (fast)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (high quality)</string>
-    <string name="ocr_mode_paddle" tools:ignore="MissingTranslation">PaddleOCR (experimental, no preprocessing)</string>
     <string name="opt_paddle_best_ocr">Best Paddle OCR quality (slower)</string>
     <string name="opt_multi_column_ocr">Multi-column layout (newspapers, magazines)</string>
 
@@ -412,10 +372,7 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR auto-rotate (also apply to export)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR post-processing (correct common errors)</string>
     <!-- Options: Layout analysis for complex documents -->
-    <string name="opt_layout_analysis">Layout analysis (columns, tables)
-    </string>
     <!-- Options: Experimental directional mapping fallback -->    <!-- Developer / Debug options -->    <!-- Library / Collections (developer strings kept non-translatable for now) -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">Unknown file type</string>
     <string name="error_unsupported_file_type">This file type is not supported</string>
@@ -458,8 +415,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Select OCR Languages</string>
-    <string name="ocr_max_languages_warning">Maximum 2 languages allowed</string>
-    <string name="ocr_no_language_selected">Please select at least one language</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Discard changes?</string>
     <string name="msg_discard_changes">You have unsaved changes. Do you want to discard them?</string>

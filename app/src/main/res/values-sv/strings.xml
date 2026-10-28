@@ -50,10 +50,6 @@
     <string name="ocr_found_rotation_with_score">Upptäckt rotation: %1$d° — OCR-poäng: %2$d%%</string>
 
     <!-- Extra förklaring som läggs till i dialogen ”Förklara igenkänningslägen” -->
-    <string name="ocr_prep_modes_autorotate_note">OCR automatisk rotation: När den är aktiverad testar OCR även sidan i
-        90°-steg (0/90/180/270) och väljer det bästa resultatet. Den upptäckta rotationen kan automatiskt tillämpas vid
-        export om du inte roterade sidan manuellt. Detta kan slås på eller av i ”Välj igenkänningsläge”.
-    </string>
 
     <string name="initializing_camera">Initierar kamera…</string>
     <string name="resetting_camera">Återställer kamera…</string>
@@ -213,49 +209,13 @@
     <string name="rotate_right_cd">Rotera sidan 90 grader medurs</string>
 
     <!-- OCR models management -->
-    <string name="ocr_models_manage">OCR-modeller</string>
-    <string name="ocr_import_manual">Importera .traineddata…</string>
-    <string name="ocr_discover_packs">Upptäck språkpaket</string>
-    <string name="ocr_no_packs_found">Inga språkpaket hittades</string>
-    <string name="ocr_choose_pack">Välj språkpaket</string>
-    <string name="ocr_no_models_in_pack">Inga modeller hittades i detta paket</string>
-    <string name="ocr_choose_model">Välj modell att importera</string>
-    <string name="ocr_import_success">Modell importerad</string>
-    <string name="ocr_import_failed">Importen misslyckades</string>
 
-    <string name="ocr_delete_best_model">Ta bort Best-modell</string>
-    <string name="ocr_nothing_to_delete">Ingen Best-modell att ta bort för det aktuella språket</string>
-    <string name="ocr_delete_confirm_title">Ta bort Best-modell?</string>
-    <string name="ocr_delete_confirm_msg">Ta bort den importerade Best-modellen för %1$s? Den inbyggda Fast-modellen
-        kommer fortfarande att vara tillgänglig.
-    </string>
-    <string name="ocr_delete_success">Modell borttagen</string>
-    <string name="ocr_delete_failed">Borttagning misslyckades</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">För snabbare igenkänning ingår kompakta modeller. För högre noggrannhet kan du
-        installera större "Best"-modeller. Ingen internetanslutning krävs.
-    </string>
 
     <!-- OCR igenkänningslägen – förklaring -->
-    <string name="ocr_explain_prep_modes">Förklara igenkänningslägen</string>
-    <string name="ocr_prep_modes_title">Igenkänningslägen: enkel förklaring</string>
-    <string name="ocr_prep_modes_message">Det finns två sätt att mata in bilder i OCR-motorn:\n\n• Original (ingen
-        förbehandling) — snabbast. Fotot skickas som det är. Bäst för redan rena skanningar med hög kontrast. Kan missa
-        svag eller brusig text.\n\n• OpenCV Robust — omarbetad för maximal noggrannhet på svåra sidor. Rätar upp
-        skevhet, normaliserar skuggor och belysning, använder kantbevarande brusreducering och intelligent uppskalning.
-        Viktigt är att Tesseract får en gråskalebild av hög kvalitet (inte hård svartvit) för att bevara fina detaljer
-        som slingor i bokstaven ”o” och små siffror. Ger bästa noggrannhet på krävande sidor, men är långsammare och
-        använder mer minne.\n\nOCR-efterbehandling: Korrigerar vanliga igenkänningsfel såsom förväxlingar (0↔O, 1↔l↔I,
-        rn↔m) och kontrollerar osäkra ord mot en ordlista. Aktiverad som standard; inaktivera för tekniska koder eller
-        serienummer.
-    </string>
 
     <!-- OCR igenkänningslägen – val -->
-    <string name="ocr_choose_prep_mode_menu">Igenkänningsläge…</string>
-    <string name="ocr_mode_original">Original (ingen förbehandling)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (snabbt)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (hög kvalitet)</string>
     <string name="opt_paddle_best_ocr">Bästa Paddle OCR-kvalitet (långsammare)</string>
     <string name="opt_multi_column_ocr">Flerspaltslayout (tidningar, magasin)</string>
 
@@ -387,8 +347,6 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR automatisk rotation (använd även vid export)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR-efterbehandling (korrigera vanliga fel)</string>
-    <string name="opt_layout_analysis">Layoutanalys (kolumner, tabeller)</string>
     <!-- Options: Experimental directional mapping fallback -->
     <!-- Developer / Debug options -->
     <!-- Library / Collections -->    <!-- PDF Import -->
@@ -433,8 +391,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Välj OCR-språk</string>
-    <string name="ocr_max_languages_warning">Högst 2 språk är tillåtna</string>
-    <string name="ocr_no_language_selected">Välj minst ett språk</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Kasta ändringar?</string>
     <string name="msg_discard_changes">Du har osparade ändringar. Vill du kasta dem?</string>

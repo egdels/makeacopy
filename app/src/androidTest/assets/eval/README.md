@@ -1,8 +1,8 @@
 # PaddleOCR-V5 Eval-Datensatz
 
-Dieser Mini-Datensatz wird vom instrumented Test
-`de.schliweb.makeacopy.utils.ocr.PaddleVsTesseractEvalTest` (Konzept §8 + §9 + §13)
-genutzt, um Paddle gegen Tesseract auf realen lateinischen Scans zu vergleichen.
+Dieser Mini-Datensatz wird von den instrumented Paddle-Tests (z. B.
+`de.schliweb.makeacopy.utils.ocr.PaddleOcrEngineSmokeTest`, `SkewedPagePaddleTest`)
+genutzt, um PaddleOCR auf realen lateinischen Scans zu messen.
 
 ## GT-Format-Konvention
 
@@ -13,8 +13,7 @@ genutzt, um Paddle gegen Tesseract auf realen lateinischen Scans zu vergleichen.
   innerhalb einer Zeile von links nach rechts).
 - Encoding: **UTF-8 ohne BOM**, NFC-normalisiert, lateinische Schrift.
 - Vergleich erfolgt nach Zeilenenden-Normalisierung (`\r\n` → `\n`) und Trim.
-  CER/WER werden zeilen-/zeichen-konkateniert berechnet (siehe
-  `PaddleVsTesseractEvalTest.normalizeText`).
+  CER/WER werden zeilen-/zeichen-konkateniert berechnet (siehe `OcrErrorRates`).
 - GT manuell verifizieren: Bild öffnen, Text in `*.gt.txt` Zeile-für-Zeile
   abgleichen und ggf. korrigieren.
 
@@ -46,15 +45,8 @@ Quellen:
 # arm64-v8a-Emulator starten oder Device anstecken (API 29+).
 ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
 ./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.utils.ocr.PaddleVsTesseractEvalTest
-# JSON-Reports vom Device einsammeln:
-./gradlew :app:pullEvalReports
+  -Pandroid.testInstrumentationRunnerArguments.class=de.schliweb.makeacopy.utils.ocr.PaddleOcrEngineSmokeTest
 ```
-
-Skippt automatisch, wenn `arm64-v8a` nicht in `Build.SUPPORTED_ABIS` ist.
-JSON-Reports landen unter `Context.getExternalFilesDir("eval")/` als
-`report-paddle-<timestamp>.json` und `report-tesseract-<timestamp>.json`.
-Mit `pullEvalReports` werden diese nach `app/build/eval-reports/` kopiert.
 
 Siehe auch `docs/eval/README.md` für die End-to-End-Pipeline und das
 JSON-Schema.

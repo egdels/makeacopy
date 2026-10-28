@@ -50,10 +50,6 @@
     <string name="ocr_found_rotation_with_score">چرخش پیدا شد: %1$d° — امتیاز OCR: %2$d%%</string>
 
     <!-- Extra explanation appended in “Explain recognition modes” dialog -->
-    <string name="ocr_prep_modes_autorotate_note">چرخش خودکار OCR: وقتی فعال باشد، OCR صفحه را در گام‌های ۹۰ درجه
-        (0/90/180/270) هم امتحان می‌کند و بهترین نتیجه را انتخاب می‌کند. اگر دستی صفحه را نچرخانده باشید، چرخشِ پیدا‌شده
-        می‌تواند هنگام خروجی به‌صورت خودکار اعمال شود. می‌توانید این گزینه را در «انتخاب حالت تشخیص» روشن/خاموش کنید.
-    </string>
 
     <string name="initializing_camera">در حال راه‌اندازی دوربین…</string>
     <string name="resetting_camera">در حال بازنشانی دوربین…</string>
@@ -211,50 +207,14 @@
     <string name="rotate_right_cd">چرخاندن صفحه ۹۰ درجه در جهت عقربه‌های ساعت</string>
 
     <!-- OCR models management (prototype) -->
-    <string name="ocr_models_manage">مدل‌های OCR</string>
-    <string name="ocr_import_manual">وارد کردن ‎.traineddata…</string>
-    <string name="ocr_discover_packs">یافتن بسته‌های زبانی</string>
-    <string name="ocr_no_packs_found">هیچ بستهٔ زبانی پیدا نشد</string>
-    <string name="ocr_choose_pack">انتخاب بستهٔ زبانی</string>
-    <string name="ocr_no_models_in_pack">هیچ مدلی در این بسته پیدا نشد</string>
-    <string name="ocr_choose_model">مدل را برای وارد کردن انتخاب کنید</string>
-    <string name="ocr_import_success">مدل وارد شد</string>
-    <string name="ocr_import_failed">وارد کردن ناموفق بود</string>
 
     <!-- OCR models: delete local Best -->
-    <string name="ocr_delete_best_model">حذف مدل Best</string>
-    <string name="ocr_nothing_to_delete">برای زبان فعلی هیچ مدل Best برای حذف وجود ندارد</string>
-    <string name="ocr_delete_confirm_title">مدل Best حذف شود؟</string>
-    <string name="ocr_delete_confirm_msg">مدل Best واردشده برای %1$s حذف شود؟ مدل Fast داخلی همچنان در دسترس خواهد
-        بود.
-    </string>
-    <string name="ocr_delete_success">مدل حذف شد</string>
-    <string name="ocr_delete_failed">حذف ناموفق بود</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">برای تشخیص سریع‌تر، مدل‌های کم‌حجم شامل شده‌اند. برای دقت بالاتر، می‌توانید مدل‌های
-        بزرگ‌تر «Best» را نصب کنید. اتصال اینترنت لازم نیست.
-    </string>
 
     <!-- OCR prep modes explanation -->
-    <string name="ocr_explain_prep_modes">توضیح حالت‌های تشخیص</string>
-    <string name="ocr_prep_modes_title">حالت‌های تشخیص: توضیح ساده</string>
-    <string name="ocr_prep_modes_message">دو روش برای ارسال تصاویر به موتور OCR وجود دارد:\n\n• اصلی (بدون پیش‌پردازش) —
-        سریع‌ترین حالت. عکس به همان شکل ارسال می‌شود. مناسب برای اسکن‌های تمیز و با کنتراست بالا. ممکن است متن‌های
-        کم‌رنگ یا پرنویز را از دست بدهد.\n\n• OpenCV مقاوم — بازطراحی‌شده برای بیشترین دقت در صفحات دشوار. کجی تصویر را اصلاح می‌کند، سایه‌ها و
-        روشنایی را نرمال‌سازی می‌کند، کاهش نویز با حفظ لبه‌ها و بزرگ‌نمایی هوشمند اعمال می‌کند. نکتهٔ مهم این است که به
-        Tesseract یک تصویر خاکستری با کیفیت بالا (نه سیاه‌وسفید سخت) داده می‌شود تا جزئیات ظریف مانند حلقه‌های حرف «o» و
-        ارقام کوچک حفظ شوند. بهترین دقت را برای صفحات سخت ارائه می‌دهد، اما کندتر است و حافظهٔ بیشتری مصرف
-        می‌کند.\n\nپردازش پس از OCR: خطاهای رایج تشخیص مانند اشتباهات (0↔O، 1↔l↔I، rn↔m) را اصلاح می‌کند و واژه‌های
-        نامطمئن را با یک فرهنگ لغت بررسی می‌کند. به‌طور پیش‌فرض فعال است؛ برای کدهای فنی یا شماره‌های سریال آن را
-        غیرفعال کنید.
-    </string>
 
     <!-- OCR prep modes selection -->
-    <string name="ocr_choose_prep_mode_menu">حالت تشخیص…</string>
-    <string name="ocr_mode_original">اصلی (بدون پیش‌پردازش)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (سریع)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (کیفیت بالا)</string>
     <string name="opt_paddle_best_ocr">بهترین کیفیت Paddle OCR (کندتر)</string>
     <string name="opt_multi_column_ocr">چیدمان چندستونی (روزنامه‌ها، مجلات)</string>
 
@@ -387,11 +347,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">چرخش خودکار OCR (همچنین اعمال در خروجی)</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">پس‌پردازش OCR (اصلاح خطاهای رایج)</string>
-    <string name="opt_layout_analysis">تحلیل چیدمان (ستون‌ها، جداول)
-    </string>    <!-- Options: Experimental directional mapping fallback -->    <!-- Developer / Debug options -->    <!-- Library / Collections (developer strings kept non-translatable for now) -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">نوع فایل ناشناخته است</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">این نوع فایل پشتیبانی نمی‌شود</string>
     <string name="error_cannot_open_pdf">امکان باز کردن فایل PDF وجود ندارد</string>
     <string name="error_pdf_empty">فایل PDF هیچ صفحه‌ای ندارد</string>
@@ -432,8 +389,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">انتخاب زبان‌های OCR</string>
-    <string name="ocr_max_languages_warning">حداکثر ۲ زبان مجاز است</string>
-    <string name="ocr_no_language_selected">لطفاً حداقل یک زبان انتخاب کنید</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">تغییرات حذف شوند؟</string>
     <string name="msg_discard_changes">تغییرات ذخیره‌نشده‌ای داری. آیا می‌خواهی آن‌ها را حذف کنی؟</string>

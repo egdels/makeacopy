@@ -51,11 +51,6 @@
     <string name="ocr_found_rotation_with_score">Обнаружен поворот: %1$d° — оценка OCR: %2$d%%</string>
 
     <!-- Дополнительное объяснение, добавленное в диалог «Пояснение режимов распознавания» -->
-    <string name="ocr_prep_modes_autorotate_note">Автоматический поворот OCR: При включении OCR также проверяет страницу
-        с шагом 90° (0/90/180/270) и выбирает лучший результат. Обнаруженный поворот может быть автоматически применён
-        при экспорте, если вы не поворачивали страницу вручную. Этот параметр можно включить или выключить в разделе
-        «Выбрать режим распознавания».
-    </string>
 
     <string name="initializing_camera">Инициализация камеры…</string>
     <string name="resetting_camera">Сброс камеры…</string>
@@ -216,50 +211,13 @@
     <string name="rotate_right_cd">Повернуть страницу на 90° по часовой стрелке</string>
 
     <!-- Управление моделями OCR (прототип) -->
-    <string name="ocr_models_manage">Модели OCR</string>
-    <string name="ocr_import_manual">Импортировать .traineddata…</string>
-    <string name="ocr_discover_packs">Найти языковые пакеты</string>
-    <string name="ocr_no_packs_found">Языковые пакеты не найдены</string>
-    <string name="ocr_choose_pack">Выберите языковой пакет</string>
-    <string name="ocr_no_models_in_pack">В этом пакете моделей не найдено</string>
-    <string name="ocr_choose_model">Выберите модель для импорта</string>
-    <string name="ocr_import_success">Модель импортирована</string>
-    <string name="ocr_import_failed">Ошибка импорта</string>
 
-    <string name="ocr_delete_best_model">Удалить модель Best</string>
-    <string name="ocr_nothing_to_delete">Нет модели Best для удаления для текущего языка</string>
-    <string name="ocr_delete_confirm_title">Удалить модель Best?</string>
-    <string name="ocr_delete_confirm_msg">Удалить импортированную модель Best для %1$s? Встроенная модель Fast останется
-        доступной.
-    </string>
-    <string name="ocr_delete_success">Модель удалена</string>
-    <string name="ocr_delete_failed">Не удалось удалить</string>
 
     <!-- Подсказка по моделям OCR -->
-    <string name="ocr_models_hint">Для более быстрой распознаваемости включены компактные модели. Для большей точности
-        вы можете установить более крупные модели «Best». Подключение к интернету не требуется.
-    </string>
 
     <!-- Режимы распознавания OCR – объяснение -->
-    <string name="ocr_explain_prep_modes">Объяснить режимы распознавания</string>
-    <string name="ocr_prep_modes_title">Режимы распознавания: простое объяснение</string>
-    <string name="ocr_prep_modes_message">Существует два способа передачи изображений в OCR-движок:\n\n• Оригинал (без
-        предварительной обработки) — самый быстрый. Фотография передаётся без изменений. Лучше всего подходит для уже
-        чистых сканов с высоким контрастом. Может пропустить бледный или зашумлённый текст.\n\n• OpenCV Надёжный — переработан для
-        максимальной точности на сложных страницах. Исправляет перекос, нормализует тени и освещение, применяет
-        шумоподавление с сохранением границ и интеллектуальное масштабирование. Важно, что Tesseract получает
-        высококачественное изображение в оттенках серого (а не жёсткое чёрно-белое), чтобы сохранить мелкие детали,
-        такие как петли буквы «o» и маленькие цифры. Обеспечивает наилучшую точность на сложных страницах, но работает
-        медленнее и использует больше памяти.\n\nПостобработка OCR: Исправляет типичные ошибки распознавания, такие как
-        путаница (0↔O, 1↔l↔I, rn↔m), и проверяет сомнительные слова по словарю. Включена по умолчанию; отключайте для
-        технических кодов или серийных номеров.
-    </string>
 
     <!-- Выбор режима распознавания OCR -->
-    <string name="ocr_choose_prep_mode_menu">Режим распознавания…</string>
-    <string name="ocr_mode_original">Оригинал (без предварительной обработки)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (быстрый)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (высокое качество)</string>
     <string name="opt_paddle_best_ocr">Лучшее качество Paddle OCR (медленнее)</string>
     <string name="opt_multi_column_ocr">Многоколоночный макет (газеты, журналы)</string>
 
@@ -393,8 +351,6 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">Автоматическое поворот OCR (также применять при экспорте)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">Постобработка OCR (исправление частых ошибок)</string>
-    <string name="opt_layout_analysis">Анализ макета (колонки, таблицы)</string>
     <!-- Options: Experimental directional mapping fallback -->
     <!-- Developer / Debug options -->
     <!-- Library / Collections -->    <!-- PDF Import -->
@@ -439,8 +395,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Выберите языки OCR</string>
-    <string name="ocr_max_languages_warning">Разрешено не более 2 языков</string>
-    <string name="ocr_no_language_selected">Пожалуйста, выберите хотя бы один язык</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Отменить изменения?</string>
     <string name="msg_discard_changes">У тебя есть несохранённые изменения. Хочешь их отменить?</string>

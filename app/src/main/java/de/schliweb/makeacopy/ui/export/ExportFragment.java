@@ -2707,9 +2707,6 @@ public class ExportFragment extends Fragment {
   /** Preference key for the persisted OCR language spec (kept in sync with OCRFragment). */
   private static final String PREF_KEY_OCR_LANG = "ocr_language";
 
-  /** Maximum number of languages selectable for multi-language OCR (Tesseract flavor). */
-  private static final int MAX_OCR_LANGUAGES = 2;
-
   /**
    * Resolves the OCR language used for inline/batch OCR: ViewModel state first, then the persisted
    * preference from the OCR screen, finally a sensible system-based default.
@@ -2754,21 +2751,11 @@ public class ExportFragment extends Fragment {
 
   /**
    * Lets the user change the OCR language directly from the export screen (multi-page sessions have
-   * no other way to reach the OCR screen's language selection). Mirrors OCRFragment: a
-   * single-choice dialog for the PaddleOCR flavor, a multi-choice dialog (max. {@link
-   * #MAX_OCR_LANGUAGES}) for the Tesseract flavor.
+   * no other way to reach the OCR screen's language selection). Mirrors OCRFragment's
+   * single-choice dialog.
    */
   private void showOcrLanguagePicker(int position) {
-    String[] resolvedCodes = null;
-    try {
-      resolvedCodes = OcrModelManager.getAvailableLanguageCodes(requireContext());
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
-    }
-    final String[] codes =
-        (resolvedCodes != null && resolvedCodes.length > 0)
-            ? resolvedCodes
-            : OCRUtils.getLanguages();
+    final String[] codes = OcrModelManager.getAvailableLanguageCodes(requireContext());
     final String[] displayNames = new String[codes.length];
     for (int i = 0; i < codes.length; i++) {
       displayNames[i] = OCRUtils.codeToDisplayName(requireContext(), codes[i]);
@@ -2781,72 +2768,26 @@ public class ExportFragment extends Fragment {
         if (!trimmed.isEmpty() && !selected.contains(trimmed)) selected.add(trimmed);
       }
     }
-    if (de.schliweb.makeacopy.BuildConfig.FEATURE_PADDLE_OCR) {
-      int checkedItem = -1;
-      if (!selected.isEmpty()) {
-        for (int i = 0; i < codes.length; i++) {
-          if (codes[i].equals(selected.get(0))) {
-            checkedItem = i;
-            break;
-          }
+    int checkedItem = -1;
+    if (!selected.isEmpty()) {
+      for (int i = 0; i < codes.length; i++) {
+        if (codes[i].equals(selected.get(0))) {
+          checkedItem = i;
+          break;
         }
       }
-      new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-          .setTitle(R.string.select_ocr_languages)
-          .setSingleChoiceItems(
-              displayNames,
-              checkedItem,
-              (dlg, which) -> {
-                dlg.dismiss();
-                applyOcrLanguage(codes[which], position);
-              })
-          .setNegativeButton(android.R.string.cancel, null)
-          .show();
-    } else {
-      final boolean[] checked = new boolean[codes.length];
-      for (int i = 0; i < codes.length; i++) {
-        checked[i] = selected.contains(codes[i]);
-      }
-      new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-          .setTitle(R.string.select_ocr_languages)
-          .setMultiChoiceItems(
-              displayNames,
-              checked,
-              (dlg, which, isChecked) -> {
-                if (isChecked) {
-                  int count = 0;
-                  for (boolean b : checked) if (b) count++;
-                  if (count > MAX_OCR_LANGUAGES) {
-                    ((androidx.appcompat.app.AlertDialog) dlg)
-                        .getListView()
-                        .setItemChecked(which, false);
-                    checked[which] = false;
-                    UIUtils.showToast(
-                        requireContext(),
-                        getString(R.string.ocr_max_languages_warning),
-                        Toast.LENGTH_SHORT);
-                  }
-                }
-              })
-          .setPositiveButton(
-              android.R.string.ok,
-              (dlg, w) -> {
-                List<String> chosen = new ArrayList<>();
-                for (int i = 0; i < codes.length; i++) {
-                  if (checked[i]) chosen.add(codes[i]);
-                }
-                if (chosen.isEmpty()) {
-                  UIUtils.showToast(
-                      requireContext(),
-                      getString(R.string.ocr_no_language_selected),
-                      Toast.LENGTH_SHORT);
-                  return;
-                }
-                applyOcrLanguage(String.join("+", chosen), position);
-              })
-          .setNegativeButton(android.R.string.cancel, null)
-          .show();
     }
+    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.select_ocr_languages)
+        .setSingleChoiceItems(
+            displayNames,
+            checkedItem,
+            (dlg, which) -> {
+              dlg.dismiss();
+              applyOcrLanguage(codes[which], position);
+            })
+        .setNegativeButton(android.R.string.cancel, null)
+        .show();
   }
 
   /**

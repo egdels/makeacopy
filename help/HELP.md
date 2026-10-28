@@ -64,8 +64,8 @@ can set is under **Options**, the slider button on the camera screen.
   the detected page outline live in the camera preview.
 - **Camera**: exposure compensation, manual focus, and whether the app
   offers the flashlight in low light.
-- **OCR**: the recognition mode and post-processing that corrects common
-  recognition errors.
+- **OCR**: auto-rotation, high-resolution text detection, and the reading
+  order for multi-column pages.
 - **Export**: page size, quality, colour, the PDF text layer, a separate
   TXT file with the text, and Inbox Mode.
 - **App**: Accessibility Mode, hiding scans from screenshots and the

@@ -11,37 +11,23 @@ package de.schliweb.makeacopy.utils.ocr;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import de.schliweb.makeacopy.utils.layout.DocumentLayoutAnalyzer.AnalysisResult;
-import de.schliweb.makeacopy.utils.layout.DocumentRegion;
 import de.schliweb.makeacopy.utils.ocr.paddle.PaddleEngineFactory;
 import de.schliweb.makeacopy.utils.ocr.paddle.PaddleOcrEngine;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Paddle-only OCR helper implementation for the paddle flavor. */
+/** Runs PaddleOCR for one language group; one instance per OCR job. */
 public class OCRHelper implements AutoCloseable {
-  private static final String TESSDATA_DIR = "tessdata";
   private static final Pattern NUMERIC_ENTITY_PATTERN = Pattern.compile("&#([xX]?[0-9A-Fa-f]+);");
 
-  public static final int OCR_MODE_ORIGINAL = 0;
-  public static final int OCR_MODE_QUICK = 1;
-  public static final int OCR_MODE_ROBUST = 2;
-  public static final int OCR_MODE_PADDLE = 3;
-
   private final Context context;
-  private String language = "eng";
-  private OcrPageSegmentationMode pageSegmentationMode = OcrPageSegmentationMode.SINGLE_BLOCK;
+  private String language = "latin";
   private boolean paddleHighQualityDetectionEnabled;
 
   public OCRHelper(Context context) {
     this.context = context != null ? context.getApplicationContext() : null;
-  }
-
-  public static File getTessdataDir(Context context) {
-    return new File(context.getFilesDir(), TESSDATA_DIR);
   }
 
   public static String cleanHtmlText(String html) {
@@ -72,42 +58,8 @@ public class OCRHelper implements AutoCloseable {
     return out.toString();
   }
 
-  public boolean initTesseract() {
-    return PaddleEngineProvider.create(context, language) != null;
-  }
-
   public void shutdown() {
     close();
-  }
-
-  public boolean isTesseractInitialized() {
-    return PaddleEngineProvider.create(context, language) != null;
-  }
-
-  public void setPageSegMode(int mode) {
-    // Ignored by PaddleOCR; retained for API compatibility while the UI migrates.
-  }
-
-  public void setPageSegmentationMode(OcrPageSegmentationMode mode) {
-    pageSegmentationMode = mode != null ? mode : OcrPageSegmentationMode.SINGLE_BLOCK;
-  }
-
-  public OcrPageSegmentationMode getPageSegmentationMode() {
-    return pageSegmentationMode;
-  }
-
-  public void setRecognitionMode(int mode) {
-    // Paddle flavor is Paddle-only; legacy Tesseract preprocessing modes are ignored here.
-  }
-
-  public void setForceBinaryRobust(boolean enable) {}
-
-  public void setReinitPerRun(boolean enable) {}
-
-  public void setUseBestModelSettings(boolean enable) {}
-
-  public boolean isUsingBestModelSettings() {
-    return false;
   }
 
   public void setPaddleHighQualityDetectionEnabled(boolean enable) {
@@ -118,9 +70,9 @@ public class OCRHelper implements AutoCloseable {
     if (language != null && !language.isBlank()) this.language = language;
   }
 
-  public void applyDefaultsForLanguage(String langSpec) {}
-
-  public void ensureLanguageDataPresent(String langSpec) {}
+  public String getLanguage() {
+    return language;
+  }
 
   public String[] getAvailableLanguages() {
     return OcrModelManager.getAvailableLanguageCodes(context);
@@ -128,18 +80,6 @@ public class OCRHelper implements AutoCloseable {
 
   public boolean isLanguageAvailable(String lang) {
     return context != null && PaddleEngineFactory.isLanguageBundled(context, lang);
-  }
-
-  public boolean setVariable(String var, String value) {
-    return false;
-  }
-
-  public boolean setWhitelist(String chars) {
-    return true;
-  }
-
-  public String getActiveWhitelist() {
-    return null;
   }
 
   public OcrResultWords runOcrWithWords(Bitmap bitmap) {
@@ -154,30 +94,9 @@ public class OCRHelper implements AutoCloseable {
     }
   }
 
-  public OcrResultWords runOcrWithRetry(Bitmap bitmap) {
-    return runOcrWithWords(bitmap);
-  }
-
-  public void logAllVariables() {}
-
   @Override
   public void close() {
     PaddleEngineProvider.releaseAll(context);
-  }
-
-  public OcrResultWithLayout runOcrWithLayout(Bitmap bitmap) {
-    OcrResultWords result = runOcrWithRetry(bitmap);
-    List<RegionOcrResult> regions = new ArrayList<>();
-    regions.add(new RegionOcrResult(null, result));
-    return new OcrResultWithLayout(result.text, result.meanConfidence, regions, null);
-  }
-
-  public boolean hasComplexLayout(Bitmap bitmap) {
-    return false;
-  }
-
-  public int getDocumentColumnCount(Bitmap bitmap) {
-    return 1;
   }
 
   public static class OcrResult {
@@ -198,21 +117,4 @@ public class OCRHelper implements AutoCloseable {
       this.words = words != null ? words : new ArrayList<>();
     }
   }
-
-  public static class OcrResultWithLayout extends OcrResult {
-    public final List<RegionOcrResult> regionResults;
-    public final AnalysisResult layoutAnalysis;
-
-    public OcrResultWithLayout(
-        String text,
-        Integer meanConfidence,
-        List<RegionOcrResult> regionResults,
-        AnalysisResult layoutAnalysis) {
-      super(text, meanConfidence);
-      this.regionResults = regionResults != null ? regionResults : new ArrayList<>();
-      this.layoutAnalysis = layoutAnalysis;
-    }
-  }
-
-  public record RegionOcrResult(DocumentRegion region, OcrResultWords ocrResult) {}
 }

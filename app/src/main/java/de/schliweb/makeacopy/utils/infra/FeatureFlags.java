@@ -25,26 +25,6 @@ import lombok.experimental.UtilityClass;
 public class FeatureFlags {
 
   /**
-   * Test-only override for the layout analysis feature flag. When non-null, this value takes
-   * precedence over the BuildConfig value. Must be reset to null after each test.
-   */
-  private static final AtomicReference<Boolean> layoutAnalysisOverride =
-      new AtomicReference<>(null);
-
-  /**
-   * Sets a test-only override for the layout analysis feature flag. Pass {@code null} to clear the
-   * override and revert to the BuildConfig default.
-   *
-   * <p>This method is intended exclusively for use in test code. Production code must not call it.
-   *
-   * @param enabled {@code true} to force-enable, {@code false} to force-disable, {@code null} to
-   *     use the BuildConfig default
-   */
-  public static void setLayoutAnalysisOverride(Boolean enabled) {
-    layoutAnalysisOverride.set(enabled);
-  }
-
-  /**
    * Determines whether the OCR review feature is enabled in the application's build configuration.
    * The method checks for the presence of the "FEATURE_REVIEW_OCR" field in the application's
    * BuildConfig class and retrieves its boolean value.
@@ -180,24 +160,6 @@ public class FeatureFlags {
     try {
       Class<?> c = de.schliweb.makeacopy.BuildConfig.class;
       java.lang.reflect.Field f = c.getField("FEATURE_FOCUS_QUALITY_INDICATOR");
-      return f.getBoolean(null);
-    } catch (Throwable ignore) {
-      return false;
-    }
-  }
-
-  /**
-   * Feature flag: enables layout analysis for complex documents. When enabled, OCR can detect and
-   * process multi-column documents and tables with optimized settings for each region.
-   */
-  public static boolean isLayoutAnalysisEnabled() {
-    Boolean override = layoutAnalysisOverride.get();
-    if (override != null) {
-      return override;
-    }
-    try {
-      Class<?> c = de.schliweb.makeacopy.BuildConfig.class;
-      java.lang.reflect.Field f = c.getField("FEATURE_LAYOUT_ANALYSIS");
       return f.getBoolean(null);
     } catch (Throwable ignore) {
       return false;

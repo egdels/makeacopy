@@ -89,16 +89,6 @@ public class OpenCVUtilsInstrumentedTest {
   }
 
   @Test
-  public void prepareForOCRQuick_withPattern_returnsNonNull() {
-    assumeOpenCvInitialized();
-    Bitmap src = createTestPatternBitmap(640, 400);
-    Bitmap out = OpenCVUtils.prepareForOCRQuick(src);
-    assertNotNull(out);
-    assertEquals(640, out.getWidth());
-    assertEquals(400, out.getHeight());
-  }
-
-  @Test
   @Ignore(
       "Temporarily disabled: this variant crashes instrumentation process on some emulators/devices; see issue #opencv-prepareForOCR-crash")
   public void prepareForOCR_binaryFlagBothVariants_nonNull() {
@@ -174,12 +164,6 @@ public class OpenCVUtilsInstrumentedTest {
     Bitmap out = OpenCVUtils.prepareForOCR(null, true);
     assertNull(out);
     out = OpenCVUtils.prepareForOCR(null, false);
-    assertNull(out);
-  }
-
-  @Test
-  public void prepareForOCRQuick_nullInput_returnsNull() {
-    Bitmap out = OpenCVUtils.prepareForOCRQuick(null);
     assertNull(out);
   }
 

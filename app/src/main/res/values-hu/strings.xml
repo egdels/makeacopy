@@ -50,11 +50,6 @@
     <string name="ocr_found_rotation_with_score">Talált elforgatás: %1$d° — OCR-pontszám: %2$d%%</string>
 
     <!-- További magyarázat a „Felismerési módok magyarázata” párbeszédablakban -->
-    <string name="ocr_prep_modes_autorotate_note">OCR automatikus elforgatás: Ha engedélyezve van, az OCR a lapot 90°-os
-        lépésekben is kipróbálja (0/90/180/270), és a legjobb eredményt választja ki. A talált elforgatás exportáláskor
-        automatikusan alkalmazható, ha nem forgattad el manuálisan az oldalt. Ez a beállítás a „Felismerési mód
-        kiválasztása” menüpontban kapcsolható.
-    </string>
 
     <string name="initializing_camera">Kamera inicializálása…</string>
     <string name="resetting_camera">Kamera visszaállítása…</string>
@@ -213,49 +208,13 @@
     <string name="rotate_right_cd">Oldal elforgatása 90°-kal jobbra</string>
 
     <!-- OCR models management -->
-    <string name="ocr_models_manage">OCR modellek</string>
-    <string name="ocr_import_manual">.traineddata importálása…</string>
-    <string name="ocr_discover_packs">Nyelvi csomagok keresése</string>
-    <string name="ocr_no_packs_found">Nem találhatók nyelvi csomagok</string>
-    <string name="ocr_choose_pack">Válasszon nyelvi csomagot</string>
-    <string name="ocr_no_models_in_pack">Nincsenek modellek ebben a csomagban</string>
-    <string name="ocr_choose_model">Válasszon modellt importáláshoz</string>
-    <string name="ocr_import_success">Modell importálva</string>
-    <string name="ocr_import_failed">Importálás sikertelen</string>
 
-    <string name="ocr_delete_best_model">Best modell törlése</string>
-    <string name="ocr_nothing_to_delete">Nincs törölhető Best modell az aktuális nyelvhez</string>
-    <string name="ocr_delete_confirm_title">Törlöd a Best modellt?</string>
-    <string name="ocr_delete_confirm_msg">Törlöd a(z) %1$s importált Best modellt? A beépített Fast modell elérhető
-        marad.
-    </string>
-    <string name="ocr_delete_success">Modell törölve</string>
-    <string name="ocr_delete_failed">A törlés nem sikerült</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">A gyorsabb felismeréshez kompakt modellek tartoznak a csomaghoz. A nagyobb
-        pontossághoz telepíthet nagyobb „Best” modelleket. Internetkapcsolat nem szükséges.
-    </string>
 
     <!-- OCR felismerési módok – magyarázat -->
-    <string name="ocr_explain_prep_modes">Felismerési módok magyarázata</string>
-    <string name="ocr_prep_modes_title">Felismerési módok: egyszerű magyarázat</string>
-    <string name="ocr_prep_modes_message">Két módja van annak, hogyan lehet a képeket az OCR-motorba továbbítani:\n\n•
-        Eredeti (előfeldolgozás nélkül) — a leggyorsabb. A fotó változtatás nélkül kerül feldolgozásra. Tiszta, nagy
-        kontrasztú beolvasásokhoz ideális. Előfordulhat, hogy a halvány vagy zajos szöveget nem ismeri fel.\n\n• OpenCV Robusztus — újratervezve a maximális pontosság érdekében nehéz oldalaknál.
-        Kijavítja a ferdeséget, normalizálja az árnyékokat és a megvilágítást, élmegőrző zajcsökkentést és intelligens
-        felnagyítást alkalmaz. Fontos, hogy a Tesseract kiváló minőségű szürkeárnyalatos képet kap (nem kemény
-        fekete-fehéret), így megmaradnak az apró részletek, például az „o” betű hurkai és a kis számjegyek. A legjobb
-        pontosságot nyújtja nehéz oldalaknál, de lassabb és több memóriát használ.\n\nOCR utófeldolgozás: Javítja a
-        gyakori felismerési hibákat, például az összetévesztéseket (0↔O, 1↔l↔I, rn↔m), és a bizonytalan szavakat szótár
-        alapján ellenőrzi. Alapértelmezés szerint engedélyezve; technikai kódok vagy sorozatszámok esetén kapcsolja ki.
-    </string>
 
     <!-- OCR felismerési módok kiválasztása -->
-    <string name="ocr_choose_prep_mode_menu">Felismerési mód…</string>
-    <string name="ocr_mode_original">Eredeti (előfeldolgozás nélkül)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (gyors)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (magas minőség)</string>
     <string name="opt_paddle_best_ocr">Legjobb Paddle OCR-minőség (lassabb)</string>
     <string name="opt_multi_column_ocr">Többhasábos elrendezés (újságok, magazinok)</string>
 
@@ -390,8 +349,6 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR automatikus elforgatás (exportáláskor is alkalmazza)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR utófeldolgozás (gyakori hibák javítása)</string>
-    <string name="opt_layout_analysis">Elrendezés-elemzés (oszlopok, táblázatok)</string>
     <!-- Options: Experimental directional mapping fallback -->
     <!-- Developer / Debug options -->
     <!-- Library / Collections -->    <!-- PDF Import -->
@@ -436,8 +393,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR-nyelvek kiválasztása</string>
-    <string name="ocr_max_languages_warning">Legfeljebb 2 nyelv engedélyezett</string>
-    <string name="ocr_no_language_selected">Kérjük, válasszon ki legalább egy nyelvet</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Elveted a módosításokat?</string>
     <string name="msg_discard_changes">Vannak nem mentett módosításaid. Szeretnéd elvetni őket?</string>

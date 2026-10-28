@@ -10,26 +10,16 @@
 package de.schliweb.makeacopy.utils.ocr;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
-import de.schliweb.makeacopy.BuildConfig;
 import org.junit.Test;
 
 /**
  * Paddle-Flavor JVM-Tests für die Routing-Bedingungen aus {@code OCRHelper.selectEngine()}.
  *
  * <p>Echte Engine-Erstellung in JVM-Tests ist nicht möglich (ORT lädt native Libraries beim
- * Init); diese Tests prüfen daher die deterministischen Vorbedingungen — Feature-Flag,
- * Sprach-Whitelist und Diagnostics-Reasons.
+ * Init); diese Tests prüfen daher die deterministischen Vorbedingungen — Diagnostics-Reasons.
  */
 public class PaddleEngineProviderTest {
-
-    @Test
-    public void paddleFlavor_featureFlagEnabled() {
-        assertTrue(
-                "FEATURE_PADDLE_OCR muss im paddle-Flavor true sein",
-                BuildConfig.FEATURE_PADDLE_OCR);
-    }
 
     // Hinweis: Die statische Sprach-Whitelist {eng, deu, latin} und das ABI-Gate
     // wurden mit der Multi-Model-Migration (Konzept §C.2) aus OCRHelper entfernt.

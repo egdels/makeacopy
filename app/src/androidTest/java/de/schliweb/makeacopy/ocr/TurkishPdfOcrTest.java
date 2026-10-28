@@ -93,12 +93,12 @@ public class TurkishPdfOcrTest {
     OCRHelper helper = new OCRHelper(context);
     try {
       helper.setLanguage(langCode);
-      boolean initialized = helper.initTesseract();
+      boolean initialized = helper.isLanguageAvailable(helper.getLanguage());
       if (!initialized) {
         throw new RuntimeException("Failed to initialize Tesseract for language: " + langCode);
       }
 
-      OCRHelper.OcrResultWords result = helper.runOcrWithRetry(bitmap);
+      OCRHelper.OcrResultWords result = helper.runOcrWithWords(bitmap);
       return result != null ? result.text : null;
     } finally {
       helper.shutdown();
@@ -141,7 +141,7 @@ public class TurkishPdfOcrTest {
     OCRHelper helper = new OCRHelper(context);
     try {
       helper.setLanguage("tur");
-      boolean initialized = helper.initTesseract();
+      boolean initialized = helper.isLanguageAvailable(helper.getLanguage());
       assertTrue("Tesseract should initialize with 'tur' language", initialized);
     } finally {
       helper.shutdown();
@@ -154,7 +154,7 @@ public class TurkishPdfOcrTest {
     OCRHelper helper = new OCRHelper(context);
     try {
       helper.setLanguage("tur+eng");
-      boolean initialized = helper.initTesseract();
+      boolean initialized = helper.isLanguageAvailable(helper.getLanguage());
       assertTrue("Tesseract should initialize with 'tur+eng'", initialized);
     } finally {
       helper.shutdown();

@@ -51,11 +51,6 @@
     <string name="ocr_found_rotation_with_score">Gevonden rotatie: %1$d° — OCR-score: %2$d%%</string>
 
     <!-- Extra uitleg toegevoegd in het dialoogvenster ‘Herkenningsmodi uitleggen’ -->
-    <string name="ocr_prep_modes_autorotate_note">OCR automatische rotatie: Wanneer ingeschakeld, probeert OCR de pagina
-        ook in stappen van 90° (0/90/180/270) en kiest het beste resultaat. De gevonden rotatie kan tijdens het
-        exporteren automatisch worden toegepast als je de pagina niet handmatig hebt geroteerd. Deze optie kan worden
-        in- of uitgeschakeld in ‘Kies herkenningsmodus’.
-    </string>
 
     <string name="initializing_camera">Camera initialiseren…</string>
     <string name="resetting_camera">Camera resetten…</string>
@@ -214,50 +209,13 @@
     <string name="rotate_right_cd">Pagina 90 graden met de klok mee draaien</string>
 
     <!-- OCR models management (prototype) -->
-    <string name="ocr_models_manage">OCR‑modellen</string>
-    <string name="ocr_import_manual">.traineddata importeren…</string>
-    <string name="ocr_discover_packs">Taalpakketten ontdekken</string>
-    <string name="ocr_no_packs_found">Geen talpakketten gevonden</string>
-    <string name="ocr_choose_pack">Taalpakket kiezen</string>
-    <string name="ocr_no_models_in_pack">Geen modellen gevonden in dit pakket</string>
-    <string name="ocr_choose_model">Model kiezen om te importeren</string>
-    <string name="ocr_import_success">Model geïmporteerd</string>
-    <string name="ocr_import_failed">Importeren mislukt</string>
 
-    <string name="ocr_delete_best_model">Best-model verwijderen</string>
-    <string name="ocr_nothing_to_delete">Geen Best-model om te verwijderen voor de huidige taal</string>
-    <string name="ocr_delete_confirm_title">Best-model verwijderen?</string>
-    <string name="ocr_delete_confirm_msg">Het geïmporteerde Best-model voor %1$s verwijderen? Het ingebouwde Fast-model
-        blijft beschikbaar.
-    </string>
-    <string name="ocr_delete_success">Model verwijderd</string>
-    <string name="ocr_delete_failed">Verwijderen mislukt</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">Voor snellere herkenning zijn compacte modellen inbegrepen. Voor hogere
-        nauwkeurigheid kun je grotere "Best"‑modellen installeren. Er is geen internetverbinding nodig.
-    </string>
 
     <!-- OCR-herkenningsmodi – uitleg -->
-    <string name="ocr_explain_prep_modes">Herkenningsmodi uitleggen</string>
-    <string name="ocr_prep_modes_title">Herkenningsmodi: eenvoudige uitleg</string>
-    <string name="ocr_prep_modes_message">Er zijn twee manieren om afbeeldingen naar de OCR-engine te sturen:\n\n•
-        Origineel (geen voorbewerking) — het snelst. De foto wordt ongewijzigd verzonden. Het meest geschikt voor al
-        schone scans met hoog contrast. Kan zwakke of ruisachtige tekst missen.\n\n• OpenCV
-        Robuust — opnieuw ontworpen voor maximale nauwkeurigheid bij moeilijke pagina’s. Corrigeert scheefstand,
-        normaliseert schaduwen en belichting, past randbehoudende ruisonderdrukking en slimme opschaling toe. Belangrijk
-        is dat Tesseract een grijswaardenafbeelding van hoge kwaliteit ontvangt (geen hard zwart-wit) om fijne details
-        zoals lussen in de letter “o” en kleine cijfers te behouden. Biedt de beste nauwkeurigheid op complexe pagina’s,
-        maar is langzamer en gebruikt meer geheugen.\n\nOCR-nabewerking: Corrigeert typische herkenningsfouten zoals
-        verwarringen (0↔O, 1↔l↔I, rn↔m) en controleert onzekere woorden met behulp van een woordenboek. Standaard
-        ingeschakeld; schakel dit uit voor technische codes of serienummers.
-    </string>
 
     <!-- OCR-herkenningsmodi – selectie -->
-    <string name="ocr_choose_prep_mode_menu">Herkenningsmodus…</string>
-    <string name="ocr_mode_original">Origineel (geen voorbewerking)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (snel)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (hoge kwaliteit)</string>
     <string name="opt_paddle_best_ocr">Beste Paddle OCR-kwaliteit (langzamer)</string>
     <string name="opt_multi_column_ocr">Meerkoloms lay-out (kranten, tijdschriften)</string>
 
@@ -392,12 +350,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR automatisch roteren (ook toepassen bij exporteren)</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR-nabewerking (veelvoorkomende fouten corrigeren)</string>
-    <string name="opt_layout_analysis">Lay-outanalyse (kolommen, tabellen)
-    </string>    <!-- Options: Experimental directional mapping fallback -->
-    <!-- Developer / Debug options -->    <!-- Library / Collections -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">Onbekend bestandstype</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">Dit bestandstype wordt niet ondersteund</string>
     <string name="error_cannot_open_pdf">Kan PDF niet openen</string>
     <string name="error_pdf_empty">De PDF bevat geen pagina’s</string>
@@ -438,8 +392,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR-talen selecteren</string>
-    <string name="ocr_max_languages_warning">Maximaal 2 talen toegestaan</string>
-    <string name="ocr_no_language_selected">Selecteer ten minste één taal</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Wijzigingen verwerpen?</string>
     <string name="msg_discard_changes">Je hebt niet-opgeslagen wijzigingen. Wil je deze verwerpen?</string>

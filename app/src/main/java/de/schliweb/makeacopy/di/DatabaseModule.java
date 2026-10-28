@@ -25,7 +25,6 @@ import de.schliweb.makeacopy.data.library.ScanCollectionJoinDao;
 import de.schliweb.makeacopy.data.library.ScanPageTextDao;
 import de.schliweb.makeacopy.data.library.ScansDao;
 import de.schliweb.makeacopy.data.library.ScansRepository;
-import de.schliweb.makeacopy.utils.ocr.DictionaryManager;
 import javax.inject.Singleton;
 
 /** Hilt module that provides database-related dependencies as singletons. */
@@ -74,11 +73,5 @@ public class DatabaseModule {
   CollectionsRepository provideCollectionsRepository(
       CollectionsDao collectionsDao, ScanCollectionJoinDao joinDao, ScansDao scansDao) {
     return new DefaultCollectionsRepository(collectionsDao, joinDao, scansDao);
-  }
-
-  @Provides
-  @Singleton
-  DictionaryManager provideDictionaryManager(@ApplicationContext Context context) {
-    return DictionaryManager.getInstance(context);
   }
 }

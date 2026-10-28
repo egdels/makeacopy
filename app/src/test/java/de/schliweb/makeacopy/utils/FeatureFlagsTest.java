@@ -37,10 +37,4 @@ public class FeatureFlagsTest {
     boolean result = FeatureFlags.isA11yGuidanceEnabled();
     assertTrue(result || !result);
   }
-
-  @Test
-  public void isLayoutAnalysisEnabled_returnsBooleanWithoutThrowing() {
-    boolean result = FeatureFlags.isLayoutAnalysisEnabled();
-    assertTrue(result || !result);
-  }
 }

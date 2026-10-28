@@ -1921,34 +1921,6 @@ public final class OpenCVUtils {
   }
 
   /**
-   * Prepares the given bitmap for OCR processing quickly and robustly using OpenCV. The method
-   * applies a series of image preprocessing steps such as grayscale conversion, light enhancement,
-   * noise reduction, binarization, and rescaling to ensure the image is optimized for OCR engines
-   * like Tesseract, while maintaining efficiency.
-   *
-   * @param src The input bitmap to be prepared for OCR. Must not be null or recycled.
-   * @return A processed bitmap in ARGB_8888 format optimized for OCR, or null if an error occurs or
-   *     if the input bitmap is invalid (null or recycled).
-   */
-  public static Bitmap prepareForOCRQuick(Bitmap src) {
-    if (src == null || src.isRecycled()) return null;
-    // Quick now delegates to the Robust grayscale pipeline (binaryOutput=false).
-    // Rationale (FR#74 A/B benchmark, docs/benchmarks/fr74_ocr_ab_2026-04-26.md):
-    // the previous Otsu-based Quick path scored avg CER 0.846 vs. 0.121 for the
-    // raw high-pass / 0.240 for Robust on the 6 FR#74 samples — the global Otsu
-    // step destroyed text on photo-style inputs. The non-binary Robust pipeline
-    // (gray + inversion + high-pass + median + mild CLAHE, no Sauvola/Retinex/
-    // fastNlMeansDenoising) is dramatically more accurate while staying close
-    // to the previous Quick latency budget.
-    try {
-      return prepareForOCR(src, /*binaryOutput*/ false);
-    } catch (Throwable t) {
-      Log.e("OpenCVUtils", "prepareForOCRQuick failed", t);
-      return null;
-    }
-  }
-
-  /**
    * Super-resolution upscaling optimized for small text in OCR. Uses Lanczos interpolation with
    * adaptive sharpening based on estimated glyph size. This method is more aggressive than
    * upscaleIfNeeded and targets a specific glyph height.

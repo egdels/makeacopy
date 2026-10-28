@@ -51,11 +51,6 @@
     <string name="ocr_found_rotation_with_score">Rotație detectată: %1$d° — scor OCR: %2$d%%</string>
 
     <!-- Explicație suplimentară adăugată în dialogul „Explică modurile de recunoaștere” -->
-    <string name="ocr_prep_modes_autorotate_note">Rotire automată OCR: Când este activată, OCR încearcă pagina și în
-        pași de 90° (0/90/180/270) și alege cel mai bun rezultat. Rotația detectată poate fi aplicată automat la export
-        dacă nu ai rotit manual pagina. Această opțiune poate fi activată sau dezactivată în „Alege modul de
-        recunoaștere”.
-    </string>
 
     <string name="initializing_camera">Inițializare cameră…</string>
     <string name="resetting_camera">Resetare cameră…</string>
@@ -216,50 +211,13 @@
     <string name="rotate_right_cd">Rotește pagina 90° spre dreapta</string>
 
     <!-- OCR models management -->
-    <string name="ocr_models_manage">Modele OCR</string>
-    <string name="ocr_import_manual">Importă .traineddata…</string>
-    <string name="ocr_discover_packs">Descoperă pachete de limbă</string>
-    <string name="ocr_no_packs_found">Nu au fost găsite pachete de limbă</string>
-    <string name="ocr_choose_pack">Alege pachet de limbă</string>
-    <string name="ocr_no_models_in_pack">Nu există modele în acest pachet</string>
-    <string name="ocr_choose_model">Alege model pentru import</string>
-    <string name="ocr_import_success">Model importat</string>
-    <string name="ocr_import_failed">Import nereușit</string>
 
-    <string name="ocr_delete_best_model">Șterge modelul Best</string>
-    <string name="ocr_nothing_to_delete">Niciun model Best de șters pentru limba curentă</string>
-    <string name="ocr_delete_confirm_title">Șterge modelul Best?</string>
-    <string name="ocr_delete_confirm_msg">Dorești să ștergi modelul Best importat pentru %1$s? Modelul Fast integrat va
-        rămâne disponibil.
-    </string>
-    <string name="ocr_delete_success">Model șters</string>
-    <string name="ocr_delete_failed">Ștergerea a eșuat</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">Pentru recunoaștere mai rapidă sunt incluse modele compacte. Pentru o acuratețe mai
-        mare, poți instala modele mai mari „Best”. Nu este necesară conexiunea la internet.
-    </string>
 
     <!-- Moduri de recunoaștere OCR – explicație -->
-    <string name="ocr_explain_prep_modes">Explică modurile de recunoaștere</string>
-    <string name="ocr_prep_modes_title">Moduri de recunoaștere: explicație simplă</string>
-    <string name="ocr_prep_modes_message">Există două moduri de a trimite imaginile către motorul OCR:\n\n• Original
-        (fără preprocesare) — cel mai rapid. Fotografia este trimisă așa cum este. Ideal pentru scanări deja curate și
-        cu contrast ridicat. Poate omite textul slab sau cu zgomot.\n\n•
-        OpenCV Robust — reproiectat pentru acuratețe maximă pe pagini dificile. Corectează înclinarea, normalizează
-        umbrele și iluminarea, aplică reducere de zgomot cu păstrarea marginilor și mărire inteligentă. Este important
-        ca Tesseract să primească o imagine în tonuri de gri de înaltă calitate (nu alb-negru dur), pentru a păstra
-        detalii fine precum buclele literei „o” și cifrele mici. Oferă cea mai bună acuratețe pe pagini complexe, dar
-        este mai lent și folosește mai multă memorie.\n\nPost-procesare OCR: Corectează erori frecvente de recunoaștere,
-        cum ar fi confuziile (0↔O, 1↔l↔I, rn↔m), și verifică cuvintele incerte folosind un dicționar. Activată implicit;
-        dezactivați pentru coduri tehnice sau numere de serie.
-    </string>
 
     <!-- Selectarea modului de recunoaștere OCR -->
-    <string name="ocr_choose_prep_mode_menu">Mod de recunoaștere…</string>
-    <string name="ocr_mode_original">Original (fără preprocesare)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (rapid)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (calitate ridicată)</string>
     <string name="opt_paddle_best_ocr">Cea mai bună calitate Paddle OCR (mai lent)</string>
     <string name="opt_multi_column_ocr">Aspect pe mai multe coloane (ziare, reviste)</string>
 
@@ -398,13 +356,8 @@
 
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">Rotire automată OCR (aplică și la export)</string>
-    <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">Post-procesare OCR (corectează erorile comune)</string>
-    <string name="opt_layout_analysis">Analiză aspect (coloane, tabele)
-    </string>    <!-- Options: Experimental directional mapping fallback -->
-    <!-- Developer / Debug options -->
-    <!-- Library / Collections -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">Tip de fișier necunoscut</string>
+    <!-- Options: OCR post-processing toggle -->
     <string name="error_unsupported_file_type">Acest tip de fișier nu este acceptat</string>
     <string name="error_cannot_open_pdf">Nu s-a putut deschide PDF-ul</string>
     <string name="error_pdf_empty">PDF-ul nu conține pagini</string>
@@ -445,8 +398,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Selectați limbile OCR</string>
-    <string name="ocr_max_languages_warning">Sunt permise maximum 2 limbi</string>
-    <string name="ocr_no_language_selected">Selectați cel puțin o limbă</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Renunți la modificări?</string>
     <string name="msg_discard_changes">Ai modificări nesalvate. Vrei să le renunți?</string>

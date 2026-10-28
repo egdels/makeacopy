@@ -17,11 +17,8 @@ import android.util.Log;
 import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.utils.image.ImageDecodeUtils;
-import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.OCRUtils;
-import de.schliweb.makeacopy.utils.ocr.OcrModelManager;
-import de.schliweb.makeacopy.utils.ocr.OcrPageSegmentationMode;
 import de.schliweb.makeacopy.utils.ocr.OcrRecognitionPipeline;
 import de.schliweb.makeacopy.utils.ocr.PageOcrFiles;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
@@ -55,9 +52,7 @@ public final class OcrBackgroundJobs {
   // SharedPreferences keys mirrored from OCRFragment so background jobs honor the same user
   // preferences as the foreground OCR. Keep names in sync with OCRFragment.
   private static final String PREFS_NAME = "export_options";
-  private static final String PREF_KEY_OCR_MODE = "ocr_prep_mode"; // 0=Original,1=Quick,2=Robust
   private static final String BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT = "ocr_auto_rotate_apply_export";
-  private static final String BUNDLE_LAYOUT_ANALYSIS = "layout_analysis";
 
   private static final ExecutorService EXEC = Executors.newSingleThreadExecutor();
   private static final Set<String> running = Collections.synchronizedSet(new HashSet<>());
@@ -128,21 +123,9 @@ public final class OcrBackgroundJobs {
       }
 
       helper = ocrHelperSupplier.get();
-      configureHelper(app, helper, languageOpt);
-      if (!helper.initTesseract()) throw new RuntimeException("Tesseract init failed");
+      configureHelper(helper, languageOpt);
 
       OcrRecognitionPipeline.Options prefs = readJobPrefs(app);
-
-      // Tune Tesseract PSM based on recognition mode (Robust benefits from PSM_AUTO).
-      try {
-        OcrPageSegmentationMode psm =
-            (prefs.prepMode() == OCRHelper.OCR_MODE_ROBUST)
-                ? OcrPageSegmentationMode.AUTO
-                : OcrPageSegmentationMode.SINGLE_BLOCK;
-        helper.setPageSegmentationMode(psm);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
 
       // Note: unlike OCRFragment we do not apply user rotation here, the bitmap is already upright
       // after the legacy-metadata rotation step.
@@ -160,12 +143,6 @@ public final class OcrBackgroundJobs {
       // Persist OCR_FAILED so the failure survives process death and stays visible in the UI.
       markPageOcrFailed(app, pageId);
     } finally {
-      // Release Tesseract on the same thread that used it.
-      try {
-        if (helper != null) helper.shutdown();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
       running.remove(pageId);
       cancelled.remove(pageId);
       broadcastUpdated(app, pageId, success);
@@ -199,15 +176,8 @@ public final class OcrBackgroundJobs {
     return bmp;
   }
 
-  /** Applies language and Best/Fast model settings; must run BEFORE init (mirrors OCRFragment). */
-  private static void configureHelper(Context app, OCRHelper helper, String languageOpt) {
-    // 1 job = 1 engine instance. No automatic reinitialization per run.
-    try {
-      helper.setReinitPerRun(false);
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
-    }
-
+  /** Applies the language (mirrors OCRFragment). */
+  private static void configureHelper(OCRHelper helper, String languageOpt) {
     // Determine effective language: use provided, else map from system locale
     String effLang = OCRUtils.resolveEffectiveLanguage(languageOpt);
     try {
@@ -217,51 +187,16 @@ public final class OcrBackgroundJobs {
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }
-
-    try {
-      boolean useBest = OcrModelManager.isUsingBestModel(app, effLang);
-      helper.setUseBestModelSettings(useBest);
-      Log.d(TAG, "Best model settings enabled=" + useBest + " for lang=" + effLang);
-    } catch (Throwable t) {
-      Log.w(TAG, "Failed to detect/set Best model settings", t);
-    }
   }
 
   private static OcrRecognitionPipeline.Options readJobPrefs(Context app) {
     try {
       SharedPreferences sp = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-      int prepMode =
-          resolvePrepMode(
-              sp.getInt(PREF_KEY_OCR_MODE, OCRHelper.OCR_MODE_ROBUST),
-              de.schliweb.makeacopy.utils.ocr.PaddleOcrPrefs.isToggleVisible(),
-              sp.getBoolean(de.schliweb.makeacopy.utils.ocr.PaddleOcrPrefs.KEY, false));
       return new OcrRecognitionPipeline.Options(
-          prepMode,
-          sp.getBoolean(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false),
-          FeatureFlags.isLayoutAnalysisEnabled() && sp.getBoolean(BUNDLE_LAYOUT_ANALYSIS, false));
+          sp.getBoolean(BUNDLE_OCR_AUTO_ROTATE_APPLY_EXPORT, false));
     } catch (Throwable ignore) {
-      return new OcrRecognitionPipeline.Options(OCRHelper.OCR_MODE_ROBUST, false, false);
+      return new OcrRecognitionPipeline.Options(false);
     }
-  }
-
-  /**
-   * Maps the persisted recognition mode to the mode used at runtime, matching {@code
-   * OCRFragment.getSelectedOcrMode()} but without UI side-effects: preferences are not rewritten
-   * here to avoid races with the UI thread.
-   */
-  static int resolvePrepMode(
-      int storedMode, boolean paddleToggleVisible, boolean legacyPaddleEnabled) {
-    // Migrate legacy Quick → Robust.
-    if (storedMode == OCRHelper.OCR_MODE_QUICK) storedMode = OCRHelper.OCR_MODE_ROBUST;
-    // Honor legacy PaddleOCR toggle (pref_ocr_paddle_enabled) when the new recognition-mode picker
-    // has not been opened yet.
-    if (paddleToggleVisible && legacyPaddleEnabled) return OCRHelper.OCR_MODE_PADDLE;
-    // Guard: if PADDLE is persisted but no longer applicable on this device/build, fall back to
-    // Robust at runtime (preference itself is preserved).
-    if (storedMode == OCRHelper.OCR_MODE_PADDLE && !paddleToggleVisible) {
-      return OCRHelper.OCR_MODE_ROBUST;
-    }
-    return storedMode;
   }
 
   /**

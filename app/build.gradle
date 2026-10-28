@@ -51,15 +51,12 @@ android {
         buildConfigField "boolean", "FEATURE_REVIEW_OCR", "true"
         buildConfigField "boolean", "FEATURE_FRAMING_LOGGING", "false"
         buildConfigField "boolean", "FEATURE_A11Y_GUIDANCE", "true"
-        buildConfigField "boolean", "FEATURE_LAYOUT_ANALYSIS", "false"
         buildConfigField "boolean", "FEATURE_INBOX_MODE", "true"
         buildConfigField "boolean", "FEATURE_CROP_EDGE_DRAG", "true"
         buildConfigField "boolean", "FEATURE_CROP_PAN_ZOOM", "true"
         buildConfigField "boolean", "FEATURE_CORNER_REFINEMENT", "true"
         buildConfigField "boolean", "FEATURE_DOCQUAD_ROTATION_TTA", "true"
-        buildConfigField "boolean", "FEATURE_PADDLE_OCR", "true"
         buildConfigField "boolean", "FEATURE_FOCUS_QUALITY_INDICATOR", "true"
-        buildConfigField "boolean", "IS_LIGHT", isLight ? "true" : "false"
 
         if (isLight) {
             applicationIdSuffix ".light"

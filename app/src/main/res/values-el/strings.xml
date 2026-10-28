@@ -41,7 +41,6 @@
     <string name="ocr_found_rotation_with_score">Βρέθηκε περιστροφή: %1$d° — βαθμολογία OCR: %2$d%%</string>
 
     <!-- Extra explanation appended in “Explain recognition modes” dialog -->
-    <string name="ocr_prep_modes_autorotate_note">Αυτόματη περιστροφή OCR: Όταν είναι ενεργή, το OCR δοκιμάζει επίσης τη σελίδα σε βήματα 90° (0/90/180/270) και επιλέγει το καλύτερο αποτέλεσμα. Η περιστροφή που βρέθηκε μπορεί να εφαρμοστεί αυτόματα κατά την εξαγωγή, αν δεν περιστρέψατε χειροκίνητα. Μπορείτε να το αλλάξετε στο «Επιλογή λειτουργίας αναγνώρισης».</string>
 
     <string name="initializing_camera">Αρχικοποίηση κάμερας…</string>
     <string name="resetting_camera">Επαναφορά κάμερας…</string>
@@ -217,38 +216,14 @@
     <string name="rotate_right_cd">Περιστροφή σελίδας 90 μοίρες δεξιόστροφα</string>
 
     <!-- OCR models management (prototype) -->
-    <string name="ocr_models_manage">Μοντέλα OCR</string>
-    <string name="ocr_import_manual">Εισαγωγή .traineddata…</string>
-    <string name="ocr_discover_packs">Ανακάλυψη πακέτων γλωσσών</string>
-    <string name="ocr_no_packs_found">Δεν βρέθηκαν πακέτα γλωσσών</string>
-    <string name="ocr_choose_pack">Επιλέξτε πακέτο γλώσσας</string>
-    <string name="ocr_no_models_in_pack">Δεν βρέθηκαν μοντέλα σε αυτό το πακέτο</string>
-    <string name="ocr_choose_model">Επιλέξτε μοντέλο για εισαγωγή</string>
-    <string name="ocr_import_success">Το μοντέλο εισήχθη</string>
-    <string name="ocr_import_failed">Η εισαγωγή απέτυχε</string>
 
     <!-- OCR models: delete local Best -->
-    <string name="ocr_delete_best_model">Διαγραφή μοντέλου Best</string>
-    <string name="ocr_nothing_to_delete">Δεν υπάρχει μοντέλο Best για διαγραφή για την τρέχουσα γλώσσα</string>
-    <string name="ocr_delete_confirm_title">Διαγραφή μοντέλου Best;</string>
-    <string name="ocr_delete_confirm_msg">Να διαγραφεί το εισαγόμενο μοντέλο Best για %1$s; Το ενσωματωμένο μοντέλο Fast θα παραμείνει διαθέσιμο.</string>
-    <string name="ocr_delete_success">Το μοντέλο διαγράφηκε</string>
-    <string name="ocr_delete_failed">Η διαγραφή απέτυχε</string>
 
     <!-- OCR models hint -->
-    <string name="ocr_models_hint">Για ταχύτερη αναγνώριση περιλαμβάνονται συμπαγή μοντέλα. Για μεγαλύτερη ακρίβεια μπορείτε να εγκαταστήσετε μεγαλύτερα μοντέλα \"Best\". Δεν απαιτείται σύνδεση στο διαδίκτυο.</string>
 
     <!-- OCR prep modes explanation -->
-    <string name="ocr_explain_prep_modes">Εξήγηση λειτουργιών αναγνώρισης</string>
-    <string name="ocr_prep_modes_title">Λειτουργίες αναγνώρισης: απλή εξήγηση</string>
-    <string name="ocr_prep_modes_message">Υπάρχουν δύο τρόποι τροφοδότησης εικόνων στη μηχανή OCR:\n\n• Αρχικό (χωρίς προεπεξεργασία) — το ταχύτερο. Στέλνουμε τη φωτογραφία ως έχει. Καλύτερο για ήδη καθαρές σαρώσεις υψηλής αντίθεσης. Μπορεί να χάσει αχνό ή θορυβώδες κείμενο.\n\n• OpenCV Robust — ανακατασκευασμένο για μέγιστη ακρίβεια σε δύσκολες σελίδες. Διορθώνει την κλίση, κανονικοποιεί σκιές/φωτισμό, εφαρμόζει αποθορυβοποίηση που διατηρεί ακμές και έξυπνη μεγέθυνση. Σημαντικό: τροφοδοτεί το Tesseract με εικόνα κλίμακας του γκρι υψηλής ποιότητας (όχι σκληρό ασπρόμαυρο), ώστε να διατηρούνται λεπτές λεπτομέρειες όπως οι βρόχοι στο “o” και μικρά ψηφία. Καλύτερη ακρίβεια σε δύσκολες σελίδες· πιο αργό και χρησιμοποιεί περισσότερη μνήμη. Συνιστώμενη προεπιλογή για τις περισσότερες φωτογραφίες.\n\nΜετα-επεξεργασία OCR: Διορθώνει τυπικά σφάλματα αναγνώρισης όπως συγχύσεις (0↔O, 1↔l↔I, rn↔m) και ελέγχει αβέβαιες λέξεις με λεξικό. Είναι ενεργή από προεπιλογή· απενεργοποιήστε τη για τεχνικούς κωδικούς ή σειριακούς αριθμούς.</string>
 
     <!-- OCR prep modes selection -->
-    <string name="ocr_choose_prep_mode_menu">Λειτουργία αναγνώρισης…</string>
-    <string name="ocr_mode_original">Αρχικό (χωρίς προεπεξεργασία)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (γρήγορο)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (υψηλή ποιότητα)</string>
-    <string name="ocr_mode_paddle" tools:ignore="MissingTranslation">PaddleOCR (πειραματικό, χωρίς προεπεξεργασία)</string>
     <string name="opt_paddle_best_ocr">Καλύτερη ποιότητα Paddle OCR (πιο αργό)</string>
     <string name="opt_multi_column_ocr">Διάταξη πολλών στηλών (εφημερίδες, περιοδικά)</string>
 
@@ -377,9 +352,7 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">Αυτόματη περιστροφή OCR (εφαρμογή και στην εξαγωγή)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">Μετα-επεξεργασία OCR (διόρθωση συνηθισμένων σφαλμάτων)</string>
     <!-- Options: Layout analysis for complex documents -->
-    <string name="opt_layout_analysis">Ανάλυση διάταξης (στήλες, πίνακες)</string>
     <!-- Options: Experimental directional mapping fallback -->    <!-- Developer / Debug options -->    <!-- Library / Collections (developer strings kept non-translatable for now) -->    <!-- PDF Import -->
     <string name="error_unknown_file_type">Άγνωστος τύπος αρχείου</string>
     <string name="error_unsupported_file_type">Αυτός ο τύπος αρχείου δεν υποστηρίζεται</string>
@@ -422,8 +395,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">Επιλογή γλωσσών OCR</string>
-    <string name="ocr_max_languages_warning">Επιτρέπονται έως 2 γλώσσες</string>
-    <string name="ocr_no_language_selected">Παρακαλώ επιλέξτε τουλάχιστον μία γλώσσα</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Απόρριψη αλλαγών;</string>
     <string name="msg_discard_changes">Έχετε μη αποθηκευμένες αλλαγές. Θέλετε να τις απορρίψετε;</string>

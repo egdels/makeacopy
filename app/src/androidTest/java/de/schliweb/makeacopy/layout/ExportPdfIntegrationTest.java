@@ -31,10 +31,8 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 
 import de.schliweb.makeacopy.utils.export.PdfCreator;
-import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,8 +59,6 @@ import java.util.Locale;
  *   <li>Compare the extracted text against the ground truth</li>
  * </ol>
  *
- * <p>The layout feature is explicitly activated via {@link FeatureFlags#setLayoutAnalysisOverride}.
- * The non-layout path remains completely unchanged.
  */
 @RunWith(AndroidJUnit4.class)
 @SuppressWarnings("StringSplitter")
@@ -79,13 +75,7 @@ public class ExportPdfIntegrationTest {
     public void setUp() {
         testContext = InstrumentationRegistry.getInstrumentation().getContext();
         appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        FeatureFlags.setLayoutAnalysisOverride(true);
         PDFBoxResourceLoader.init(appContext);
-    }
-
-    @After
-    public void tearDown() {
-        FeatureFlags.setLayoutAnalysisOverride(null);
     }
 
     // ==================== Test Cases ====================
@@ -120,31 +110,9 @@ public class ExportPdfIntegrationTest {
         runExportTest("complex_s50");
     }
 
-    // ==================== Guard Test ====================
-
-    @Test
-    public void testExport_featureActivated() {
-        assertTrue("Layout feature must be active for export tests",
-                FeatureFlags.isLayoutAnalysisEnabled());
-    }
-
-    @Test
-    public void testExport_defaultPathEnabled() {
-        FeatureFlags.setLayoutAnalysisOverride(null);
-        assertFalse("Layout should be disabled by default (BuildConfig.FEATURE_LAYOUT_ANALYSIS=false)",
-                FeatureFlags.isLayoutAnalysisEnabled());
-        // Verify override can enable it
-        FeatureFlags.setLayoutAnalysisOverride(true);
-        assertTrue("Layout should be enabled via override",
-                FeatureFlags.isLayoutAnalysisEnabled());
-    }
-
     // ==================== Core Test Logic ====================
 
     private void runExportTest(String testCaseName) throws Exception {
-        assertTrue("Layout feature must be active",
-                FeatureFlags.isLayoutAnalysisEnabled());
-
         // 1. Render source PDF to bitmap
         Bitmap bitmap = renderPdfFirstPage(testCaseName + ".pdf");
         assertNotNull("PDF should render to bitmap: " + testCaseName, bitmap);

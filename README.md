@@ -113,7 +113,7 @@ apksigner verify --print-certs MakeACopy-vX.Y.Z.apk
 - **Perspective Correction**: Adjust and crop documents with manual or automatic perspective correction
 - **Image Enhancement**: Apply filters (grayscale, contrast, sharpening)
 - **OCR**: Offline text recognition with PaddleOCR
-- **OCR Review**: Interactive review and correction of OCR results with word-level editing, dictionary-based suggestions, confidence highlighting, and re-OCR for individual words
+- **OCR Review**: Interactive review and correction of OCR results with word-level editing, confidence highlighting, and re-OCR for individual words
 - **PDF Export**: Save as searchable PDF with recognized text
 - **JPEG Export**: Export scans as high-quality JPEG images (configurable quality, color/BW)
 - **Multi-page Scanning**: Combine multiple pages into one document; reorder and manage pages before export
@@ -270,22 +270,9 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 | OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, exported to ORT) | Apache 2.0 |
 | PDF | Android PdfDocument, pdfbox-android | Apache 2.0 |
 | UI | Material Components | Apache 2.0 |
-| OCR Dictionaries | [FrequencyWords](https://github.com/hermitdave/FrequencyWords) | CC BY-SA 4.0 |
 
 Third-party license texts are included in the [`third_party_licenses/`](third_party_licenses/) directory.
 For full attribution details, see the [`NOTICE`](NOTICE) file.
-
-### OCR Dictionaries
-
-MakeACopy uses word frequency dictionaries for OCR post-processing to improve text recognition accuracy.
-
-**Source:** [FrequencyWords by Hermit Dave](https://github.com/hermitdave/FrequencyWords)  
-**License:** [Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/)  
-**Data Origin:** Wikipedia word frequency lists
-
-The dictionaries are used to validate and correct OCR results by checking recognized words against known word lists. This helps reduce common OCR errors while maintaining fully offline operation.
-
-Included dictionaries cover 23 languages: Arabic (ara), Czech (ces), Danish (dan), German (deu), English (eng), Persian (fas), French (fra), Hindi (hin), Hungarian (hun), Italian (ita), Dutch (nld), Norwegian (nor), Polish (pol), Portuguese (por), Romanian (ron), Russian (rus), Slovak (slk), Spanish (spa), Swedish (swe), Thai (tha), Turkish (tur), Chinese Simplified (chi_sim), and Chinese Traditional (chi_tra).
 
 ## Submodules
 

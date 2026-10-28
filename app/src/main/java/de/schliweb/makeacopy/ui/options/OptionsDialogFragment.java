@@ -608,16 +608,7 @@ public class OptionsDialogFragment extends DialogFragment {
           // Takes effect at once, not only after the next start
           ScreenProtection.apply(getActivity());
 
-          OcrOptionsPanel.Choice ocr = ocrPanel.apply(ctx);
-          if (!ocrPanel.isFixedPaddleMode()
-              && ocr.mode() != de.schliweb.makeacopy.utils.ocr.OCRHelper.OCR_MODE_PADDLE) {
-            // Leaving PaddleOCR: release the engine so the next run starts a clean session
-            try {
-              de.schliweb.makeacopy.utils.ocr.PaddleEngineProvider.releaseAll(ctx);
-            } catch (Throwable ignore) {
-              // Best-effort; failure is non-critical
-            }
-          }
+          ocrPanel.apply(ctx);
           Bundle exportResult = exportPanel.apply(ctx);
           libraryPanel.apply(ctx);
 

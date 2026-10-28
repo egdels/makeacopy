@@ -55,12 +55,6 @@ backup service.
   hand it.
 - **The folder you pick for Inbox Mode**, to save your exports there.
   Android grants access to that folder only.
-- **MakeACopy's own OCR language packs**, in the Tesseract edition from
-  GitHub Releases: the app looks for these add-on apps, which answer to
-  its own `de.schliweb.makeacopy.ACTION_TESSDATA` request, and copies
-  their language files. It sees no other installed apps. The edition on
-  Google Play and F-Droid uses PaddleOCR and does not look for language
-  packs.
 
 ## What leaves your device
 
@@ -89,7 +83,7 @@ the app only through the system dialogs described above.
 ## Third parties
 
 The OCR models, the document detection model and the libraries that run
-them (PaddleOCR or Tesseract, OpenCV, ONNX Runtime) are part of the app
+them (PaddleOCR, OpenCV, ONNX Runtime) are part of the app
 and work entirely on your device; without the Internet permission none
 of them can send anything either. The app contains no third-party SDKs
 for advertising, analytics or crash reporting, and no data is shared with

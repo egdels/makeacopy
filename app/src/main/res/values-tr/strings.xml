@@ -51,10 +51,6 @@
     <string name="ocr_found_rotation_with_score">Bulunan döndürme: %1$d° — OCR puanı: %2$d%%</string>
 
     <!-- OCR otomatik döndürme açıklaması -->
-    <string name="ocr_prep_modes_autorotate_note">OCR Otomatik Döndürme: Etkinleştirildiğinde, OCR sayfayı 90° adımlarla
-        (0/90/180/270) da dener ve en iyi sonucu seçer. Bulunan döndürme, manuel olarak döndürmediyseniz dışa aktarım
-        sırasında otomatik olarak uygulanabilir. Bunu \"Tanıma modunu seç\" bölümünden açıp kapatabilirsiniz.
-    </string>
 
     <string name="initializing_camera">Kamera başlatılıyor…</string>
     <string name="resetting_camera">Kamera sıfırlanıyor…</string>
@@ -212,49 +208,13 @@
     <string name="rotate_right_cd">Sayfayı saat yönünde 90 derece döndür</string>
 
     <!-- OCR modelleri yönetimi (prototip) -->
-    <string name="ocr_models_manage">OCR modelleri</string>
-    <string name="ocr_import_manual">.traineddata dosyasını içe aktar…</string>
-    <string name="ocr_discover_packs">Dil paketlerini keşfet</string>
-    <string name="ocr_no_packs_found">Dil paketi bulunamadı</string>
-    <string name="ocr_choose_pack">Dil paketi seçin</string>
-    <string name="ocr_no_models_in_pack">Bu pakette model bulunamadı</string>
-    <string name="ocr_choose_model">İçe aktarılacak modeli seçin</string>
-    <string name="ocr_import_success">Model içe aktarıldı</string>
-    <string name="ocr_import_failed">İçe aktarma başarısız</string>
 
-    <string name="ocr_delete_best_model">Best modeli sil</string>
-    <string name="ocr_nothing_to_delete">Geçerli dil için silinecek Best model yok</string>
-    <string name="ocr_delete_confirm_title">Best model silinsin mi?</string>
-    <string name="ocr_delete_confirm_msg">%1$s için içe aktarılan Best model silinsin mi? Yerleşik Fast model
-        kullanılabilir olmaya devam edecektir.
-    </string>
-    <string name="ocr_delete_success">Model silindi</string>
-    <string name="ocr_delete_failed">Silme başarısız</string>
 
     <!-- OCR modelleri ipucu -->
-    <string name="ocr_models_hint">Daha hızlı tanıma için kompakt modeller dahil edilmiştir. Daha yüksek doğruluk için
-        daha büyük \"Best\" modelleri yükleyebilirsiniz. İnternet bağlantısı gerekmez.
-    </string>
 
     <!-- OCR tanıma modları açıklaması -->
-    <string name="ocr_explain_prep_modes">Tanıma modlarını açıkla</string>
-    <string name="ocr_prep_modes_title">Tanıma modları: basit açıklama</string>
-    <string name="ocr_prep_modes_message">Görüntüleri OCR motoruna göndermenin iki yolu vardır:\n\n• Orijinal (ön işleme
-        yok) — en hızlı. Fotoğraf olduğu gibi gönderilir. Zaten temiz, yüksek kontrastlı taramalar için en iyisi.
-        Soluk veya gürültülü metinleri kaçırabilir.\n\n• OpenCV Güçlü — zor sayfalar için maksimum doğruluk amacıyla
-        yeniden tasarlandı. Eğrilik düzeltme, gölge/aydınlatma normalleştirme, kenar koruyucu gürültü azaltma ve akıllı
-        büyütme uygular. Önemli olarak, ince ayrıntıları (\"o\" harfindeki halkalar ve küçük rakamlar gibi) korumak için
-        Tesseract\'a yüksek kaliteli gri tonlamalı görüntü (sert siyah beyaz değil) gönderir. Zor sayfalarda en iyi
-        doğruluk; daha yavaş ve daha fazla bellek kullanır.\n\nOCR Son İşleme: Karışıklıklar (0↔O, 1↔l↔I, rn↔m) gibi
-        tipik tanıma hatalarını düzeltir ve belirsiz kelimeleri sözlükle kontrol eder. Varsayılan olarak etkin; teknik
-        kodlar veya seri numaraları için devre dışı bırakın.
-    </string>
 
     <!-- OCR tanıma modu seçimi -->
-    <string name="ocr_choose_prep_mode_menu">Tanıma modu…</string>
-    <string name="ocr_mode_original">Orijinal (ön işleme yok)</string>
-    <string name="ocr_mode_quick">OpenCV Quick (hızlı)</string>
-    <string name="ocr_mode_robust">OpenCV Robust (yüksek kalite)</string>
     <string name="opt_paddle_best_ocr">En iyi Paddle OCR kalitesi (daha yavaş)</string>
     <string name="opt_multi_column_ocr">Çok sütunlu düzen (gazeteler, dergiler)</string>
 
@@ -388,8 +348,6 @@
     <!-- Options: OCR auto-rotate toggle -->
     <string name="opt_ocr_auto_rotate_apply_export">OCR otomatik döndürme (dışa aktarıma da uygula)</string>
     <!-- Options: OCR post-processing toggle -->
-    <string name="opt_ocr_post_processing">OCR son işleme (yaygın hataları düzelt)</string>
-    <string name="opt_layout_analysis">Düzen analizi (sütunlar, tablolar)</string>
     <!-- Options: Experimental directional mapping fallback -->
     <!-- Developer / Debug options -->
     <!-- Library / Collections -->    <!-- PDF Import -->
@@ -434,8 +392,6 @@
 
     <!-- Multi-language OCR selection -->
     <string name="select_ocr_languages">OCR Dillerini Seçin</string>
-    <string name="ocr_max_languages_warning">En fazla 2 dil seçilebilir</string>
-    <string name="ocr_no_language_selected">Lütfen en az bir dil seçin</string>
     <!-- OCR Review: Discard changes dialog -->
     <string name="title_discard_changes">Değişiklikler iptal edilsin mi?</string>
     <string name="msg_discard_changes">Kaydedilmemiş değişiklikleriniz var. İptal etmek istiyor musunuz?</string>
