@@ -34,6 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * The PaddleRecOrtRunner class provides a recognition framework using ONNX Runtime (ORT).
@@ -128,7 +129,8 @@ class PaddleRecOrtRunner implements AutoCloseable {
     private final File dictFile;
     private final String modelKey;
     private volatile String[] vocab;
-    private final Object sessionLock = new Object();
+    // Recognitions share the session (ORT allows concurrent runs); only close() excludes them.
+    private final ReentrantReadWriteLock sessionLock = new ReentrantReadWriteLock();
     private boolean closed;
 
     /**
@@ -297,9 +299,10 @@ class PaddleRecOrtRunner implements AutoCloseable {
             throws Exception {
         try (OrtSession.SessionOptions opts = new OrtSession.SessionOptions()) {
             opts.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-            // Two threads, not half the cores: on a Pixel 7a (2 + 2 + 4 cores) four threads waited for the
-            // small cores; a page took 4.9 s instead of 4.1 s (measured in Sheet, same models and ORT build).
-            opts.setIntraOpNumThreads(2);
+            // One thread per run: PaddleResultBuilder reads several lines at once, one run each. Threads
+            // within a run waited for the small cores of a Pixel 7a (2 + 2 + 4 cores); four lines with one
+            // thread each read an A4 letter in 4.5-5.0 s instead of 5.6-6.6 s (measured in Sheet).
+            opts.setIntraOpNumThreads(1);
             return env.createSession(modelPath, opts);
         } catch (Exception e) {
             Log.w(TAG, "CPU session creation failed, retrying with default options: " + e.getMessage());
@@ -559,7 +562,8 @@ class PaddleRecOrtRunner implements AutoCloseable {
             float[] input = bitmapToNchwRgbNormalized(target, paddedW, targetH);
             long[] inputShape = new long[] {1, 3, targetH, paddedW};
 
-            synchronized (sessionLock) {
+            sessionLock.readLock().lock();
+            try {
                 if (closed) {
                     throw new IllegalStateException("PaddleRecOrtRunner is closed");
                 }
@@ -637,6 +641,8 @@ class PaddleRecOrtRunner implements AutoCloseable {
                             argmaxHead,
                             dec.charFrames());
                 }
+            } finally {
+                sessionLock.readLock().unlock();
             }
         } finally {
             if (!target.isRecycled()) {
@@ -686,13 +692,16 @@ class PaddleRecOrtRunner implements AutoCloseable {
 
     @Override
     public void close() {
-        synchronized (sessionLock) {
+        sessionLock.writeLock().lock();
+        try {
             try {
                 if (!closed && session != null) session.close();
             } catch (Exception e) {
                 Log.w(TAG, "Error closing OrtSession: " + e.getMessage());
             }
             closed = true;
+        } finally {
+            sessionLock.writeLock().unlock();
         }
         // OrtEnvironment ist global/shared; nicht schließen.
     }

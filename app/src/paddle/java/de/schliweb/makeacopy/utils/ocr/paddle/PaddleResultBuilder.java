@@ -47,8 +47,14 @@ final class PaddleResultBuilder {
      * Specifically, the tolerance is calculated as {@code LINE_TOLERANCE_FACTOR × median quad height}.
      */
     @VisibleForTesting static final double LINE_TOLERANCE_FACTOR = 0.6;
-    @VisibleForTesting static final int PARALLEL_RECOGNITION_MIN_QUADS = 8;
-    @VisibleForTesting static final int PARALLEL_RECOGNITION_THREADS = 1;
+    @VisibleForTesting static final int PARALLEL_RECOGNITION_MIN_QUADS = 2;
+    /**
+     * Quads read at the same time, one single-threaded ORT run each (see PaddleRecOrtRunner), over
+     * all lines of the page and longest first; a line is usually a single quad, so reading the
+     * quads of one line in parallel gained nothing. Sheet, Pixel 7a, A4 letter with 263 words:
+     * 5.6-6.6 s -> 4.5-5.0 s, same text.
+     */
+    @VisibleForTesting static final int PARALLEL_RECOGNITION_THREADS = 4;
     @VisibleForTesting static final boolean ENABLE_TALL_QUAD_SPLITTER = false;
     @VisibleForTesting static final boolean ENABLE_BITMAP_WORD_SPLITTER = true;
     @VisibleForTesting static final boolean ENABLE_WIDE_QUAD_SPLITTER = false;
@@ -316,15 +322,15 @@ final class PaddleResultBuilder {
                         ? Executors.newFixedThreadPool(PARALLEL_RECOGNITION_THREADS)
                         : null;
         try {
+            QuadRecognition[][] recognizedLines =
+                    recognizeLines(
+                            full, lines, rec, fallbackRec, cropper, globalCropIndex, allQuads,
+                            recognitionExecutor);
             for (int li = 0; li < lines.size(); li++) {
                 if (li > 0) {
                     textBuilder.append('\n');
                 }
-                QuadRecognition[] recognized =
-                        recognizeLine(full, lines.get(li), rec, fallbackRec, cropper,
-                                globalCropIndex,
-                                allQuads,
-                                recognitionExecutor);
+                QuadRecognition[] recognized = recognizedLines[li];
 
                 // Phase 2: RTL-Detection für die Zeile anhand der erkannten Texte.
                 // Eine Zeile gilt als RTL, wenn mehr ihrer Wort-Codepoints RTL als LTR
@@ -388,15 +394,15 @@ final class PaddleResultBuilder {
     }
 
     /**
-     * Phase 1: Recognition pro Quad in visueller Reihenfolge (links→rechts) — parallel, wenn ein
-     * Executor vorhanden ist und die Zeile mindestens zwei Quads hat. Erst nach Abschluss der
-     * Zeile wird per Codepoint-Heuristik (RTL vs. LTR) über die logische Reihenfolge entschieden —
-     * ohne sprachspezifisches Routing, konsistent mit PdfTextUtils.isRtlText/isRtlLine im
-     * PdfCreator.
+     * Phase 1: Recognition pro Quad, je Zeile in visueller Reihenfolge (links→rechts). Mit
+     * Executor laufen die Quads aller Zeilen gleichzeitig, die längsten zuerst, damit kein
+     * langer Lauf am Ende allein übrig bleibt. Erst nach Abschluss einer Zeile wird per
+     * Codepoint-Heuristik (RTL vs. LTR) über die logische Reihenfolge entschieden — ohne
+     * sprachspezifisches Routing, konsistent mit PdfTextUtils.isRtlText/isRtlLine im PdfCreator.
      */
-    private static QuadRecognition[] recognizeLine(
+    private static QuadRecognition[][] recognizeLines(
             Bitmap full,
-            List<Quad> line,
+            List<List<Quad>> lines,
             PaddleRecOrtRunner rec,
             Callable<PaddleRecOrtRunner> fallbackRec,
             Cropper cropper,
@@ -404,28 +410,67 @@ final class PaddleResultBuilder {
             List<Quad> allQuads,
             ExecutorService recognitionExecutor)
             throws Exception {
-        int n = line.size();
-        QuadRecognition[] recognized = new QuadRecognition[n];
-        if (recognitionExecutor != null && n >= 2) {
-            List<Future<QuadRecognition>> futures = new ArrayList<>(n);
-            for (int qi = 0; qi < n; qi++) {
-                final Quad q = line.get(qi);
-                futures.add(
-                        recognitionExecutor.submit(
-                                (Callable<QuadRecognition>)
-                                        () -> recognizeQuad(full, q, rec, fallbackRec, cropper, globalCropIndex, allQuads)));
+        QuadRecognition[][] recognized = new QuadRecognition[lines.size()][];
+        for (int li = 0; li < lines.size(); li++) {
+            recognized[li] = new QuadRecognition[lines.get(li).size()];
+        }
+        if (recognitionExecutor == null) {
+            for (int li = 0; li < lines.size(); li++) {
+                List<Quad> line = lines.get(li);
+                for (int qi = 0; qi < line.size(); qi++) {
+                    recognized[li][qi] =
+                            recognizeQuad(
+                                    full, line.get(qi), rec, fallbackRec, cropper, globalCropIndex,
+                                    allQuads);
+                }
             }
-            for (int qi = 0; qi < n; qi++) {
-                recognized[qi] = futures.get(qi).get();
-            }
-        } else {
-            for (int qi = 0; qi < n; qi++) {
-                recognized[qi] =
-                        recognizeQuad(
-                                full, line.get(qi), rec, fallbackRec, cropper, globalCropIndex, allQuads);
+            return recognized;
+        }
+        List<int[]> slots = new ArrayList<>(allQuads.size());
+        for (int li = 0; li < lines.size(); li++) {
+            for (int qi = 0; qi < lines.get(li).size(); qi++) slots.add(new int[] {li, qi});
+        }
+        slots.sort(
+                (a, b) ->
+                        Double.compare(
+                                quadLength(lines.get(b[0]).get(b[1])),
+                                quadLength(lines.get(a[0]).get(a[1]))));
+        List<Future<QuadRecognition>> futures = new ArrayList<>(slots.size());
+        for (int[] slot : slots) {
+            final Quad q = lines.get(slot[0]).get(slot[1]);
+            futures.add(
+                    recognitionExecutor.submit(
+                            (Callable<QuadRecognition>)
+                                    () ->
+                                            recognizeQuad(
+                                                    full, q, rec, fallbackRec, cropper,
+                                                    globalCropIndex, allQuads)));
+        }
+        for (int i = 0; i < slots.size(); i++) {
+            int[] slot = slots.get(i);
+            try {
+                recognized[slot[0]][slot[1]] = futures.get(i).get();
+            } catch (java.util.concurrent.ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof Exception) throw (Exception) cause;
+                if (cause instanceof Error) throw (Error) cause;
+                throw e;
             }
         }
         return recognized;
+    }
+
+    /** Longer side of the quad's bounding box: the text length, also of a vertical column. */
+    private static double quadLength(Quad q) {
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        for (int i = 0; i < 4; i++) {
+            minX = Math.min(minX, q.x[i]);
+            maxX = Math.max(maxX, q.x[i]);
+            minY = Math.min(minY, q.y[i]);
+            maxY = Math.max(maxY, q.y[i]);
+        }
+        return Math.max(maxX - minX, maxY - minY);
     }
 
     private static boolean isRtlLineByText(QuadRecognition[] recognized) {
