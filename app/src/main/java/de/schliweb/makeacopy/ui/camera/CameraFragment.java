@@ -2543,13 +2543,26 @@ public class CameraFragment extends Fragment implements SensorEventListener {
 
   // Verbose environment logging to help diagnose device-specific issues
   private void logEnvironment() {
-    String versionName = BuildConfig.VERSION_NAME;
-    int versionCode = BuildConfig.VERSION_CODE;
+    // Version read at runtime, not from BuildConfig: VERSION_CODE differs per ABI split, and R8
+    // inlined it into this string, so a split built in one Gradle run for all ABIs no longer
+    // matched F-Droid's build of that ABI alone (reproducible builds, 4.8.0).
+    String versionName = "?";
+    long versionCode = -1;
+    Context ctx = getContext();
+    if (ctx != null) {
+      try {
+        android.content.pm.PackageInfo pi =
+            ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0);
+        versionName = pi.versionName;
+        versionCode = pi.getLongVersionCode();
+      } catch (Exception ignore) {
+        // Best-effort; the log line is diagnostic only
+      }
+    }
     String abis =
         Build.SUPPORTED_ABIS != null ? java.util.Arrays.toString(Build.SUPPORTED_ABIS) : "unknown";
     Locale loc = Locale.getDefault();
     boolean analysisPref = false;
-    Context ctx = getContext();
     if (ctx != null) {
       android.content.SharedPreferences prefs =
           ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
