@@ -14,8 +14,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import de.schliweb.makeacopy.utils.image.ImageOps;
-import de.schliweb.makeacopy.utils.image.raster.Gray;
+import de.schliweb.makeacopy.utils.image.raster.LazyGradients;
 
 /**
  * Kanten-basiertes Refinement eines grob erkannten Dokument-Quads (Edge-Snapping).
@@ -151,18 +150,22 @@ public final class EdgeSnapCornerRefiner {
 
       double scale = Math.min(1.0, WORK_MAX_EDGE / (double) Math.max(srcW, srcH));
 
-      Gray gray = Gray.ofArgb(ImageOps.pixels(src), srcW, srcH);
-      if (scale < 1.0) {
-        gray =
-            gray.downscaled(
-                Math.max(2, (int) Math.round(srcW * scale)),
-                Math.max(2, (int) Math.round(srcH * scale)));
+      // Like Sheet's EdgeSnap: scale natively first, then compute the gradients only where the
+      // edge search looks. Doing the 12 MP photo pixel by pixel in Java took seconds on a phone.
+      int workW = Math.max(2, (int) Math.round(srcW * scale));
+      int workH = Math.max(2, (int) Math.round(srcH * scale));
+      Bitmap work = scale < 1.0 ? Bitmap.createScaledBitmap(src, workW, workH, true) : src;
+      if (work.getConfig() == Bitmap.Config.HARDWARE) {
+        Bitmap soft = work.copy(Bitmap.Config.ARGB_8888, false);
+        if (work != src) work.recycle();
+        work = soft;
       }
-      gray = gray.blurred();
-      int w = gray.width;
-      int h = gray.height;
-      float[] gxArr = gray.sobelX().px;
-      float[] gyArr = gray.sobelY().px;
+      int w = work.getWidth();
+      int h = work.getHeight();
+      int[] argb = new int[w * h];
+      work.getPixels(argb, 0, w, 0, 0, w, h);
+      if (work != src) work.recycle();
+      LazyGradients gradients = new LazyGradients(argb, w, h);
 
       // Quad in den Arbeitsmaßstab bringen
       double[][] q = new double[4][2];
@@ -197,7 +200,7 @@ public final class EdgeSnapCornerRefiner {
       for (int i = 0; i < 4; i++) {
         double[] a = q[i];
         double[] b = q[(i + 1) % 4];
-        double[] fitted = snapEdgeLine(gxArr, gyArr, w, h, a, b, searchRadius, i);
+        double[] fitted = snapEdgeLine(gradients::gx, gradients::gy, w, h, a, b, searchRadius, i);
         if (fitted != null) {
           lines[i] = fitted;
         } else {
@@ -280,11 +283,38 @@ public final class EdgeSnapCornerRefiner {
    *
    * @return {@code {px, py, dx, dy}} oder {@code null}, wenn zu wenige valide Punkte vorliegen.
    */
+  /** A gradient component at a pixel. */
+  @VisibleForTesting
+  interface Gradient {
+    float at(int x, int y);
+  }
+
   @Nullable
   @VisibleForTesting
   static double[] snapEdgeLine(
       float[] gxArr,
       float[] gyArr,
+      int w,
+      int h,
+      double[] a,
+      double[] b,
+      double searchRadius,
+      int edgeIndex) {
+    return snapEdgeLine(
+        (x, y) -> gxArr[y * w + x],
+        (x, y) -> gyArr[y * w + x],
+        w,
+        h,
+        a,
+        b,
+        searchRadius,
+        edgeIndex);
+  }
+
+  @Nullable
+  private static double[] snapEdgeLine(
+      Gradient gx,
+      Gradient gy,
       int w,
       int h,
       double[] a,
@@ -334,10 +364,9 @@ public final class EdgeSnapCornerRefiner {
         if (ix < 1 || iy < 1 || ix >= w - 1 || iy >= h - 1) {
           resp = -1.0;
         } else {
-          int idx = iy * w + ix;
           // Projektion des Gradienten auf die Normale: reagiert nur auf Kanten, die parallel
           // zur erwarteten Dokumentkante verlaufen.
-          g = gxArr[idx] * nx + gyArr[idx] * ny;
+          g = gx.at(ix, iy) * nx + gy.at(ix, iy) * ny;
           resp = Math.abs(g);
         }
         prof[u + r] = resp;
