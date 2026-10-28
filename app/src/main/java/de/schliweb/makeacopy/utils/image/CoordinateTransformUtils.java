@@ -12,8 +12,8 @@ package de.schliweb.makeacopy.utils.image;
 import android.graphics.Bitmap;
 import android.util.Log;
 import android.widget.ImageView;
+import de.schliweb.makeacopy.utils.geom.Point;
 import lombok.experimental.UtilityClass;
-import org.opencv.core.Point;
 
 /**
  * Utility class providing methods for coordinate transformation between view space and image space

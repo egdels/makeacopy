@@ -13,7 +13,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 /**
  * Validates the heuristic used by {@link TrapezoidSelectionView#looksAlreadyCropped(Point[], int,

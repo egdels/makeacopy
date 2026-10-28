@@ -12,16 +12,16 @@ import android.graphics.Paint;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import de.schliweb.makeacopy.utils.image.DewarpModel;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils.WarpMode;
+import de.schliweb.makeacopy.utils.image.ImageOps;
+import de.schliweb.makeacopy.utils.image.ImageOps.WarpMode;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 /**
  * Instrumented-Tests für das Dewarping gewölbter Buchseiten (Issue #91, Phase 1): {@link
- * DewarpModel} und {@link OpenCVUtils#applyDewarp}.
+ * DewarpModel} und {@link ImageOps#applyDewarp}.
  */
 @RunWith(AndroidJUnit4.class)
 public class DewarpInstrumentedTest {
@@ -31,7 +31,6 @@ public class DewarpInstrumentedTest {
   @BeforeClass
   public static void setUpOnce() {
     appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    OpenCVUtils.init(appContext);
   }
 
   // ---------- Helper ----------
@@ -88,7 +87,7 @@ public class DewarpInstrumentedTest {
    * fills the whole bitmap, and a white page — with straight left/right edges but top and bottom
    * edges bowed by {@code sagittaPx} at their midpoint, like a cylindrically bent book page — is
    * filled on top of it. {@code lines} curved black "text" strokes are drawn inside the page purely
-   * for visual realism; the actual signal {@link OpenCVUtils#estimateDewarpCurveOffsets} traces is
+   * for visual realism; the actual signal {@link ImageOps#estimateDewarpCurveOffsets} traces is
    * the curved paper/background edge itself (Otsu threshold crossing), not the text.
    *
    * @return the bitmap plus the straight-chord corners (TL, TR, BR, BL) of the page, i.e. the quad
@@ -106,7 +105,7 @@ public class DewarpInstrumentedTest {
     Point bl = new Point(pageLeft, pageBottom);
 
     // The white page itself: straight side edges, top/bottom edges bowed downward by sagittaPx at
-    // their midpoint (same sign convention as OpenCVUtils#estimateDewarpEdgeProfiles: positive =
+    // their midpoint (same sign convention as ImageOps#estimateDewarpEdgeProfiles: positive =
     // displaced in chord-normal direction, i.e. downward for a left-to-right top/bottom chord).
     Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     fill.setStyle(Paint.Style.FILL);
@@ -184,13 +183,12 @@ public class DewarpInstrumentedTest {
   @Test
   public void applyDewarp_nullModel_returnsSameInstance() {
     Bitmap src = createSolidBitmap(100, 80, Color.WHITE);
-    Bitmap out = OpenCVUtils.applyDewarp(src, null, WarpMode.AUTO_PROJECTIVE, null);
+    Bitmap out = ImageOps.applyDewarp(src, null, WarpMode.AUTO_PROJECTIVE, null);
     assertSame("Bei null-Modell muss das Original zurückgegeben werden", src, out);
   }
 
   @Test
   public void applyDewarp_straightModel_matchesPerspectivePipeline() {
-    assumeOpenCvInitialized();
     Bitmap src = createSolidBitmap(300, 200, Color.WHITE);
     Point[] corners =
         new Point[] {
@@ -201,9 +199,9 @@ public class DewarpInstrumentedTest {
     Point topMid = new Point((src.getWidth() - 1.0) / 2.0, 0);
     Point bottomMid = new Point((src.getWidth() - 1.0) / 2.0, src.getHeight() - 1.0);
     DewarpModel model = DewarpModel.fromOnCurveMidpoints(corners, topMid, bottomMid);
-    Bitmap dewarped = OpenCVUtils.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
+    Bitmap dewarped = ImageOps.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
     Bitmap perspective =
-        OpenCVUtils.applyPerspectiveCorrection(src, corners, WarpMode.AUTO_PROJECTIVE, null);
+        ImageOps.applyPerspectiveCorrection(src, corners, WarpMode.AUTO_PROJECTIVE, null);
     assertNotNull(dewarped);
     assertEquals(perspective.getWidth(), dewarped.getWidth());
     assertEquals(perspective.getHeight(), dewarped.getHeight());
@@ -211,10 +209,9 @@ public class DewarpInstrumentedTest {
 
   @Test
   public void applyDewarp_curvedLine_becomesStraight() {
-    assumeOpenCvInitialized();
     DewarpModel model = createCurvedModel();
     Bitmap src = createCurvedLineBitmap(model, 400, 300);
-    Bitmap out = OpenCVUtils.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
+    Bitmap out = ImageOps.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
     assertNotNull(out);
     assertNotSame("Gekrümmtes Modell darf nicht auf das Original zurückfallen", src, out);
 
@@ -252,7 +249,6 @@ public class DewarpInstrumentedTest {
 
   @Test
   public void estimateDewarpCurveOffsets_curvedTextLines_returnsExpectedOffsets() {
-    assumeOpenCvInitialized();
     // Real paper/background contrast: a dark background fills the whole bitmap, the white page
     // is inset from the bitmap border (leaves room for the algorithm's vertical expansion band,
     // see DEWARP_ESTIMATE_EXPAND_FRAC) and its top/bottom edges bow by `sagitta` px, like a
@@ -264,7 +260,7 @@ public class DewarpInstrumentedTest {
         createCurvedPageWithTextBitmap(w, h, pageLeft, pageTop, pageRight, pageBottom, 8, sagitta);
     Bitmap src = (Bitmap) fixture[0];
     Point[] corners = (Point[]) fixture[1];
-    double[] offsets = OpenCVUtils.estimateDewarpCurveOffsets(src, corners);
+    double[] offsets = ImageOps.estimateDewarpCurveOffsets(src, corners);
     assertNotNull("Bei einer echten Papierkante muss eine Schätzung geliefert werden", offsets);
     assertEquals(2, offsets.length);
     // Erwarteter Offset: Sagitta / Sehnenlänge ≈ 25 / 480 ≈ 0.052; positiv = nach unten
@@ -311,11 +307,10 @@ public class DewarpInstrumentedTest {
 
   @Test
   public void applyDewarp_depthChangesOutput() {
-    assumeOpenCvInitialized();
     DewarpModel model = createCurvedModel();
     Bitmap src = createCurvedLineBitmap(model, 400, 300);
-    Bitmap neutral = OpenCVUtils.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
-    Bitmap deep = OpenCVUtils.applyDewarp(src, model.withDepth(0.8), WarpMode.AUTO_PROJECTIVE, null);
+    Bitmap neutral = ImageOps.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
+    Bitmap deep = ImageOps.applyDewarp(src, model.withDepth(0.8), WarpMode.AUTO_PROJECTIVE, null);
     assertNotNull(neutral);
     assertNotNull(deep);
     // Zielgröße hängt nur von den Ecken ab und muss identisch bleiben
@@ -337,7 +332,6 @@ public class DewarpInstrumentedTest {
 
   @Test
   public void applyDewarp_straightModelWithDepth_usesRemapPath() {
-    assumeOpenCvInitialized();
     Bitmap src = createSolidBitmap(300, 200, Color.WHITE);
     Point[] corners =
         new Point[] {
@@ -350,40 +344,26 @@ public class DewarpInstrumentedTest {
     DewarpModel model = DewarpModel.fromOnCurveMidpoints(corners, topMid, bottomMid).withDepth(0.5);
     // Gerade Kanten, aber Depth ≠ 0: darf nicht auf die Perspektiv-Pipeline zurückfallen,
     // sondern muss den remap-Pfad nehmen (gleiche Zielgröße, kein Fehler).
-    Bitmap out = OpenCVUtils.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
+    Bitmap out = ImageOps.applyDewarp(src, model, WarpMode.AUTO_PROJECTIVE, null);
     assertNotNull(out);
     assertNotSame(src, out);
     Bitmap perspective =
-        OpenCVUtils.applyPerspectiveCorrection(src, corners, WarpMode.AUTO_PROJECTIVE, null);
+        ImageOps.applyPerspectiveCorrection(src, corners, WarpMode.AUTO_PROJECTIVE, null);
     assertEquals(perspective.getWidth(), out.getWidth());
     assertEquals(perspective.getHeight(), out.getHeight());
   }
 
   @Test
   public void estimateDewarpCurveOffsets_invalidOrEmptyInput_returnsNull() {
-    assertNull(OpenCVUtils.estimateDewarpCurveOffsets(null, null));
+    assertNull(ImageOps.estimateDewarpCurveOffsets(null, null));
     Bitmap blank = createSolidBitmap(300, 200, Color.WHITE);
     assertNull(
         "Zu wenige Ecken müssen null liefern",
-        OpenCVUtils.estimateDewarpCurveOffsets(
+        ImageOps.estimateDewarpCurveOffsets(
             blank, new Point[] {new Point(0, 0), new Point(10, 0), new Point(10, 10)}));
-    assumeOpenCvInitialized();
     Point[] corners =
         new Point[] {new Point(5, 5), new Point(295, 5), new Point(295, 195), new Point(5, 195)};
     // Leere (weiße) Seite: keine Textzeilen → keine Schätzung
-    assertNull(OpenCVUtils.estimateDewarpCurveOffsets(blank, corners));
-  }
-
-  // ---------- Assumption Helper ----------
-  private static void assumeOpenCvInitialized() {
-    boolean ok;
-    try {
-      Bitmap dummy = createSolidBitmap(2, 2, Color.BLACK);
-      Bitmap res = OpenCVUtils.toGray(dummy);
-      ok = (res != null);
-    } catch (Throwable t) {
-      ok = false;
-    }
-    org.junit.Assume.assumeTrue("OpenCV nicht initialisiert – bildbasierte Tests übersprungen", ok);
+    assertNull(ImageOps.estimateDewarpCurveOffsets(blank, corners));
   }
 }

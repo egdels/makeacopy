@@ -9,7 +9,7 @@
  */
 package de.schliweb.makeacopy.utils.image;
 
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 /**
  * Cylindrical page-distortion model for dewarping curved book pages (issue #91, Phase 1).
@@ -31,7 +31,7 @@ import org.opencv.core.Point;
  *
  * <p>All points are expected to be in the same coordinate space (typically full-resolution image
  * pixels). Instances are immutable value holders; the actual dewarping is performed by {@link
- * OpenCVUtils#applyDewarp}.
+ * ImageOps#applyDewarp}.
  */
 public final class DewarpModel {
   /** Maximum absolute value of the {@link #depth} parameter. */

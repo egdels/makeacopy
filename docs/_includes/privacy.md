@@ -83,7 +83,7 @@ the app only through the system dialogs described above.
 ## Third parties
 
 The OCR models, the document detection model and the libraries that run
-them (PaddleOCR, OpenCV, ONNX Runtime) are part of the app
+them (PaddleOCR, ONNX Runtime) are part of the app
 and work entirely on your device; without the Internet permission none
 of them can send anything either. The app contains no third-party SDKs
 for advertising, analytics or crash reporting, and no data is shared with

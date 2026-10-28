@@ -9,7 +9,7 @@
  */
 package de.schliweb.makeacopy.utils.image;
 
-/** Simple options for offline OpenCV-based document cleanup. */
+/** Options for the offline document cleanup. */
 public class DocumentCleanupOptions {
   public DocumentCleanupMode mode = DocumentCleanupMode.ORIGINAL;
   public boolean preserveColor = true;

@@ -37,7 +37,7 @@ import de.schliweb.makeacopy.utils.image.BitmapUtils;
 import de.schliweb.makeacopy.utils.image.CoordinateTransformUtils;
 import de.schliweb.makeacopy.utils.image.DewarpState;
 import de.schliweb.makeacopy.utils.image.ImageLoader;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.infra.LogSafe;
 import de.schliweb.makeacopy.utils.ui.A11yUtils;
@@ -89,7 +89,6 @@ public class CropFragment extends Fragment {
   @Override
   public View onCreateView(
       @NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-    OpenCVUtils.init(requireContext());
     cropViewModel = new ViewModelProvider(requireActivity()).get(CropViewModel.class);
     cameraViewModel = new ViewModelProvider(requireActivity()).get(CameraViewModel.class);
     binding = FragmentCropBinding.inflate(inflater, container, false);
@@ -548,13 +547,6 @@ public class CropFragment extends Fragment {
     cropA11yLastAnnounceTs = now;
     new Thread(
             () -> {
-              try {
-                // Ensure OpenCV is ready
-                OpenCVUtils.init(requireContext().getApplicationContext());
-              } catch (Throwable ignore) {
-                // Best-effort; failure is non-critical
-              }
-
               boolean hasValid = false;
 
               // DocQuad detector (via forCrop)
@@ -664,12 +656,13 @@ public class CropFragment extends Fragment {
         // auto-detection).
         Bitmap displayed = cropViewModel.getImageBitmap().getValue();
         if (displayed != null && displayed.getWidth() > 0 && displayed.getHeight() > 0) {
-          org.opencv.core.Point[] full =
-              new org.opencv.core.Point[] {
-                new org.opencv.core.Point(0, 0),
-                new org.opencv.core.Point(displayed.getWidth(), 0),
-                new org.opencv.core.Point(displayed.getWidth(), displayed.getHeight()),
-                new org.opencv.core.Point(0, displayed.getHeight())
+          de.schliweb.makeacopy.utils.geom.Point[] full =
+              new de.schliweb.makeacopy.utils.geom.Point[] {
+                new de.schliweb.makeacopy.utils.geom.Point(0, 0),
+                new de.schliweb.makeacopy.utils.geom.Point(displayed.getWidth(), 0),
+                new de.schliweb.makeacopy.utils.geom.Point(
+                    displayed.getWidth(), displayed.getHeight()),
+                new de.schliweb.makeacopy.utils.geom.Point(0, displayed.getHeight())
               };
           binding.trapezoidSelection.setCornersFromImageCoordinates(full);
           reEditCornersRestored = true;
@@ -679,10 +672,10 @@ public class CropFragment extends Fragment {
         return;
       }
 
-      org.opencv.core.Point[] pts = new org.opencv.core.Point[4];
+      de.schliweb.makeacopy.utils.geom.Point[] pts = new de.schliweb.makeacopy.utils.geom.Point[4];
       for (int i = 0; i < 4; i++) {
         if (persisted[i] == null) return;
-        pts[i] = new org.opencv.core.Point(persisted[i].x, persisted[i].y);
+        pts[i] = new de.schliweb.makeacopy.utils.geom.Point(persisted[i].x, persisted[i].y);
       }
       Bitmap displayedBitmap = cropViewModel.getImageBitmap().getValue();
       if (displayedBitmap == null
@@ -704,16 +697,10 @@ public class CropFragment extends Fragment {
    * Performs the cropping operation on the current image bitmap.
    *
    * <p>This method checks if a valid image bitmap exists in the cropViewModel. If no bitmap is
-   * present, the method exits early. It ensures OpenCV is initialized, transforming the corners of
-   * a trapezoid selection from view coordinates to image coordinates if available. Using OpenCV
-   * utilities, the method applies a perspective correction based on the transformed trapezoid
-   * corners. If the perspective correction operation produces a valid cropped bitmap, it updates
-   * the cropViewModel with the new cropped bitmap and marks the image as cropped.
-   *
-   * <p>Key operations: - Verifies a bitmap is available in the cropViewModel. - Initializes OpenCV
-   * if it has not yet been initialized. - Retrieves and transforms trapezoid selection corners, if
-   * present. - Performs perspective correction using OpenCV to generate a cropped bitmap. - Updates
-   * the cropViewModel with the new cropped image and sets the cropped flag to true.
+   * present, the method exits early. It transforms the corners of the trapezoid selection from view
+   * coordinates to image coordinates and applies a perspective correction ({@link ImageOps}) based
+   * on them. If that produces a valid cropped bitmap, it updates the cropViewModel with the new
+   * cropped bitmap and marks the image as cropped.
    */
   private static final String CROP_LOG = "[CROP_LOG] ";
 
@@ -725,7 +712,6 @@ public class CropFragment extends Fragment {
       android.util.Log.w(TAG, LP + "performCrop: No bitmap available");
       return;
     }
-    if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(requireContext());
 
     Bitmap fullResSource = buildFullResCropSource(displayedBitmap);
     android.util.Log.d(
@@ -741,7 +727,7 @@ public class CropFragment extends Fragment {
             + fullResSource.getHeight());
 
     // 1) Get corners in displayed-bitmap image coordinates
-    org.opencv.core.Point[] imgCornersDisplay =
+    de.schliweb.makeacopy.utils.geom.Point[] imgCornersDisplay =
         selectedCornersInDisplayCoordinates(displayedBitmap);
     // Guard: if we have no valid corners, do not proceed to crop; avoid forwarding the original
     // image or warping with a degenerate quadrilateral.
@@ -760,7 +746,7 @@ public class CropFragment extends Fragment {
     }
 
     // 2) If we are using a higher-resolution source than displayed, scale corners accordingly
-    org.opencv.core.Point[] cornersForSource;
+    de.schliweb.makeacopy.utils.geom.Point[] cornersForSource;
     if (fullResSource != displayedBitmap) {
       float sx = fullResSource.getWidth() / (float) displayedBitmap.getWidth();
       float sy = fullResSource.getHeight() / (float) displayedBitmap.getHeight();
@@ -790,7 +776,7 @@ public class CropFragment extends Fragment {
     long dt = android.os.SystemClock.uptimeMillis() - t0;
     if (croppedBitmap == null) {
       android.util.Log.w(
-          TAG, LP + "performCrop: OpenCV returned null cropped bitmap (took=" + dt + "ms)");
+          TAG, LP + "performCrop: perspective correction returned null (took=" + dt + "ms)");
       UIUtils.showToast(
           requireContext(),
           getString(R.string.error_displaying_image, "crop failed"),
@@ -895,11 +881,13 @@ public class CropFragment extends Fragment {
   }
 
   /** The trapezoid corners in displayed-bitmap image coordinates, or {@code null} on failure. */
-  private org.opencv.core.Point[] selectedCornersInDisplayCoordinates(Bitmap displayedBitmap) {
+  private de.schliweb.makeacopy.utils.geom.Point[] selectedCornersInDisplayCoordinates(
+      Bitmap displayedBitmap) {
     final String LP = CROP_LOG;
     try {
-      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
-      org.opencv.core.Point[] imgCornersDisplay =
+      de.schliweb.makeacopy.utils.geom.Point[] viewCorners =
+          binding.trapezoidSelection.getCorners();
+      de.schliweb.makeacopy.utils.geom.Point[] imgCornersDisplay =
           CoordinateTransformUtils.transformViewToImageCoordinates(
               viewCorners, displayedBitmap, binding.imageToCrop);
       android.util.Log.d(
@@ -917,10 +905,12 @@ public class CropFragment extends Fragment {
   }
 
   @androidx.annotation.VisibleForTesting
-  static org.opencv.core.Point[] scalePoints(org.opencv.core.Point[] points, double sx, double sy) {
-    org.opencv.core.Point[] scaled = new org.opencv.core.Point[points.length];
+  static de.schliweb.makeacopy.utils.geom.Point[] scalePoints(
+      de.schliweb.makeacopy.utils.geom.Point[] points, double sx, double sy) {
+    de.schliweb.makeacopy.utils.geom.Point[] scaled =
+        new de.schliweb.makeacopy.utils.geom.Point[points.length];
     for (int i = 0; i < points.length; i++) {
-      scaled[i] = new org.opencv.core.Point(points[i].x * sx, points[i].y * sy);
+      scaled[i] = new de.schliweb.makeacopy.utils.geom.Point(points[i].x * sx, points[i].y * sy);
     }
     return scaled;
   }
@@ -932,12 +922,15 @@ public class CropFragment extends Fragment {
    * @return the model, or {@code null} to fall back to the straight perspective correction
    */
   private de.schliweb.makeacopy.utils.image.DewarpModel buildDewarpModel(
-      Bitmap displayedBitmap, Bitmap fullResSource, org.opencv.core.Point[] cornersForSource) {
+      Bitmap displayedBitmap,
+      Bitmap fullResSource,
+      de.schliweb.makeacopy.utils.geom.Point[] cornersForSource) {
     final String LP = CROP_LOG;
     de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel = null;
     try {
-      org.opencv.core.Point[] midsView = binding.trapezoidSelection.getCurveMidpointsViewCoords();
-      org.opencv.core.Point[] midsDisplay =
+      de.schliweb.makeacopy.utils.geom.Point[] midsView =
+          binding.trapezoidSelection.getCurveMidpointsViewCoords();
+      de.schliweb.makeacopy.utils.geom.Point[] midsDisplay =
           CoordinateTransformUtils.transformViewToImageCoordinates(
               midsView, displayedBitmap, binding.imageToCrop);
       if (midsDisplay != null
@@ -950,10 +943,12 @@ public class CropFragment extends Fragment {
           sx = fullResSource.getWidth() / (double) displayedBitmap.getWidth();
           sy = fullResSource.getHeight() / (double) displayedBitmap.getHeight();
         }
-        org.opencv.core.Point topMid =
-            new org.opencv.core.Point(midsDisplay[0].x * sx, midsDisplay[0].y * sy);
-        org.opencv.core.Point bottomMid =
-            new org.opencv.core.Point(midsDisplay[1].x * sx, midsDisplay[1].y * sy);
+        de.schliweb.makeacopy.utils.geom.Point topMid =
+            new de.schliweb.makeacopy.utils.geom.Point(
+                midsDisplay[0].x * sx, midsDisplay[0].y * sy);
+        de.schliweb.makeacopy.utils.geom.Point bottomMid =
+            new de.schliweb.makeacopy.utils.geom.Point(
+                midsDisplay[1].x * sx, midsDisplay[1].y * sy);
         dewarpModel =
             de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
                 cornersForSource, topMid, bottomMid);
@@ -993,7 +988,7 @@ public class CropFragment extends Fragment {
   /** Warps the source according to the selected aspect ratio (and the dewarp model, if any). */
   private Bitmap warp(
       Bitmap fullResSource,
-      org.opencv.core.Point[] cornersForSource,
+      de.schliweb.makeacopy.utils.geom.Point[] cornersForSource,
       de.schliweb.makeacopy.utils.image.DewarpModel dewarpModel) {
     final String LP = CROP_LOG;
     CropAspectRatio sel = CropPrefsHelper.getLastAspect(requireContext());
@@ -1002,12 +997,11 @@ public class CropFragment extends Fragment {
         // Issue #91: the legacy heuristic has no WarpMode counterpart; use AUTO_PROJECTIVE
         // for dewarping so the curved selection is honored under aspect=ORIGINAL as well.
         android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → dewarp AUTO_PROJECTIVE");
-        return OpenCVUtils.applyDewarp(
-            fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+        return ImageOps.applyDewarp(
+            fullResSource, dewarpModel, ImageOps.WarpMode.AUTO_PROJECTIVE, null);
       } else {
         android.util.Log.d(TAG, LP + "performCrop: aspect=ORIGINAL → legacy heuristic");
-        return OpenCVUtils.applyPerspectiveCorrectionLegacyHeuristic(
-            fullResSource, cornersForSource);
+        return ImageOps.applyPerspectiveCorrectionLegacyHeuristic(fullResSource, cornersForSource);
       }
     } else {
       Double ratio = CropPrefsHelper.resolveActiveRatio(requireContext());
@@ -1020,10 +1014,10 @@ public class CropFragment extends Fragment {
                 + " → AUTO_PROJECTIVE"
                 + (dewarpModel != null ? " (dewarp)" : ""));
         return dewarpModel != null
-            ? OpenCVUtils.applyDewarp(
-                fullResSource, dewarpModel, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null)
-            : OpenCVUtils.applyPerspectiveCorrection(
-                fullResSource, cornersForSource, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+            ? ImageOps.applyDewarp(
+                fullResSource, dewarpModel, ImageOps.WarpMode.AUTO_PROJECTIVE, null)
+            : ImageOps.applyPerspectiveCorrection(
+                fullResSource, cornersForSource, ImageOps.WarpMode.AUTO_PROJECTIVE, null);
       } else {
         android.util.Log.d(
             TAG,
@@ -1034,23 +1028,24 @@ public class CropFragment extends Fragment {
                 + String.format(java.util.Locale.US, "%.4f", ratio)
                 + (dewarpModel != null ? " (dewarp)" : ""));
         return dewarpModel != null
-            ? OpenCVUtils.applyDewarp(
-                fullResSource, dewarpModel, OpenCVUtils.WarpMode.FIXED_RATIO, ratio)
-            : OpenCVUtils.applyPerspectiveCorrection(
-                fullResSource, cornersForSource, OpenCVUtils.WarpMode.FIXED_RATIO, ratio);
+            ? ImageOps.applyDewarp(fullResSource, dewarpModel, ImageOps.WarpMode.FIXED_RATIO, ratio)
+            : ImageOps.applyPerspectiveCorrection(
+                fullResSource, cornersForSource, ImageOps.WarpMode.FIXED_RATIO, ratio);
       }
     }
   }
 
   private void onCropSucceeded(
-      Bitmap croppedBitmap, org.opencv.core.Point[] cornersForSource, DewarpState acceptedDewarp) {
+      Bitmap croppedBitmap,
+      de.schliweb.makeacopy.utils.geom.Point[] cornersForSource,
+      DewarpState acceptedDewarp) {
     final String LP = CROP_LOG;
     // Post-warp safety net: trim residual non-paper border (dark background remnants left
     // when the crop trapezoid was slightly looser than the actual paper edges). This protects
     // downstream OCR from artefacts caused by black borders along the page.
     // TODO: Move to OCRFragement and OCRReviewFragment
     /*try {
-      Bitmap trimmed = OpenCVUtils.trimNonPaperBorder(croppedBitmap);
+      Bitmap trimmed = ImageOps.trimNonPaperBorder(croppedBitmap);
       if (trimmed != null && trimmed != croppedBitmap) {
         android.util.Log.d(
             TAG,
@@ -1608,7 +1603,7 @@ public class CropFragment extends Fragment {
 
   /**
    * Renders a live preview of the current depth adjustment (Issue #91, Phase 4) by applying {@link
-   * de.schliweb.makeacopy.utils.image.OpenCVUtils#applyDewarp} to the currently displayed
+   * de.schliweb.makeacopy.utils.image.ImageOps#applyDewarp} to the currently displayed
    * (screen-resolution, not full-res) bitmap on a background thread, then swaps it into {@code
    * image_to_crop} on the main thread. Mirrors the corner/midpoint transform used by {@link
    * #performCrop()}, but skips the full-res scaling step since the source here already is the
@@ -1621,14 +1616,16 @@ public class CropFragment extends Fragment {
     final Bitmap displayedBitmap = cropViewModel.getImageBitmap().getValue();
     if (displayedBitmap == null || displayedBitmap.isRecycled()) return;
 
-    final org.opencv.core.Point[] imgCorners;
-    final org.opencv.core.Point[] midsDisplay;
+    final de.schliweb.makeacopy.utils.geom.Point[] imgCorners;
+    final de.schliweb.makeacopy.utils.geom.Point[] midsDisplay;
     try {
-      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
+      de.schliweb.makeacopy.utils.geom.Point[] viewCorners =
+          binding.trapezoidSelection.getCorners();
       imgCorners =
           CoordinateTransformUtils.transformViewToImageCoordinates(
               viewCorners, displayedBitmap, binding.imageToCrop);
-      org.opencv.core.Point[] midsView = binding.trapezoidSelection.getCurveMidpointsViewCoords();
+      de.schliweb.makeacopy.utils.geom.Point[] midsView =
+          binding.trapezoidSelection.getCurveMidpointsViewCoords();
       midsDisplay =
           CoordinateTransformUtils.transformViewToImageCoordinates(
               midsView, displayedBitmap, binding.imageToCrop);
@@ -1646,8 +1643,8 @@ public class CropFragment extends Fragment {
       return;
     }
 
-    final org.opencv.core.Point topMid = midsDisplay[0];
-    final org.opencv.core.Point bottomMid = midsDisplay[1];
+    final de.schliweb.makeacopy.utils.geom.Point topMid = midsDisplay[0];
+    final de.schliweb.makeacopy.utils.geom.Point bottomMid = midsDisplay[1];
     final double depth = dewarpDepth;
     final double[] topProfile = estimatedTopEdgeProfile;
     final double[] bottomProfile = estimatedBottomEdgeProfile;
@@ -1663,7 +1660,6 @@ public class CropFragment extends Fragment {
             () -> {
               Bitmap preview = null;
               try {
-                if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(requireContext());
                 de.schliweb.makeacopy.utils.image.DewarpModel model =
                     de.schliweb.makeacopy.utils.image.DewarpModel.fromOnCurveMidpoints(
                         imgCorners, topMid, bottomMid);
@@ -1673,8 +1669,8 @@ public class CropFragment extends Fragment {
                   }
                   model = model.withDepth(depth);
                   preview =
-                      OpenCVUtils.applyDewarp(
-                          displayedBitmap, model, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+                      ImageOps.applyDewarp(
+                          displayedBitmap, model, ImageOps.WarpMode.AUTO_PROJECTIVE, null);
                   if (preview != null && preview != displayedBitmap && userDeg != 0) {
                     Bitmap rotated = rotateBitmap(preview, userDeg);
                     if (rotated != preview) {
@@ -1770,11 +1766,11 @@ public class CropFragment extends Fragment {
    * current view-space corners are transformed to displayed-image coordinates via {@link
    * CoordinateTransformUtils#transformViewToImageCoordinates}, validated with {@link
    * TrapezoidSelectionView#isValidImageQuad}, and passed to {@code
-   * OpenCVUtils.estimateDewarpCurveOffsets}. The resulting offset fractions (same sign convention
-   * as {@link TrapezoidSelectionView#setCurveOffsetFractions(double, double)}) are posted back to
-   * the main thread and applied only if the binding is still alive, curved mode is still active and
-   * no newer estimation run has been started. A {@code null} estimate leaves the handles straight
-   * (log only, no toast).
+   * ImageOps.estimateDewarpCurveOffsets}. The resulting offset fractions (same sign convention as
+   * {@link TrapezoidSelectionView#setCurveOffsetFractions(double, double)}) are posted back to the
+   * main thread and applied only if the binding is still alive, curved mode is still active and no
+   * newer estimation run has been started. A {@code null} estimate leaves the handles straight (log
+   * only, no toast).
    */
   private void startCurveEstimation() {
     if (binding == null) return;
@@ -1786,9 +1782,10 @@ public class CropFragment extends Fragment {
       android.util.Log.w(TAG, "startCurveEstimation: no displayed bitmap available");
       return;
     }
-    final org.opencv.core.Point[] imgCorners;
+    final de.schliweb.makeacopy.utils.geom.Point[] imgCorners;
     try {
-      org.opencv.core.Point[] viewCorners = binding.trapezoidSelection.getCorners();
+      de.schliweb.makeacopy.utils.geom.Point[] viewCorners =
+          binding.trapezoidSelection.getCorners();
       imgCorners =
           CoordinateTransformUtils.transformViewToImageCoordinates(
               viewCorners, displayedBitmap, binding.imageToCrop);
@@ -1807,7 +1804,7 @@ public class CropFragment extends Fragment {
               double[][] profiles = null;
               try {
                 profiles =
-                    de.schliweb.makeacopy.utils.image.OpenCVUtils.estimateDewarpEdgeProfiles(
+                    de.schliweb.makeacopy.utils.image.ImageOps.estimateDewarpEdgeProfiles(
                         displayedBitmap, imgCorners);
               } catch (Throwable t) {
                 android.util.Log.w(TAG, "startCurveEstimation: estimation failed: " + t);
@@ -2157,7 +2154,7 @@ public class CropFragment extends Fragment {
     if (binding == null) return;
     if (!FeatureFlags.isFramingLoggingEnabled()) return;
     try {
-      RectF fb = OpenCVUtils.getFallbackRectF(bmp.getWidth(), bmp.getHeight());
+      RectF fb = ImageOps.getFallbackRectF(bmp.getWidth(), bmp.getHeight());
       RectF vr = mapBitmapToOverlayRect(fb, bmp.getWidth(), bmp.getHeight());
       if (vr != null) {
         binding.cropDevOverlay.setModelRect(vr);

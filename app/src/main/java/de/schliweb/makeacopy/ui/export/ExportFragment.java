@@ -2009,15 +2009,6 @@ public class ExportFragment extends Fragment {
     final Context appContext = requireContext().getApplicationContext();
     final boolean includeOcr = Boolean.TRUE.equals(exportViewModel.isIncludeOcr().getValue());
 
-    // Ensure OpenCV is initialized before using JpegExporter (which uses OpenCV APIs)
-    try {
-      if (!OpenCVUtils.isInitialized()) {
-        OpenCVUtils.init(appContext);
-      }
-    } catch (Exception e) {
-      Log.w(TAG, "performJpegExport: OpenCV init failed or not available", e);
-    }
-
     // Reset any previously generated TXT URI to avoid sharing stale OCR text
     exportViewModel.setTxtExportUri(null);
     // Disable Share at the start of export; it will be re-enabled only on success
@@ -2146,13 +2137,6 @@ public class ExportFragment extends Fragment {
                     exportViewModel.setExportProgress(0);
                   });
               try {
-                // Ensure OpenCV is initialized
-                try {
-                  if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(appContext);
-                } catch (Exception e) {
-                  Log.w(TAG, "performJpegZipExport: OpenCV init failed or not available", e);
-                }
-
                 JpegExportOptions options = new JpegExportOptions();
                 options.mode = finalMode;
                 options.forceGrayscaleJpeg = ExportPrefsHelper.isJpegOutputGrayscale(appContext);
@@ -2751,8 +2735,8 @@ public class ExportFragment extends Fragment {
 
   /**
    * Lets the user change the OCR language directly from the export screen (multi-page sessions have
-   * no other way to reach the OCR screen's language selection). Mirrors OCRFragment's
-   * single-choice dialog.
+   * no other way to reach the OCR screen's language selection). Mirrors OCRFragment's single-choice
+   * dialog.
    */
   private void showOcrLanguagePicker(int position) {
     final String[] codes = OcrModelManager.getAvailableLanguageCodes(requireContext());

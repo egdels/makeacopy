@@ -85,7 +85,6 @@ However, other security considerations remain important:
 We carefully select and maintain our dependencies:
 
 - **ONNX Runtime** - ML inference engine for document detection
-- **OpenCV** - Image processing library
 - **PaddleOCR** (models run on ONNX Runtime) - OCR
 
 All dependencies are regularly updated to patch known vulnerabilities. We use tools like:

@@ -44,8 +44,6 @@ android {
         // Use default AndroidX test runner
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Add a note about OpenCV being built from source
-        buildConfigField "String", "OPENCV_VERSION", "\"4.13.0\""
         // Feature flags
         buildConfigField "boolean", "FEATURE_SCAN_LIBRARY", "true"
         buildConfigField "boolean", "FEATURE_REVIEW_OCR", "true"
@@ -76,10 +74,6 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
-            // New API (replaces deprecated doNotStrip):
-            // keep the symbols → AGP will not run its strip step,
-            // preserving our staged, deterministic lib exactly.
-            keepDebugSymbols += ["lib/**/libopencv_java4.so"]
         }
         dex {
             useLegacyPackaging = false
@@ -598,7 +592,7 @@ tasks.withType(JavaCompile).configureEach {
         enabled = true
         disableWarningsInGeneratedCode = true
         allErrorsAsWarnings = true
-        excludedPaths = ".*/org/opencv/.*|.*/data_binding_base_class_source_out/.*"
+        excludedPaths = ".*/data_binding_base_class_source_out/.*"
     }
 }
 // Light edition after asset merge: only the Latin PaddleOCR recognition model (plus detection) and

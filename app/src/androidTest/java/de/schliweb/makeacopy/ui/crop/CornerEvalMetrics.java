@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Pure-Java metrics for the corner pipeline evaluation (no Android/OpenCV dependency, so the math
+ * Pure-Java metrics for the corner pipeline evaluation (no Android dependency, so the math
  * can be checked on a plain JVM).
  *
  * <p>All quads are {@code double[4][2]}; ground truth is TL,TR,BR,BL as in {@code

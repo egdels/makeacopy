@@ -35,14 +35,6 @@ excludes:
       comment: "Test JPEGs excluded from release APK via aaptOptions."
 
     # ── External source trees (build inputs, not shipped as-is) ──
-    - pattern: "external/opencv/**"
-      reason: "BUILD_TOOL_OF"
-      comment: "OpenCV full source tree used to build prebuilt .so files. The shipped native libs in app/src/main/jniLibs are covered separately."
-
-    - pattern: "external/opencv_pinned_jni/**"
-      reason: "BUILD_TOOL_OF"
-      comment: "Pinned OpenCV JNI bindings used during native build."
-
     - pattern: "external/onnxruntime/**"
       reason: "BUILD_TOOL_OF"
       comment: "ONNX Runtime full source tree used to build prebuilt artifacts. The shipped JAR/AAR in app/libs is covered by dependency analysis."

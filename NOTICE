@@ -3,37 +3,8 @@ NOTICE
 This project is licensed under the Apache License 2.0 (see LICENSE). It also
 includes third-party components under their respective licenses as noted below.
 
-1) OpenCV (selected Java classes vendored)
-    - Project: https://opencv.org
-    - Version: 4.13.0
-    - License: Apache License, Version 2.0
-    - Notes: Selected Java classes from the org.opencv.* packages have been
-      copied into this project to enable OpenCV-based image processing.
-      Original Apache 2.0 license headers are preserved in the vendored files.
-      The Apache 2.0 license text is included at
-      third_party_licenses/opencv_LICENSE.txt and the copyright notice at
-      third_party_licenses/opencv_COPYRIGHT.txt.
-    - Modifications (compared to the upstream OpenCV 4.13.0 release):
-      The following files were modified to remove unused classes, methods,
-      imports, and native declarations:
-        * org.opencv.imgproc.Imgproc – Removed methods and native declarations
-          for: LineSegmentDetector, GeneralizedHoughBallard/Guil, Moments,
-          HuMoments, convexityDefects, minAreaRect, boxPoints, fitEllipse,
-          fitEllipseAMS, fitEllipseDirect, getClosestEllipsePoints,
-          rotatedRectangleIntersection, and RotatedRect-based ellipse overloads.
-          Removed related enum constants (LSD_REFINE_*).
-        * org.opencv.photo.Photo – Removed methods and native declarations for:
-          createAlignMTB, createCalibrateDebevec, createCalibrateRobertson,
-          createMergeDebevec, createMergeMertens, createMergeRobertson,
-          createTonemap, createTonemapDrago, createTonemapMantiuk,
-          createTonemapReinhard, and related imports.
-        * org.opencv.utils.Converters – Removed conversion methods for:
-          Point3, Rect2d, KeyPoint, DMatch, RotatedRect, and their
-          corresponding MatOf* types.
-      The following 64 unused Java source files were deleted entirely
-      (complete packages org.opencv.video, org.opencv.videoio, org.opencv.osgi,
-      and individual classes from org.opencv.core, org.opencv.imgproc,
-      org.opencv.photo). See version control history for the full list.
+1) OpenCV – no longer used (image processing is plain Java in
+    app/src/main/java/de/schliweb/makeacopy/utils/image/raster/)
 
 2) ONNX Runtime (submodule, required runtime)
     - Project: https://github.com/microsoft/onnxruntime

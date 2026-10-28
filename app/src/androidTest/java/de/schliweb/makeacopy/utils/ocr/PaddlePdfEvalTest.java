@@ -24,8 +24,8 @@ import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.image.ImageOps;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -303,9 +303,6 @@ public class PaddlePdfEvalTest {
      * für andere Samples bleibt es beim bisherigen Vollbild-Trapez.
      */
     private static Bitmap fullImageCropLikeApp(Context ctx, String sampleName, Bitmap src) {
-        if (!OpenCVUtils.isInitialized()) {
-            OpenCVUtils.init(ctx);
-        }
         int w = src.getWidth();
         int h = src.getHeight();
         boolean useSaudiAppCorners = "saudi_executions".equals(sampleName);
@@ -334,8 +331,8 @@ public class PaddlePdfEvalTest {
                             + w + "x" + h + " (expected 2479x3504)");
         }
         Bitmap cropped =
-                OpenCVUtils.applyPerspectiveCorrection(
-                        src, corners, OpenCVUtils.WarpMode.AUTO_PROJECTIVE, null);
+                ImageOps.applyPerspectiveCorrection(
+                        src, corners, ImageOps.WarpMode.AUTO_PROJECTIVE, null);
         if (cropped == null) {
             Log.w(TAG, "fullImageCropLikeApp: crop returned null — falling back to source");
             return src;

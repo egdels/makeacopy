@@ -15,8 +15,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Method;
 import org.junit.Test;
-import org.opencv.core.Point;
-import org.opencv.core.Size;
+import de.schliweb.makeacopy.utils.geom.Point;
+import de.schliweb.makeacopy.utils.geom.Size;
 
 /**
  * Unit tests for the projective aspect-ratio estimator and the resulting warp target-size
@@ -34,11 +34,10 @@ import org.opencv.core.Size;
  *       gracefully to the heuristic.
  * </ul>
  *
- * <p>The tests reach the package-private static methods reflectively to avoid coupling to
- * OpenCV native code (only {@link Point} and {@link Size}, which are pure Java POJOs in the
- * desktop OpenCV jar, are used).
+ * <p>The tests reach the package-private static methods reflectively; only {@link Point} and
+ * {@link Size} from {@code utils.geom} are used.
  */
-public class OpenCVUtilsAspectRatioTest {
+public class ImageOpsAspectRatioTest {
 
   private static final double EPS_PROJECTIVE = 0.06; // 6% tolerance for projective recovery
   private static final double EPS_FALLBACK_BETTER = 0.1; // 10% — projective should beat heuristic
@@ -93,7 +92,7 @@ public class OpenCVUtilsAspectRatioTest {
 
   private static Method estimateMethod() throws Exception {
     Method m =
-        OpenCVUtils.class.getDeclaredMethod(
+        ImageOps.class.getDeclaredMethod(
             "estimateProjectiveAspectRatio", Point[].class, int.class, int.class);
     m.setAccessible(true);
     return m;
@@ -101,7 +100,7 @@ public class OpenCVUtilsAspectRatioTest {
 
   private static Method computeMethod() throws Exception {
     Method m =
-        OpenCVUtils.class.getDeclaredMethod(
+        ImageOps.class.getDeclaredMethod(
             "computeWarpTargetSize", Point[].class, int.class, int.class);
     m.setAccessible(true);
     return m;
@@ -213,7 +212,7 @@ public class OpenCVUtilsAspectRatioTest {
 
   private static Method fixedRatioMethod() throws Exception {
     Method m =
-        OpenCVUtils.class.getDeclaredMethod(
+        ImageOps.class.getDeclaredMethod(
             "computeWarpTargetSizeForFixedRatio", Point[].class, double.class);
     m.setAccessible(true);
     return m;

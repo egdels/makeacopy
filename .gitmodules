@@ -1,7 +1,3 @@
-[submodule "external/opencv"]
-	path = external/opencv
-	url = https://github.com/opencv/opencv.git
-	branch = 4.13.0
 [submodule "external/onnxruntime"]
 	path = external/onnxruntime
 	url = https://github.com/microsoft/onnxruntime

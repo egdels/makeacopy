@@ -20,7 +20,7 @@ import androidx.annotation.Nullable;
  * export step.
  *
  * <p>{@link #AUTO} keeps stage A (projective estimate inside {@code
- * OpenCVUtils.computeWarpTargetSize}) and is the default. {@link #ORIGINAL} forces the legacy
+ * ImageOps.computeWarpTargetSize}) and is the default. {@link #ORIGINAL} forces the legacy
  * pixel-distance heuristic. The fixed entries map to a concrete short/long ratio. {@link #CUSTOM}
  * pulls its actual ratio from {@link CropPrefsHelper}.
  */

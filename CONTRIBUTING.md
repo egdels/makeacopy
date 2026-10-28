@@ -28,8 +28,7 @@ If you already cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-The project uses two Git submodules:
-- `external/opencv` — OpenCV 4.13.0
+The project uses one Git submodule:
 - `external/onnxruntime` — ONNX Runtime v1.24.1
 
 ## 2. Install JDK 21
@@ -138,7 +137,7 @@ python3 --version   # should show 3.11.x
 
 ## 6. Obtain Native Libraries
 
-The app requires native libraries (OpenCV and ONNX Runtime). You have two options:
+The app requires the ONNX Runtime native libraries. You have two options:
 
 ### Option A: Extract from a Release APK (recommended for contributors not modifying native code)
 
@@ -187,26 +186,9 @@ export ANDROID_HOME="$HOME/Android/Sdk"                    # adjust for your sys
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.0.13004108"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export ORT_CMAKE="$(which cmake)"
-export OPENCV_CMAKE="$(which cmake)"
 export PY3_BIN="$(which python3)"
 export BUILD_GENERATOR="Unix Makefiles"
 ```
-
-#### Build OpenCV
-
-```bash
-chmod +x scripts/build_opencv_android.sh
-VERBOSE=1 ./scripts/build_opencv_android.sh
-```
-
-#### Prepare OpenCV for the app
-
-```bash
-chmod +x scripts/prepare_opencv.sh
-./scripts/prepare_opencv.sh
-```
-
-This copies the compiled `.so` files into `app/src/main/jniLibs/`.
 
 #### Build ONNX Runtime
 
@@ -224,8 +206,6 @@ The script builds ONNX Runtime with the **CPU execution provider only** and stri
 
 > **Tip:** To build only for a specific ABI (faster for development):
 > ```bash
-> ABIS="arm64-v8a" ./scripts/build_opencv_android.sh
-> ABIS="arm64-v8a" ./scripts/prepare_opencv.sh
 > ABIS="arm64-v8a" ./scripts/build_onnxruntime_android.sh
 > ```
 
@@ -293,13 +273,10 @@ makeacopy/
 │   ├── src/androidTest/java/     # Instrumented tests
 │   └── src/main/jniLibs/         # Native libraries (generated)
 ├── external/
-│   ├── opencv/                   # OpenCV submodule
-│   ├── onnxruntime/              # ONNX Runtime submodule
-│   └── opencv_pinned_jni/        # Pinned JNI headers for reproducibility
+│   └── onnxruntime/              # ONNX Runtime submodule
 ├── scripts/                      # Build scripts for native libraries
 ├── fastlane/                     # Fastlane metadata and changelogs
 ├── docs/                         # Documentation
-├── langpack-latin-best/          # OCR language pack module
 ├── training/                     # ML model training resources
 └── server/                       # Server module
 ```
@@ -357,7 +334,7 @@ Error Prone runs automatically during every Java compilation — no separate com
 ./gradlew :app:compileDebugJavaWithJavac
 ```
 
-> **Note:** Error Prone only analyses Java sources (not Kotlin). OpenCV sources under `org.opencv` are excluded from analysis.
+> **Note:** Error Prone only analyses Java sources (not Kotlin).
 
 ### Android Lint (Static Analysis)
 
@@ -386,7 +363,7 @@ This checks formatting (Spotless), runs Android Lint, compiles the code (Error P
 - **ABI splits**: Enabled by default. Use `-PenableAbiSplits=false` for a single universal APK during development.
 - **Hamcrest**: The project pins a single Hamcrest version for `androidTest`. When adding test dependencies, exclude `hamcrest-core` and `hamcrest-library` to avoid duplicate classes.
 - **Test PDFs**: Place test assets under `app/src/debug/assets` or test directories, not in `main` — test PDFs are excluded from release builds.
-- **Native builds take time**: The first OpenCV and ONNX Runtime builds can take 30–60 minutes. Subsequent builds are faster if the build directories are cached.
+- **Native builds take time**: The first ONNX Runtime build can take 30–60 minutes. Subsequent builds are faster if the build directories are cached.
 
 ## License
 

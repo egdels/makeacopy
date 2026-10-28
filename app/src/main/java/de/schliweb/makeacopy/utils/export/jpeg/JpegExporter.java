@@ -14,19 +14,14 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.util.Log;
-import de.schliweb.makeacopy.utils.image.BinarizationUtils;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import de.schliweb.makeacopy.utils.infra.LogSafe;
 import java.io.IOException;
 import java.io.OutputStream;
 import lombok.experimental.UtilityClass;
-import org.opencv.android.Utils;
-import org.opencv.core.Mat;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
 
 /**
  * JPEG exporter with optional downscale and document enhancement modes.
@@ -36,7 +31,7 @@ import org.opencv.imgproc.Imgproc;
  *
  * <p>Notes: - Uses an optional long-edge guard (from options) to avoid OOM on huge images. - Can
  * round resize targets to multiples of 8 (helps JPEG block alignment). - Fast path: for "NONE +
- * resize" without grayscale forcing, uses Bitmap.createScaledBitmap (no OpenCV).
+ * resize" without grayscale forcing, uses Bitmap.createScaledBitmap.
  */
 @UtilityClass
 public final class JpegExporter {
@@ -61,7 +56,6 @@ public final class JpegExporter {
     }
     if (options == null) options = new JpegExportOptions();
 
-    // Quick decisions without OpenCV allocation
     final boolean outputModeNone = options.mode == JpegExportOptions.Mode.NONE;
     final JpegImageOutput imageOutput = resolveJpegImageOutput(options);
     final boolean cleanupNone =
@@ -78,8 +72,7 @@ public final class JpegExporter {
       return compressToUri(context, bitmap, options.quality, targetUri);
     }
 
-    // Shortcut 2: ONLY resize (mode NONE) → fast path w/o OpenCV
-    // (only if we don't force grayscale JPEG, which needs OpenCV here)
+    // Shortcut 2: ONLY resize (mode NONE)
     if (needsResize && outputModeNone && cleanupNone && !options.forceGrayscaleJpeg) {
       final double scale = targetLong / (double) curLong;
       int newW = (int) Math.round(srcW * scale);
@@ -101,82 +94,15 @@ public final class JpegExporter {
       }
     }
 
-    // From here on, process with OpenCV
     try {
-      if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(context.getApplicationContext());
-    } catch (Throwable t) {
-      Log.w(TAG, "export: OpenCV init failed or not available", t);
-    }
-    Bitmap outBitmap;
-    Mat srcRgba = new Mat();
-    Mat work = new Mat();
-    Mat tmp = new Mat();
-    try {
-      // Input to RGBA Mat
-      Utils.bitmapToMat(bitmap, srcRgba); // RGBA
-
-      // Downscale if needed (with guard & optional multiples-of-8 rounding)
-      Mat current = srcRgba;
-      if (needsResize) {
-        final double scale = targetLong / (double) curLong;
-        int newW = (int) Math.round(srcW * scale);
-        int newH = (int) Math.round(srcH * scale);
-        newW = roundToJpegBlockSize(newW, options.roundResizeToMultipleOf8);
-        newH = roundToJpegBlockSize(newH, options.roundResizeToMultipleOf8);
-        newW = Math.max(8, newW);
-        newH = Math.max(8, newH);
-        Imgproc.resize(srcRgba, tmp, new Size(newW, newH), 0, 0, Imgproc.INTER_AREA);
-        current = tmp;
-      }
-
-      // Convert RGBA -> BGR for processing
-      Imgproc.cvtColor(current, work, Imgproc.COLOR_RGBA2BGR);
-
-      applyCleanup(
-          context,
-          work,
-          options.cleanupMode, imageOutput == JpegImageOutput.COLOR);
-
-      if (imageOutput == JpegImageOutput.BLACK_WHITE) {
-        applyBlackWhiteOutput(work);
-      } else if (imageOutput == JpegImageOutput.GRAYSCALE) {
-        applyGrayscaleOutput(work);
-      }
-
-      // Convert back to Bitmap and compress
-      outBitmap = Bitmap.createBitmap(work.cols(), work.rows(), Bitmap.Config.ARGB_8888);
-      Utils.matToBitmap(work, outBitmap);
-      int outQuality = options.quality;
-      if (options.mode == JpegExportOptions.Mode.BW_TEXT) {
-        // BW text compresses extremely well; lower quality more to guarantee strong size gains
-        // This helps satisfy the test's >=10% reduction requirement across devices/emulators.
-        outQuality = clampQuality(options.quality - 30);
-      }
-      return compressToUri(context, outBitmap, outQuality, targetUri);
-
+      Bitmap outBitmap = render(context, bitmap, options, imageOutput, needsResize, targetLong);
+      return compressToUri(context, outBitmap, outputQuality(options), targetUri);
     } catch (OutOfMemoryError oom) {
       Log.e(TAG, "export: OutOfMemoryError during processing", oom);
       return null;
     } catch (Exception e) {
       Log.e(TAG, "export: error during processing", e);
       return null;
-    } finally {
-      try {
-        srcRgba.release();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      try {
-        work.release();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      try {
-        tmp.release();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      // outBitmap dem GC überlassen
     }
   }
 
@@ -250,116 +176,62 @@ public final class JpegExporter {
       }
     }
 
-    // Ensure OpenCV is ready for downstream ops
     try {
-      if (!OpenCVUtils.isInitialized()) OpenCVUtils.init(context.getApplicationContext());
-    } catch (Throwable t) {
-      Log.w(TAG, "exportToStream: OpenCV init failed or not available", t);
-    }
-
-    Bitmap outBitmap;
-    Mat srcRgba = new Mat();
-    Mat work = new Mat();
-    Mat tmp = new Mat();
-    try {
-      Utils.bitmapToMat(bitmap, srcRgba);
-      Mat current = srcRgba;
-      if (needsResize) {
-        final double scale = targetLong / (double) curLong;
-        int newW = (int) Math.round(srcW * scale);
-        int newH = (int) Math.round(srcH * scale);
-        newW = roundToJpegBlockSize(newW, options.roundResizeToMultipleOf8);
-        newH = roundToJpegBlockSize(newH, options.roundResizeToMultipleOf8);
-        newW = Math.max(8, newW);
-        newH = Math.max(8, newH);
-        Imgproc.resize(srcRgba, tmp, new Size(newW, newH), 0, 0, Imgproc.INTER_AREA);
-        current = tmp;
-      }
-      Imgproc.cvtColor(current, work, Imgproc.COLOR_RGBA2BGR);
-      applyCleanup(
-          context,
-          work,
-          options.cleanupMode, imageOutput == JpegImageOutput.COLOR);
-      if (imageOutput == JpegImageOutput.BLACK_WHITE) {
-        applyBlackWhiteOutput(work);
-      } else if (imageOutput == JpegImageOutput.GRAYSCALE) {
-        applyGrayscaleOutput(work);
-      }
-      outBitmap = Bitmap.createBitmap(work.cols(), work.rows(), Bitmap.Config.ARGB_8888);
-      Utils.matToBitmap(work, outBitmap);
-      int outQuality = options.quality;
-      if (options.mode == JpegExportOptions.Mode.BW_TEXT) {
-        outQuality = clampQuality(options.quality - 30);
-      }
-      return outBitmap.compress(Bitmap.CompressFormat.JPEG, clampQuality(outQuality), out);
+      Bitmap outBitmap = render(context, bitmap, options, imageOutput, needsResize, targetLong);
+      return outBitmap.compress(
+          Bitmap.CompressFormat.JPEG, clampQuality(outputQuality(options)), out);
     } catch (Throwable t) {
       Log.e(TAG, "exportToStream: error during processing", t);
       return false;
-    } finally {
-      try {
-        srcRgba.release();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      try {
-        work.release();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-      try {
-        tmp.release();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
     }
   }
 
   // === utils ===
 
+  /** Downscales (if needed), cleans up and converts {@code bitmap} for the JPEG. */
+  private static Bitmap render(
+      Context context,
+      Bitmap bitmap,
+      JpegExportOptions options,
+      JpegImageOutput imageOutput,
+      boolean needsResize,
+      int targetLong) {
+    Bitmap current = bitmap;
+    if (needsResize) {
+      int srcW = bitmap.getWidth();
+      int srcH = bitmap.getHeight();
+      final double scale = targetLong / (double) Math.max(srcW, srcH);
+      int newW = (int) Math.round(srcW * scale);
+      int newH = (int) Math.round(srcH * scale);
+      newW = Math.max(8, roundToJpegBlockSize(newW, options.roundResizeToMultipleOf8));
+      newH = Math.max(8, roundToJpegBlockSize(newH, options.roundResizeToMultipleOf8));
+      current = Bitmap.createScaledBitmap(bitmap, newW, newH, true);
+    }
+    Bitmap cleaned =
+        DocumentCleanupProcessor.apply(
+            context,
+            current,
+            buildCleanupOptions(options.cleanupMode, imageOutput == JpegImageOutput.COLOR));
+    if (cleaned != null) current = cleaned;
+    Bitmap converted = null;
+    if (imageOutput == JpegImageOutput.BLACK_WHITE) {
+      converted = ImageOps.toBw(current);
+    } else if (imageOutput == JpegImageOutput.GRAYSCALE) {
+      converted = ImageOps.toGray(current);
+    }
+    return converted != null ? converted : current;
+  }
+
+  /** Black and white text compresses extremely well; it gets a lower quality for a smaller file. */
+  private static int outputQuality(JpegExportOptions options) {
+    return options.mode == JpegExportOptions.Mode.BW_TEXT
+        ? clampQuality(options.quality - 30)
+        : options.quality;
+  }
+
   private static int roundToJpegBlockSize(int value, boolean enabled) {
     if (!enabled) return value;
     return (value / JPEG_BLOCK_SIZE) * JPEG_BLOCK_SIZE;
-  }
-
-  private static void applyCleanup(
-      Context context,
-      Mat bgr,
-      DocumentCleanupMode cleanupMode,
-      boolean preserveColor) {
-    DocumentCleanupOptions cleanupOptions = buildCleanupOptions(cleanupMode, preserveColor);
-    if (cleanupOptions.mode == DocumentCleanupMode.ORIGINAL) {
-      Imgproc.cvtColor(bgr, bgr, Imgproc.COLOR_BGR2RGBA);
-      return;
-    }
-    if (cleanupOptions.preserveColor) {
-      DocumentCleanupProcessor.applyInPlace(bgr, cleanupOptions);
-      Imgproc.cvtColor(bgr, bgr, Imgproc.COLOR_BGR2RGBA);
-      return;
-    }
-
-    Imgproc.cvtColor(bgr, bgr, Imgproc.COLOR_BGR2RGBA);
-    Bitmap cleanupInput = Bitmap.createBitmap(bgr.cols(), bgr.rows(), Bitmap.Config.ARGB_8888);
-    Bitmap cleaned = null;
-    try {
-      Utils.matToBitmap(bgr, cleanupInput);
-      cleaned = DocumentCleanupProcessor.apply(context, cleanupInput, cleanupOptions);
-      if (cleaned != null) {
-        Utils.bitmapToMat(cleaned, bgr);
-      }
-    } finally {
-      if (cleaned != null && cleaned != cleanupInput) {
-        try {
-          cleaned.recycle();
-        } catch (Throwable ignore) {
-          // Best-effort; failure is non-critical
-        }
-      }
-      try {
-        cleanupInput.recycle();
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
-    }
   }
 
   static DocumentCleanupOptions buildCleanupOptions(
@@ -386,34 +258,6 @@ public final class JpegExporter {
     COLOR,
     GRAYSCALE,
     BLACK_WHITE
-  }
-
-  private static void applyGrayscaleOutput(Mat rgba) {
-    Mat gray = new Mat();
-    try {
-      Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY);
-      Imgproc.cvtColor(gray, rgba, Imgproc.COLOR_GRAY2RGBA);
-    } finally {
-      gray.release();
-    }
-  }
-
-  private static void applyBlackWhiteOutput(Mat rgba) {
-    Bitmap input = null;
-    Bitmap bw = null;
-    try {
-      input = Bitmap.createBitmap(rgba.cols(), rgba.rows(), Bitmap.Config.ARGB_8888);
-      Utils.matToBitmap(rgba, input);
-      BinarizationUtils.BwOptions opt = new BinarizationUtils.BwOptions();
-      opt.gentleMode = true;
-      bw = OpenCVUtils.toBw(input, opt);
-      if (bw != null) {
-        Utils.bitmapToMat(bw, rgba);
-      }
-    } finally {
-      if (bw != null && bw != input) bw.recycle();
-      if (input != null) input.recycle();
-    }
   }
 
   private static int clampQuality(int q) {

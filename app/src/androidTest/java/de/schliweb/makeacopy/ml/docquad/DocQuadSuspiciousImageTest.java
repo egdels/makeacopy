@@ -16,7 +16,7 @@ import de.schliweb.makeacopy.ml.corners.CornerDetectorFactory;
 import de.schliweb.makeacopy.ml.corners.DetectionResult;
 import de.schliweb.makeacopy.ml.corners.DocQuadDetector;
 import de.schliweb.makeacopy.ml.corners.Source;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import java.io.InputStream;
 import org.junit.Assume;
 import org.junit.Test;
@@ -174,7 +174,7 @@ public class DocQuadSuspiciousImageTest {
     int srcH = srcBitmap.getHeight();
 
     // Same pre-scale as the crop screen (TrapezoidSelectionView.initializeCornersAsync()).
-    float scale = Math.min(1f, OpenCVUtils.DETECTION_MAX_EDGE / (float) Math.max(srcW, srcH));
+    float scale = Math.min(1f, ImageOps.DETECTION_MAX_EDGE / (float) Math.max(srcW, srcH));
     Bitmap work =
         Bitmap.createScaledBitmap(
             srcBitmap, Math.round(srcW * scale), Math.round(srcH * scale), true);

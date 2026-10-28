@@ -127,7 +127,7 @@ public class EdgeSnapCornerRefinerTest {
     assertTrue(d1 * d2 < 0);
   }
 
-  // ---------- refine guards (no OpenCV / Bitmap required) ----------
+  // ---------- refine guards (no Bitmap required) ----------
 
   @Test
   public void refine_nullBitmapReturnsInputReference() {

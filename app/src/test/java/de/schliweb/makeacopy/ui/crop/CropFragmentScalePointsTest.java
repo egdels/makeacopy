@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 
 import org.junit.Test;
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 /** JVM-only tests for scaling trapezoid corners from the displayed bitmap to the full-res source. */
 public class CropFragmentScalePointsTest {

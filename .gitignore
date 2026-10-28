@@ -14,11 +14,9 @@
 .cxx
 local.properties
 
-# OpenCV build files
-/external/opencv-build*/
+# Native build output (ONNX Runtime)
 /app/src/main/jniLibs/
 /build-android/
-/opencv/build/
 
 .idea/
 *.iml

@@ -2,7 +2,7 @@ MakeACopy is an open-source document scanner app for Android that allows you to 
 
 Features:
 • Camera scanning: Capture documents using your device’s camera
-• Edge detection: Automatic document boundary detection using OpenCV, enhanced by a custom-trained ONNX inference model
+• Edge detection: Automatic document boundary detection with a custom-trained ONNX inference model
 • Perspective correction: Manually or automatically adjust document perspective
 • Grayscale export: Optional grayscale filter applied during PDF creation
 • OCR: Offline text recognition using PaddleOCR in the published paddle flavor

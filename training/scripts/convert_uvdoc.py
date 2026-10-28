@@ -45,7 +45,7 @@ def sort_corners_clockwise(pts: np.ndarray) -> np.ndarray:
     Sort corners in clockwise order starting at top-left:
       0=TL, 1=TR, 2=BR, 3=BL
     
-    This matches the expected order in MakeACopy/OpenCVUtils.java.
+    This matches the expected order in MakeACopy/ImageOps.java.
     """
     pts = np.asarray(pts, dtype=np.float32).reshape(4, 2)
     

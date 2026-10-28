@@ -15,14 +15,13 @@ import com.google.android.material.color.DynamicColors;
 import dagger.hilt.android.HiltAndroidApp;
 import de.schliweb.makeacopy.data.library.CollectionsRepository;
 import de.schliweb.makeacopy.services.CacheCleanupService;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.ocr.PaddleEngineProvider;
 import javax.inject.Inject;
 
 /**
- * Main Application class for MakeACopy. Handles global initialization including OpenCV and
- * background services.
+ * Main Application class for MakeACopy. Handles global initialization including background
+ * services.
  */
 @HiltAndroidApp
 public class MakeACopyApplication extends Application {
@@ -47,29 +46,12 @@ public class MakeACopyApplication extends Application {
     // static fallback palette from themes.xml is used. Works fully offline.
     DynamicColors.applyToActivitiesIfAvailable(this);
 
-    // Initialize OpenCV
-    initializeOpenCV();
-
     initializeCacheCleanupService();
 
     // Ensure the default "Completed Scans" collection exists on first app start (idempotent)
     initializeDefaultCompletedScansCollection();
 
     Log.i(TAG, "MakeACopy Application initialized successfully");
-  }
-
-  /** Initialize OpenCV library */
-  private void initializeOpenCV() {
-    try {
-      boolean success = OpenCVUtils.init(this);
-      if (success) {
-        Log.i(TAG, "OpenCV initialized successfully");
-      } else {
-        Log.e(TAG, "Failed to initialize OpenCV");
-      }
-    } catch (Exception e) {
-      Log.e(TAG, "Error initializing OpenCV", e);
-    }
   }
 
   /** Initialize and start the Cache Cleanup Service */

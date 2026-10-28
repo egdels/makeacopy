@@ -20,7 +20,7 @@ import android.util.Log;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import de.schliweb.makeacopy.ml.corners.DocQuadDetector;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -67,7 +67,6 @@ public class DocQuadLatencyBenchmarkTest {
         !(flag.isEmpty() || flag.equals("0") || flag.equalsIgnoreCase("false")));
 
     Context appCtx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-    OpenCVUtils.init(appCtx);
 
     Bitmap full;
     try (InputStream is = appCtx.getAssets().open(TEST_IMAGE_ASSET)) {
@@ -75,7 +74,7 @@ public class DocQuadLatencyBenchmarkTest {
     }
     float s =
         Math.min(
-            1f, OpenCVUtils.DETECTION_MAX_EDGE / (float) Math.max(full.getWidth(), full.getHeight()));
+            1f, ImageOps.DETECTION_MAX_EDGE / (float) Math.max(full.getWidth(), full.getHeight()));
     Bitmap work =
         Bitmap.createScaledBitmap(
             full, Math.round(full.getWidth() * s), Math.round(full.getHeight() * s), true);

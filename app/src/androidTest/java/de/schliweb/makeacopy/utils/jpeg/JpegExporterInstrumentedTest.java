@@ -15,7 +15,6 @@ import java.io.File;
 import java.util.Random;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -32,15 +31,13 @@ import org.junit.runner.RunWith;
  *
  * <h2>Key Operations</h2>
  *
- * - Loads external OpenCV native libraries for image processing functionality. - Creates synthetic
- * test documents with structured content such as headers, tables, and text blocks. - Performs
+ * - Creates synthetic test documents with structured content such as headers, tables, and text blocks. - Performs
  * actual export operations using predefined JPEG export options. - Asserts conditions based on the
  * export outcomes, including file size comparisons.
  *
  * <h2>Structure</h2>
  *
- * - `@BeforeClass` method to initialize required OpenCV libraries. - `@Before` method to set up the
- * test environment, including a valid context. - A test method to evaluate different JPEG export
+ * - `@Before` method to set up the test environment, including a valid context. - A test method to evaluate different JPEG export
  * scenarios and compare their performance. - Multiple helper methods to create synthetic documents,
  * manage temporary files, measure file sizes, and add additional visual elements.
  */
@@ -48,19 +45,6 @@ import org.junit.runner.RunWith;
 public class JpegExporterInstrumentedTest {
 
   private static final String TAG = "JpegExporterTest";
-
-  @BeforeClass
-  public static void loadOpenCv() {
-    try {
-      System.loadLibrary("opencv_java4");
-    } catch (UnsatisfiedLinkError e) {
-      try {
-        System.loadLibrary("opencv_java3");
-      } catch (UnsatisfiedLinkError ignore) {
-        Log.w(TAG, "OpenCV native lib not preloaded; relying on app init.");
-      }
-    }
-  }
 
   private Context ctx;
 

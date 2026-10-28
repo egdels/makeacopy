@@ -16,7 +16,7 @@ import de.schliweb.makeacopy.HiltTestActivity;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 /**
  * Multi-touch gestures on the crop overlay, which {@code adb input} cannot produce: pinch zoom,

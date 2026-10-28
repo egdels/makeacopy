@@ -55,38 +55,12 @@
 -keep public class * extends androidx.viewpager.widget.ViewPager
 -keep public class * extends androidx.fragment.app.Fragment
 
-# ProGuard rules for OpenCV
-
-# Keep native methods
+# Keep native methods (ONNX Runtime's JNI bindings)
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
-# Keep the classes and methods used by JNI
--keep class org.opencv.** { *; }
--keep class org.opencv.core.** { *; }
--keep class org.opencv.imgproc.** { *; }
--keep class org.opencv.features2d.** { *; }
--keep class org.opencv.imgcodecs.** { *; }
-
-# Keep constructors that are called from native code
--keepclasseswithmembers class * {
-    public <init>(org.opencv.core.Mat);
-}
-
-# Keep methods that are called from native code
--keepclasseswithmembers class * {
-    void set*(int, double);
-    void set*(int, int);
-    double get*(int);
-    int get*(int);
-}
-
-# Keep all native libraries
 -keepattributes *Annotation*
-
-# Don't warn about missing dependencies
--dontwarn org.opencv.**
 
 -keep class ai.onnxruntime.** { *; }
 

@@ -18,7 +18,7 @@ package de.schliweb.makeacopy.utils.image;
  * <p>All offsets are chord-relative fractions in the convention of {@code
  * TrapezoidSelectionView#setCurveOffsetFractions}: they depend only on the corner order, so they
  * survive the user rotation like the corners themselves. The profiles are the sampled edge shapes
- * from the automatic curve estimation ({@code OpenCVUtils.estimateDewarpEdgeProfiles}) and may be
+ * from the automatic curve estimation ({@code ImageOps.estimateDewarpEdgeProfiles}) and may be
  * {@code null}; they are stored so a Re-Edit does not have to re-run the estimation, which could
  * return a different shape than the one the page was actually cropped with.
  *

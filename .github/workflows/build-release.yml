@@ -68,7 +68,6 @@ jobs:
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
           echo "BUILD_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
           echo "ORT_CMAKE=$(which cmake)" >> $GITHUB_ENV
-          echo "OPENCV_CMAKE=$(which cmake)" >> $GITHUB_ENV
           echo "PY3_BIN=$(which python3)" >> $GITHUB_ENV
           cmake --version
           python3 --version
@@ -87,29 +86,6 @@ jobs:
       # (optional) Nur arm64-v8a auf CI bauen – auskommentiert lassen, wenn alle ABIs gewünscht
       - name: Limit ABIs to arm64-v8a armeabi-v7a x86 x86_64
         run: echo "ABIS=arm64-v8a armeabi-v7a x86 x86_64" >> $GITHUB_ENV
-
-      - name: Build OpenCV native libraries
-        run: |
-          chmod +x scripts/build_opencv_android.sh
-          REQUIRE_PINNED_JNI=1 VERBOSE=1 DEBUG=1 ./scripts/build_opencv_android.sh
-
-      - name: Collect reproducibility evidence (native)
-        run: |
-          chmod +x scripts/collect_repro_evidence.sh
-          ./scripts/collect_repro_evidence.sh
-
-      - name: Upload native reproducibility evidence
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: native-repro-evidence
-          path: |
-            scripts/repro_out/**
-            scripts/repro_out.tgz
-
-      - name: Prepare OpenCV for app
-        run: |
-          chmod +x scripts/prepare_opencv.sh
-          ./scripts/prepare_opencv.sh
 
       - name: Build ONNX Runtime
         run: |

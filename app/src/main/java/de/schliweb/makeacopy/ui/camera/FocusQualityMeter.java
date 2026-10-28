@@ -29,8 +29,7 @@ package de.schliweb.makeacopy.ui.camera;
  *       stable without sudden jumps, while still reacting to focus changes within a few frames.
  * </ul>
  *
- * <p>This class is deliberately free of Android and OpenCV dependencies so it can be unit-tested on
- * the JVM.
+ * <p>This class is deliberately free of Android dependencies so it can be unit-tested on the JVM.
  */
 public final class FocusQualityMeter {
 

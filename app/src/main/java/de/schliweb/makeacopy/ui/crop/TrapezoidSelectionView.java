@@ -24,14 +24,14 @@ import androidx.annotation.Nullable;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.ml.corners.DetectionResult;
+import de.schliweb.makeacopy.utils.geom.Point;
 import de.schliweb.makeacopy.utils.image.CoordinateTransformUtils;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import lombok.Getter;
 import lombok.Setter;
-import org.opencv.core.Point;
 
 /**
  * Custom view for selecting a trapezoid area on an image Allows the user to drag the corners of the
@@ -1290,12 +1290,12 @@ public class TrapezoidSelectionView extends View {
               try {
                 Point[] resultViewCorners = null;
 
-                if (bmp != null && OpenCVUtils.isInitialized()) {
+                if (bmp != null) {
                   // cheap pre-scale for detection
                   // Use central constant to match live preview detection resolution for consistent
                   // results
                   Bitmap work = bmp;
-                  int maxEdge = OpenCVUtils.DETECTION_MAX_EDGE;
+                  int maxEdge = ImageOps.DETECTION_MAX_EDGE;
                   int bw = bmp.getWidth(), bh = bmp.getHeight();
                   float s = Math.min(1f, maxEdge / (float) Math.max(bw, bh));
                   if (s < 1f) {
@@ -1359,7 +1359,7 @@ public class TrapezoidSelectionView extends View {
     try {
       // DocQuad only; there is no contour fallback. A redundant re-initialization (several
       // onSizeChanged events while laying out) runs the same detection and yields the same corners.
-      org.opencv.core.Point[] imgCorners = detectDocQuadCorners(work, scaleToOrig);
+      de.schliweb.makeacopy.utils.geom.Point[] imgCorners = detectDocQuadCorners(work, scaleToOrig);
       if (imgCorners == null) return null;
 
       Bitmap refBmp = imageBitmap != null ? imageBitmap : work;
@@ -1419,38 +1419,41 @@ public class TrapezoidSelectionView extends View {
 
   /** DocQuad corners in original image coordinates (TL, TR, BR, BL), or null. */
   @Nullable
-  private org.opencv.core.Point[] detectDocQuadCorners(Bitmap work, float scaleToOrig) {
+  private de.schliweb.makeacopy.utils.geom.Point[] detectDocQuadCorners(
+      Bitmap work, float scaleToOrig) {
     DetectionResult r =
         de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(
                 getContext(), docQuadOrtRunner)
             .detect(work, getContext());
     if (r == null || !r.success) return null;
-    org.opencv.core.Point[] corners = pointsFromDetectionResult(r);
+    de.schliweb.makeacopy.utils.geom.Point[] corners = pointsFromDetectionResult(r);
     scaleImageQuadToOriginal(corners, scaleToOrig);
     return corners;
   }
 
   @Nullable
-  static org.opencv.core.Point[] pointsFromDetectionResult(@Nullable DetectionResult r) {
+  static de.schliweb.makeacopy.utils.geom.Point[] pointsFromDetectionResult(
+      @Nullable DetectionResult r) {
     if (r == null || r.cornersOriginalTLTRBRBL == null || r.cornersOriginalTLTRBRBL.length != 4) {
       return null;
     }
-    org.opencv.core.Point[] points = new org.opencv.core.Point[4];
+    de.schliweb.makeacopy.utils.geom.Point[] points = new de.schliweb.makeacopy.utils.geom.Point[4];
     for (int i = 0; i < 4; i++) {
       if (r.cornersOriginalTLTRBRBL[i] == null || r.cornersOriginalTLTRBRBL[i].length < 2) {
         return null;
       }
       points[i] =
-          new org.opencv.core.Point(
+          new de.schliweb.makeacopy.utils.geom.Point(
               r.cornersOriginalTLTRBRBL[i][0], r.cornersOriginalTLTRBRBL[i][1]);
     }
     return points;
   }
 
-  static void scaleImageQuadToOriginal(@Nullable org.opencv.core.Point[] quad, float scaleToOrig) {
+  static void scaleImageQuadToOriginal(
+      @Nullable de.schliweb.makeacopy.utils.geom.Point[] quad, float scaleToOrig) {
     if (quad == null || scaleToOrig >= 1f) return;
     double inv = 1.0 / scaleToOrig;
-    for (org.opencv.core.Point p : quad) {
+    for (de.schliweb.makeacopy.utils.geom.Point p : quad) {
       if (p != null) {
         p.x *= inv;
         p.y *= inv;
@@ -1465,9 +1468,10 @@ public class TrapezoidSelectionView extends View {
    * #isValidImageQuad} is strict; without clamping such a detection would be discarded entirely.
    * Non-finite coordinates are left untouched so that validation still rejects them.
    */
-  static void clampImageQuadToBounds(@Nullable org.opencv.core.Point[] quad, int imgW, int imgH) {
+  static void clampImageQuadToBounds(
+      @Nullable de.schliweb.makeacopy.utils.geom.Point[] quad, int imgW, int imgH) {
     if (quad == null || imgW <= 0 || imgH <= 0) return;
-    for (org.opencv.core.Point p : quad) {
+    for (de.schliweb.makeacopy.utils.geom.Point p : quad) {
       if (p == null) continue;
       if (Double.isFinite(p.x)) p.x = Math.max(0.0, Math.min(imgW, p.x));
       if (Double.isFinite(p.y)) p.y = Math.max(0.0, Math.min(imgH, p.y));
@@ -1485,9 +1489,10 @@ public class TrapezoidSelectionView extends View {
    * @param imgW image width in pixels
    * @param imgH image height in pixels
    */
-  static boolean looksAlreadyCropped(org.opencv.core.Point[] quad, int imgW, int imgH) {
+  static boolean looksAlreadyCropped(
+      de.schliweb.makeacopy.utils.geom.Point[] quad, int imgW, int imgH) {
     if (quad == null || quad.length != 4 || imgW <= 0 || imgH <= 0) return false;
-    for (org.opencv.core.Point p : quad) {
+    for (de.schliweb.makeacopy.utils.geom.Point p : quad) {
       if (p == null) return false;
     }
     QuadShape shape = new QuadShape(quad, imgW, imgH);
@@ -1520,7 +1525,7 @@ public class TrapezoidSelectionView extends View {
     /** Fraction of the image covered by the quad's bounding box. */
     final double bboxCoverage;
 
-    QuadShape(org.opencv.core.Point[] quad, int imgW, int imgH) {
+    QuadShape(de.schliweb.makeacopy.utils.geom.Point[] quad, int imgW, int imgH) {
       double diag = Math.hypot(imgW, imgH);
       double edgeThr = 0.04 * Math.min(imgW, imgH); // hug-edge tolerance
       double farThr = 0.18 * diag; // far-from-canonical-corner threshold
@@ -1622,10 +1627,11 @@ public class TrapezoidSelectionView extends View {
     }
   }
 
-  static boolean isValidImageQuad(org.opencv.core.Point[] quad, int imgW, int imgH) {
+  static boolean isValidImageQuad(
+      de.schliweb.makeacopy.utils.geom.Point[] quad, int imgW, int imgH) {
     if (quad == null || quad.length != 4 || imgW <= 0 || imgH <= 0) return false;
 
-    for (org.opencv.core.Point p : quad) {
+    for (de.schliweb.makeacopy.utils.geom.Point p : quad) {
       if (p == null || !Double.isFinite(p.x) || !Double.isFinite(p.y)) return false;
       if (p.x < 0 || p.x > imgW || p.y < 0 || p.y > imgH) return false;
     }
@@ -1637,9 +1643,9 @@ public class TrapezoidSelectionView extends View {
     double expectedSign = Math.signum(area);
     if (expectedSign == 0) return false;
     for (int i = 0; i < 4; i++) {
-      org.opencv.core.Point a = quad[i];
-      org.opencv.core.Point b = quad[(i + 1) % 4];
-      org.opencv.core.Point c = quad[(i + 2) % 4];
+      de.schliweb.makeacopy.utils.geom.Point a = quad[i];
+      de.schliweb.makeacopy.utils.geom.Point b = quad[(i + 1) % 4];
+      de.schliweb.makeacopy.utils.geom.Point c = quad[(i + 2) % 4];
       double cross = cross(a, b, c);
       if (Math.signum(cross) != expectedSign) return false;
     }
@@ -1647,28 +1653,30 @@ public class TrapezoidSelectionView extends View {
     return true;
   }
 
-  private static double signedArea(org.opencv.core.Point[] quad) {
+  private static double signedArea(de.schliweb.makeacopy.utils.geom.Point[] quad) {
     double sum = 0;
     for (int i = 0; i < 4; i++) {
-      org.opencv.core.Point a = quad[i];
-      org.opencv.core.Point b = quad[(i + 1) % 4];
+      de.schliweb.makeacopy.utils.geom.Point a = quad[i];
+      de.schliweb.makeacopy.utils.geom.Point b = quad[(i + 1) % 4];
       sum += a.x * b.y - b.x * a.y;
     }
     return sum / 2.0;
   }
 
   private static double cross(
-      org.opencv.core.Point a, org.opencv.core.Point b, org.opencv.core.Point c) {
+      de.schliweb.makeacopy.utils.geom.Point a,
+      de.schliweb.makeacopy.utils.geom.Point b,
+      de.schliweb.makeacopy.utils.geom.Point c) {
     return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
   }
 
   /** Builds a full-image quad (TL, TR, BR, BL) in image space. */
-  private static org.opencv.core.Point[] fullImageQuad(int imgW, int imgH) {
-    return new org.opencv.core.Point[] {
-      new org.opencv.core.Point(0, 0),
-      new org.opencv.core.Point(imgW, 0),
-      new org.opencv.core.Point(imgW, imgH),
-      new org.opencv.core.Point(0, imgH)
+  private static de.schliweb.makeacopy.utils.geom.Point[] fullImageQuad(int imgW, int imgH) {
+    return new de.schliweb.makeacopy.utils.geom.Point[] {
+      new de.schliweb.makeacopy.utils.geom.Point(0, 0),
+      new de.schliweb.makeacopy.utils.geom.Point(imgW, 0),
+      new de.schliweb.makeacopy.utils.geom.Point(imgW, imgH),
+      new de.schliweb.makeacopy.utils.geom.Point(0, imgH)
     };
   }
 
@@ -3098,9 +3106,9 @@ public class TrapezoidSelectionView extends View {
   }
 
   /**
-   * Get the corners of the trapezoid as OpenCV Points
+   * Get the corners of the trapezoid as Points
    *
-   * @return Array of 4 OpenCV Points representing the corners
+   * @return Array of 4 Points representing the corners
    */
   public Point[] getCorners() {
     Point[] points = new Point[4];
@@ -3141,7 +3149,7 @@ public class TrapezoidSelectionView extends View {
    * coordinate space as {@link #getCorners()}, so the host fragment can reuse {@link
    * CoordinateTransformUtils#transformViewToImageCoordinates} unchanged.
    *
-   * @return array {topMid, bottomMid} as OpenCV points in view coordinates
+   * @return array {topMid, bottomMid} as points in view coordinates
    */
   public Point[] getCurveMidpointsViewCoords() {
     PointF top = computeCurveHandle(0);
@@ -3158,10 +3166,10 @@ public class TrapezoidSelectionView extends View {
    * <p>Sign convention: a POSITIVE value moves the handle along the chord's unit normal {@code
    * (-dy, dx)/len} (see {@link #computeCurveHandle(int)}), i.e. the chord direction rotated +90° in
    * screen coordinates (x right, y down). This is IDENTICAL to the convention of {@code
-   * OpenCVUtils.estimateDewarpCurveOffsets}: for the left-to-right top edge (TL→TR) a positive
-   * value bends the edge downwards / towards the page interior, and for the bottom edge (BL→BR,
-   * corners 3→2) a positive value also bends downwards in image space. Values from the estimator
-   * can therefore be passed through unchanged.
+   * ImageOps.estimateDewarpCurveOffsets}: for the left-to-right top edge (TL→TR) a positive value
+   * bends the edge downwards / towards the page interior, and for the bottom edge (BL→BR, corners
+   * 3→2) a positive value also bends downwards in image space. Values from the estimator can
+   * therefore be passed through unchanged.
    *
    * @param topFrac signed offset fraction for the top edge (corners 0→1)
    * @param bottomFrac signed offset fraction for the bottom edge (corners 3→2)
@@ -3454,12 +3462,6 @@ public class TrapezoidSelectionView extends View {
       return;
     }
 
-    // Initialize OpenCV if needed
-    if (!OpenCVUtils.isInitialized()) {
-      Log.d(TAG, "Initializing OpenCV for edge detection");
-      OpenCVUtils.init(getContext());
-    }
-
     // (Re)trigger async init when we have dimensions (unless suppressed once)
     if (getWidth() > 0 && getHeight() > 0) {
       // If the user is currently adjusting, suppress auto-init for now
@@ -3532,10 +3534,11 @@ public class TrapezoidSelectionView extends View {
       int imgH = curBmp.getHeight();
 
       // 1) View -> Image coordinates for current corners
-      org.opencv.core.Point[] viewPts = new org.opencv.core.Point[4];
+      de.schliweb.makeacopy.utils.geom.Point[] viewPts =
+          new de.schliweb.makeacopy.utils.geom.Point[4];
       for (int i = 0; i < 4; i++)
-        viewPts[i] = new org.opencv.core.Point(corners[i].x, corners[i].y);
-      org.opencv.core.Point[] imgPts =
+        viewPts[i] = new de.schliweb.makeacopy.utils.geom.Point(corners[i].x, corners[i].y);
+      de.schliweb.makeacopy.utils.geom.Point[] imgPts =
           CoordinateTransformUtils.transformViewToImageCoordinates(viewPts, curBmp, viewW, viewH);
       if (imgPts == null)
         throw new IllegalStateException("transformViewToImageCoordinates returned null");
@@ -3566,14 +3569,15 @@ public class TrapezoidSelectionView extends View {
       int newImgW = (int) Math.round(maxX - minX);
       int newImgH = (int) Math.round(maxY - minY);
 
-      org.opencv.core.Point[] imgPtsRot = new org.opencv.core.Point[4];
+      de.schliweb.makeacopy.utils.geom.Point[] imgPtsRot =
+          new de.schliweb.makeacopy.utils.geom.Point[4];
       for (int i = 0; i < 4; i++) {
         double dx = imgPts[i].x - cx;
         double dy = imgPts[i].y - cy;
         double rx = cx + dx * cos + dy * sin;
         double ry = cy + (-dx * sin + dy * cos);
         // Translate into rotated-bitmap coordinate system (top-left at 0,0)
-        imgPtsRot[i] = new org.opencv.core.Point(rx + transX, ry + transY);
+        imgPtsRot[i] = new de.schliweb.makeacopy.utils.geom.Point(rx + transX, ry + transY);
       }
 
       // 3) Image -> View coordinates using the rotated bitmap's dimensions
@@ -3585,7 +3589,7 @@ public class TrapezoidSelectionView extends View {
               ? rotatedBitmap
               : Bitmap.createBitmap(
                   Math.max(1, newImgW), Math.max(1, newImgH), Bitmap.Config.ARGB_8888);
-      org.opencv.core.Point[] viewPtsNew =
+      de.schliweb.makeacopy.utils.geom.Point[] viewPtsNew =
           CoordinateTransformUtils.transformImageToViewCoordinates(imgPtsRot, basis, viewW, viewH);
       if (viewPtsNew == null)
         throw new IllegalStateException("transformImageToViewCoordinates returned null");

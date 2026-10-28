@@ -14,11 +14,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import org.opencv.android.Utils;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
+import de.schliweb.makeacopy.utils.image.ImageOps;
+import de.schliweb.makeacopy.utils.image.raster.Gray;
 
 /**
  * Kanten-basiertes Refinement eines grob erkannten Dokument-Quads (Edge-Snapping).
@@ -107,24 +104,26 @@ public final class EdgeSnapCornerRefiner {
   private EdgeSnapCornerRefiner() {}
 
   /**
-   * Verfeinert ein Quad in {@link org.opencv.core.Point}-Darstellung (TL,TR,BR,BL). Gibt bei
-   * Fehlern oder verworfenem Refinement das Eingabe-Array unverändert zurück.
+   * Verfeinert ein Quad in {@link de.schliweb.makeacopy.utils.geom.Point}-Darstellung
+   * (TL,TR,BR,BL). Gibt bei Fehlern oder verworfenem Refinement das Eingabe-Array unverändert
+   * zurück.
    */
   @Nullable
-  public static org.opencv.core.Point[] refine(
-      @Nullable Bitmap src, @Nullable org.opencv.core.Point[] quadTLTRBRBL) {
+  public static de.schliweb.makeacopy.utils.geom.Point[] refine(
+      @Nullable Bitmap src, @Nullable de.schliweb.makeacopy.utils.geom.Point[] quadTLTRBRBL) {
     if (src == null || quadTLTRBRBL == null || quadTLTRBRBL.length != 4) return quadTLTRBRBL;
     double[][] q = new double[4][2];
     for (int i = 0; i < 4; i++) {
-      org.opencv.core.Point p = quadTLTRBRBL[i];
+      de.schliweb.makeacopy.utils.geom.Point p = quadTLTRBRBL[i];
       if (p == null) return quadTLTRBRBL;
       q[i][0] = p.x;
       q[i][1] = p.y;
     }
     double[][] refined = refine(src, q);
     if (refined == q) return quadTLTRBRBL;
-    org.opencv.core.Point[] out = new org.opencv.core.Point[4];
-    for (int i = 0; i < 4; i++) out[i] = new org.opencv.core.Point(refined[i][0], refined[i][1]);
+    de.schliweb.makeacopy.utils.geom.Point[] out = new de.schliweb.makeacopy.utils.geom.Point[4];
+    for (int i = 0; i < 4; i++)
+      out[i] = new de.schliweb.makeacopy.utils.geom.Point(refined[i][0], refined[i][1]);
     return out;
   }
 
@@ -145,10 +144,6 @@ public final class EdgeSnapCornerRefiner {
       return quadTLTRBRBL;
     }
     long t0 = android.os.SystemClock.uptimeMillis();
-    Mat rgba = null;
-    Mat gray = null;
-    Mat gx = null;
-    Mat gy = null;
     try {
       int srcW = src.getWidth();
       int srcH = src.getHeight();
@@ -156,37 +151,18 @@ public final class EdgeSnapCornerRefiner {
 
       double scale = Math.min(1.0, WORK_MAX_EDGE / (double) Math.max(srcW, srcH));
 
-      rgba = new Mat();
-      Utils.bitmapToMat(src, rgba);
-      gray = new Mat();
-      Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY);
-      rgba.release();
-      rgba = null;
-
+      Gray gray = Gray.ofArgb(ImageOps.pixels(src), srcW, srcH);
       if (scale < 1.0) {
-        int w = Math.max(2, (int) Math.round(srcW * scale));
-        int h = Math.max(2, (int) Math.round(srcH * scale));
-        Imgproc.resize(gray, gray, new Size(w, h), 0, 0, Imgproc.INTER_AREA);
+        gray =
+            gray.downscaled(
+                Math.max(2, (int) Math.round(srcW * scale)),
+                Math.max(2, (int) Math.round(srcH * scale)));
       }
-      Imgproc.GaussianBlur(gray, gray, new Size(3, 3), 0);
-
-      int w = gray.cols();
-      int h = gray.rows();
-      gx = new Mat();
-      gy = new Mat();
-      Imgproc.Sobel(gray, gx, CvType.CV_32F, 1, 0, 3);
-      Imgproc.Sobel(gray, gy, CvType.CV_32F, 0, 1, 3);
-      gray.release();
-      gray = null;
-
-      float[] gxArr = new float[w * h];
-      float[] gyArr = new float[w * h];
-      gx.get(0, 0, gxArr);
-      gy.get(0, 0, gyArr);
-      gx.release();
-      gx = null;
-      gy.release();
-      gy = null;
+      gray = gray.blurred();
+      int w = gray.width;
+      int h = gray.height;
+      float[] gxArr = gray.sobelX().px;
+      float[] gyArr = gray.sobelY().px;
 
       // Quad in den Arbeitsmaßstab bringen
       double[][] q = new double[4][2];
@@ -295,11 +271,6 @@ public final class EdgeSnapCornerRefiner {
     } catch (Throwable t) {
       Log.w(TAG, "refine failed, keeping original quad: " + t);
       return quadTLTRBRBL;
-    } finally {
-      releaseQuietly(rgba);
-      releaseQuietly(gray);
-      releaseQuietly(gx);
-      releaseQuietly(gy);
     }
   }
 
@@ -612,13 +583,5 @@ public final class EdgeSnapCornerRefiner {
 
   private static double clamp(double v, double lo, double hi) {
     return Math.max(lo, Math.min(hi, v));
-  }
-
-  private static void releaseQuietly(@Nullable Mat m) {
-    try {
-      if (m != null) m.release();
-    } catch (Throwable ignore) {
-      // Best-effort; failure is non-critical
-    }
   }
 }

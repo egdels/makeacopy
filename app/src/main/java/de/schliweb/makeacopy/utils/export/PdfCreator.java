@@ -26,11 +26,10 @@ import com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import com.tom_roush.pdfbox.pdmodel.graphics.state.RenderingMode;
 import com.tom_roush.pdfbox.util.Matrix;
-import de.schliweb.makeacopy.utils.image.BinarizationUtils;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import de.schliweb.makeacopy.utils.ocr.BidiWordOrder;
 import de.schliweb.makeacopy.utils.ocr.MultiColumnLayoutPolicy;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
@@ -316,11 +315,6 @@ public class PdfCreator {
 
     try {
       PDFBoxResourceLoader.init(context);
-      try {
-        OpenCVUtils.init(context);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
     } catch (Throwable t) {
       Log.e(TAG, "PDFBox init failed", t);
       return null;
@@ -328,20 +322,11 @@ public class PdfCreator {
 
     Bitmap prepared = null;
     try {
-      // Detect if text contains RTL scripts (Arabic, Persian, Hebrew) for gentle B/W processing
-      boolean useGentleMode = convertToBlackWhite && containsRtlText(words);
       prepared =
           processImageForPdf(
-              bitmap,
-              convertToGrayscale,
-              convertToBlackWhite,
-              targetDpi,
-              bwMode,
-              useGentleMode,
-              pageFormat,
-              cleanupMode);
+              bitmap, convertToGrayscale, convertToBlackWhite, targetDpi, pageFormat, cleanupMode);
       if (prepared == null) {
-        Log.e(TAG, "Image preparation via OpenCV failed");
+        Log.e(TAG, "Image preparation failed");
         return null;
       }
 
@@ -928,70 +913,6 @@ public class PdfCreator {
   }
 
   /**
-   * Processes an image to prepare it for inclusion in a PDF by resizing, and optionally converting
-   * it to grayscale or black and white (BW) based on the parameters provided.
-   *
-   * @param original The original Bitmap image to process. Must not be null.
-   * @param toGray If true, the image will be converted to grayscale.
-   * @param toBw If true, the image will be converted to black and white. The conversion respects
-   *     the specified bwMode. If both toGray and toBw are true, the image will be converted to
-   *     black and white.
-   * @param targetDpi The target DPI (dots per inch) for the processed image. Determines the
-   *     resizing scale for the image. If targetDpi is less than or equal to 0, a default DPI of 300
-   *     will be used.
-   * @param bwMode The mode for black-and-white conversion. If null, the default "ROBUST" mode will
-   *     be used. Other modes determine the specific method of B&W processing.
-   * @param gentleMode If true, uses gentle B/W processing that preserves fine strokes and
-   *     diacritics (important for Arabic, Persian, Hebrew scripts).
-   * @return A processed Bitmap object resized to match the target DPI dimensions and optionally
-   *     converted to grayscale or black and white. Returns null if the original Bitmap is null or
-   *     if an error occurs during conversion.
-   */
-  @SuppressWarnings("UnusedMethod") // called from createPdf and multi-page export
-  private static Bitmap processImageForPdf(
-      Bitmap original,
-      boolean toGray,
-      boolean toBw,
-      int targetDpi,
-      BwMode bwMode,
-      boolean gentleMode) {
-    return processImageForPdf(original, toGray, toBw, targetDpi, bwMode, gentleMode, PageFormat.A4);
-  }
-
-  /**
-   * Processes an image to prepare it for inclusion in a PDF by resizing, and optionally converting
-   * it to grayscale or black and white (BW) based on the parameters provided.
-   *
-   * @param original The original Bitmap image to process. Must not be null.
-   * @param toGray If true, the image will be converted to grayscale.
-   * @param toBw If true, the image will be converted to black and white.
-   * @param targetDpi The target DPI (dots per inch) for the processed image.
-   * @param bwMode The mode for black-and-white conversion.
-   * @param gentleMode If true, uses gentle B/W processing that preserves fine strokes and
-   *     diacritics.
-   * @param pageFormat The page format determining the maximum pixel dimensions for scaling.
-   * @return A processed Bitmap object, or null if an error occurs.
-   */
-  private static Bitmap processImageForPdf(
-      Bitmap original,
-      boolean toGray,
-      boolean toBw,
-      int targetDpi,
-      BwMode bwMode,
-      boolean gentleMode,
-      PageFormat pageFormat) {
-    return processImageForPdf(
-        original,
-        toGray,
-        toBw,
-        targetDpi,
-        bwMode,
-        gentleMode,
-        pageFormat,
-        DocumentCleanupMode.ORIGINAL);
-  }
-
-  /**
    * Largest image size in pixels that the page holds at {@code targetDpi}. For {@link
    * PageFormat#FIT_TO_IMAGE} the page follows the image's aspect ratio (long side as long as A4),
    * so the limit follows from that page and the DPI too.
@@ -1025,8 +946,6 @@ public class PdfCreator {
       boolean toGray,
       boolean toBw,
       int targetDpi,
-      BwMode bwMode,
-      boolean gentleMode,
       PageFormat pageFormat,
       DocumentCleanupMode cleanupMode) {
     if (original == null) return null;
@@ -1065,7 +984,7 @@ public class PdfCreator {
     }
 
     if (output == PdfImageOutput.BLACK_WHITE) {
-      Bitmap viaCv = applyPdfBwCleanup(base, targetDpi, gentleMode);
+      Bitmap bw = ImageOps.toBw(base);
       if (base != original) {
         try {
           base.recycle();
@@ -1073,12 +992,12 @@ public class PdfCreator {
           // Best-effort; failure is non-critical
         }
       }
-      return viaCv; // may be null → caller will handle
+      return bw; // may be null → caller will handle
     }
 
     if (output == PdfImageOutput.COLOR) return base;
 
-    Bitmap viaCvGray = OpenCVUtils.toGray(base);
+    Bitmap gray = ImageOps.toGray(base);
     if (base != original) {
       try {
         base.recycle();
@@ -1086,7 +1005,7 @@ public class PdfCreator {
         // Best-effort; failure is non-critical
       }
     }
-    return viaCvGray; // may be null → caller will handle
+    return gray; // may be null → caller will handle
   }
 
   public static PdfImageOutput resolvePdfImageOutput(boolean toGray, boolean toBw) {
@@ -1100,13 +1019,6 @@ public class PdfCreator {
     DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
     cleanupOptions.preserveColor = output == PdfImageOutput.COLOR;
     return cleanupOptions;
-  }
-
-  private static Bitmap applyPdfBwCleanup(Bitmap base, int targetDpi, boolean gentleMode) {
-    BinarizationUtils.BwOptions opt = new BinarizationUtils.BwOptions();
-    opt.gentleMode = gentleMode;
-    opt.targetDpi = targetDpi > 0 ? targetDpi : 300;
-    return OpenCVUtils.toBw(base, opt);
   }
 
   /**
@@ -1653,11 +1565,6 @@ public class PdfCreator {
     if (textLayerMode == null) textLayerMode = TextLayerMode.LINE_BASED;
     try {
       PDFBoxResourceLoader.init(context);
-      try {
-        OpenCVUtils.init(context);
-      } catch (Throwable ignore) {
-        // Best-effort; failure is non-critical
-      }
     } catch (Throwable t) {
       Log.e(TAG, "PDFBox init failed", t);
       return null;
@@ -2045,9 +1952,7 @@ public class PdfCreator {
       page.words = loadWordsSafely(source, index);
       page.srcW = src.getWidth();
       page.srcH = src.getHeight();
-      boolean gentle = toBw && containsRtlText(page.words);
-      prepared =
-          processImageForPdf(src, toGray, toBw, targetDpi, bwMode, gentle, pageFormat, cleanupMode);
+      prepared = processImageForPdf(src, toGray, toBw, targetDpi, pageFormat, cleanupMode);
       if (prepared == null) {
         throw new IOException("Image preparation failed for page " + (index + 1));
       }
@@ -2247,20 +2152,11 @@ public class PdfCreator {
       boolean multiColumn) {
     Bitmap prepared = null;
     try {
-      // Detect if text contains RTL scripts for gentle B/W processing
-      boolean useGentleMode = convertToBlackWhite && containsRtlText(pageWords);
       prepared =
           processImageForPdf(
-              src,
-              convertToGrayscale,
-              convertToBlackWhite,
-              targetDpi,
-              bwMode,
-              useGentleMode,
-              pageFormat,
-              cleanupMode);
+              src, convertToGrayscale, convertToBlackWhite, targetDpi, pageFormat, cleanupMode);
       if (prepared == null) {
-        Log.e(TAG, "Image preparation via OpenCV failed for page " + (pageIndex + 1));
+        Log.e(TAG, "Image preparation failed for page " + (pageIndex + 1));
         return false;
       }
 

@@ -2,7 +2,7 @@ package de.schliweb.makeacopy.utils;
 
 import static org.junit.Assert.assertEquals;
 
-import de.schliweb.makeacopy.utils.image.OpenCVUtils.OrientationEstimate;
+import de.schliweb.makeacopy.utils.image.ImageOps.OrientationEstimate;
 import org.junit.Test;
 
 public class OrientationEstimateTest {

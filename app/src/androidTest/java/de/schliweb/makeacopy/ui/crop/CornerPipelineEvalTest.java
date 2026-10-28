@@ -24,7 +24,7 @@ import de.schliweb.makeacopy.ml.corners.DocQuadDetector;
 import de.schliweb.makeacopy.ml.corners.EdgeSnapCornerRefiner;
 import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
 import de.schliweb.makeacopy.ml.docquad.DocQuadTestRunners;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,7 +41,7 @@ import org.json.JSONObject;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.opencv.core.Point;
+import de.schliweb.makeacopy.utils.geom.Point;
 
 /**
  * Measurement harness for the crop corner pipeline on a real-world test set with ground-truth
@@ -89,7 +89,6 @@ public class CornerPipelineEvalTest {
         labelFiles != null && labelFiles.length > 0);
     Arrays.sort(labelFiles);
 
-    OpenCVUtils.init(appCtx);
     // A candidate model bundled via -PcornerEvalModel replaces the shipped one for this run.
     String[] candidateModels = assets.list(ASSET_ROOT + "/model");
     String modelName = DocQuadDetector.DEFAULT_MODEL_ASSET_PATH;
@@ -151,7 +150,7 @@ public class CornerPipelineEvalTest {
       }
 
       // Same pre-scale as TrapezoidSelectionView.initializeCornersAsync().
-      float s = Math.min(1f, OpenCVUtils.DETECTION_MAX_EDGE / (float) Math.max(w, h));
+      float s = Math.min(1f, ImageOps.DETECTION_MAX_EDGE / (float) Math.max(w, h));
       Bitmap work =
           s < 1f ? Bitmap.createScaledBitmap(bmp, Math.round(w * s), Math.round(h * s), true) : bmp;
 
@@ -222,7 +221,7 @@ public class CornerPipelineEvalTest {
     JSONObject report = new JSONObject();
     JSONObject meta = new JSONObject();
     meta.put("model", modelName);
-    meta.put("detection_max_edge", OpenCVUtils.DETECTION_MAX_EDGE);
+    meta.put("detection_max_edge", ImageOps.DETECTION_MAX_EDGE);
     meta.put("good_max_rel", GOOD_MAX_REL);
     meta.put("match_iou", MATCH_IOU);
     meta.put("samples", samplesJson.length());

@@ -66,7 +66,8 @@ import de.schliweb.makeacopy.ui.crop.CropViewModel;
 import de.schliweb.makeacopy.ui.export.ExportPrefsHelper;
 import de.schliweb.makeacopy.ui.ocr.OCRViewModel;
 import de.schliweb.makeacopy.ui.options.OptionsDialogFragment;
-import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.image.ImageOps;
+import de.schliweb.makeacopy.utils.image.raster.Nv21;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
 import de.schliweb.makeacopy.utils.infra.LogSafe;
@@ -140,31 +141,6 @@ public class CameraFragment extends Fragment implements SensorEventListener {
   // ThreadLocal because CameraX analyzer runs on a dedicated background thread.
   @SuppressWarnings("ThreadLocalUsage") // intentional: reuse buffers on CameraX analyzer thread
   private final ThreadLocal<byte[]> nv21ReuseBuffer = new ThreadLocal<>();
-
-  @SuppressWarnings("ThreadLocalUsage") // intentional: reuse stream on CameraX analyzer thread
-  private final ThreadLocal<java.io.ByteArrayOutputStream> jpegReuseStream = new ThreadLocal<>();
-
-  // Bitmap pool for the small "upright" detection bitmap produced by yuvToBitmapUprightSmall.
-  // Two slots cover both orientations (portrait/landscape) of DETECTION_MAX_EDGE-sized images.
-  // Reusing bitmaps avoids per-frame allocations of ~720x540 ARGB_8888 (~1.5 MB) and reduces GC.
-  @SuppressWarnings("ThreadLocalUsage") // intentional: per analyzer thread
-  private final ThreadLocal<Bitmap> uprightBitmapPoolA = new ThreadLocal<>();
-
-  @SuppressWarnings("ThreadLocalUsage") // intentional: per analyzer thread
-  private final ThreadLocal<Bitmap> uprightBitmapPoolB = new ThreadLocal<>();
-
-  // Reusable OpenCV Mats for the fast NV21 → RGBA path (avoid per-frame Mat allocations).
-  @SuppressWarnings("ThreadLocalUsage") // intentional: per analyzer thread
-  private final ThreadLocal<org.opencv.core.Mat> nv21MatTL = new ThreadLocal<>();
-
-  @SuppressWarnings("ThreadLocalUsage") // intentional: per analyzer thread
-  private final ThreadLocal<org.opencv.core.Mat> rgbaMatTL = new ThreadLocal<>();
-
-  @SuppressWarnings("ThreadLocalUsage") // intentional: per analyzer thread
-  private final ThreadLocal<org.opencv.core.Mat> resizedMatTL = new ThreadLocal<>();
-
-  @SuppressWarnings("ThreadLocalUsage") // intentional: per analyzer thread
-  private final ThreadLocal<org.opencv.core.Mat> rotatedMatTL = new ThreadLocal<>();
 
   // Light sensor constants
   private static final float LOW_LIGHT_THRESHOLD = 10.0f; // lux
@@ -2351,49 +2327,11 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       imageAnalysis = null;
     }
     if (analysisExecutor != null) {
-      // Release pooled bitmaps and reusable Mats on the analyzer thread (where the
-      // ThreadLocals were populated). Best-effort; failures are non-critical.
-      try {
-        analysisExecutor.submit(this::releaseLiveAnalysisResources).get(200, TimeUnit.MILLISECONDS);
-      } catch (Throwable ignore) {
-        // Best-effort
-      }
       analysisExecutor.shutdownNow();
       analysisExecutor = null;
     }
     streamObserverAttached = false;
     binding = null;
-  }
-
-  /**
-   * Releases per-thread bitmap pool slots and OpenCV Mats used by the live analyzer fast path.
-   * Called from {@link #onDestroyView()} to avoid keeping native memory and Bitmaps around when the
-   * camera UI is gone.
-   */
-  private void releaseLiveAnalysisResources() {
-    Bitmap a = uprightBitmapPoolA.get();
-    if (a != null && !a.isRecycled()) a.recycle();
-    uprightBitmapPoolA.remove();
-    Bitmap b = uprightBitmapPoolB.get();
-    if (b != null && !b.isRecycled()) b.recycle();
-    uprightBitmapPoolB.remove();
-    org.opencv.core.Mat m;
-    if ((m = nv21MatTL.get()) != null) {
-      m.release();
-      nv21MatTL.remove();
-    }
-    if ((m = rgbaMatTL.get()) != null) {
-      m.release();
-      rgbaMatTL.remove();
-    }
-    if ((m = resizedMatTL.get()) != null) {
-      m.release();
-      resizedMatTL.remove();
-    }
-    if ((m = rotatedMatTL.get()) != null) {
-      m.release();
-      rotatedMatTL.remove();
-    }
   }
 
   /**
@@ -3105,10 +3043,12 @@ public class CameraFragment extends Fragment implements SensorEventListener {
    * only touched when the mapped segment count actually changes (no per-frame invalidations).
    */
   private void measureFocusQuality(
-      @NonNull Bitmap bmp, @androidx.annotation.Nullable org.opencv.core.Point[] quad, long nowMs) {
+      @NonNull Bitmap bmp,
+      @androidx.annotation.Nullable de.schliweb.makeacopy.utils.geom.Point[] quad,
+      long nowMs) {
     try {
       if (focusQualityAnalyzer == null) focusQualityAnalyzer = new FocusQualityAnalyzer();
-      org.opencv.core.Rect roi = null;
+      android.graphics.Rect roi = null;
       if (quad != null && quad.length == 4) {
         double minX = quad[0].x, minY = quad[0].y, maxX = quad[0].x, maxY = quad[0].y;
         for (int i = 1; i < 4; i++) {
@@ -3117,12 +3057,11 @@ public class CameraFragment extends Fragment implements SensorEventListener {
           maxX = Math.max(maxX, quad[i].x);
           maxY = Math.max(maxY, quad[i].y);
         }
+        int left = (int) Math.floor(minX);
+        int top = (int) Math.floor(minY);
         roi =
-            new org.opencv.core.Rect(
-                (int) Math.floor(minX),
-                (int) Math.floor(minY),
-                (int) Math.ceil(maxX - minX),
-                (int) Math.ceil(maxY - minY));
+            new android.graphics.Rect(
+                left, top, left + (int) Math.ceil(maxX - minX), top + (int) Math.ceil(maxY - minY));
       }
       long t0 = SystemClock.elapsedRealtime();
       double rawVariance = focusQualityAnalyzer.measure(bmp, roi);
@@ -3141,7 +3080,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                 + segments
                 + ", roi="
                 + (roi != null
-                    ? roi.width + "x" + roi.height
+                    ? roi.width() + "x" + roi.height()
                     : "full " + bmp.getWidth() + "x" + bmp.getHeight())
                 + ", durationMs="
                 + durationMs);
@@ -3246,8 +3185,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       bmp =
           yuvToBitmapUprightSmall(
               image,
-              OpenCVUtils
-                  .DETECTION_MAX_EDGE); // use central constant for consistent corner detection
+              ImageOps.DETECTION_MAX_EDGE); // use central constant for consistent corner detection
       if (BuildConfig.DEBUG) {
         int dispRot = getViewFinderRotation();
         Log.d(
@@ -3266,12 +3204,11 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       final int bmpW = bmp.getWidth();
       final int bmpH = bmp.getHeight();
 
-      ensureOpenCvInitialized();
-
       // Skip corner detection entirely when only the focus-quality indicator needs frames:
       // the sharpness measurement then simply uses the full frame as ROI.
       // Live-DocQuad liefert aktuell keinen Score (Determinismus/Performance).
-      final org.opencv.core.Point[] pts = wantCorners ? detectLiveCorners(bmp) : null;
+      final de.schliweb.makeacopy.utils.geom.Point[] pts =
+          wantCorners ? detectLiveCorners(bmp) : null;
       final boolean hasValid = pts != null;
 
       // Map bitmap coords to overlay coords (PreviewView with FIT_CENTER) when valid.
@@ -3279,7 +3216,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       // a common ViewPort with Preview/Capture) only displays the cropped field of view. Compute
       // that crop region in upright-bitmap space so the overlay lines up with what is shown.
       final android.graphics.RectF analysisCropUpright =
-          computeUprightCropRect(image, OpenCVUtils.DETECTION_MAX_EDGE, bmpW, bmpH);
+          computeUprightCropRect(image, ImageOps.DETECTION_MAX_EDGE, bmpW, bmpH);
       android.graphics.PointF[] viewPts =
           hasValid ? mapToOverlayPoints(pts, bmpW, bmpH, analysisCropUpright) : null;
 
@@ -3315,25 +3252,12 @@ public class CameraFragment extends Fragment implements SensorEventListener {
       Log.w(TAG, "analyzeFrameForCorners failed: " + e.getMessage(), e);
     } finally {
       // Avoid per-frame bitmap accumulation / GC pressure in live analysis.
-      // The fast OpenCV path returns a pooled bitmap that must NOT be recycled here
-      // (it is reused on subsequent frames). Only recycle bitmaps that are NOT in the pool
-      // (i.e. produced by the legacy fallback path).
       try {
-        if (bmp != null && !bmp.isRecycled() && !isPooledBitmap(bmp)) bmp.recycle();
+        if (bmp != null && !bmp.isRecycled()) bmp.recycle();
       } catch (Throwable ignore) {
         // Best-effort; failure is non-critical
       }
       image.close();
-    }
-  }
-
-  /** Init CV once. */
-  private void ensureOpenCvInitialized() {
-    if (OpenCVUtils.isInitialized()) return;
-    try {
-      OpenCVUtils.init(requireContext().getApplicationContext());
-    } catch (Exception e) {
-      Log.w(TAG, "OpenCV init failed", e);
     }
   }
 
@@ -3342,7 +3266,10 @@ public class CameraFragment extends Fragment implements SensorEventListener {
    * already throttled analysis pass and the small upright bitmap: no extra pipeline, no copies.
    */
   private void updateFocusQuality(
-      boolean wantFocusQuality, Bitmap bmp, @Nullable org.opencv.core.Point[] pts, long now) {
+      boolean wantFocusQuality,
+      Bitmap bmp,
+      @Nullable de.schliweb.makeacopy.utils.geom.Point[] pts,
+      long now) {
     if (wantFocusQuality) {
       measureFocusQuality(bmp, pts, now);
     } else if (lastFocusQualitySegments != -1) {
@@ -3374,14 +3301,14 @@ public class CameraFragment extends Fragment implements SensorEventListener {
   }
 
   /**
-   * Runs the live corner detector. DocQuad is the standard detector with OpenCV as fallback; the
-   * detector is cached so DocQuad runner/throttle actually persist across frames.
+   * Runs the live corner detector (DocQuad); the detector is cached so DocQuad runner/throttle
+   * actually persist across frames.
    *
    * @return the four corners (TL, TR, BR, BL) in bitmap coordinates, or {@code null} if no document
    *     was found
    */
   @Nullable
-  private org.opencv.core.Point[] detectLiveCorners(Bitmap bmp) {
+  private de.schliweb.makeacopy.utils.geom.Point[] detectLiveCorners(Bitmap bmp) {
     de.schliweb.makeacopy.ml.corners.CornerDetector liveDetector = cachedLiveCornerDetector;
     if (liveDetector == null || !cachedLiveCornerDetectorFlag) {
       liveDetector =
@@ -3398,17 +3325,18 @@ public class CameraFragment extends Fragment implements SensorEventListener {
         || r.cornersOriginalTLTRBRBL.length != 4) {
       return null;
     }
-    org.opencv.core.Point[] pts = new org.opencv.core.Point[4];
+    de.schliweb.makeacopy.utils.geom.Point[] pts = new de.schliweb.makeacopy.utils.geom.Point[4];
     for (int i = 0; i < 4; i++) {
       pts[i] =
-          new org.opencv.core.Point(
+          new de.schliweb.makeacopy.utils.geom.Point(
               r.cornersOriginalTLTRBRBL[i][0], r.cornersOriginalTLTRBRBL[i][1]);
     }
     return pts;
   }
 
   @Nullable
-  private static android.graphics.PointF[] toPointFs(@Nullable org.opencv.core.Point[] pts) {
+  private static android.graphics.PointF[] toPointFs(
+      @Nullable de.schliweb.makeacopy.utils.geom.Point[] pts) {
     if (pts == null || pts.length != 4) return null;
     android.graphics.PointF[] quad = new android.graphics.PointF[4];
     for (int i = 0; i < 4; i++) {
@@ -3435,11 +3363,15 @@ public class CameraFragment extends Fragment implements SensorEventListener {
 
   /** Evaluates the FramingEngine for this frame and feeds the accessibility guidance. */
   private FramingEval evaluateFraming(
-      Bitmap bmp, @Nullable org.opencv.core.Point[] pts, int bmpW, int bmpH, long now) {
+      Bitmap bmp,
+      @Nullable de.schliweb.makeacopy.utils.geom.Point[] pts,
+      int bmpW,
+      int bmpH,
+      long now) {
     FramingResult fr;
     android.graphics.RectF fbRect;
     try {
-      fbRect = OpenCVUtils.getFallbackRectF(bmpW, bmpH);
+      fbRect = ImageOps.getFallbackRectF(bmpW, bmpH);
       fr =
           new FramingEngine().evaluate(new FramingEngine.Input(bmpW, bmpH, toPointFs(pts), fbRect));
       if (FeatureFlags.isFramingLoggingEnabled()) {
@@ -3452,7 +3384,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     int orientBucket = -1; // 0 or 90
     double orientConf = -1.0;
     try {
-      OpenCVUtils.OrientationEstimate est = OpenCVUtils.estimateTextOrientation(bmp);
+      ImageOps.OrientationEstimate est = ImageOps.estimateTextOrientation(bmp);
       orientBucket = (est.bucketDeg() == 90) ? 90 : 0;
       orientConf = est.confidence();
     } catch (Exception e) {
@@ -3468,7 +3400,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
 
   /** A11y guidance using the state machine (concept-based implementation). */
   private void feedA11yGuidance(
-      @Nullable org.opencv.core.Point[] pts,
+      @Nullable de.schliweb.makeacopy.utils.geom.Point[] pts,
       int bmpW,
       int bmpH,
       @Nullable FramingResult fr,
@@ -3788,7 +3720,10 @@ public class CameraFragment extends Fragment implements SensorEventListener {
    * @return mapped overlay points, or {@code null} if the view/bitmap is not measurable yet
    */
   private android.graphics.PointF[] mapToOverlayPoints(
-      org.opencv.core.Point[] src, int bmpW, int bmpH, @Nullable android.graphics.RectF cropRect) {
+      de.schliweb.makeacopy.utils.geom.Point[] src,
+      int bmpW,
+      int bmpH,
+      @Nullable android.graphics.RectF cropRect) {
     if (binding == null) return null;
     int vw = binding.viewFinder.getWidth();
     int vh = binding.viewFinder.getHeight();
@@ -3850,16 +3785,16 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     // Full-buffer crop → preview shows the whole bitmap, keep previous (full-bitmap) mapping.
     if (crop.left <= 0 && crop.top <= 0 && crop.right >= w && crop.bottom >= h) return null;
 
-    int sample = Math.max(1, computeSampleSize(w, h, maxSize));
-    float s = 1f / sample;
-    float cl = crop.left * s;
-    float ct = crop.top * s;
-    float cr = crop.right * s;
-    float cb = crop.bottom * s;
-
-    // Resized (pre-rotation) bitmap dimensions.
-    int rw = Math.max(1, w / sample);
-    int rh = Math.max(1, h / sample);
+    // Resized (pre-rotation) bitmap dimensions, as Nv21.toUprightArgb scales.
+    int[] resized = Nv21.uprightSize(w, h, 0, maxSize);
+    int rw = resized[0];
+    int rh = resized[1];
+    float sx = rw / (float) w;
+    float sy = rh / (float) h;
+    float cl = crop.left * sx;
+    float ct = crop.top * sy;
+    float cr = crop.right * sx;
+    float cb = crop.bottom * sy;
 
     int rot = ((image.getImageInfo().getRotationDegrees() % 360) + 360) % 360;
     android.graphics.RectF out;
@@ -3953,186 +3888,24 @@ public class CameraFragment extends Fragment implements SensorEventListener {
         });
   }
 
+  /**
+   * The frame as a small upright ARGB_8888 bitmap (long side at most {@code maxSize}), converted
+   * from NV21 in one pass without a JPEG round trip.
+   */
   private Bitmap yuvToBitmapUprightSmall(@NonNull ImageProxy image, int maxSize) {
-    // Fast path: when OpenCV is initialized, convert NV21 → RGBA directly via Imgproc,
-    // resize and rotate as Mats, then blit into a pooled ARGB_8888 Bitmap. This avoids
-    // the previous YuvImage→JPEG(Q60)→BitmapFactory round-trip (which was both lossy
-    // and CPU-heavy) and reuses a small Bitmap pool to suppress GC churn at ~5–6 FPS.
-    // In OpenCV safe mode this path is intentionally disabled: on Android emulators and some
-    // affected devices Imgproc.cvtColor can abort the process with SIGILL, which Java cannot catch.
-    if (OpenCVUtils.isInitialized() && !OpenCVUtils.isSafeMode()) {
-      try {
-        return yuvToBitmapUprightSmallCv(image, maxSize);
-      } catch (Throwable t) {
-        // Defensive: fall through to legacy path on any unexpected CV error.
-        Log.w(TAG, "yuvToBitmapUprightSmallCv failed, falling back: " + t.getMessage());
-      }
-    }
-    return yuvToBitmapUprightSmallLegacy(image, maxSize);
-  }
-
-  /**
-   * OpenCV-based fast path: NV21 → RGBA → resize → rotate → ARGB_8888 Bitmap (pooled). Caller must
-   * ensure {@link OpenCVUtils#isInitialized()} is true.
-   */
-  private Bitmap yuvToBitmapUprightSmallCv(@NonNull ImageProxy image, int maxSize) {
-    byte[] nv21 = toNv21(image);
-    if (nv21 == null) return null;
-    final int w = image.getWidth();
-    final int h = image.getHeight();
-
-    // 1) NV21 wrap (single-channel byte mat of height*3/2 rows)
-    org.opencv.core.Mat nv21Mat = nv21MatTL.get();
-    if (nv21Mat == null
-        || nv21Mat.rows() != h + h / 2
-        || nv21Mat.cols() != w
-        || nv21Mat.type() != org.opencv.core.CvType.CV_8UC1) {
-      if (nv21Mat != null) nv21Mat.release();
-      nv21Mat = new org.opencv.core.Mat(h + h / 2, w, org.opencv.core.CvType.CV_8UC1);
-      nv21MatTL.set(nv21Mat);
-    }
-    nv21Mat.put(0, 0, nv21, 0, w * h * 3 / 2);
-
-    // 2) NV21 → RGBA
-    org.opencv.core.Mat rgbaMat = rgbaMatTL.get();
-    if (rgbaMat == null) {
-      rgbaMat = new org.opencv.core.Mat();
-      rgbaMatTL.set(rgbaMat);
-    }
-    org.opencv.imgproc.Imgproc.cvtColor(
-        nv21Mat, rgbaMat, org.opencv.imgproc.Imgproc.COLOR_YUV2RGBA_NV21);
-
-    // 3) Downscale so the longer edge ≤ maxSize (keep aspect ratio)
-    int sample = computeSampleSize(w, h, maxSize);
-    int targetW = Math.max(1, w / sample);
-    int targetH = Math.max(1, h / sample);
-    org.opencv.core.Mat src = rgbaMat;
-    org.opencv.core.Mat resized = resizedMatTL.get();
-    if (sample > 1) {
-      if (resized == null) {
-        resized = new org.opencv.core.Mat();
-        resizedMatTL.set(resized);
-      }
-      org.opencv.imgproc.Imgproc.resize(
-          rgbaMat,
-          resized,
-          new org.opencv.core.Size(targetW, targetH),
-          0,
-          0,
-          org.opencv.imgproc.Imgproc.INTER_AREA);
-      src = resized;
-    }
-
-    // 4) Rotate to upright orientation. CameraX rotationDegrees is clockwise.
-    int rot = ((image.getImageInfo().getRotationDegrees() % 360) + 360) % 360;
-    org.opencv.core.Mat upright = src;
-    if (rot != 0) {
-      org.opencv.core.Mat rotated = rotatedMatTL.get();
-      if (rotated == null) {
-        rotated = new org.opencv.core.Mat();
-        rotatedMatTL.set(rotated);
-      }
-      switch (rot) {
-        case 90:
-          org.opencv.core.Core.rotate(src, rotated, org.opencv.core.Core.ROTATE_90_CLOCKWISE);
-          break;
-        case 180:
-          org.opencv.core.Core.rotate(src, rotated, org.opencv.core.Core.ROTATE_180);
-          break;
-        case 270:
-          org.opencv.core.Core.rotate(
-              src, rotated, org.opencv.core.Core.ROTATE_90_COUNTERCLOCKWISE);
-          break;
-        default:
-          // Non-orthogonal rotations are not produced by CameraX; treat as no-op.
-          rotated = src;
-          break;
-      }
-      upright = rotated;
-    }
-
-    // 5) Acquire a pooled ARGB_8888 Bitmap of the upright size and blit Mat into it.
-    final int finalW = upright.cols();
-    final int finalH = upright.rows();
-    Bitmap bmp = acquirePooledBitmap(finalW, finalH);
-    org.opencv.android.Utils.matToBitmap(upright, bmp);
-    return bmp;
-  }
-
-  /**
-   * Acquires a Bitmap of the requested dimensions from a small two-slot pool. If neither slot
-   * matches, the older slot is recycled and replaced. Returned bitmaps are ARGB_8888 and writable.
-   */
-  private Bitmap acquirePooledBitmap(int width, int height) {
-    Bitmap a = uprightBitmapPoolA.get();
-    if (a != null && !a.isRecycled() && a.getWidth() == width && a.getHeight() == height) {
-      return a;
-    }
-    Bitmap b = uprightBitmapPoolB.get();
-    if (b != null && !b.isRecycled() && b.getWidth() == width && b.getHeight() == height) {
-      return b;
-    }
-    // No matching slot: place new bitmap into A (recycling the previous A).
-    Bitmap fresh = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-    if (a != null && !a.isRecycled()) {
-      // Move existing A to B (so we keep the most recent two distinct sizes around).
-      Bitmap oldB = uprightBitmapPoolB.get();
-      if (oldB != null && !oldB.isRecycled()) oldB.recycle();
-      uprightBitmapPoolB.set(a);
-    }
-    uprightBitmapPoolA.set(fresh);
-    return fresh;
-  }
-
-  /** Returns true iff the given bitmap is currently held in the upright bitmap pool. */
-  private boolean isPooledBitmap(@NonNull Bitmap candidate) {
-    Bitmap a = uprightBitmapPoolA.get();
-    if (a == candidate) return true;
-    Bitmap b = uprightBitmapPoolB.get();
-    return b == candidate;
-  }
-
-  /** Legacy fallback: original YuvImage → JPEG → BitmapFactory path. */
-  private Bitmap yuvToBitmapUprightSmallLegacy(@NonNull ImageProxy image, int maxSize) {
     try {
       byte[] nv21 = toNv21(image);
       if (nv21 == null) return null;
       int w = image.getWidth();
       int h = image.getHeight();
-      android.graphics.YuvImage yuv =
-          new android.graphics.YuvImage(nv21, android.graphics.ImageFormat.NV21, w, h, null);
-      java.io.ByteArrayOutputStream out = jpegReuseStream.get();
-      if (out == null) {
-        out = new java.io.ByteArrayOutputStream(64 * 1024);
-        jpegReuseStream.set(out);
-      }
-      out.reset();
-      yuv.compressToJpeg(new android.graphics.Rect(0, 0, w, h), 60, out);
-      byte[] jpeg = out.toByteArray();
-      // Decode with inSampleSize
-      android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
-      opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
-      opts.inSampleSize = computeSampleSize(w, h, maxSize);
-      Bitmap raw = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length, opts);
-      if (raw == null) return null;
       int rot = image.getImageInfo().getRotationDegrees();
-      if (rot == 0) return raw;
-      android.graphics.Matrix m = new android.graphics.Matrix();
-      m.postRotate(rot);
-      Bitmap rotated = Bitmap.createBitmap(raw, 0, 0, raw.getWidth(), raw.getHeight(), m, true);
-      if (rotated != raw) raw.recycle();
-      return rotated;
+      int[] size = Nv21.uprightSize(w, h, rot, maxSize);
+      int[] argb = Nv21.toUprightArgb(nv21, w, h, rot, maxSize);
+      return Bitmap.createBitmap(argb, size[0], size[1], Bitmap.Config.ARGB_8888);
     } catch (Exception e) {
       Log.w(TAG, "yuvToBitmapUprightSmall failed: " + e.getMessage(), e);
       return null;
     }
-  }
-
-  private int computeSampleSize(int w, int h, int maxSize) {
-    int longSide = Math.max(w, h);
-    int sample = 1;
-    while (longSide / sample > maxSize) sample <<= 1; // power-of-two downsampling
-    return Math.max(1, sample);
   }
 
   private byte[] toNv21(@NonNull ImageProxy image) {

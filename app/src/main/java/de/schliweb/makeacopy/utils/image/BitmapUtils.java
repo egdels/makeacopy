@@ -261,8 +261,8 @@ public final class BitmapUtils {
    * ensures that the bitmap reflects specific export options if applicable.
    *
    * @param source The input bitmap to be processed. If null, the method returns null.
-   * @param ctx The context used to access shared preferences and initialize OpenCV. If null, the
-   *     method returns the input bitmap unchanged.
+   * @param ctx The context used to access shared preferences. If null, the method returns the input
+   *     bitmap unchanged.
    * @return A processed bitmap reflecting the user preferences for preview. Returns the original
    *     bitmap if processing fails or no modifications are required.
    */
@@ -311,13 +311,6 @@ public final class BitmapUtils {
 
       if (cleanupMode != DocumentCleanupMode.ORIGINAL) {
         try {
-          if (!OpenCVUtils.isInitialized()) {
-            OpenCVUtils.init(ctx.getApplicationContext());
-          }
-        } catch (Throwable ignored) {
-          // Best-effort; failure is non-critical
-        }
-        try {
           DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
           cleanupOptions.preserveColor = !toGray && !toBw;
           Bitmap cleaned = DocumentCleanupProcessor.apply(ctx, safe, cleanupOptions);
@@ -329,18 +322,11 @@ public final class BitmapUtils {
 
       if (toBw || toGray) {
         try {
-          if (!OpenCVUtils.isInitialized()) {
-            OpenCVUtils.init(ctx.getApplicationContext());
-          }
-        } catch (Throwable ignored) {
-          // Best-effort; failure is non-critical
-        }
-        try {
           if (toBw) {
-            Bitmap bw = OpenCVUtils.toBw(out);
+            Bitmap bw = ImageOps.toBw(out);
             if (bw != null) out = bw;
           } else if (toGray) {
-            Bitmap gr = OpenCVUtils.toGray(out);
+            Bitmap gr = ImageOps.toGray(out);
             if (gr != null) out = gr;
           }
         } catch (Throwable ignored) {

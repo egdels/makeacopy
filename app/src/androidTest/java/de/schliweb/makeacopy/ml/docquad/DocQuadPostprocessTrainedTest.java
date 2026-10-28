@@ -15,7 +15,7 @@ import org.junit.runner.RunWith;
 
 /**
  * M6a: Minimaler, deterministischer Postprocessing-Pfad (Argmax-Quad + Mask-Stats) für das
- * trainierte ONNX (ohne UI, ohne OpenCV).
+ * trainierte ONNX (ohne UI).
  */
 @RunWith(AndroidJUnit4.class)
 public class DocQuadPostprocessTrainedTest extends DocQuadGoldenTestBase {

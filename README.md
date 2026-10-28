@@ -65,10 +65,10 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 
 | Edition | OCR Languages | Fonts | APK Size (arm64-v8a) |
 |---------|--------------|-------|---------------------|
-| **Full** | all PaddleOCR language groups (Latin, English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~132 MB |
-| **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, Vietnamese, …) | none (glyphless text layer) | ~65 MB |
+| **Full** | all PaddleOCR language groups (Latin, English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~115 MB |
+| **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, Vietnamese, …) | none (glyphless text layer) | ~49 MB |
 
-Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection and PaddleOCR. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
+Both editions include the same ML-based document detection (ONNX model), image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection and PaddleOCR. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
 
 OCR runs on PaddleOCR V5 in both editions. The Full edition is what is published on F-Droid and Google Play; the Light edition is available via [GitHub Releases](https://github.com/egdels/makeacopy/releases).
 
@@ -109,7 +109,7 @@ apksigner verify --print-certs MakeACopy-vX.Y.Z.apk
 ## Features
 
 - **Camera Scanning**: Capture documents using the device camera
-- **Edge Detection**: Automatic document edge detection using OpenCV, enhanced with a custom-trained machine learning model (ONNX, Apache 2.0)
+- **Edge Detection**: Automatic document edge detection with a custom-trained machine learning model (ONNX, Apache 2.0), snapped to the page edges
 - **Perspective Correction**: Adjust and crop documents with manual or automatic perspective correction
 - **Image Enhancement**: Apply filters (grayscale, contrast, sharpening)
 - **OCR**: Offline text recognition with PaddleOCR
@@ -182,11 +182,9 @@ Notes:
 
 MakeACopy is F-Droid compliant. The app builds all required native components from source during CI/local builds:
 
-1. **OpenCV Java Classes**: The required OpenCV Java wrapper classes are directly included in the app's source tree (copied from OpenCV but now part of this project). They are no longer used from the submodule.
-2. **OpenCV Native Libraries**: All OpenCV native libraries are built from source using the official OpenCV code provided via the Git submodule at `external/opencv`.
-3. **ONNX Runtime Native Libraries**: For ML-assisted edge detection, ONNX Runtime is built from source (CPU execution provider, Java bindings) using the submodule at `external/onnxruntime` via `scripts/build_onnxruntime_android.sh`. The resulting artifacts are integrated into `app/src/main/jniLibs/<ABI>/` (e.g., `libonnxruntime.so`, `libonnxruntime4j_jni.so`) and `app/libs/` (`onnxruntime-*.jar`).
+1. **ONNX Runtime Native Libraries**: For ML-assisted edge detection, ONNX Runtime is built from source (CPU execution provider, Java bindings) using the submodule at `external/onnxruntime` via `scripts/build_onnxruntime_android.sh`. The resulting artifacts are integrated into `app/src/main/jniLibs/<ABI>/` (e.g., `libonnxruntime.so`, `libonnxruntime4j_jni.so`) and `app/libs/` (`onnxruntime-*.jar`).
 
-This approach ensures F-Droid compatibility by not including any pre-compiled binaries in the repository and building OpenCV and ONNX Runtime native components from source.
+Image processing (perspective correction, dewarping, Enhanced, black and white) is plain Java in the app; ONNX Runtime is the only native component. No pre-compiled binaries are stored in the repository.
 
 ### GitHub Releases
 
@@ -204,10 +202,7 @@ The workflow contains two parallel jobs:
 **Full build** (`build`):
 - Sets up JDK 21 (Temurin) and installs Android NDK 28.0.13004108
 - Pins CMake 3.31.6 and Python 3.11.2 for deterministic native builds
-- Checks out submodules (external/opencv and external/onnxruntime)
-- Builds OpenCV native libraries from source via scripts/build_opencv_android.sh
-- Collects reproducibility evidence for native builds (scripts/collect_repro_evidence.sh)
-- Integrates OpenCV artifacts into the app via scripts/prepare_opencv.sh
+- Checks out the external/onnxruntime submodule
 - Builds ONNX Runtime for Android (CPU execution provider, Java bindings) via scripts/build_onnxruntime_android.sh — the operator config supports DocQuad corner detection and PaddleOCR V5
 - Builds the Full edition Android app with Gradle
 - Verifies that no test data leaks into release APKs via `:app:verifyNoTestDataInApk`
@@ -235,11 +230,11 @@ Behavior by event type:
 How to trigger a release build:
 1. Create a tag starting with v (e.g., v1.0.0)
 2. Push the tag to GitHub
-3. The workflow will build native libraries (OpenCV, ONNX Runtime) from source, build the app, sign (if secrets provided), verify, checksum, and publish a GitHub Release with artifacts
+3. The workflow will build ONNX Runtime from source, build the app, sign (if secrets provided), verify, checksum, and publish a GitHub Release with artifacts
 
 Notes:
 - All native components are built from source to stay F-Droid compatible; no prebuilt binaries are stored in the repo.
-- Both editions use an operator-stripped ONNX Runtime build. The Full edition's ONNX Runtime is built via `scripts/build_onnxruntime_android.sh` (CPU execution provider only; `ORT_USE_XNNPACK=1` / `ORT_USE_NNAPI=1` build the optional providers in again, e.g. for benchmarking). The Light edition reuses the native libraries (OpenCV and ONNX Runtime) from the Full build.
+- Both editions use an operator-stripped ONNX Runtime build. The Full edition's ONNX Runtime is built via `scripts/build_onnxruntime_android.sh` (CPU execution provider only; `ORT_USE_XNNPACK=1` / `ORT_USE_NNAPI=1` build the optional providers in again, e.g. for benchmarking). The Light edition reuses the ONNX Runtime libraries from the Full build.
 - The edition is controlled via the Gradle property `edition` (default: `full`). F-Droid builds use the default and require no special configuration.
 - A look at [.github/workflows/build-release.yml](.github/workflows/build-release.yml) shows you how the build process works and how you can reproduce it in your own development environment.
 
@@ -264,7 +259,6 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 
 | Purpose | Library / Model | License |
 |---------|-----------------|--------|
-| Image Processing | [OpenCV](https://opencv.org) 4.13.0 | Apache 2.0 |
 | ML Inference | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT |
 | Document Corner Detection | Custom-trained ONNX model | Apache 2.0 |
 | OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, exported to ORT) | Apache 2.0 |
@@ -276,7 +270,6 @@ For full attribution details, see the [`NOTICE`](NOTICE) file.
 
 ## Submodules
 
-- external/opencv — OpenCV source used to build native libraries during the build; Apache 2.0.
 - external/onnxruntime — ONNX Runtime source required for ML-assisted corner detection; MIT License.
   - Built from source via scripts/build_onnxruntime_android.sh (CPU execution provider, Java bindings).
   - Artifacts integrated into app/src/main/jniLibs/<ABI>/ (libonnxruntime.so, libonnxruntime4j_jni.so) and app/libs/ (onnxruntime-*.jar).
@@ -291,8 +284,8 @@ or redistributed.
 
 ### How the app uses the model
 
-- **Live preview**: one model pass per analysed frame (throttled), smoothed with a One-Euro filter; OpenCV contour/Hough detection is the fallback.
-- **Crop screen**: if the first pass is not confident, the image is additionally evaluated at a few fixed rotations (test-time rotation), because strongly tilted documents are the model's main weakness. Confidence is the heatmap peak probability × the agreement between the corner quad and the segmentation mask. A confident model result is used directly; otherwise it is compared with the OpenCV candidate. The chosen quad is finally snapped to image gradients at full resolution.
+- **Live preview**: one model pass per analysed frame (throttled), smoothed with a One-Euro filter; without a confident result no outline is shown.
+- **Crop screen**: if the first pass is not confident, the image is additionally evaluated at a few fixed rotations (test-time rotation), because strongly tilted documents are the model's main weakness. Confidence is the heatmap peak probability × the agreement between the corner quad and the segmentation mask. The quad is finally snapped to image gradients at full resolution; there is no contour fallback.
 - **Inference** runs on the ONNX Runtime CPU execution provider with two threads. NNAPI and XNNPACK are not used and no longer built in: measured on a Pixel 7a, NNAPI was about 12× slower with identical results and XNNPACK brought no gain.
 
 Accuracy and latency of this pipeline are measured on the device with instrumented tests (`CornerPipelineEvalTest`, `DocQuadLatencyBenchmarkTest`); see [training/EVALUATION.md](training/EVALUATION.md).
