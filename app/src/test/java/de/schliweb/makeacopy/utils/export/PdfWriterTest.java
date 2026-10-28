@@ -137,6 +137,30 @@ public class PdfWriterTest {
   }
 
   @Test
+  public void bilevelImageIsOneBitGrayAndDecodesToItsRows() throws Exception {
+    // 10 x 2 pixels: rows of two bytes, the last six bits of each row padding
+    byte[] rows = {(byte) 0b1010_1010, (byte) 0b1100_0000, (byte) 0xFF, (byte) 0x00};
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    PdfWriter writer = new PdfWriter(out, "Test");
+    writer.addPage(100, 20, PdfWriter.Image.bilevel(rows, 10, 2), "q 100 0 0 20 0 0 cm /Im0 Do Q\n");
+    writer.finish();
+    try (PDDocument doc = PDDocument.load(new ByteArrayInputStream(out.toByteArray()))) {
+      PDImageXObject img =
+          (PDImageXObject) doc.getPage(0).getResources().getXObject(COSName.getPDFName("Im0"));
+      assertEquals("DeviceGray", img.getColorSpace().getName());
+      assertEquals(1, img.getBitsPerComponent());
+      assertEquals(10, img.getWidth());
+      assertEquals(2, img.getHeight());
+      assertArrayEquals(rows, img.getStream().toByteArray());
+    }
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void bilevelRejectsRowsOfTheWrongLength() throws Exception {
+    PdfWriter.Image.bilevel(new byte[3], 10, 2);
+  }
+
+  @Test
   public void numbersAreShortAndLocaleFree() {
     assertEquals("595.28", PdfWriter.num(595.2756));
     assertEquals("12", PdfWriter.num(12.0));

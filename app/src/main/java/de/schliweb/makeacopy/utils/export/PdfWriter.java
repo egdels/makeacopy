@@ -66,6 +66,27 @@ final class PdfWriter {
           jpeg);
     }
 
+    /**
+     * A black and white page, one bit per pixel (1 is white), rows starting on a byte boundary,
+     * Flate-compressed: a tenth of a JPEG of the same page, and without its ringing around the
+     * letters.
+     */
+    static Image bilevel(byte[] packedRows, int width, int height) throws IOException {
+      if (packedRows.length != (width + 7) / 8 * height) {
+        throw new IllegalArgumentException("bad size for " + width + " x " + height);
+      }
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream(packedRows.length / 4);
+      try (DeflaterOutputStream z =
+          new DeflaterOutputStream(bytes, new Deflater(Deflater.BEST_COMPRESSION), 1 << 16)) {
+        z.write(packedRows);
+      }
+      return new Image(
+          width,
+          height,
+          "/ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /FlateDecode",
+          bytes.toByteArray());
+    }
+
     /** Lossless RGB from ARGB pixels (alpha dropped), Flate-compressed. */
     static Image lossless(int[] argb, int width, int height) throws IOException {
       ByteArrayOutputStream bytes = new ByteArrayOutputStream(width * height);

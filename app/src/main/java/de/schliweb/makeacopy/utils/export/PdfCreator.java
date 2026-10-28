@@ -844,6 +844,7 @@ public class PdfCreator {
   private static final class PreparedPage {
     byte[] jpeg;
     Bitmap lossless;
+    PdfWriter.Image bilevel;
     int imgW;
     int imgH;
     int srcW;
@@ -856,7 +857,27 @@ public class PdfCreator {
       if (lossless != null && !lossless.isRecycled()) lossless.recycle();
       lossless = null;
       jpeg = null;
+      bilevel = null;
     }
+  }
+
+  /** A black and white page as a 1-bit image (luma above the middle is white), row by row. */
+  private static PdfWriter.Image bilevel(Bitmap bw) throws IOException {
+    int w = bw.getWidth();
+    int h = bw.getHeight();
+    int stride = (w + 7) / 8;
+    byte[] packed = new byte[stride * h];
+    int[] row = new int[w];
+    for (int y = 0; y < h; y++) {
+      bw.getPixels(row, 0, w, 0, y, w, 1);
+      int base = y * stride;
+      for (int x = 0; x < w; x++) {
+        if (de.schliweb.makeacopy.utils.image.raster.Gray.luma(row[x]) >= 128) {
+          packed[base + (x >> 3)] |= (byte) (0x80 >>> (x & 7));
+        }
+      }
+    }
+    return PdfWriter.Image.bilevel(packed, w, h);
   }
 
   /**
@@ -1020,7 +1041,9 @@ public class PdfCreator {
       }
       page.imgW = prepared.getWidth();
       page.imgH = prepared.getHeight();
-      if (jpegQuality < 100) {
+      if (toBw) {
+        page.bilevel = bilevel(prepared);
+      } else if (jpegQuality < 100) {
         Bitmap opaque = removeAlphaChannel(prepared);
         try {
           java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(1 << 20);
@@ -1050,7 +1073,9 @@ public class PdfCreator {
       PdfWriter writer, PreparedPage page, int pageIndex, PageOptions options) {
     try {
       PdfWriter.Image image;
-      if (page.jpeg != null) {
+      if (page.bilevel != null) {
+        image = page.bilevel;
+      } else if (page.jpeg != null) {
         try {
           image = PdfWriter.Image.jpeg(page.jpeg);
         } catch (IllegalArgumentException e) {
