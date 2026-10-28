@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.util.Log;
 import androidx.annotation.VisibleForTesting;
+import de.schliweb.makeacopy.utils.ocr.BidiWordOrder;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 
@@ -327,9 +328,9 @@ final class PaddleResultBuilder {
 
                 // Phase 2: RTL-Detection für die Zeile anhand der erkannten Texte.
                 // Eine Zeile gilt als RTL, wenn mehr ihrer Wort-Codepoints RTL als LTR
-                // sind. Bei RTL kehren wir die Reihenfolge der Quads beim Aufbau des
-                // konkatenierten Textes um — die linke (visuell erste) Quad-Box ist
-                // logisch das letzte Wort der Zeile, die rechte das erste.
+                // sind. Bei RTL liest der konkatenierte Text die Quads von rechts nach
+                // links — die rechte Quad-Box ist logisch das erste Wort der Zeile —,
+                // eingebettete lateinische Läufe aber in ihrer eigenen Reihenfolge.
                 boolean rtl = isRtlLineByText(recognized);
                 appendLineText(textBuilder, recognized, rtl, verticalLayout);
 
@@ -442,8 +443,13 @@ final class PaddleResultBuilder {
             boolean rtl,
             boolean verticalLayout) {
         int n = recognized.length;
+        // Die Quads liegen links→rechts; Läufe der Gegenrichtung behalten ihre eigene
+        // Reihenfolge (zwei lateinische Snippets in einer RTL-Zeile, Issue #101).
+        String[] texts = new String[n];
+        for (int qi = 0; qi < n; qi++) texts[qi] = recognized[qi].text;
+        int[] order = BidiWordOrder.logicalOrder(texts, rtl);
         for (int qi = 0; qi < n; qi++) {
-            int idx = rtl ? (n - 1 - qi) : qi;
+            int idx = order[qi];
             String emittedText = recognized[idx].text;
             if (emittedText == null) continue;
             // Paddle liefert die Glyphen pro Crop in visueller (links→rechts) Reihenfolge.

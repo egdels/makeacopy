@@ -786,14 +786,11 @@ public class OCRPostProcessor {
       // Determine if this line is predominantly RTL based on Unicode directionality
       boolean isRtlLine = isLineRtl(line);
 
-      // Sort words within line: LTR = left to right, RTL = right to left
-      if (isRtlLine) {
-        // RTL: sort by X position descending (right to left)
-        line.sort((a, b) -> Float.compare(b.getBoundingBox().left, a.getBoundingBox().left));
-      } else {
-        // LTR: sort by X position ascending (left to right)
-        line.sort((a, b) -> Float.compare(a.getBoundingBox().left, b.getBoundingBox().left));
-      }
+      // Sort words left to right, then into reading order: an RTL line reads its Arabic words
+      // right to left but embedded Latin words in their own order, an LTR line the other way
+      // round (issue #101)
+      line.sort((a, b) -> Float.compare(a.getBoundingBox().left, b.getBoundingBox().left));
+      BidiWordOrder.toLogical(line, RecognizedWord::getText, isRtlLine);
 
       // Calculate line's top Y for paragraph detection
       float lineTopY = Float.MAX_VALUE;

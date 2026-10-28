@@ -240,6 +240,37 @@ public class PdfCreatorInstrumentedTest {
     }
   }
 
+  @Test
+  public void arabicLineKeepsEmbeddedLatinWordsInOrder() throws Exception {
+    // Issue #101: "Hello World" left of Arabic text in a line with an Arabic majority.
+    Context ctx = ApplicationProvider.getApplicationContext();
+
+    int imgW = 2200, imgH = 400;
+    Bitmap bmp = Bitmap.createBitmap(imgW, imgH, Bitmap.Config.ARGB_8888);
+    bmp.eraseColor(Color.WHITE);
+
+    try {
+      List<RecognizedWord> words = new ArrayList<>();
+      words.add(new RecognizedWord("Hello", new RectF(100, 100, 220, 145), 0.99f));
+      words.add(new RecognizedWord("World", new RectF(250, 100, 380, 145), 0.99f));
+      words.add(new RecognizedWord("التعرف", new RectF(1300, 100, 1450, 145), 0.99f));
+      words.add(new RecognizedWord("على", new RectF(1500, 100, 1580, 145), 0.99f));
+      words.add(new RecognizedWord("المستندات", new RectF(1630, 100, 1850, 145), 0.99f));
+
+      File out = new File(ctx.getCacheDir(), "test_rtl_mixed_line.pdf");
+      Uri res = PdfCreator.createSearchablePdf(ctx, bmp, words, Uri.fromFile(out), 90, false);
+      assertNotNull("PDF creation failed", res);
+
+      try (PDDocument doc = PDDocument.load(out)) {
+        String txt = new PDFTextStripper().getText(doc).trim();
+        assertTrue("Latin words reversed: " + txt, txt.contains("Hello World"));
+        assertTrue("Arabic words out of order: " + txt, txt.contains("المستندات على التعرف"));
+      }
+    } finally {
+      bmp.recycle();
+    }
+  }
+
   /**
    * Tests the alignment and overlay correctness of OCR text regions within a generated searchable
    * PDF.

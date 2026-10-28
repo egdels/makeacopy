@@ -61,6 +61,27 @@ public class OcrDocReadingOrderTest {
   }
 
   @Test
+  public void sortedWordsForReading_keepsLatinWordsInOrderInsideAnArabicLine() {
+    // Issue #101: "Hello World" left of three Arabic words, the line has an Arabic majority.
+    OcrDoc doc = new OcrDoc();
+    doc.words =
+        Arrays.asList(
+            word(1, "Hello", 10, 10),
+            word(2, "World", 70, 10),
+            word(3, "المستندات", 300, 10),
+            word(4, "على", 240, 10),
+            word(5, "التعرف", 180, 10));
+
+    List<OcrDoc.Word> sorted = OcrDocReadingOrder.sortedWordsForReading(doc);
+
+    assertEquals("المستندات", sorted.get(0).t);
+    assertEquals("على", sorted.get(1).t);
+    assertEquals("التعرف", sorted.get(2).t);
+    assertEquals("Hello", sorted.get(3).t);
+    assertEquals("World", sorted.get(4).t);
+  }
+
+  @Test
   public void isRtlText_detectsArabicWithoutChangingWordText() {
     String arabic = "المستندات";
 

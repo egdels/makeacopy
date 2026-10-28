@@ -9,6 +9,7 @@
  */
 package de.schliweb.makeacopy.ui.ocr.review.model;
 
+import de.schliweb.makeacopy.utils.ocr.BidiWordOrder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -55,12 +56,13 @@ public final class OcrDocReadingOrder {
     boolean rtl = isRtlLine(words);
     words.sort(
         (a, b) -> {
-          int c = rtl ? Integer.compare(left(b), left(a)) : Integer.compare(left(a), left(b));
+          int c = Integer.compare(left(a), left(b));
           if (c != 0) return c;
           c = Integer.compare(top(a), top(b));
           if (c != 0) return c;
           return Integer.compare(a != null ? a.id : 0, b != null ? b.id : 0);
         });
+    BidiWordOrder.toLogical(words, w -> w != null ? w.t : null, rtl);
   }
 
   private static List<List<OcrDoc.Word>> groupWordsIntoLines(List<OcrDoc.Word> words) {

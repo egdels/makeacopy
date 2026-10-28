@@ -31,6 +31,7 @@ import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupProcessor;
 import de.schliweb.makeacopy.utils.image.OpenCVUtils;
+import de.schliweb.makeacopy.utils.ocr.BidiWordOrder;
 import de.schliweb.makeacopy.utils.ocr.MultiColumnLayoutPolicy;
 import de.schliweb.makeacopy.utils.ocr.RecognizedWord;
 import java.io.File;
@@ -703,25 +704,18 @@ public class PdfCreator {
       // Detect if this line is predominantly RTL (Arabic/Persian/Hebrew)
       boolean isRtl = isRtlLine(line);
 
-      // Sort words in LOGICAL reading order:
-      // - RTL: rightmost word first (it's the first word of the sentence)
-      // - LTR: leftmost word first (it's the first word of the sentence)
+      // Sort words left to right; an RTL line is then put into LOGICAL reading order (rightmost
+      // Arabic word first, embedded Latin words keep their own order, issue #101), an LTR line
+      // stays in visual order (its RTL words are turned into glyph order below).
       line.sort(
           (a, b) -> {
-            int c;
-            if (isRtl) {
-              // RTL: sort right→left (descending X) for logical order
-              // The rightmost word is the FIRST word in the sentence
-              c = Float.compare(b.getBoundingBox().left, a.getBoundingBox().left);
-            } else {
-              // LTR: sort left→right (ascending X) for logical order
-              c = Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
-            }
+            int c = Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
             if (c != 0) return c;
             c = Float.compare(a.getBoundingBox().top, b.getBoundingBox().top);
             if (c != 0) return c;
             return Integer.compare(idx.get(a), idx.get(b));
           });
+      if (isRtl) BidiWordOrder.toLogical(line, RecognizedWord::getText, true);
 
       float medianH = medianHeight(line); // px in image
       float fontSize = Math.max(MIN_FONT_PT, medianH * TEXT_SIZE_RATIO);
@@ -835,15 +829,14 @@ public class PdfCreator {
       boolean isRtl = isRtlLine(line);
       line.sort(
           (a, b) -> {
-            int c =
-                isRtl
-                    ? Float.compare(b.getBoundingBox().left, a.getBoundingBox().left)
-                    : Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
+            int c = Float.compare(a.getBoundingBox().left, b.getBoundingBox().left);
             if (c != 0) return c;
             c = Float.compare(a.getBoundingBox().top, b.getBoundingBox().top);
             if (c != 0) return c;
             return Integer.compare(idx.get(a), idx.get(b));
           });
+      // Every word sits at its own box; the content stream carries them in reading order.
+      BidiWordOrder.toLogical(line, RecognizedWord::getText, isRtl);
 
       float medianH = medianHeight(line);
       float fontSize = Math.max(MIN_FONT_PT, medianH * TEXT_SIZE_RATIO);
