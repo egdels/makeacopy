@@ -307,35 +307,102 @@ public final class BitmapUtils {
       }
 
       Bitmap safe = BitmapUtils.ensureDisplaySafe(source);
-      Bitmap out = safe;
-
-      if (cleanupMode != DocumentCleanupMode.ORIGINAL) {
-        try {
-          DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
-          cleanupOptions.preserveColor = !toGray && !toBw;
-          Bitmap cleaned = DocumentCleanupProcessor.apply(ctx, safe, cleanupOptions);
-          if (cleaned != null) out = cleaned;
-        } catch (Throwable ignored) {
-          // Best-effort; failure is non-critical
-        }
-      }
-
-      if (toBw || toGray) {
-        try {
-          if (toBw) {
-            Bitmap bw = ImageOps.toBw(out);
-            if (bw != null) out = bw;
-          } else if (toGray) {
-            Bitmap gr = ImageOps.toGray(out);
-            if (gr != null) out = gr;
-          }
-        } catch (Throwable ignored) {
-          // Best-effort; failure is non-critical
-        }
-      }
+      Bitmap out = previewFor(safe, cleanupMode, toGray, toBw);
+      prefetchPreviews(safe, cleanupMode);
       return out;
     } catch (Throwable ignore) {
       return source;
     }
+  }
+
+  /**
+   * The cleaned page in colour for the last previewed source and cleanup mode, so that switching
+   * the output colour does not run the cleanup again: Enhanced in grayscale is the luma of Enhanced
+   * in colour. Preview bitmaps are never recycled, so they can be shared.
+   */
+  private static java.lang.ref.WeakReference<Bitmap> previewSource;
+
+  private static DocumentCleanupMode previewCleanupMode;
+  private static Bitmap previewCleaned;
+
+  /** The finished previews for that source and cleanup mode by output: colour, gray, b/w. */
+  private static final Bitmap[] previewOutputs = new Bitmap[3];
+
+  private static synchronized Bitmap previewFor(
+      Bitmap safe, DocumentCleanupMode cleanupMode, boolean toGray, boolean toBw) {
+    if (previewSource == null || previewSource.get() != safe || previewCleanupMode != cleanupMode) {
+      previewSource = new java.lang.ref.WeakReference<>(safe);
+      previewCleanupMode = cleanupMode;
+      previewCleaned = null;
+      java.util.Arrays.fill(previewOutputs, null);
+    }
+    int output = toBw ? 2 : toGray ? 1 : 0;
+    if (previewOutputs[output] != null) return previewOutputs[output];
+    if (previewCleaned == null) {
+      previewCleaned = safe;
+      if (cleanupMode != DocumentCleanupMode.ORIGINAL) {
+        try {
+          DocumentCleanupOptions cleanupOptions = new DocumentCleanupOptions(cleanupMode);
+          cleanupOptions.preserveColor = true;
+          Bitmap cleaned = DocumentCleanupProcessor.apply(null, safe, cleanupOptions);
+          if (cleaned != null) previewCleaned = cleaned;
+        } catch (Throwable ignored) {
+          // Best-effort; failure is non-critical
+        }
+      }
+    }
+    Bitmap out = previewCleaned;
+    try {
+      if (toBw || toGray) {
+        // Export cleans in grayscale before b/w, so the preview does too.
+        Bitmap gray =
+            cleanupMode != DocumentCleanupMode.ORIGINAL || toGray ? grayPreview(out) : out;
+        if (gray != null) out = gray;
+        if (toBw) {
+          Bitmap bw = ImageOps.toBw(out);
+          if (bw != null) out = bw;
+        }
+      }
+    } catch (Throwable ignored) {
+      // Best-effort; failure is non-critical
+    }
+    previewOutputs[output] = out;
+    return out;
+  }
+
+  private static final java.util.concurrent.ExecutorService PREVIEW_PREFETCH =
+      java.util.concurrent.Executors.newSingleThreadExecutor(
+          r -> {
+            Thread t = new Thread(r, "PreviewPrefetch");
+            t.setDaemon(true);
+            return t;
+          });
+
+  /**
+   * Renders the other output colours of {@code safe} in the background, so that switching the
+   * output colour shows the result at once. A switch while this runs waits for it and then finds
+   * its result.
+   */
+  private static void prefetchPreviews(Bitmap safe, DocumentCleanupMode cleanupMode) {
+    PREVIEW_PREFETCH.execute(
+        () -> {
+          for (int output = 0; output < 3; output++) {
+            synchronized (BitmapUtils.class) {
+              if (previewSource == null
+                  || previewSource.get() != safe
+                  || previewCleanupMode != cleanupMode) {
+                return;
+              }
+              previewFor(safe, cleanupMode, output == 1, output == 2);
+            }
+          }
+        });
+  }
+
+  private static Bitmap grayPreview(Bitmap colour) {
+    if (previewOutputs[1] != null) return previewOutputs[1];
+    Bitmap gray = ImageOps.toGray(colour);
+    if (gray != null) previewOutputs[1] = gray;
+    return gray;
   }
 }
