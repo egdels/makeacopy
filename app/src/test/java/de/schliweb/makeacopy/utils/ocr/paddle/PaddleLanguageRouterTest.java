@@ -160,4 +160,20 @@ public class PaddleLanguageRouterTest {
                     base.endsWith("_PP-OCRv5_mobile_rec") || base.equals("PP-OCRv5_mobile_rec"));
         }
     }
+
+    @Test
+    public void bundledModel_light_readsEnglishWithLatin() {
+        java.util.function.Predicate<String> lightOnly = "latin"::equals;
+        assertEquals("latin", PaddleLanguageRouter.bundledModel("latin", lightOnly));
+        assertEquals("latin", PaddleLanguageRouter.bundledModel("en", lightOnly));
+        assertNull(PaddleLanguageRouter.bundledModel("eslav", lightOnly));
+        assertNull(PaddleLanguageRouter.bundledModel(null, lightOnly));
+    }
+
+    @Test
+    public void bundledModel_full_keepsRoutedModel() {
+        java.util.function.Predicate<String> all = k -> true;
+        assertEquals("en", PaddleLanguageRouter.bundledModel("en", all));
+        assertEquals("eslav", PaddleLanguageRouter.bundledModel("eslav", all));
+    }
 }

@@ -12,8 +12,10 @@ package de.schliweb.makeacopy.utils.ocr;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import de.schliweb.makeacopy.utils.ocr.paddle.PaddleEngineFactory;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -47,8 +49,14 @@ public final class OcrModelManager {
     return false;
   }
 
+  /** The language groups whose recognition model the APK carries (Light: only "latin"). */
   public static String[] getAvailableLanguageCodes(Context context) {
-    return AVAILABLE_LANGUAGE_CODES.clone();
+    if (context == null) return AVAILABLE_LANGUAGE_CODES.clone();
+    List<String> out = new ArrayList<>();
+    for (String code : AVAILABLE_LANGUAGE_CODES) {
+      if (PaddleEngineFactory.isModelBundled(context, code)) out.add(code);
+    }
+    return out.toArray(new String[0]);
   }
 
   public static boolean importFromPackage(Context context, String packageName, String filename) {

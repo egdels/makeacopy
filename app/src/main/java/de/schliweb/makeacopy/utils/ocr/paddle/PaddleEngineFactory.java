@@ -57,6 +57,23 @@ public final class PaddleEngineFactory {
     }
 
     /**
+     * Whether the APK carries the detection model and the recognition model {@code modelKey}
+     * ("latin", "en", …). The Light edition ships only the Latin one.
+     */
+    public static boolean isModelBundled(Context context, String modelKey) {
+        return PaddleAssets.areModelsPresent(context, modelKey);
+    }
+
+    /**
+     * Whether the recognition model that {@code langSpec} routes to is bundled, see {@link
+     * #isModelBundled}.
+     */
+    public static boolean isLanguageBundled(Context context, String langSpec) {
+        String modelKey = PaddleLanguageRouter.resolveRecModel(langSpec);
+        return modelKey != null && isModelBundled(context, modelKey);
+    }
+
+    /**
      * Releases all resources held by Paddle detection and recognition engines.
      *
      * <p>This method is intended to clean up resources allocated by the underlying Paddle engines

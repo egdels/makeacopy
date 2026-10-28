@@ -59,6 +59,11 @@ public final class PaddleOcrEngine implements OcrEngine {
          */
         PaddleRecOrtRunner rec(String modelKey) throws Exception;
 
+        /** Whether the APK carries the recognition model {@code modelKey}. */
+        default boolean hasRec(String modelKey) {
+            return true;
+        }
+
         /**
          * Provides a default cropper implementation for processing OCR results.
          * The cropper is responsible for handling the cropping logic defined by the PaddleQuadCropper.
@@ -95,6 +100,11 @@ public final class PaddleOcrEngine implements OcrEngine {
             public PaddleRecOrtRunner rec(String modelKey) throws Exception {
                 return PaddleRecOrtRunner.getInstanceAsync(appCtx, modelKey)
                         .get(60, TimeUnit.SECONDS);
+            }
+
+            @Override
+            public boolean hasRec(String modelKey) {
+                return PaddleAssets.areModelsPresent(appCtx, modelKey);
             }
         };
     }
@@ -160,7 +170,9 @@ public final class PaddleOcrEngine implements OcrEngine {
     @VisibleForTesting
     OCRHelper.OcrResultWords runInternal(Bitmap bitmap) throws Exception {
         long tStart = System.nanoTime();
-        String modelKey = PaddleLanguageRouter.resolveRecModel(language);
+        String modelKey =
+                PaddleLanguageRouter.bundledModel(
+                        PaddleLanguageRouter.resolveRecModel(language), supplier::hasRec);
         if (modelKey == null) {
             Log.i(TAG, "no rec model for lang=" + language + " → empty result");
             return new OCRHelper.OcrResultWords("", null, new java.util.ArrayList<>());
@@ -180,6 +192,7 @@ public final class PaddleOcrEngine implements OcrEngine {
         // Loaded lazily, only when a line actually falls below the threshold.
         java.util.concurrent.Callable<PaddleRecOrtRunner> fallbackRec =
                 PaddleLanguageRouter.hasBaseModelFallback(modelKey)
+                                && supplier.hasRec(PaddleLanguageRouter.BASE_MODEL_KEY)
                         ? () -> supplier.rec(PaddleLanguageRouter.BASE_MODEL_KEY)
                         : null;
         OCRHelper.OcrResultWords result =

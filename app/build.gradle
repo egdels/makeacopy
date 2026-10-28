@@ -604,16 +604,30 @@ tasks.withType(JavaCompile).configureEach {
         excludedPaths = ".*/org/opencv/.*|.*/data_binding_base_class_source_out/.*"
     }
 }
-// Exclude CJK CMap files from light edition after asset merge (saves ~3 MB, not needed without CJK OCR support)
+// Light edition after asset merge: only the Latin PaddleOCR recognition model (plus detection) and
+// no CJK CMap files (saves ~3 MB, not needed without CJK OCR support). The app offers the language
+// groups whose model is bundled (OcrModelManager.getAvailableLanguageCodes).
+def lightRecModels = ["latin_PP-OCRv5_mobile_rec"]
 if (isLight) {
     tasks.whenTaskAdded { task ->
         if (task.name.matches("merge(Debug|Release)Assets")) {
             task.doLast {
-                def cmapDir = new File(task.outputDir.get().asFile, "com/tom_roush/fontbox/resources/cmap")
+                def outDir = task.outputDir.get().asFile
+                def cmapDir = new File(outDir, "com/tom_roush/fontbox/resources/cmap")
                 if (cmapDir.exists()) {
                     def deleted = cmapDir.deleteDir()
                     println "Deleted CJK CMap assets from light edition: ${deleted}"
                 }
+                def paddleDir = new File(outDir, "paddleocr/v5")
+                def dropped = []
+                paddleDir.listFiles()?.each { f ->
+                    def m = f.name =~ /^(.+_rec)(\.ort|_dict\.txt)$/
+                    if (m.matches() && !lightRecModels.contains(m.group(1))) {
+                        f.delete()
+                        dropped << f.name
+                    }
+                }
+                println "Dropped PaddleOCR models from light edition: ${dropped.sort()}"
             }
         }
     }

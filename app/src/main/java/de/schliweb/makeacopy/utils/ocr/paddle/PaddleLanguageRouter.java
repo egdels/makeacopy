@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
@@ -193,6 +194,18 @@ final class PaddleLanguageRouter {
      */
     static boolean hasBaseModelFallback(@Nullable String modelKey) {
         return "latin".equals(modelKey) || "en".equals(modelKey);
+    }
+
+    /**
+     * The model that reads the languages of {@code modelKey} among the bundled ones: the key itself,
+     * or for English the Latin model, which the Light edition ships alone; {@code null} if none.
+     */
+    @Nullable
+    static String bundledModel(@Nullable String modelKey, Predicate<String> bundled) {
+        if (modelKey == null) return null;
+        if (bundled.test(modelKey)) return modelKey;
+        if ("en".equals(modelKey) && bundled.test("latin")) return "latin";
+        return null;
     }
 
     static String resolveRecModel(@Nullable String langSpec) {

@@ -65,10 +65,10 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 
 | Edition | OCR Languages | Fonts | APK Size (arm64-v8a) |
 |---------|--------------|-------|---------------------|
-| **Full** | 23 languages (incl. CJK, Arabic, Hindi, Thai, Turkish) | none (glyphless text layer) | ~101 MB |
-| **Light** | English + German | none (glyphless text layer) | ~64 MB |
+| **Full** | all PaddleOCR language groups (Latin, English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~132 MB |
+| **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, Vietnamese, …) | none (glyphless text layer) | ~65 MB |
 
-Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition additionally ships fewer OCR language models, and uses a minimal ONNX Runtime AAR to further reduce APK size.
+Both editions include the same ML-based document detection (ONNX model), OpenCV image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection and PaddleOCR. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
 
 OCR runs on PaddleOCR V5 in both editions. The Full edition is what is published on F-Droid and Google Play; the Light edition is available via [GitHub Releases](https://github.com/egdels/makeacopy/releases).
 
@@ -249,7 +249,7 @@ Notes:
 ./gradlew :app:assembleRelease -Pedition=light -PenableAbiSplits=true
 ```
 
-The Light edition uses `applicationIdSuffix ".light"` (`de.schliweb.makeacopy.light`) and includes only English and German OCR models and English/German dictionaries.
+The Light edition uses `applicationIdSuffix ".light"` (`de.schliweb.makeacopy.light`) and includes only the PaddleOCR detection model and the Latin recognition model; the OCR language selector offers the Latin group only.
 
 ## Architecture
 

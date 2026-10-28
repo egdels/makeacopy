@@ -13,6 +13,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import de.schliweb.makeacopy.utils.layout.DocumentLayoutAnalyzer.AnalysisResult;
 import de.schliweb.makeacopy.utils.layout.DocumentRegion;
+import de.schliweb.makeacopy.utils.ocr.paddle.PaddleEngineFactory;
 import de.schliweb.makeacopy.utils.ocr.paddle.PaddleOcrEngine;
 import java.io.File;
 import java.util.ArrayList;
@@ -59,7 +60,10 @@ public class OCRHelper implements AutoCloseable {
       try {
         int radix = token.startsWith("x") || token.startsWith("X") ? 16 : 10;
         String digits = radix == 16 ? token.substring(1) : token;
-        matcher.appendReplacement(out, Matcher.quoteReplacement(new String(Character.toChars(Integer.parseInt(digits, radix)))));
+        matcher.appendReplacement(
+            out,
+            Matcher.quoteReplacement(
+                new String(Character.toChars(Integer.parseInt(digits, radix)))));
       } catch (RuntimeException ex) {
         matcher.appendReplacement(out, Matcher.quoteReplacement(matcher.group(0)));
       }
@@ -123,11 +127,7 @@ public class OCRHelper implements AutoCloseable {
   }
 
   public boolean isLanguageAvailable(String lang) {
-    try (OcrEngine engine = PaddleEngineProvider.create(context, lang)) {
-      return engine != null;
-    } catch (Exception e) {
-      return false;
-    }
+    return context != null && PaddleEngineFactory.isLanguageBundled(context, lang);
   }
 
   public boolean setVariable(String var, String value) {

@@ -177,4 +177,76 @@ public class PaddleOcrEngineTest {
             assertTrue("bbox bottom <= bmpH", eb[3] <= bmpH);
         }
     }
+
+    @Test
+    public void light_englishUsesLatinModel_andSkipsMissingBaseModel() throws Exception {
+        // Light edition: only the Latin model is bundled. English is read with it, and the
+        // low-confidence second pass with the (missing) base model is not attempted.
+        StubRec latin =
+                new StubRec(Arrays.asList(new PaddleRecOrtRunner.RecOutput("lowconf", 0.10f)));
+        StubDet det = new StubDet(Arrays.asList(quadAt(10, 10, 50, 14)));
+        List<String> requested = new java.util.ArrayList<>();
+        PaddleOcrEngine.RunnerSupplier supplier =
+                new PaddleOcrEngine.RunnerSupplier() {
+                    @Override
+                    public PaddleDetOrtRunner det() {
+                        return det;
+                    }
+
+                    @Override
+                    public PaddleRecOrtRunner rec(String modelKey) {
+                        requested.add(modelKey);
+                        if (!"latin".equals(modelKey)) {
+                            throw new IllegalStateException("not bundled: " + modelKey);
+                        }
+                        return latin;
+                    }
+
+                    @Override
+                    public boolean hasRec(String modelKey) {
+                        return "latin".equals(modelKey);
+                    }
+
+                    @Override
+                    public PaddleResultBuilder.Cropper cropper() {
+                        return (full, quad) -> null;
+                    }
+                };
+        PaddleOcrEngine engine = new PaddleOcrEngine(null, supplier);
+        engine.setLanguage("eng");
+
+        OCRHelper.OcrResultWords result = engine.runInternal(null);
+
+        assertEquals(Arrays.asList("latin"), requested);
+        assertEquals(1, result.words.size());
+        assertEquals("lowconf", result.words.get(0).getText());
+    }
+
+    @Test
+    public void light_unbundledScript_givesEmptyResult() throws Exception {
+        PaddleOcrEngine.RunnerSupplier supplier =
+                new PaddleOcrEngine.RunnerSupplier() {
+                    @Override
+                    public PaddleDetOrtRunner det() {
+                        throw new AssertionError("no detection without a rec model");
+                    }
+
+                    @Override
+                    public PaddleRecOrtRunner rec(String modelKey) {
+                        throw new AssertionError("not bundled: " + modelKey);
+                    }
+
+                    @Override
+                    public boolean hasRec(String modelKey) {
+                        return "latin".equals(modelKey);
+                    }
+                };
+        PaddleOcrEngine engine = new PaddleOcrEngine(null, supplier);
+        engine.setLanguage("rus");
+
+        OCRHelper.OcrResultWords result = engine.runInternal(null);
+
+        assertEquals("", result.text);
+        assertTrue(result.words.isEmpty());
+    }
 }
