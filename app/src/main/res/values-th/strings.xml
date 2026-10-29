@@ -116,9 +116,6 @@
     <string name="camera_zoom_not_available">อุปกรณ์นี้ไม่รองรับการซูม</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">สี</string>
-    <string name="jpeg_mode_auto">ระดับเทา</string>
-    <string name="jpeg_mode_bw_text">ขาวดำ</string>
 
     <string name="pdf_bw_mode_robust">ขาวดำ</string>
     <string name="skip_ocr_export_only">ข้าม OCR (ส่งออกเท่านั้น)</string>

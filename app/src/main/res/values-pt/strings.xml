@@ -120,9 +120,6 @@
     <string name="camera_zoom_not_available">O zoom não está disponível neste dispositivo</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Cor</string>
-    <string name="jpeg_mode_auto">Tons de cinza</string>
-    <string name="jpeg_mode_bw_text">Preto e branco</string>
 
     <string name="pdf_bw_mode_robust">Preto e branco</string>
 

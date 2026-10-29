@@ -41,7 +41,40 @@
             android:text="@string/document_cleanup_enhanced" />
     </RadioGroup>
 
-    <!-- PDF options group (shown when NOT exporting as JPEG, or together with JPEG) -->
+    <!-- One output colour for PDF and JPEG -->
+    <TextView
+        style="@style/Widget.MakeACopy.OptionsLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/output_color_title" />
+
+    <RadioGroup
+        android:id="@+id/dialog_pdf_bw_mode_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/dialog_pdf_bw_none"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/pdf_bw_mode_none" />
+
+        <RadioButton
+            android:id="@+id/dialog_pdf_grayscale"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/convert_to_grayscale" />
+
+        <RadioButton
+            android:id="@+id/dialog_pdf_bw_robust"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pdf_bw_mode_robust" />
+    </RadioGroup>
+
+    <!-- PDF options group (shown when NOT exporting as JPEG, or in the camera options dialog) -->
     <LinearLayout
         android:id="@+id/dialog_pdf_group"
         android:layout_width="match_parent"
@@ -57,38 +90,6 @@
             android:layout_height="wrap_content"
             android:text="@string/export_format_pdf"
             android:visibility="gone" />
-
-        <TextView
-            style="@style/Widget.MakeACopy.OptionsLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/output_color_title" />
-
-        <RadioGroup
-        android:id="@+id/dialog_pdf_bw_mode_group"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-            <RadioButton
-                android:id="@+id/dialog_pdf_bw_none"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="@string/pdf_bw_mode_none" />
-
-            <RadioButton
-                android:id="@+id/dialog_pdf_grayscale"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/convert_to_grayscale" />
-
-            <RadioButton
-                android:id="@+id/dialog_pdf_bw_robust"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/pdf_bw_mode_robust" />
-        </RadioGroup>
 
         <TextView
             style="@style/Widget.MakeACopy.OptionsLabel"
@@ -163,55 +164,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/pdf_preset_very_small" />
-        </RadioGroup>
-    </LinearLayout>
-
-    <!-- JPEG options group (shown when exporting as JPEG, or together with PDF) -->
-    <LinearLayout
-        android:id="@+id/dialog_jpeg_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingTop="8dp"
-        android:visibility="gone">
-
-        <TextView
-            style="@style/Widget.MakeACopy.OptionsSubsection"
-            android:id="@+id/dialog_jpeg_heading"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/export_format_jpeg"
-            android:visibility="gone" />
-
-        <TextView
-            style="@style/Widget.MakeACopy.OptionsLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/output_color_title" />
-
-        <RadioGroup
-            android:id="@+id/dialog_jpeg_mode_group"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <RadioButton
-                android:id="@+id/dialog_radio_jpeg_none"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/jpeg_mode_none" />
-
-            <RadioButton
-                android:id="@+id/dialog_radio_jpeg_auto"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/jpeg_mode_auto" />
-
-            <RadioButton
-                android:id="@+id/dialog_radio_jpeg_bw_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/jpeg_mode_bw_text" />
         </RadioGroup>
     </LinearLayout>
 

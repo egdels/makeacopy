@@ -113,9 +113,6 @@
     <string name="camera_zoom_ratio">%1$s×</string>
     <string name="camera_zoom_not_available">Το ζουμ δεν είναι διαθέσιμο σε αυτήν τη συσκευή</string>
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Χρώμα</string>
-    <string name="jpeg_mode_auto">Κλίμακα του γκρι</string>
-    <string name="jpeg_mode_bw_text">Ασπρόμαυρο</string>
     <string name="pdf_bw_mode_none">Χρώμα</string>
     <string name="pdf_bw_mode_robust">Ασπρόμαυρο</string>
     <string name="output_color_title" translatable="false">Χρώμα εξόδου</string>

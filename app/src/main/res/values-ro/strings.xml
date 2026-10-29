@@ -119,9 +119,6 @@
     <string name="camera_zoom_not_available">Zoomul nu este disponibil pe acest dispozitiv</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Culoare</string>
-    <string name="jpeg_mode_auto">Tonuri de gri</string>
-    <string name="jpeg_mode_bw_text">Alb-negru</string>
 
     <string name="pdf_bw_mode_robust">Alb-negru</string>
     <string name="skip_ocr_export_only">Omite OCR (doar export)</string>

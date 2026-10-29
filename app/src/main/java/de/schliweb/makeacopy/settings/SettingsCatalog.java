@@ -99,11 +99,10 @@ public final class SettingsCatalog {
           bool("include_ocr", false, Group.EXPORT),
           bool("export_as_jpeg", false, Group.EXPORT),
           str("document_cleanup_mode", "ORIGINAL", Group.EXPORT), // DocumentCleanupMode
-          str("pdf_bw_mode", null, Group.EXPORT), // GRAYSCALE, ROBUST, CLASSIC; null = colour
+          // Output colour of PDF and JPEG: GRAYSCALE, ROBUST, CLASSIC; null = colour
+          str("pdf_bw_mode", null, Group.EXPORT),
           str("page_format", "FIT_TO_IMAGE", Group.EXPORT), // PageFormat
           str("pdf_preset", null, Group.EXPORT), // PdfQualityPreset; null = by page count
-          str("jpeg_mode", "NONE", Group.EXPORT), // JpegExportOptions.Mode
-          bool("jpeg_output_grayscale", false, Group.EXPORT),
           bool("inbox_enabled", false, Group.EXPORT), // behind FeatureFlags.isInboxModeEnabled
           new Setting(PREFS_LOCATIONS, "inbox_uri", Type.STRING, null, Group.EXPORT),
           str("inbox_filename_template", "date_scan", Group.EXPORT),
@@ -154,8 +153,8 @@ public final class SettingsCatalog {
           "max_temp_age_hours",
           "memory_threshold_percent",
           // Legacy keys that are read for migration only
-          "convert_to_grayscale",
-          "jpeg_force_bw");
+          "jpeg_mode",
+          "jpeg_output_grayscale");
 
   /** The settings of one group, in catalog order. */
   public static List<Setting> inGroup(Group group) {

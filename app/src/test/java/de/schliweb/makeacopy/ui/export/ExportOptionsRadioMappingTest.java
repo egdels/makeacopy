@@ -6,7 +6,6 @@ import android.view.View;
 import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.utils.export.PageFormat;
 import de.schliweb.makeacopy.utils.export.PdfQualityPreset;
-import de.schliweb.makeacopy.utils.export.jpeg.JpegExportOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import org.junit.Test;
 
@@ -46,24 +45,13 @@ public class ExportOptionsRadioMappingTest {
   }
 
   @Test
-  public void jpeg_grayscaleIsModeNonePlusFlag() {
-    assertEquals(
-        R.id.dialog_radio_jpeg_none,
-        ExportOptionsPanel.jpegRadioId(JpegExportOptions.Mode.NONE, false));
-    assertEquals(
-        R.id.dialog_radio_jpeg_auto,
-        ExportOptionsPanel.jpegRadioId(JpegExportOptions.Mode.NONE, true));
-    // BW wins over a leftover grayscale flag
-    assertEquals(
-        R.id.dialog_radio_jpeg_bw_text,
-        ExportOptionsPanel.jpegRadioId(JpegExportOptions.Mode.BW_TEXT, true));
-
-    assertEquals(
-        JpegExportOptions.Mode.NONE,
-        ExportOptionsPanel.jpegModeFor(R.id.dialog_radio_jpeg_auto));
-    assertEquals(
-        JpegExportOptions.Mode.BW_TEXT,
-        ExportOptionsPanel.jpegModeFor(R.id.dialog_radio_jpeg_bw_text));
+  public void oldJpegColour_becomesTheSharedOutputColour() {
+    assertNull(ExportPrefsHelper.outputColorFromJpeg(null, false));
+    assertNull(ExportPrefsHelper.outputColorFromJpeg("NONE", false));
+    assertEquals("GRAYSCALE", ExportPrefsHelper.outputColorFromJpeg("NONE", true));
+    // Black and white wins over a leftover grayscale flag
+    assertEquals("ROBUST", ExportPrefsHelper.outputColorFromJpeg("BW_TEXT", true));
+    assertEquals("ROBUST", ExportPrefsHelper.outputColorFromJpeg("BW_TEXT", false));
   }
 
   @Test

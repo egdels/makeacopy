@@ -113,9 +113,6 @@
     <string name="camera_zoom_not_available">此设备不支持变焦</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">彩色</string>
-    <string name="jpeg_mode_auto">灰度</string>
-    <string name="jpeg_mode_bw_text">黑白</string>
 
     <string name="pdf_bw_mode_robust">黑白</string>
     <string name="skip_ocr_export_only">跳过 OCR（仅导出）</string>

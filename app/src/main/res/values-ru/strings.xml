@@ -119,9 +119,6 @@
     <string name="camera_zoom_not_available">Зум недоступен на этом устройстве</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Цвет</string>
-    <string name="jpeg_mode_auto">Оттенки серого</string>
-    <string name="jpeg_mode_bw_text">Чёрно-белый</string>
 
     <string name="pdf_bw_mode_robust">Чёрно-белый</string>
 

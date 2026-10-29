@@ -118,9 +118,6 @@
     <string name="camera_zoom_ratio">%1$s×</string>
     <string name="camera_zoom_not_available">Yakınlaştırma bu cihazda kullanılamıyor</string>
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Renkli</string>
-    <string name="jpeg_mode_auto">Gri tonlamalı</string>
-    <string name="jpeg_mode_bw_text">Siyah Beyaz</string>
 
     <string name="pdf_bw_mode_robust">Siyah Beyaz</string>
     <string name="skip_ocr_export_only">OCR\'yi atla (yalnızca dışa aktar)</string>

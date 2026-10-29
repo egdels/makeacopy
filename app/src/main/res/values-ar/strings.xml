@@ -117,9 +117,6 @@
     <string name="camera_zoom_not_available">التكبير غير متاح على هذا الجهاز</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">ملون</string>
-    <string name="jpeg_mode_auto">تدرج الرمادي</string>
-    <string name="jpeg_mode_bw_text">أبيض وأسود</string>
     <string name="pdf_bw_mode_robust">أبيض وأسود</string>
     <string name="skip_ocr_export_only">تخطي OCR (تصدير فقط)</string>
     <string name="preview_corner_detection">معاينة اكتشاف الزوايا</string>

@@ -118,9 +118,6 @@
     <string name="camera_zoom_not_available">Zoom er ikke tilgængelig på denne enhed</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Farve</string>
-    <string name="jpeg_mode_auto">Gråtoner</string>
-    <string name="jpeg_mode_bw_text">Sort/hvid</string>
 
     <string name="pdf_bw_mode_robust">Sort/hvid</string>
     <string name="skip_ocr_export_only">Spring OCR over (kun eksport)</string>

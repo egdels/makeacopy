@@ -126,9 +126,6 @@
     <string name="camera_zoom_ratio">%1$s×</string>
     <string name="camera_zoom_not_available">Zoom is not available on this device</string>
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Color</string>
-    <string name="jpeg_mode_auto">Grayscale</string>
-    <string name="jpeg_mode_bw_text">Black &amp; White</string>
     <string name="pdf_bw_mode_none">Color</string>
     <string name="pdf_bw_mode_robust">Black &amp; White</string>
     <string name="output_color_title" translatable="false">Output color</string>

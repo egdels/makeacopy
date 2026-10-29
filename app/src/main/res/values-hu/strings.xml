@@ -118,9 +118,6 @@
     <string name="camera_zoom_not_available">A zoom nem érhető el ezen az eszközön</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Színes</string>
-    <string name="jpeg_mode_auto">Szürkeárnyalatos</string>
-    <string name="jpeg_mode_bw_text">Fekete-fehér</string>
 
     <string name="pdf_bw_mode_robust">Fekete-fehér</string>
     <string name="skip_ocr_export_only">OCR kihagyása (csak exportálás)</string>

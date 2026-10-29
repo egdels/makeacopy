@@ -270,41 +270,12 @@ public final class BitmapUtils {
     if (source == null || ctx == null) return source;
     try {
       SharedPreferences prefs = ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-      boolean toGray = prefs.getBoolean("convert_to_grayscale", false);
-      boolean toBw = false;
-      boolean exportAsJpeg = prefs.getBoolean("export_as_jpeg", false);
+      // One output colour for PDF and JPEG (see ExportPrefsHelper.getPdfBwMode)
+      String mode = prefs.getString("pdf_bw_mode", null);
+      boolean toGray = "GRAYSCALE".equalsIgnoreCase(mode);
+      boolean toBw = "ROBUST".equalsIgnoreCase(mode) || "CLASSIC".equalsIgnoreCase(mode);
       DocumentCleanupMode cleanupMode =
           DocumentCleanupMode.fromPreference(prefs.getString("document_cleanup_mode", null));
-
-      if (exportAsJpeg) {
-        toGray = false;
-        toBw = prefs.getBoolean("jpeg_force_bw", false);
-        toGray = prefs.getBoolean("jpeg_output_grayscale", false);
-        try {
-          String mode = prefs.getString("jpeg_mode", "NONE");
-          if ("BW_TEXT".equalsIgnoreCase(mode)) {
-            toBw = true;
-            toGray = false;
-          }
-        } catch (Throwable ignored) {
-          // Best-effort; failure is non-critical
-        }
-      } else {
-        try {
-          String mode = prefs.getString("pdf_bw_mode", null);
-          if ("GRAYSCALE".equalsIgnoreCase(mode)) {
-            toGray = true;
-            toBw = false;
-          } else if ("ROBUST".equalsIgnoreCase(mode) || "CLASSIC".equalsIgnoreCase(mode)) {
-            toBw = true;
-            toGray = false;
-          } else {
-            toBw = false;
-          }
-        } catch (Throwable ignored) {
-          toBw = false;
-        }
-      }
 
       CleanedPreviewCache.PageRef page = CleanedPreviewCache.pageOf(source);
       Bitmap out = previewFor(source, page, cleanupMode, toGray, toBw);

@@ -121,9 +121,6 @@
     <string name="camera_zoom_not_available">Lo zoom non è disponibile su questo dispositivo</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Colore</string>
-    <string name="jpeg_mode_auto">Scala di grigi</string>
-    <string name="jpeg_mode_bw_text">Bianco e nero</string>
 
     <string name="pdf_bw_mode_robust">Bianco e nero</string>
     <string name="skip_ocr_export_only">Salta OCR (solo esportazione)</string>

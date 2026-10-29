@@ -119,9 +119,6 @@
     <string name="camera_zoom_ratio">%1$s×</string>
     <string name="camera_zoom_not_available">زوم در این دستگاه در دسترس نیست</string>
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">رنگی</string>
-    <string name="jpeg_mode_auto">خاکستری</string>
-    <string name="jpeg_mode_bw_text">سیاه و سفید</string>
     <string name="pdf_bw_mode_robust">سیاه و سفید</string>
     <string name="skip_ocr_export_only">رد کردن OCR (فقط خروجی)</string>
     <string name="preview_corner_detection">پیش‌نمایش تشخیص گوشه‌ها</string>

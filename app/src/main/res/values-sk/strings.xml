@@ -121,9 +121,6 @@
     <string name="camera_zoom_not_available">Priblíženie nie je na tomto zariadení dostupné</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Farba</string>
-    <string name="jpeg_mode_auto">Odtiene sivej</string>
-    <string name="jpeg_mode_bw_text">Čiernobiely</string>
 
     <string name="pdf_bw_mode_robust">Čiernobiely</string>
     <string name="skip_ocr_export_only">Preskočiť OCR (iba export)</string>

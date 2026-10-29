@@ -120,9 +120,6 @@
     <string name="camera_zoom_not_available">Přiblížení není na tomto zařízení dostupné</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Barva</string>
-    <string name="jpeg_mode_auto">Odstíny šedi</string>
-    <string name="jpeg_mode_bw_text">Černobílý</string>
     <string name="pdf_bw_mode_robust">Černobílý</string>
     <string name="skip_ocr_export_only">Přeskočit OCR (pouze export)</string>
     <string name="skip_cropping">Přeskočit oříznutí</string>

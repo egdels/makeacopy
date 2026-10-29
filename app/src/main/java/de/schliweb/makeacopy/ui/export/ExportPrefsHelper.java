@@ -82,8 +82,44 @@ public final class ExportPrefsHelper {
     return getPrefs(context).getBoolean("skip_ocr", false);
   }
 
+  /**
+   * The output colour of PDF and JPEG export alike: {@code GRAYSCALE}, {@code ROBUST} (black and
+   * white; a saved {@code CLASSIC} means the same) or {@code null} for colour. It keeps its old
+   * key, so saved settings and profiles stay valid.
+   */
   public static String getPdfBwMode(Context context) {
-    return getPrefs(context).getString("pdf_bw_mode", null);
+    SharedPreferences prefs = getPrefs(context);
+    migrateJpegOutputColor(prefs);
+    return prefs.getString("pdf_bw_mode", null);
+  }
+
+  /**
+   * JPEG had an output colour of its own ({@code jpeg_mode} and {@code jpeg_output_grayscale}).
+   * When JPEG is the selected format, its colour becomes the shared one; then both keys go.
+   */
+  static void migrateJpegOutputColor(SharedPreferences prefs) {
+    if (!prefs.contains("jpeg_mode") && !prefs.contains("jpeg_output_grayscale")) return;
+    SharedPreferences.Editor editor = prefs.edit();
+    if (prefs.getBoolean("export_as_jpeg", false)) {
+      String colour =
+          outputColorFromJpeg(
+              prefs.getString("jpeg_mode", null), prefs.getBoolean("jpeg_output_grayscale", false));
+      if (colour != null) editor.putString("pdf_bw_mode", colour);
+      else editor.remove("pdf_bw_mode");
+    }
+    editor.remove("jpeg_mode").remove("jpeg_output_grayscale").apply();
+  }
+
+  /** The shared output colour for an old JPEG setting; {@code null} is colour. */
+  static String outputColorFromJpeg(String jpegMode, boolean jpegGrayscale) {
+    if (JpegExportOptions.Mode.BW_TEXT.name().equals(jpegMode)) return "ROBUST";
+    return jpegGrayscale ? "GRAYSCALE" : null;
+  }
+
+  /** Whether the output colour is black and white. */
+  public static boolean isBlackWhiteOutput(Context context) {
+    String mode = getPdfBwMode(context);
+    return "ROBUST".equalsIgnoreCase(mode) || "CLASSIC".equalsIgnoreCase(mode);
   }
 
   public static boolean isGrayscaleFromPdfMode(Context context) {
@@ -131,17 +167,15 @@ public final class ExportPrefsHelper {
     return new boolean[] {convertGray, convertBw};
   }
 
+  /** The JPEG mode for the output colour: black and white is {@code BW_TEXT}. */
   public static JpegExportOptions.Mode resolveJpegMode(Context context) {
-    String saved = getPrefs(context).getString("jpeg_mode", JpegExportOptions.Mode.NONE.name());
-    try {
-      return JpegExportOptions.Mode.valueOf(saved);
-    } catch (IllegalArgumentException ex) {
-      return JpegExportOptions.Mode.NONE;
-    }
+    return isBlackWhiteOutput(context)
+        ? JpegExportOptions.Mode.BW_TEXT
+        : JpegExportOptions.Mode.NONE;
   }
 
   public static boolean isJpegOutputGrayscale(Context context) {
-    return getPrefs(context).getBoolean("jpeg_output_grayscale", false);
+    return isGrayscaleFromPdfMode(context);
   }
 
   public static DocumentCleanupMode resolveCleanupMode(Context context) {

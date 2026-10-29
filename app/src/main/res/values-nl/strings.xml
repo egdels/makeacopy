@@ -119,9 +119,6 @@
     <string name="camera_zoom_not_available">Zoom is niet beschikbaar op dit apparaat</string>
 
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">Kleur</string>
-    <string name="jpeg_mode_auto">Grijstinten</string>
-    <string name="jpeg_mode_bw_text">Zwart-wit</string>
 
     <string name="pdf_bw_mode_robust">Zwart-wit</string>
     <string name="skip_ocr_export_only">OCR overslaan (alleen exporteren)</string>

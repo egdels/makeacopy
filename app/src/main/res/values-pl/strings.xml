@@ -118,9 +118,6 @@
     <string name="camera_zoom_not_available">Zoom nie jest dostępny na tym urządzeniu</string>
 
     <!-- Tryby JPEG -->
-    <string name="jpeg_mode_none">Kolor</string>
-    <string name="jpeg_mode_auto">Skala szarości</string>
-    <string name="jpeg_mode_bw_text">Czarno-biały</string>
 
     <string name="pdf_bw_mode_robust">Czarno-biały</string>
     <string name="skip_ocr_export_only">Pomiń OCR (tylko eksport)</string>

@@ -112,9 +112,6 @@
     <string name="camera_zoom_ratio">%1$s×</string>
     <string name="camera_zoom_not_available">इस डिवाइस पर ज़ूम उपलब्ध नहीं है</string>
     <!-- JPEG mode labels -->
-    <string name="jpeg_mode_none">रंगीन</string>
-    <string name="jpeg_mode_auto">ग्रेस्केल</string>
-    <string name="jpeg_mode_bw_text">श्वेत-श्याम</string>
 
     <string name="pdf_bw_mode_none">रंगीन</string>
     <string name="pdf_bw_mode_robust">श्वेत-श्याम</string>

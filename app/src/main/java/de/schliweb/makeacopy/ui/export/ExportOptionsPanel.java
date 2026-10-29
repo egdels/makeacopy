@@ -25,14 +25,13 @@ import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.settings.SettingsCatalog;
 import de.schliweb.makeacopy.utils.export.PageFormat;
 import de.schliweb.makeacopy.utils.export.PdfQualityPreset;
-import de.schliweb.makeacopy.utils.export.jpeg.JpegExportOptions;
 import de.schliweb.makeacopy.utils.image.DocumentCleanupMode;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.ui.UIUtils;
 
 /**
- * The export options (OCR text file, document cleanup, PDF and JPEG output, inbox mode) as one
- * reusable block: {@code panel_export_options.xml} plus the code that fills it from the saved
+ * The export options (OCR text file, document cleanup, output colour, PDF output, inbox mode) as
+ * one reusable block: {@code panel_export_options.xml} plus the code that fills it from the saved
  * settings and writes the choices back. The export options dialog and the camera options dialog
  * both embed it, so the options exist once.
  */
@@ -42,7 +41,7 @@ public final class ExportOptionsPanel {
   public enum Formats {
     /** Only the group of the format currently selected on the Export screen. */
     CURRENT,
-    /** PDF and JPEG side by side, each with its own heading. */
+    /** The PDF options under their heading, whatever format is selected. */
     ALL
   }
 
@@ -51,7 +50,6 @@ public final class ExportOptionsPanel {
 
   public static final String BUNDLE_INCLUDE_OCR = "include_ocr";
   public static final String BUNDLE_EXPORT_AS_JPEG = "export_as_jpeg";
-  public static final String BUNDLE_JPEG_MODE = "jpeg_mode"; // enum name
   public static final String BUNDLE_PDF_PRESET = "pdf_preset"; // enum name
   public static final String BUNDLE_PAGE_FORMAT = "page_format"; // enum name
 
@@ -92,10 +90,7 @@ public final class ExportOptionsPanel {
   public Bundle apply(@NonNull Context ctx) {
     boolean includeOcr = cbIncludeOcr.isChecked();
     boolean asJpeg = ExportPrefsHelper.isExportAsJpeg(ctx);
-    int jpegCheckedId = checkedId(R.id.dialog_jpeg_mode_group);
-    JpegExportOptions.Mode mode = jpegModeFor(jpegCheckedId);
-    boolean jpegGray = jpegCheckedId == R.id.dialog_radio_jpeg_auto;
-    // null = none/original
+    // The output colour of PDF and JPEG; null = colour
     String pdfBwMode = pdfBwModeFor(checkedId(R.id.dialog_pdf_bw_mode_group));
     DocumentCleanupMode cleanupMode = cleanupModeFor(checkedId(R.id.dialog_document_cleanup_group));
     PdfQualityPreset preset = presetFor(checkedId(R.id.dialog_pdf_preset_group));
@@ -106,8 +101,6 @@ public final class ExportOptionsPanel {
             .edit()
             .putBoolean("include_ocr", includeOcr)
             .putBoolean("export_as_jpeg", asJpeg)
-            .putString("jpeg_mode", mode.name())
-            .putBoolean("jpeg_output_grayscale", jpegGray)
             .putString("document_cleanup_mode", cleanupMode.name())
             .putString("pdf_preset", preset.name())
             .putString("page_format", pageFormat.name());
@@ -118,8 +111,6 @@ public final class ExportOptionsPanel {
     Bundle result = new Bundle();
     result.putBoolean(BUNDLE_INCLUDE_OCR, includeOcr);
     result.putBoolean(BUNDLE_EXPORT_AS_JPEG, asJpeg);
-    result.putString(BUNDLE_JPEG_MODE, mode.name());
-    result.putBoolean("jpeg_output_grayscale", jpegGray);
     result.putString("document_cleanup_mode", cleanupMode.name());
     if (pdfBwMode != null) result.putString("pdf_bw_mode", pdfBwMode);
     result.putString(BUNDLE_PDF_PRESET, preset.name());
@@ -149,27 +140,15 @@ public final class ExportOptionsPanel {
 
   private void showFormatGroups(Formats formats, boolean exportJpeg) {
     View pdfGroup = root.findViewById(R.id.dialog_pdf_group);
-    View jpegGroup = root.findViewById(R.id.dialog_jpeg_group);
     boolean all = formats == Formats.ALL;
     pdfGroup.setVisibility(all || !exportJpeg ? View.VISIBLE : View.GONE);
-    jpegGroup.setVisibility(all || exportJpeg ? View.VISIBLE : View.GONE);
     root.findViewById(R.id.dialog_pdf_heading).setVisibility(all ? View.VISIBLE : View.GONE);
-    root.findViewById(R.id.dialog_jpeg_heading).setVisibility(all ? View.VISIBLE : View.GONE);
   }
 
   /**
    * Pre-selects the radio buttons from the saved options. Mutual exclusivity is the groups' job.
    */
   private void restoreRadioSelections(Context ctx, SharedPreferences prefs) {
-    // Legacy booleans removed; selection now driven solely by pdf_bw_mode
-    JpegExportOptions.Mode jpegMode;
-    try {
-      jpegMode =
-          JpegExportOptions.Mode.valueOf(
-              prefs.getString("jpeg_mode", JpegExportOptions.Mode.NONE.name()));
-    } catch (Exception e) {
-      jpegMode = JpegExportOptions.Mode.NONE;
-    }
     String pageFormatSaved = prefs.getString("page_format", PageFormat.FIT_TO_IMAGE.name());
     // pick default preset if none saved: High for single page, Standard for multi (ExportFragment
     // will compute page count; here fallback Standard)
@@ -186,11 +165,8 @@ public final class ExportOptionsPanel {
         R.id.dialog_page_format_group,
         pageFormatRadioId(PageFormat.fromName(pageFormatSaved, PageFormat.FIT_TO_IMAGE)));
     check(R.id.dialog_pdf_preset_group, presetRadioId(preset));
-    check(
-        R.id.dialog_jpeg_mode_group,
-        jpegRadioId(jpegMode, prefs.getBoolean("jpeg_output_grayscale", false)));
     // "none" selected if no saved value
-    check(R.id.dialog_pdf_bw_mode_group, pdfBwRadioId(prefs.getString("pdf_bw_mode", null)));
+    check(R.id.dialog_pdf_bw_mode_group, pdfBwRadioId(ExportPrefsHelper.getPdfBwMode(ctx)));
   }
 
   /** Checks the radio button, or keeps the layout's default when there is none to check. */
@@ -343,18 +319,6 @@ public final class ExportOptionsPanel {
     if (radioId == R.id.dialog_radio_pdf_small) return PdfQualityPreset.SMALL;
     if (radioId == R.id.dialog_radio_pdf_very_small) return PdfQualityPreset.VERY_SMALL;
     return PdfQualityPreset.STANDARD;
-  }
-
-  /** "Grayscale" is not a JPEG mode of its own but mode NONE plus the grayscale output flag. */
-  static int jpegRadioId(JpegExportOptions.Mode mode, boolean outputGrayscale) {
-    if (mode == JpegExportOptions.Mode.BW_TEXT) return R.id.dialog_radio_jpeg_bw_text;
-    return outputGrayscale ? R.id.dialog_radio_jpeg_auto : R.id.dialog_radio_jpeg_none;
-  }
-
-  static JpegExportOptions.Mode jpegModeFor(int radioId) {
-    return radioId == R.id.dialog_radio_jpeg_bw_text
-        ? JpegExportOptions.Mode.BW_TEXT
-        : JpegExportOptions.Mode.NONE;
   }
 
   /** A saved CLASSIC (no longer offered) is shown as "robust". */
