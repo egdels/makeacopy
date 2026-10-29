@@ -15,397 +15,391 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * DbPostProcessor is a utility class designed to process probabilistic maps for detecting quads
- * in documents. Typically used in Optical Character Recognition (OCR) pipelines such as PP-OCRv5,
- * it aids in post-processing binarized probability maps to extract valid bounding polygons
- * based on predefined thresholds and filtering criteria.
+ * DbPostProcessor is a utility class designed to process probabilistic maps for detecting quads in
+ * documents. Typically used in Optical Character Recognition (OCR) pipelines such as PP-OCRv5, it
+ * aids in post-processing binarized probability maps to extract valid bounding polygons based on
+ * predefined thresholds and filtering criteria.
  *
- * The primary purpose of this class is to determine bounding areas of connected components
- * by analyzing the probability map and filtering results the way the PaddleOCR reference
- * post-processing does: by box score and minimum size only. Earlier versions also rejected
- * flat, homogeneous components as "stripes" (colour bars, rules); that filter had to go because
- * the DB kernel of a long text line is exactly such a flat, filled bar (8-9 px high at the
- * detector's working resolution, more than 40 times wider than high), so whole lines of
- * justified body text vanished from the result (GitHub issue #87).
+ * <p>The primary purpose of this class is to determine bounding areas of connected components by
+ * analyzing the probability map and filtering results the way the PaddleOCR reference
+ * post-processing does: by box score and minimum size only. Earlier versions also rejected flat,
+ * homogeneous components as "stripes" (colour bars, rules); that filter had to go because the DB
+ * kernel of a long text line is exactly such a flat, filled bar (8-9 px high at the detector's
+ * working resolution, more than 40 times wider than high), so whole lines of justified body text
+ * vanished from the result (GitHub issue #87).
  *
- * Key features and steps in the processing workflow include:
- * - Binary thresholding to create a mask of probable areas.
- * - Identification of connected components using Breadth-First Search (BFS).
- * - Filtering of components based on predefined constraints like size and shape.
- * - Unclipping bounding boxes to account for edge cases without overly aggressive growth.
+ * <p>Key features and steps in the processing workflow include: - Binary thresholding to create a
+ * mask of probable areas. - Identification of connected components using Breadth-First Search
+ * (BFS). - Filtering of components based on predefined constraints like size and shape. -
+ * Unclipping bounding boxes to account for edge cases without overly aggressive growth.
  *
- * The thresholds and filters are fully customizable through constructor parameters,
- * allowing for flexibility when applying OCR or layout reconstruction for varying document types.
+ * <p>The thresholds and filters are fully customizable through constructor parameters, allowing for
+ * flexibility when applying OCR or layout reconstruction for varying document types.
  *
- * Default thresholds provided include:
- * - dbThresh: Minimum probability required to include a pixel in a binary mask.
- * - boxThresh: Minimum mean probability for each bounding box to be considered valid.
- * - minArea: Minimum pixel area for connected components to prevent noise.
- * - minSide: Minimum width or height for bounding boxes to avoid fragmentation.
+ * <p>Default thresholds provided include: - dbThresh: Minimum probability required to include a
+ * pixel in a binary mask. - boxThresh: Minimum mean probability for each bounding box to be
+ * considered valid. - minArea: Minimum pixel area for connected components to prevent noise. -
+ * minSide: Minimum width or height for bounding boxes to avoid fragmentation.
  *
- * The {@code process} method serves as the entry point for extracting valid quads from the input
+ * <p>The {@code process} method serves as the entry point for extracting valid quads from the input
  * probability map. The output is a list of {@code Quad} objects, which represent the detected
  * bounding polygons in the same coordinate space as the input map.
  */
 final class DbPostProcessor {
 
-    /**
-     * The default threshold value used to filter the probability map in the DB post-processing
-     * pipeline. This threshold determines the minimum confidence level required for a pixel
-     * to be considered part of a detected object.
-     *
-     * <p>The value is set to 0.3 by default and can be adjusted to refine the sensitivity of the
-     * detection results. Lowering the threshold increases sensitivity, potentially including
-     * more false positives, while raising it decreases sensitivity, excluding more potential
-     * detections.
-     */
-    static final double DEFAULT_DB_THRESH = 0.3;
+  /**
+   * The default threshold value used to filter the probability map in the DB post-processing
+   * pipeline. This threshold determines the minimum confidence level required for a pixel to be
+   * considered part of a detected object.
+   *
+   * <p>The value is set to 0.3 by default and can be adjusted to refine the sensitivity of the
+   * detection results. Lowering the threshold increases sensitivity, potentially including more
+   * false positives, while raising it decreases sensitivity, excluding more potential detections.
+   */
+  static final double DEFAULT_DB_THRESH = 0.3;
 
-    /**
-     * Box score of the PP-OCRv5 mobile detection model's own inference configuration ({@code
-     * DBPostProcess: box_thresh 0.6}), so that the app accepts boxes the way the reference
-     * pipeline does.
-     */
-    static final double DEFAULT_BOX_THRESH = 0.6;
+  /**
+   * Box score of the PP-OCRv5 mobile detection model's own inference configuration ({@code
+   * DBPostProcess: box_thresh 0.6}), so that the app accepts boxes the way the reference pipeline
+   * does.
+   */
+  static final double DEFAULT_BOX_THRESH = 0.6;
 
-    /**
-     * Unclip ratio of the reference configuration ({@code unclip_ratio 1.5}). The DB model
-     * predicts a kernel shrunk well inside the text; unclipping grows it back by {@code area *
-     * ratio / perimeter} (PaddleOCR's DBPostProcess). An earlier version grew by {@code area *
-     * (ratio - 1) / perimeter}, only 40 % of the reference offset, which left the boxes about
-     * 10 px inside the ink at 1920 px and cost the first and last letter of many lines
-     * ("Inselbewohner" read as "[nselbewohner", "und" as "unc").
-     */
-    static final double DEFAULT_UNCLIP_RATIO = 1.5;
-    /**
-     * Defines the minimum area threshold for regions to be considered during
-     * post-processing in the detection pipeline.
-     *
-     * <p>Any region with an area smaller than this value will be ignored.
-     * This constant ensures that very small regions, which are likely to
-     * be noise or artifacts, do not interfere with the processing results.
-     */
-    static final int DEFAULT_MIN_AREA = 16;
-    static final int DEFAULT_MIN_SIDE = 3;
+  /**
+   * Unclip ratio of the reference configuration ({@code unclip_ratio 1.5}). The DB model predicts a
+   * kernel shrunk well inside the text; unclipping grows it back by {@code area * ratio /
+   * perimeter} (PaddleOCR's DBPostProcess). An earlier version grew by {@code area * (ratio - 1) /
+   * perimeter}, only 40 % of the reference offset, which left the boxes about 10 px inside the ink
+   * at 1920 px and cost the first and last letter of many lines ("Inselbewohner" read as
+   * "[nselbewohner", "und" as "unc").
+   */
+  static final double DEFAULT_UNCLIP_RATIO = 1.5;
 
-    private final double dbThresh;
-    private final double boxThresh;
-    private final double unclipRatio;
-    private final int minArea;
-    private final int minSide;
+  /**
+   * Defines the minimum area threshold for regions to be considered during post-processing in the
+   * detection pipeline.
+   *
+   * <p>Any region with an area smaller than this value will be ignored. This constant ensures that
+   * very small regions, which are likely to be noise or artifacts, do not interfere with the
+   * processing results.
+   */
+  static final int DEFAULT_MIN_AREA = 16;
 
-    DbPostProcessor() {
-        this(
-                DEFAULT_DB_THRESH,
-                DEFAULT_BOX_THRESH,
-                DEFAULT_UNCLIP_RATIO,
-                DEFAULT_MIN_AREA,
-                DEFAULT_MIN_SIDE);
+  static final int DEFAULT_MIN_SIDE = 3;
+
+  private final double dbThresh;
+  private final double boxThresh;
+  private final double unclipRatio;
+  private final int minArea;
+  private final int minSide;
+
+  DbPostProcessor() {
+    this(
+        DEFAULT_DB_THRESH,
+        DEFAULT_BOX_THRESH,
+        DEFAULT_UNCLIP_RATIO,
+        DEFAULT_MIN_AREA,
+        DEFAULT_MIN_SIDE);
+  }
+
+  DbPostProcessor(double dbThresh, double boxThresh, double unclipRatio) {
+    this(dbThresh, boxThresh, unclipRatio, DEFAULT_MIN_AREA, DEFAULT_MIN_SIDE);
+  }
+
+  DbPostProcessor(double dbThresh, double boxThresh, double unclipRatio, int minArea, int minSide) {
+    this.dbThresh = dbThresh;
+    this.boxThresh = boxThresh;
+    this.unclipRatio = unclipRatio;
+    this.minArea = minArea;
+    this.minSide = minSide;
+  }
+
+  /**
+   * Processes a 2D probability array and identifies connected components that meet specific
+   * thresholds and constraints. It returns a list of quads representing bounding boxes for the
+   * detected components, along with their scores.
+   *
+   * @param prob A 2D array of probabilities representing the prediction output. Each value
+   *     indicates the confidence of a pixel being part of a region of interest. Must be non-null
+   *     and contain at least one row with one column.
+   * @return A list of quads, where each quad represents a detected connected component. Each quad
+   *     contains four vertices (top-left, top-right, bottom-right, bottom-left), along with a score
+   *     that indicates the mean probability of the component.
+   */
+  List<Quad> process(float[][] prob) {
+    if (prob == null || prob.length == 0 || prob[0] == null || prob[0].length == 0) {
+      return new ArrayList<>();
+    }
+    final int h = prob.length;
+    final int w = prob[0].length;
+
+    // Binäre Maske via dbThresh
+    boolean[][] bin = new boolean[h][w];
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        bin[y][x] = prob[y][x] >= dbThresh;
+      }
     }
 
-    DbPostProcessor(double dbThresh, double boxThresh, double unclipRatio) {
-        this(dbThresh, boxThresh, unclipRatio, DEFAULT_MIN_AREA, DEFAULT_MIN_SIDE);
+    boolean[][] visited = new boolean[h][w];
+    List<Quad> result = new ArrayList<>();
+
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        if (!bin[y][x] || visited[y][x]) continue;
+        Component c = floodFill(prob, bin, visited, x, y);
+        if (isPlausibleTextBox(c)) result.add(unclip(c));
+      }
+    }
+    return result;
+  }
+
+  /** Eine zusammenhängende Komponente der binären Maske samt Statistik. */
+  private static final class Component {
+    int minX, maxX, minY, maxY;
+    int count = 0;
+    double sumProb = 0.0;
+    // Ink span per row and per column ({min, max} of the other coordinate): the component's
+    // thickness is a high percentile of the spans across the cells of its longer axis, i.e.
+    // the thickness of its hull where the kernel is full. For a straight line that is the
+    // box height, even where the kernel thins out into the whitespace beside a short word;
+    // for a skewed line of a photo it is the true stroke band, not the inflated bounding
+    // box; holes in the kernel do not thin it (the reference unclips the contour polygon).
+    final java.util.HashMap<Integer, int[]> rowSpan = new java.util.HashMap<>();
+    final java.util.HashMap<Integer, int[]> colSpan = new java.util.HashMap<>();
+    // Pixel coordinates, for the principal axis of a tilted line (see orientedUnclip).
+    int[] px = new int[64];
+    int[] py = new int[64];
+    double sumX = 0.0;
+    double sumY = 0.0;
+
+    Component(int x, int y) {
+      minX = maxX = x;
+      minY = maxY = y;
     }
 
-    DbPostProcessor(
-            double dbThresh,
-            double boxThresh,
-            double unclipRatio,
-            int minArea,
-            int minSide) {
-        this.dbThresh = dbThresh;
-        this.boxThresh = boxThresh;
-        this.unclipRatio = unclipRatio;
-        this.minArea = minArea;
-        this.minSide = minSide;
+    void add(int px, int py, float p) {
+      if (count == this.px.length) {
+        this.px = java.util.Arrays.copyOf(this.px, 2 * count);
+        this.py = java.util.Arrays.copyOf(this.py, 2 * count);
+      }
+      this.px[count] = px;
+      this.py[count] = py;
+      sumX += px;
+      sumY += py;
+      count++;
+      sumProb += p;
+      extend(rowSpan, py, px);
+      extend(colSpan, px, py);
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
     }
 
-    /**
-     * Processes a 2D probability array and identifies connected components that meet specific
-     * thresholds and constraints. It returns a list of quads representing bounding boxes for
-     * the detected components, along with their scores.
-     *
-     * @param prob A 2D array of probabilities representing the prediction output. Each value
-     *             indicates the confidence of a pixel being part of a region of interest.
-     *             Must be non-null and contain at least one row with one column.
-     * @return A list of quads, where each quad represents a detected connected component. Each
-     *         quad contains four vertices (top-left, top-right, bottom-right, bottom-left),
-     *         along with a score that indicates the mean probability of the component.
-     */
-    List<Quad> process(float[][] prob) {
-        if (prob == null || prob.length == 0 || prob[0] == null || prob[0].length == 0) {
-            return new ArrayList<>();
-        }
-        final int h = prob.length;
-        final int w = prob[0].length;
-
-        // Binäre Maske via dbThresh
-        boolean[][] bin = new boolean[h][w];
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                bin[y][x] = prob[y][x] >= dbThresh;
-            }
-        }
-
-        boolean[][] visited = new boolean[h][w];
-        List<Quad> result = new ArrayList<>();
-
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                if (!bin[y][x] || visited[y][x]) continue;
-                Component c = floodFill(prob, bin, visited, x, y);
-                if (isPlausibleTextBox(c)) result.add(unclip(c));
-            }
-        }
-        return result;
+    private static void extend(java.util.HashMap<Integer, int[]> spans, int key, int v) {
+      int[] span = spans.get(key);
+      if (span == null) {
+        spans.put(key, new int[] {v, v});
+      } else {
+        if (v < span[0]) span[0] = v;
+        if (v > span[1]) span[1] = v;
+      }
     }
 
-    /** Eine zusammenhängende Komponente der binären Maske samt Statistik. */
-    private static final class Component {
-        int minX, maxX, minY, maxY;
-        int count = 0;
-        double sumProb = 0.0;
-        // Ink span per row and per column ({min, max} of the other coordinate): the component's
-        // thickness is a high percentile of the spans across the cells of its longer axis, i.e.
-        // the thickness of its hull where the kernel is full. For a straight line that is the
-        // box height, even where the kernel thins out into the whitespace beside a short word;
-        // for a skewed line of a photo it is the true stroke band, not the inflated bounding
-        // box; holes in the kernel do not thin it (the reference unclips the contour polygon).
-        final java.util.HashMap<Integer, int[]> rowSpan = new java.util.HashMap<>();
-        final java.util.HashMap<Integer, int[]> colSpan = new java.util.HashMap<>();
-        // Pixel coordinates, for the principal axis of a tilted line (see orientedUnclip).
-        int[] px = new int[64];
-        int[] py = new int[64];
-        double sumX = 0.0;
-        double sumY = 0.0;
-
-        Component(int x, int y) {
-            minX = maxX = x;
-            minY = maxY = y;
-        }
-
-        void add(int px, int py, float p) {
-            if (count == this.px.length) {
-                this.px = java.util.Arrays.copyOf(this.px, 2 * count);
-                this.py = java.util.Arrays.copyOf(this.py, 2 * count);
-            }
-            this.px[count] = px;
-            this.py[count] = py;
-            sumX += px;
-            sumY += py;
-            count++;
-            sumProb += p;
-            extend(rowSpan, py, px);
-            extend(colSpan, px, py);
-            if (px < minX) minX = px;
-            if (px > maxX) maxX = px;
-            if (py < minY) minY = py;
-            if (py > maxY) maxY = py;
-        }
-
-        private static void extend(java.util.HashMap<Integer, int[]> spans, int key, int v) {
-            int[] span = spans.get(key);
-            if (span == null) {
-                spans.put(key, new int[] {v, v});
-            } else {
-                if (v < span[0]) span[0] = v;
-                if (v > span[1]) span[1] = v;
-            }
-        }
-
-        int boxW() {
-            return maxX - minX + 1;
-        }
-
-        int boxH() {
-            return maxY - minY + 1;
-        }
-
-        double meanProb() {
-            return sumProb / count;
-        }
+    int boxW() {
+      return maxX - minX + 1;
     }
 
-    /** BFS über die 4-Nachbarschaft; markiert alle Pixel der Komponente als besucht. */
-    private static Component floodFill(
-            float[][] prob, boolean[][] bin, boolean[][] visited, int startX, int startY) {
-        final int h = bin.length;
-        final int w = bin[0].length;
-        Component c = new Component(startX, startY);
-        Deque<int[]> queue = new ArrayDeque<>();
-        queue.add(new int[] {startX, startY});
-        visited[startY][startX] = true;
-        while (!queue.isEmpty()) {
-            int[] p = queue.poll();
-            int px = p[0], py = p[1];
-            c.add(px, py, prob[py][px]);
-            visit(bin, visited, queue, px + 1, py, w, h);
-            visit(bin, visited, queue, px - 1, py, w, h);
-            visit(bin, visited, queue, px, py + 1, w, h);
-            visit(bin, visited, queue, px, py - 1, w, h);
-        }
-        return c;
+    int boxH() {
+      return maxY - minY + 1;
     }
 
-    private static void visit(
-            boolean[][] bin, boolean[][] visited, Deque<int[]> queue, int x, int y, int w, int h) {
-        if (x < 0 || x >= w || y < 0 || y >= h) return;
-        if (!bin[y][x] || visited[y][x]) return;
-        visited[y][x] = true;
-        queue.add(new int[] {x, y});
+    double meanProb() {
+      return sumProb / count;
     }
+  }
 
-    private boolean isPlausibleTextBox(Component c) {
-        if (c.count <= 0) return false;
-        if (c.meanProb() < boxThresh) return false;
-        // Box-Hygiene: Mindestfläche und Mindestseitenlänge.
-        if (c.count < minArea) return false;
-        return c.boxW() >= minSide && c.boxH() >= minSide;
+  /** BFS über die 4-Nachbarschaft; markiert alle Pixel der Komponente als besucht. */
+  private static Component floodFill(
+      float[][] prob, boolean[][] bin, boolean[][] visited, int startX, int startY) {
+    final int h = bin.length;
+    final int w = bin[0].length;
+    Component c = new Component(startX, startY);
+    Deque<int[]> queue = new ArrayDeque<>();
+    queue.add(new int[] {startX, startY});
+    visited[startY][startX] = true;
+    while (!queue.isEmpty()) {
+      int[] p = queue.poll();
+      int px = p[0], py = p[1];
+      c.add(px, py, prob[py][px]);
+      visit(bin, visited, queue, px + 1, py, w, h);
+      visit(bin, visited, queue, px - 1, py, w, h);
+      visit(bin, visited, queue, px, py + 1, w, h);
+      visit(bin, visited, queue, px, py - 1, w, h);
     }
+    return c;
+  }
 
+  private static void visit(
+      boolean[][] bin, boolean[][] visited, Deque<int[]> queue, int x, int y, int w, int h) {
+    if (x < 0 || x >= w || y < 0 || y >= h) return;
+    if (!bin[y][x] || visited[y][x]) return;
+    visited[y][x] = true;
+    queue.add(new int[] {x, y});
+  }
 
-    /**
-     * Paddle-konformes Unclip: D = area * (ratio - 1) / perimeter, isotrop. Im Gegensatz zur
-     * multiplikativen Halbachsen-Skalierung wächst die Box hier nur um wenige Pixel, statt um
-     * Faktor `unclipRatio` zu explodieren. Dadurch verschmelzen benachbarte Zeilen seltener zu
-     * einem Riesen-Quad.
-     */
-    /** Percentile of the per-cell spans that stands for the kernel's full thickness. */
-    static final double THICKNESS_PERCENTILE = 0.9;
+  private boolean isPlausibleTextBox(Component c) {
+    if (c.count <= 0) return false;
+    if (c.meanProb() < boxThresh) return false;
+    // Box-Hygiene: Mindestfläche und Mindestseitenlänge.
+    if (c.count < minArea) return false;
+    return c.boxW() >= minSide && c.boxH() >= minSide;
+  }
 
-    private static double spanPercentile(java.util.Map<Integer, int[]> spans) {
-        if (spans.isEmpty()) return 1.0;
-        int[] values = new int[spans.size()];
-        int i = 0;
-        for (int[] span : spans.values()) values[i++] = span[1] - span[0] + 1;
-        java.util.Arrays.sort(values);
-        int index = Math.min(values.length - 1, (int) Math.floor(THICKNESS_PERCENTILE * (values.length - 1)));
-        return values[index];
+  /**
+   * Paddle-konformes Unclip: D = area * (ratio - 1) / perimeter, isotrop. Im Gegensatz zur
+   * multiplikativen Halbachsen-Skalierung wächst die Box hier nur um wenige Pixel, statt um Faktor
+   * `unclipRatio` zu explodieren. Dadurch verschmelzen benachbarte Zeilen seltener zu einem
+   * Riesen-Quad.
+   */
+  /** Percentile of the per-cell spans that stands for the kernel's full thickness. */
+  static final double THICKNESS_PERCENTILE = 0.9;
+
+  private static double spanPercentile(java.util.Map<Integer, int[]> spans) {
+    if (spans.isEmpty()) return 1.0;
+    int[] values = new int[spans.size()];
+    int i = 0;
+    for (int[] span : spans.values()) values[i++] = span[1] - span[0] + 1;
+    java.util.Arrays.sort(values);
+    int index =
+        Math.min(values.length - 1, (int) Math.floor(THICKNESS_PERCENTILE * (values.length - 1)));
+    return values[index];
+  }
+
+  /** Tilts below this are noise of the pixel grid; the axis-aligned box is kept. */
+  static final double MIN_TILT_DEG = 0.3;
+
+  /** Tilts above this are not a skewed line of text but something else; axis-aligned again. */
+  static final double MAX_TILT_DEG = 30.0;
+
+  /** A tilted box needs a component at least this many times longer than thick. */
+  static final double MIN_ELONGATION = 3.0;
+
+  /**
+   * The box of a component: along its principal axis when it is a horizontal line tilted by {@link
+   * #MIN_TILT_DEG} to {@link #MAX_TILT_DEG}, as PaddleOCR's minimum-area rectangle; else
+   * axis-aligned. An axis-aligned box around a full-width line tilted by a degree or two takes in
+   * half of the next line, and the recogniser reads both (skew_light: character error rate 0.73
+   * with axis-aligned boxes only).
+   */
+  private Quad unclip(Component c) {
+    if (c.boxW() >= c.boxH()) {
+      double angle = principalAngle(c);
+      double deg = Math.abs(Math.toDegrees(angle));
+      if (deg >= MIN_TILT_DEG && deg <= MAX_TILT_DEG) {
+        Quad tilted = orientedUnclip(c, angle);
+        if (tilted != null) return tilted;
+      }
     }
+    return axisAlignedUnclip(c);
+  }
 
-    /** Tilts below this are noise of the pixel grid; the axis-aligned box is kept. */
-    static final double MIN_TILT_DEG = 0.3;
-
-    /** Tilts above this are not a skewed line of text but something else; axis-aligned again. */
-    static final double MAX_TILT_DEG = 30.0;
-
-    /** A tilted box needs a component at least this many times longer than thick. */
-    static final double MIN_ELONGATION = 3.0;
-
-    /**
-     * The box of a component: along its principal axis when it is a horizontal line tilted by
-     * {@link #MIN_TILT_DEG} to {@link #MAX_TILT_DEG}, as PaddleOCR's minimum-area rectangle; else
-     * axis-aligned. An axis-aligned box around a full-width line tilted by a degree or two takes in
-     * half of the next line, and the recogniser reads both (skew_light: character error rate 0.73
-     * with axis-aligned boxes only).
-     */
-    private Quad unclip(Component c) {
-        if (c.boxW() >= c.boxH()) {
-            double angle = principalAngle(c);
-            double deg = Math.abs(Math.toDegrees(angle));
-            if (deg >= MIN_TILT_DEG && deg <= MAX_TILT_DEG) {
-                Quad tilted = orientedUnclip(c, angle);
-                if (tilted != null) return tilted;
-            }
-        }
-        return axisAlignedUnclip(c);
+  /** Angle of the principal axis of the component's pixels, in radians. */
+  private static double principalAngle(Component c) {
+    double cx = c.sumX / c.count;
+    double cy = c.sumY / c.count;
+    double sxx = 0.0;
+    double sxy = 0.0;
+    double syy = 0.0;
+    for (int k = 0; k < c.count; k++) {
+      double dx = c.px[k] - cx;
+      double dy = c.py[k] - cy;
+      sxx += dx * dx;
+      sxy += dx * dy;
+      syy += dy * dy;
     }
+    return 0.5 * Math.atan2(2.0 * sxy, sxx - syy);
+  }
 
-    /** Angle of the principal axis of the component's pixels, in radians. */
-    private static double principalAngle(Component c) {
-        double cx = c.sumX / c.count;
-        double cy = c.sumY / c.count;
-        double sxx = 0.0;
-        double sxy = 0.0;
-        double syy = 0.0;
-        for (int k = 0; k < c.count; k++) {
-            double dx = c.px[k] - cx;
-            double dy = c.py[k] - cy;
-            sxx += dx * dx;
-            sxy += dx * dy;
-            syy += dy * dy;
-        }
-        return 0.5 * Math.atan2(2.0 * sxy, sxx - syy);
+  /**
+   * The unclipped box along {@code angle}: length along the axis, thickness the {@link
+   * #THICKNESS_PERCENTILE} of the cross-sections, grown by the same offset as {@link
+   * #axisAlignedUnclip}. Null when the component is too short for its tilt to be trusted.
+   */
+  private Quad orientedUnclip(Component c, double angle) {
+    // u along the axis, v across it (downwards); pixel centres.
+    double ux = Math.cos(angle);
+    double uy = Math.sin(angle);
+    double vx = -uy;
+    double vy = ux;
+    double uMin = Double.MAX_VALUE;
+    double uMax = -Double.MAX_VALUE;
+    for (int k = 0; k < c.count; k++) {
+      double u = (c.px[k] + 0.5) * ux + (c.py[k] + 0.5) * uy;
+      uMin = Math.min(uMin, u);
+      uMax = Math.max(uMax, u);
     }
-
-    /**
-     * The unclipped box along {@code angle}: length along the axis, thickness the {@link
-     * #THICKNESS_PERCENTILE} of the cross-sections, grown by the same offset as {@link
-     * #axisAlignedUnclip}. Null when the component is too short for its tilt to be trusted.
-     */
-    private Quad orientedUnclip(Component c, double angle) {
-        // u along the axis, v across it (downwards); pixel centres.
-        double ux = Math.cos(angle);
-        double uy = Math.sin(angle);
-        double vx = -uy;
-        double vy = ux;
-        double uMin = Double.MAX_VALUE;
-        double uMax = -Double.MAX_VALUE;
-        for (int k = 0; k < c.count; k++) {
-            double u = (c.px[k] + 0.5) * ux + (c.py[k] + 0.5) * uy;
-            uMin = Math.min(uMin, u);
-            uMax = Math.max(uMax, u);
-        }
-        int cells = Math.max(1, (int) Math.floor(uMax - uMin) + 1);
-        double[] lo = new double[cells];
-        double[] hi = new double[cells];
-        java.util.Arrays.fill(lo, Double.MAX_VALUE);
-        java.util.Arrays.fill(hi, -Double.MAX_VALUE);
-        double vMin = Double.MAX_VALUE;
-        double vMax = -Double.MAX_VALUE;
-        for (int k = 0; k < c.count; k++) {
-            double x = c.px[k] + 0.5;
-            double y = c.py[k] + 0.5;
-            int cell = Math.min(cells - 1, (int) Math.floor(x * ux + y * uy - uMin + 1e-9));
-            double v = x * vx + y * vy;
-            lo[cell] = Math.min(lo[cell], v);
-            hi[cell] = Math.max(hi[cell], v);
-            vMin = Math.min(vMin, v);
-            vMax = Math.max(vMax, v);
-        }
-        double[] spans = new double[cells];
-        int n = 0;
-        for (int i = 0; i < cells; i++) {
-            if (lo[i] != Double.MAX_VALUE) spans[n++] = hi[i] - lo[i] + 1.0;
-        }
-        java.util.Arrays.sort(spans, 0, n);
-        double thickness =
-                Math.max(1.0, spans[Math.min(n - 1, (int) Math.floor(THICKNESS_PERCENTILE * (n - 1)))]);
-        double length = Math.max(1.0, uMax - uMin + 1.0);
-        if (length / thickness < MIN_ELONGATION) return null;
-        double d = length * thickness * Math.max(0.0, unclipRatio) / (2.0 * (length + thickness));
-        double u0 = uMin - 0.5 - d;
-        double u1 = uMax + 0.5 + d;
-        double v0 = vMin - 0.5 - d;
-        double v1 = vMax + 0.5 + d;
-        // TL, TR, BR, BL
-        double[] xs = {u0 * ux + v0 * vx, u1 * ux + v0 * vx, u1 * ux + v1 * vx, u0 * ux + v1 * vx};
-        double[] ys = {u0 * uy + v0 * vy, u1 * uy + v0 * vy, u1 * uy + v1 * vy, u0 * uy + v1 * vy};
-        double[] kernel = new double[] {c.minX, c.minY, c.maxX + 1, c.maxY + 1, c.count};
-        return new Quad(xs, ys, c.meanProb(), kernel);
+    int cells = Math.max(1, (int) Math.floor(uMax - uMin) + 1);
+    double[] lo = new double[cells];
+    double[] hi = new double[cells];
+    java.util.Arrays.fill(lo, Double.MAX_VALUE);
+    java.util.Arrays.fill(hi, -Double.MAX_VALUE);
+    double vMin = Double.MAX_VALUE;
+    double vMax = -Double.MAX_VALUE;
+    for (int k = 0; k < c.count; k++) {
+      double x = c.px[k] + 0.5;
+      double y = c.py[k] + 0.5;
+      int cell = Math.min(cells - 1, (int) Math.floor(x * ux + y * uy - uMin + 1e-9));
+      double v = x * vx + y * vy;
+      lo[cell] = Math.min(lo[cell], v);
+      hi[cell] = Math.max(hi[cell], v);
+      vMin = Math.min(vMin, v);
+      vMax = Math.max(vMax, v);
     }
-
-    private Quad axisAlignedUnclip(Component c) {
-        // Offset like PaddleOCR's DBPostProcess.unclip: area * ratio / perimeter of the kernel
-        // polygon. The polygon is approximated by the component's pixel count and its length,
-        // not by its bounding box: a slightly skewed line of a phone photo has a bounding box
-        // far taller than the text, and growing by the box's area pushed the crop into the
-        // neighbouring lines (the newspaper photo of GitHub issue #87 came out garbled).
-        boolean horizontal = c.boxW() >= c.boxH();
-        double length = Math.max(1.0, horizontal ? c.boxW() : c.boxH());
-        double thickness = Math.max(1.0, spanPercentile(horizontal ? c.colSpan : c.rowSpan));
-        double area = length * thickness;
-        double perimeter = 2.0 * (length + thickness);
-        double d = area * Math.max(0.0, unclipRatio) / perimeter;
-
-        double x0 = c.minX - d;
-        double x1 = c.maxX + 1 + d;
-        double y0 = c.minY - d;
-        double y1 = c.maxY + 1 + d;
-
-        double[] xs = new double[] {x0, x1, x1, x0};
-        double[] ys = new double[] {y0, y0, y1, y1};
-        double[] kernel = new double[] {c.minX, c.minY, c.maxX + 1, c.maxY + 1, c.count};
-        return new Quad(xs, ys, c.meanProb(), kernel);
+    double[] spans = new double[cells];
+    int n = 0;
+    for (int i = 0; i < cells; i++) {
+      if (lo[i] != Double.MAX_VALUE) spans[n++] = hi[i] - lo[i] + 1.0;
     }
+    java.util.Arrays.sort(spans, 0, n);
+    double thickness =
+        Math.max(1.0, spans[Math.min(n - 1, (int) Math.floor(THICKNESS_PERCENTILE * (n - 1)))]);
+    double length = Math.max(1.0, uMax - uMin + 1.0);
+    if (length / thickness < MIN_ELONGATION) return null;
+    double d = length * thickness * Math.max(0.0, unclipRatio) / (2.0 * (length + thickness));
+    double u0 = uMin - 0.5 - d;
+    double u1 = uMax + 0.5 + d;
+    double v0 = vMin - 0.5 - d;
+    double v1 = vMax + 0.5 + d;
+    // TL, TR, BR, BL
+    double[] xs = {u0 * ux + v0 * vx, u1 * ux + v0 * vx, u1 * ux + v1 * vx, u0 * ux + v1 * vx};
+    double[] ys = {u0 * uy + v0 * vy, u1 * uy + v0 * vy, u1 * uy + v1 * vy, u0 * uy + v1 * vy};
+    double[] kernel = new double[] {c.minX, c.minY, c.maxX + 1, c.maxY + 1, c.count};
+    return new Quad(xs, ys, c.meanProb(), kernel);
+  }
+
+  private Quad axisAlignedUnclip(Component c) {
+    // Offset like PaddleOCR's DBPostProcess.unclip: area * ratio / perimeter of the kernel
+    // polygon. The polygon is approximated by the component's pixel count and its length,
+    // not by its bounding box: a slightly skewed line of a phone photo has a bounding box
+    // far taller than the text, and growing by the box's area pushed the crop into the
+    // neighbouring lines (the newspaper photo of GitHub issue #87 came out garbled).
+    boolean horizontal = c.boxW() >= c.boxH();
+    double length = Math.max(1.0, horizontal ? c.boxW() : c.boxH());
+    double thickness = Math.max(1.0, spanPercentile(horizontal ? c.colSpan : c.rowSpan));
+    double area = length * thickness;
+    double perimeter = 2.0 * (length + thickness);
+    double d = area * Math.max(0.0, unclipRatio) / perimeter;
+
+    double x0 = c.minX - d;
+    double x1 = c.maxX + 1 + d;
+    double y0 = c.minY - d;
+    double y1 = c.maxY + 1 + d;
+
+    double[] xs = new double[] {x0, x1, x1, x0};
+    double[] ys = new double[] {y0, y0, y1, y1};
+    double[] kernel = new double[] {c.minX, c.minY, c.maxX + 1, c.maxY + 1, c.count};
+    return new Quad(xs, ys, c.meanProb(), kernel);
+  }
 }

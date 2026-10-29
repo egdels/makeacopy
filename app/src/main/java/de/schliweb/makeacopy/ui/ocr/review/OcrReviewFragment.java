@@ -965,7 +965,6 @@ public class OcrReviewFragment extends Fragment {
         new android.widget.LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-
     // Actions row
     android.widget.LinearLayout actions = new android.widget.LinearLayout(requireContext());
     actions.setOrientation(android.widget.LinearLayout.HORIZONTAL);
@@ -1941,8 +1940,7 @@ public class OcrReviewFragment extends Fragment {
    *
    * @return whether the result was written
    */
-  private boolean savePageResult(
-      String pageId, String text, java.util.List<RecognizedWord> words) {
+  private boolean savePageResult(String pageId, String text, java.util.List<RecognizedWord> words) {
     Context app = requireContext().getApplicationContext();
     try {
       java.io.File wordsFile = PageOcrFiles.write(app, pageId, text, words);

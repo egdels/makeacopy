@@ -210,9 +210,7 @@ public final class ScanPersister {
     }
     File dir = new File(appContext.getFilesDir(), "scans/" + edited.id());
     for (String stale :
-        new String[] {
-          PageOcrFiles.TEXT_FILE, PageOcrFiles.WORDS_FILE, PageOcrFiles.EDITED_FILE
-        }) {
+        new String[] {PageOcrFiles.TEXT_FILE, PageOcrFiles.WORDS_FILE, PageOcrFiles.EDITED_FILE}) {
       File f = new File(dir, stale);
       if (f.exists() && !f.delete()) {
         Log.w(TAG, "persistEditedPage: failed to delete stale OCR artifact " + LogSafe.file(f));

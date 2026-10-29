@@ -29,7 +29,8 @@ public final class OcrOptionsPanel {
   static final String BUNDLE_PADDLE_BEST_OCR = "paddle_best_ocr";
 
   /** What the user chose when the panel was applied. */
-  public record Choice(boolean autoRotateApplyExport, boolean paddleBestOcr, boolean multiColumnOcr) {}
+  public record Choice(
+      boolean autoRotateApplyExport, boolean paddleBestOcr, boolean multiColumnOcr) {}
 
   private final CheckBox autoRotate;
   private final CheckBox paddleBestOcr;

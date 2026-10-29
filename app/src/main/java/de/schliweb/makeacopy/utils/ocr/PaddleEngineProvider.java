@@ -16,45 +16,44 @@ import de.schliweb.makeacopy.utils.ocr.paddle.PaddleEngineFactory;
 /**
  * Provides functionality to create and manage Paddle OCR engine instances.
  *
- * This class serves as a wrapper for the creation and release of OCR engine
- * instances using the Paddle OCR backend through the {@link PaddleEngineFactory}.
- * It manages language configuration for the OCR engine and ensures that
- * resources are released when no longer needed.
+ * <p>This class serves as a wrapper for the creation and release of OCR engine instances using the
+ * Paddle OCR backend through the {@link PaddleEngineFactory}. It manages language configuration for
+ * the OCR engine and ensures that resources are released when no longer needed.
  *
- * This is a utility class and should not be instantiated.
+ * <p>This is a utility class and should not be instantiated.
  */
 public final class PaddleEngineProvider {
 
-    private static final String TAG = "PaddleEngineProvider";
+  private static final String TAG = "PaddleEngineProvider";
 
-    private PaddleEngineProvider() {}
+  private PaddleEngineProvider() {}
 
-    static OcrEngine create(Context context, String language) {
-        if (context == null) {
-            return null;
-        }
-        Context appCtx = context.getApplicationContext();
-        try {
-            OcrEngine engine = PaddleEngineFactory.create(appCtx);
-            if (language != null) {
-                try {
-                    engine.setLanguage(language);
-                } catch (Throwable t) {
-                    Log.w(TAG, "engine.setLanguage failed (continuing)", t);
-                }
-            }
-            return engine;
-        } catch (Throwable t) {
-            Log.w(TAG, "PaddleEngineFactory.create failed", t);
-            return null;
-        }
+  static OcrEngine create(Context context, String language) {
+    if (context == null) {
+      return null;
     }
-
-    public static void releaseAll(Context context) {
+    Context appCtx = context.getApplicationContext();
+    try {
+      OcrEngine engine = PaddleEngineFactory.create(appCtx);
+      if (language != null) {
         try {
-            PaddleEngineFactory.releaseAll();
+          engine.setLanguage(language);
         } catch (Throwable t) {
-            Log.w(TAG, "releaseAll failed", t);
+          Log.w(TAG, "engine.setLanguage failed (continuing)", t);
         }
+      }
+      return engine;
+    } catch (Throwable t) {
+      Log.w(TAG, "PaddleEngineFactory.create failed", t);
+      return null;
     }
+  }
+
+  public static void releaseAll(Context context) {
+    try {
+      PaddleEngineFactory.releaseAll();
+    } catch (Throwable t) {
+      Log.w(TAG, "releaseAll failed", t);
+    }
+  }
 }

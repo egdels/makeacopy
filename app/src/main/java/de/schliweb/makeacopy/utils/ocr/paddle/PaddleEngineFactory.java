@@ -21,77 +21,77 @@ import de.schliweb.makeacopy.utils.ocr.OcrEngine;
  */
 public final class PaddleEngineFactory {
 
-    private PaddleEngineFactory() {}
+  private PaddleEngineFactory() {}
 
-    /**
-     * Creates and returns an instance of {@link OcrEngine}. Ensures Paddle-OCR detection assets are
-     * correctly extracted and available before instantiating the engine.
-     *
-     * @param context the Android {@link Context} object used for accessing application resources and
-     *                system services required for initialization of the OCR engine.
-     * @return a new instance of {@link OcrEngine}.
-     * @throws Exception if the detection assets cannot be extracted or if the engine creation fails.
-     */
-    public static OcrEngine create(Context context) throws Exception {
-        PaddleAssets.ensureDetExtracted(context);
-        return new PaddleOcrEngine(context);
-    }
+  /**
+   * Creates and returns an instance of {@link OcrEngine}. Ensures Paddle-OCR detection assets are
+   * correctly extracted and available before instantiating the engine.
+   *
+   * @param context the Android {@link Context} object used for accessing application resources and
+   *     system services required for initialization of the OCR engine.
+   * @return a new instance of {@link OcrEngine}.
+   * @throws Exception if the detection assets cannot be extracted or if the engine creation fails.
+   */
+  public static OcrEngine create(Context context) throws Exception {
+    PaddleAssets.ensureDetExtracted(context);
+    return new PaddleOcrEngine(context);
+  }
 
-    /**
-     * Creates and returns an instance of {@link OcrEngine} configured with the specified language.
-     * Ensures Paddle-OCR detection assets are correctly extracted and available before instantiating
-     * the engine.
-     *
-     * @param context the Android {@link Context} object used for accessing application resources and
-     *                system services required for initialization of the OCR engine.
-     * @param langSpec the language specification string, following the standard Tesseract-style
-     *                 format, to configure the {@link OcrEngine}.
-     * @return a new instance of {@link OcrEngine} configured with the specified language.
-     * @throws Exception if the detection assets cannot be extracted or if the engine creation or
-     *                   language configuration fails.
-     */
-    public static OcrEngine create(Context context, String langSpec) throws Exception {
-        OcrEngine e = create(context);
-        e.setLanguage(langSpec);
-        return e;
-    }
+  /**
+   * Creates and returns an instance of {@link OcrEngine} configured with the specified language.
+   * Ensures Paddle-OCR detection assets are correctly extracted and available before instantiating
+   * the engine.
+   *
+   * @param context the Android {@link Context} object used for accessing application resources and
+   *     system services required for initialization of the OCR engine.
+   * @param langSpec the language specification string, following the standard Tesseract-style
+   *     format, to configure the {@link OcrEngine}.
+   * @return a new instance of {@link OcrEngine} configured with the specified language.
+   * @throws Exception if the detection assets cannot be extracted or if the engine creation or
+   *     language configuration fails.
+   */
+  public static OcrEngine create(Context context, String langSpec) throws Exception {
+    OcrEngine e = create(context);
+    e.setLanguage(langSpec);
+    return e;
+  }
 
-    /**
-     * Whether the APK carries the detection model and the recognition model {@code modelKey}
-     * ("latin", "en", …). The Light edition ships only the Latin one.
-     */
-    public static boolean isModelBundled(Context context, String modelKey) {
-        return PaddleAssets.areModelsPresent(context, modelKey);
-    }
+  /**
+   * Whether the APK carries the detection model and the recognition model {@code modelKey}
+   * ("latin", "en", …). The Light edition ships only the Latin one.
+   */
+  public static boolean isModelBundled(Context context, String modelKey) {
+    return PaddleAssets.areModelsPresent(context, modelKey);
+  }
 
-    /**
-     * Whether the recognition model that {@code langSpec} routes to is bundled, see {@link
-     * #isModelBundled}.
-     */
-    public static boolean isLanguageBundled(Context context, String langSpec) {
-        String modelKey = PaddleLanguageRouter.resolveRecModel(langSpec);
-        return modelKey != null && isModelBundled(context, modelKey);
-    }
+  /**
+   * Whether the recognition model that {@code langSpec} routes to is bundled, see {@link
+   * #isModelBundled}.
+   */
+  public static boolean isLanguageBundled(Context context, String langSpec) {
+    String modelKey = PaddleLanguageRouter.resolveRecModel(langSpec);
+    return modelKey != null && isModelBundled(context, modelKey);
+  }
 
-    /**
-     * Releases all resources held by Paddle detection and recognition engines.
-     *
-     * <p>This method is intended to clean up resources allocated by the underlying Paddle engines
-     * for detection and recognition tasks. It makes a "best effort" attempt to release these
-     * resources by calling the respective release methods on {@code PaddleDetOrtRunner} and
-     * {@code PaddleRecOrtRunner}. Any exceptions or errors encountered during this process are
-     * caught and ignored to ensure the method completes execution without failure.
-     */
-    public static void releaseAll() {
-        try {
-            PaddleDetOrtRunner.releaseInstance();
-        } catch (Throwable ignored) {
-            // best effort
-        }
-        try {
-            PaddleRecOrtRunner.releaseAll();
-        } catch (Throwable ignored) {
-            // best effort
-        }
+  /**
+   * Releases all resources held by Paddle detection and recognition engines.
+   *
+   * <p>This method is intended to clean up resources allocated by the underlying Paddle engines for
+   * detection and recognition tasks. It makes a "best effort" attempt to release these resources by
+   * calling the respective release methods on {@code PaddleDetOrtRunner} and {@code
+   * PaddleRecOrtRunner}. Any exceptions or errors encountered during this process are caught and
+   * ignored to ensure the method completes execution without failure.
+   */
+  public static void releaseAll() {
+    try {
+      PaddleDetOrtRunner.releaseInstance();
+    } catch (Throwable ignored) {
+      // best effort
     }
+    try {
+      PaddleRecOrtRunner.releaseAll();
+    } catch (Throwable ignored) {
+      // best effort
+    }
+  }
 }

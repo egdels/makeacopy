@@ -28,8 +28,8 @@ public final class PageOcrFiles {
   public static final String WORDS_FILE = "words.json";
 
   /**
-   * Editable OCR JSON (schema 1). The export and the library prefer it over {@link #WORDS_FILE},
-   * so it is removed whenever a newer result is written.
+   * Editable OCR JSON (schema 1). The export and the library prefer it over {@link #WORDS_FILE}, so
+   * it is removed whenever a newer result is written.
    */
   public static final String EDITED_FILE = "page.ocr.json";
 

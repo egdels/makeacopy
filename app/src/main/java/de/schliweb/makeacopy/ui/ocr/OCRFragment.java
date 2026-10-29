@@ -9,10 +9,8 @@
  */
 package de.schliweb.makeacopy.ui.ocr;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -20,8 +18,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.view.ViewCompat;
@@ -39,7 +35,6 @@ import de.schliweb.makeacopy.ui.crop.CropViewModel;
 import de.schliweb.makeacopy.ui.options.OptionsDialogFragment;
 import de.schliweb.makeacopy.utils.image.ImageLoader;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
-import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
 import de.schliweb.makeacopy.utils.ocr.*;
 import de.schliweb.makeacopy.utils.ui.DialogUtils;
 import de.schliweb.makeacopy.utils.ui.HapticsUtils;
@@ -425,8 +420,7 @@ public class OCRFragment extends Fragment {
     return false;
   }
 
-  private void showLanguageDialog(
-      String[] codes, String[] displayNames, MaterialButton dropdown) {
+  private void showLanguageDialog(String[] codes, String[] displayNames, MaterialButton dropdown) {
     int checkedItem = -1;
     if (!selectedLanguageCodes.isEmpty()) {
       String selected = selectedLanguageCodes.get(0);
@@ -603,7 +597,6 @@ public class OCRFragment extends Fragment {
   private void showOcrOptionsDialog() {
     showOcrPrepModeDialog();
   }
-
 
   /**
    * Executes OCR in a single-thread executor with a fresh OCRHelper per job. Rotation handling:
@@ -785,7 +778,6 @@ public class OCRFragment extends Fragment {
     Log.d(TAG, LP + "Paddle best OCR enabled=" + paddleBestOcr);
   }
 
-
   /**
    * Vertical-layout guard: for genuinely vertical documents (CJK top-to-bottom columns) the
    * 90°/270° attempts can "win" by confidence because vertical columns then look like horizontal
@@ -858,7 +850,6 @@ public class OCRFragment extends Fragment {
         (bestResult.words != null) ? bestResult.words : new ArrayList<>();
     return new ProcessedOcr(wordsToText(ocrWords), ocrWords);
   }
-
 
   private String wordsToText(List<RecognizedWord> words) {
     String text =
