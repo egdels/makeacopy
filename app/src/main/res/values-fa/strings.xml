@@ -65,6 +65,7 @@
     <string name="app_language_label">زبان برنامه</string>
     <string name="menu_help">راهنما</string>
     <string name="menu_privacy_policy">سیاست حفظ حریم خصوصی</string>
+    <string name="menu_licenses">مجوزهای متن‌باز</string>
     <string name="app_language_system_default">پیش‌فرض سیستم</string>
 
     <!-- Logging / Share logs -->

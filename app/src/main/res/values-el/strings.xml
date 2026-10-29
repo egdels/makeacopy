@@ -56,6 +56,7 @@
     <string name="app_language_label">Γλώσσα εφαρμογής</string>
     <string name="menu_help">Βοήθεια</string>
     <string name="menu_privacy_policy">Πολιτική απορρήτου</string>
+    <string name="menu_licenses">Άδειες ανοιχτού κώδικα</string>
     <string name="app_language_system_default">Προεπιλογή συστήματος</string>
 
     <!-- Logging / Share logs -->

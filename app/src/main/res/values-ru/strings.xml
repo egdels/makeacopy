@@ -65,6 +65,7 @@
     <string name="app_language_label">Язык приложения</string>
     <string name="menu_help">Справка</string>
     <string name="menu_privacy_policy">Политика конфиденциальности</string>
+    <string name="menu_licenses">Лицензии открытого ПО</string>
     <string name="app_language_system_default">Как в системе</string>
 
     <string name="share_logs">Поделиться журналами</string>

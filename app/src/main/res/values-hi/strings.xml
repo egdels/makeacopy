@@ -59,6 +59,7 @@
     <string name="app_language_label">ऐप की भाषा</string>
     <string name="menu_help">सहायता</string>
     <string name="menu_privacy_policy">गोपनीयता नीति</string>
+    <string name="menu_licenses">ओपन-सोर्स लाइसेंस</string>
     <string name="app_language_system_default">सिस्टम डिफ़ॉल्ट</string>
 
     <string name="share_logs">लॉग शेयर करें</string>

@@ -263,12 +263,14 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 |---------|-----------------|--------|
 | ML Inference | [NCNN](https://github.com/Tencent/ncnn) | BSD 3-Clause |
 | Document Corner Detection | Custom-trained model (NCNN, converted from the ONNX export) | Apache 2.0 |
-| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, converted to NCNN) | Apache 2.0 |
+| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 9× rec, converted to NCNN) | Apache 2.0 |
 | PDF | own PDF writer (export), Android PdfRenderer (import) | – |
 | UI | Material Components | Apache 2.0 |
 
 Third-party license texts are included in the [`third_party_licenses/`](third_party_licenses/) directory.
 For full attribution details, see the [`NOTICE`](NOTICE) file.
+The app lists every component it contains, with copyright holders and full license texts, under
+Options → App → Open-source licenses; that page is [`OPEN-SOURCE-LICENSES.md`](OPEN-SOURCE-LICENSES.md).
 
 ## Submodules
 

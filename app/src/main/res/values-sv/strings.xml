@@ -64,6 +64,7 @@
     <string name="app_language_label">Appspråk</string>
     <string name="menu_help">Hjälp</string>
     <string name="menu_privacy_policy">Integritetspolicy</string>
+    <string name="menu_licenses">Licenser för öppen källkod</string>
     <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Dela loggar</string>

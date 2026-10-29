@@ -597,6 +597,8 @@ public class OptionsDialogFragment extends DialogFragment {
     view.findViewById(R.id.row_help).setOnClickListener(v -> DocumentActivity.showHelp(ctx));
     view.findViewById(R.id.row_privacy_policy)
         .setOnClickListener(v -> DocumentActivity.showPrivacyPolicy(ctx));
+    view.findViewById(R.id.row_licenses)
+        .setOnClickListener(v -> DocumentActivity.showLicenses(ctx));
 
     // Wire up the Share Logs button placed under the options
     View shareBtn = view.findViewById(R.id.button_share_logs);

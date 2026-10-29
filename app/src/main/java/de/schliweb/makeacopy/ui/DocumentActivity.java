@@ -43,29 +43,38 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 /**
- * Shows one Markdown file from assets/docs/: the help in the app's language or the privacy policy.
- * app/build.gradle copies them from help/ and docs/_includes/ (copyDocs), so the text is maintained
- * in one place for the web page and the app. Google Play wants the privacy policy reachable from
- * inside the app; as text it keeps the app offline.
+ * Shows one Markdown file from assets/docs/: the help in the app's language, the privacy policy or
+ * the open-source licenses. app/build.gradle copies them from help/, docs/_includes/ and the
+ * repository root (copyDocs), so the text is maintained in one place for the web page and the app.
+ * Google Play wants the privacy policy reachable from inside the app; as text it keeps the app
+ * offline. The licenses page gives everyone who gets the app the license texts its components
+ * require to come along.
  */
 public class DocumentActivity extends AppCompatActivity {
 
   private static final String DOCS_DIR = "docs";
   private static final String PRIVACY_POLICY = "PRIVACY.md";
   private static final String HELP = "HELP.md";
+  private static final String LICENSES = "OPEN-SOURCE-LICENSES.md";
 
   private static final String EXTRA_ASSET = "asset";
 
   /**
    * A web address with a path, such as github.com/egdels/makeacopy, without punctuation that ends
    * the sentence. Not Patterns.WEB_URL: that takes file names like CHANGELOG.md for a domain (.md
-   * is Moldova's) and keeps a full stop after the address.
+   * is Moldova's) and keeps a full stop after the address. Nor the closing ">" of an address in
+   * angle brackets, as the license texts write them; the path may be just "/", as in
+   * https://fsf.org/. The license texts also name a few addresses with http://.
    */
   private static final Pattern WEB_ADDRESS =
-      Pattern.compile("(https://)?[\\w-]+(\\.[\\w-]+)+/[^\\s]*[^\\s.,;:)]");
+      Pattern.compile("(https?://)?[\\w-]+(\\.[\\w-]+)+/([^\\s>]*[^\\s.,;:)>])?");
 
   public static void showPrivacyPolicy(@NonNull Context context) {
     start(context, PRIVACY_POLICY);
+  }
+
+  public static void showLicenses(@NonNull Context context) {
+    start(context, LICENSES);
   }
 
   /**
@@ -173,7 +182,7 @@ public class DocumentActivity extends AppCompatActivity {
     // The files name their addresses as plain text; make them tappable. The mask variant of
     // addLinks drops existing links, so it has to run before the web address pattern.
     Linkify.addLinks(text, Linkify.EMAIL_ADDRESSES);
-    Linkify.addLinks(text, WEB_ADDRESS, "https://");
+    Linkify.addLinks(text, WEB_ADDRESS, "https://", new String[] {"http://"}, null, null);
     if (text.getSpans(0, text.length(), URLSpan.class).length > 0) {
       view.setMovementMethod(LinkMovementMethod.getInstance());
     }

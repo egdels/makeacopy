@@ -64,6 +64,7 @@
     <string name="app_language_label">Alkalmazás nyelve</string>
     <string name="menu_help">Súgó</string>
     <string name="menu_privacy_policy">Adatvédelmi irányelvek</string>
+    <string name="menu_licenses">Nyílt forráskódú licencek</string>
     <string name="app_language_system_default">Rendszer alapértelmezése</string>
 
     <string name="share_logs">Naplók megosztása</string>

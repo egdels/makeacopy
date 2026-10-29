@@ -62,6 +62,7 @@
     <string name="app_language_label">لغة التطبيق</string>
     <string name="menu_help">مساعدة</string>
     <string name="menu_privacy_policy">سياسة الخصوصية</string>
+    <string name="menu_licenses">تراخيص المصادر المفتوحة</string>
     <string name="app_language_system_default">افتراضي النظام</string>
 
     <!-- Logging / Share logs -->

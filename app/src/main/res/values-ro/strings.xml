@@ -65,6 +65,7 @@
     <string name="app_language_label">Limba aplicației</string>
     <string name="menu_help">Ajutor</string>
     <string name="menu_privacy_policy">Politica de confidențialitate</string>
+    <string name="menu_licenses">Licențe open source</string>
     <string name="app_language_system_default">Prestabilită de sistem</string>
 
     <string name="share_logs">Partajează jurnalele</string>

@@ -145,7 +145,6 @@ android {
         main {
             assets.srcDirs = [
                     'src/main/assets',
-                    layout.buildDirectory.dir("generated/assets/licenses").get().asFile,
                     layout.buildDirectory.dir("generated/assets/docs").get().asFile
             ]
             jniLibs.srcDirs = ['src/main/jniLibs']
@@ -284,25 +283,29 @@ configurations.matching { it.name.toLowerCase().contains('androidtest') }.all { 
     cfg.exclude group: 'org.hamcrest', module: 'hamcrest-library'
 }
 
-tasks.register("copyNotices", Sync) {
-    from("$rootDir/NOTICE", "$rootDir/LICENSE")
-    into(layout.buildDirectory.dir("generated/assets/licenses"))
-}
-
 // The privacy policy (docs/_includes/privacy.md, which GitHub Pages also renders into
-// docs/privacy.html, the page linked on Google Play) and the help (help/HELP*.md, one file per
-// language) are maintained once; DocumentActivity shows them from assets/docs/, so the app stays
-// offline.
+// docs/privacy.html, the page linked on Google Play), the open-source licenses
+// (OPEN-SOURCE-LICENSES.md) and the help (help/HELP*.md, one file per language) are maintained
+// once; DocumentActivity shows them from assets/docs/, so the app stays offline.
 tasks.register("copyDocs", Sync) {
     into(layout.buildDirectory.dir("generated/assets/docs"))
     into("docs") {
         from("$rootDir/docs/_includes/privacy.md") { rename { "PRIVACY.md" } }
+        from("$rootDir/OPEN-SOURCE-LICENSES.md")
         from("$rootDir/help") { include "*.md" }
     }
 }
 
 tasks.named("preBuild").configure {
-    dependsOn("copyNotices", "copyDocs")
+    dependsOn("copyDocs")
+}
+
+// MarkdownDocumentTest checks these files in place; without them as inputs Gradle would skip the
+// test as up to date after a change to them.
+tasks.withType(Test).configureEach {
+    inputs.files("$rootDir/OPEN-SOURCE-LICENSES.md", "$rootDir/docs/_includes/privacy.md")
+            .withPropertyName("shippedDocuments").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir("$rootDir/help").withPropertyName("help").withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Verifies every model asset against the SHA256SUMS file next to it: the PaddleOCR models and

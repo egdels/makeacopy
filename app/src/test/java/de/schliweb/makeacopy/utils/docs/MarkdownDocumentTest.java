@@ -37,6 +37,69 @@ public class MarkdownDocumentTest {
   }
 
   @Test
+  public void parse_fencedBlock_keepsTextWithoutMarkupAsVerbatimParagraphs() {
+    List<Block> blocks =
+        MarkdownDocument.parse(
+                "## License\n\n```\n   Some  *text*\n  `as is`\n\n- not a bullet\n```\nAfter.",
+                "x")
+            .blocks();
+    assertEquals(4, blocks.size());
+    assertEquals(BlockType.HEADING, blocks.get(0).type());
+    assertEquals(BlockType.VERBATIM, blocks.get(1).type());
+    assertEquals(List.of(new Span("Some *text* `as is`", false, false, false)), blocks.get(1).spans());
+    assertEquals(BlockType.VERBATIM, blocks.get(2).type());
+    assertEquals("- not a bullet", text(blocks.get(2)));
+    assertEquals(BlockType.PARAGRAPH, blocks.get(3).type());
+    assertEquals("After.", text(blocks.get(3)));
+  }
+
+  @Test
+  public void parse_fencedBlock_underlineEndsParagraph() {
+    List<Block> blocks =
+        MarkdownDocument.parse("```\nExhibit A\n---------\nText here.\n```", "x").blocks();
+    assertEquals(2, blocks.size());
+    assertEquals("Exhibit A", text(blocks.get(0)));
+    assertEquals("Text here.", text(blocks.get(1)));
+  }
+
+  @Test
+  public void openSourceLicenses_fencesStandAloneAndHeadingsSurvive() throws Exception {
+    File file = new File(root(), "OPEN-SOURCE-LICENSES.md");
+    String markdown = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+    boolean fenced = false;
+    int headings = 0;
+    String[] lines = markdown.split("\\r?\\n", -1);
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String where = file.getName() + ":" + (i + 1);
+      if (line.contains("```")) {
+        // A fence glued to text, as a license file without a final newline leaves it, would flip
+        // everything after it between license text and Markdown
+        assertEquals(where + ": a fence stands on its own line", "```", line);
+        fenced = !fenced;
+      } else if (!fenced) {
+        assertFalse(where + ": no deeper headings", line.startsWith("###"));
+        assertFalse(where + ": no tables", line.trim().startsWith("|"));
+        assertFalse(where + ": no link syntax", line.matches(".*\\]\\(.*"));
+        if (line.startsWith("## ")) headings++;
+      }
+    }
+    assertFalse(file.getName() + ": unclosed fence", fenced);
+    MarkdownDocument doc = MarkdownDocument.parse(markdown, "none");
+    assertEquals("Open-source licenses", doc.title());
+    int parsedHeadings = 0;
+    for (Block block : doc.blocks()) {
+      String text = text(block);
+      if (block.type() == BlockType.HEADING) parsedHeadings++;
+      if (block.type() != BlockType.VERBATIM) {
+        assertFalse("unmatched markup in \"" + text + "\"", text.contains("*"));
+        assertFalse("unmatched markup in \"" + text + "\"", text.contains("`"));
+      }
+    }
+    assertEquals(headings, parsedHeadings);
+  }
+
+  @Test
   public void parse_withoutTitle_usesFallback() {
     assertEquals("Fallback", MarkdownDocument.parse("Just text.", "Fallback").title());
   }

@@ -66,6 +66,7 @@
     <string name="app_language_label">Langue de l’application</string>
     <string name="menu_help">Aide</string>
     <string name="menu_privacy_policy">Politique de confidentialité</string>
+    <string name="menu_licenses">Licences open source</string>
     <string name="app_language_system_default">Paramètre système par défaut</string>
 
     <string name="share_logs">Partager les journaux</string>

@@ -2,7 +2,7 @@
 
 This directory documents the upstream source, license, and provenance of the
 PaddleOCR **PP-OCRv5 mobile** detection and recognition models that are
-shipped — only in the `paddle` build flavor — as **NCNN** assets under
+shipped in every build of the app as **NCNN** assets under
 `app/src/main/assets/paddleocr/v5/`.
 
 This file replaces the previous single-recognition-model documentation
@@ -59,7 +59,7 @@ are **never** shipped as release assets.
 
 ## Shipped artifacts
 
-What is actually packaged into the `paddle` flavor APK under
+What is actually packaged into the APK under
 `assets/paddleocr/v5/`:
 
 - `det.ncnn.param` + `det.ncnn.bin` (≈ 4.7 MB) — detection
@@ -74,9 +74,8 @@ What is actually packaged into the `paddle` flavor APK under
   at runtime for the dictionaries it copies to the cache)
 - `SUMMARY.txt` — human-readable provenance summary
 
-The `standard` (F-Droid) flavor contains **none** of these files; Paddle
-assets are only added via the `paddle`-flavor `srcDirs` in `app/build.gradle`.
-The `paddle` flavor is additionally ABI-gated to `arm64-v8a`.
+There are no build flavors any more: every APK (Google Play and F-Droid, all
+ABIs) contains these files, and OCR runs on PaddleOCR only.
 
 ## Upstream projects and licenses
 

@@ -228,7 +228,19 @@
                 android:text="@string/menu_privacy_policy"
                 android:textAppearance="?attr/textAppearanceBodyLarge" />
 
-            <!-- Share logs: a row like Help and Privacy policy above it -->
+            <TextView
+                android:id="@+id/row_licenses"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:background="?attr/selectableItemBackground"
+                android:text="@string/menu_licenses"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+            <!-- Share logs: a row like Help, Privacy policy and Licenses above it -->
             <TextView
                 android:id="@+id/button_share_logs"
                 android:layout_width="match_parent"

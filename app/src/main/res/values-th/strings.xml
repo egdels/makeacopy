@@ -62,6 +62,7 @@
     <string name="app_language_label">ภาษาของแอป</string>
     <string name="menu_help">ความช่วยเหลือ</string>
     <string name="menu_privacy_policy">นโยบายความเป็นส่วนตัว</string>
+    <string name="menu_licenses">สัญญาอนุญาตโอเพนซอร์ส</string>
     <string name="app_language_system_default">ค่าเริ่มต้นของระบบ</string>
 
     <string name="share_logs">แชร์บันทึก</string>

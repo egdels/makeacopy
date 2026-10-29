@@ -67,6 +67,7 @@
     <string name="app_language_label">Lingua dell’app</string>
     <string name="menu_help">Guida</string>
     <string name="menu_privacy_policy">Informativa sulla privacy</string>
+    <string name="menu_licenses">Licenze open source</string>
     <string name="app_language_system_default">Predefinita di sistema</string>
 
     <string name="share_logs">Condividi i log</string>

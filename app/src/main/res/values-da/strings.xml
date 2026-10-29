@@ -64,6 +64,7 @@
     <string name="app_language_label">Appsprog</string>
     <string name="menu_help">Hjælp</string>
     <string name="menu_privacy_policy">Privatlivspolitik</string>
+    <string name="menu_licenses">Open source-licenser</string>
     <string name="app_language_system_default">Systemstandard</string>
 
     <string name="share_logs">Del logfiler</string>

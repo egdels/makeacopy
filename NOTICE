@@ -3,6 +3,11 @@ NOTICE
 This project is licensed under the Apache License 2.0 (see LICENSE). It also
 includes third-party components under their respective licenses as noted below.
 
+The app shows the components it contains, with copyright holders and full
+license texts, under Options → App → Open-source licenses: that page is
+OPEN-SOURCE-LICENSES.md. Update it together with this file whenever a
+dependency is added, removed or changes its license.
+
 1) OpenCV – no longer used (image processing is plain Java in
     app/src/main/java/de/schliweb/makeacopy/utils/image/raster/)
 
@@ -96,15 +101,14 @@ The following datasets were used:
        CC BY 4.0 license. No CORD images, annotations, or derivatives are
        redistributed with this project.
 
-11) PaddleOCR PP-OCRv5 mobile (models; paddle flavor only)
+11) PaddleOCR PP-OCRv5 mobile (models, required for OCR)
     - Projects:
         * PaddleOCR: https://github.com/PaddlePaddle/PaddleOCR
         * PaddleX:   https://github.com/PaddlePaddle/PaddleX
         * Paddle2ONNX: https://github.com/PaddlePaddle/Paddle2ONNX
     - License: Apache License, Version 2.0
-    - Notes: Only included in the experimental `paddle` product flavor (not in
-      the default `standard` / F-Droid flavor). The shipped artifacts under
-      app/src/main/assets/paddleocr/v5/ are:
+    - Notes: Part of every build (Google Play and F-Droid, all ABIs). The
+      shipped artifacts under app/src/main/assets/paddleocr/v5/ are:
         * 1× detection model: det.ncnn.param / det.ncnn.bin
           (PP-OCRv5_mobile_det)
         * 9× recognition models: en_, latin_, eslav_, cyrillic_, arabic_,

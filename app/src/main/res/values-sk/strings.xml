@@ -67,6 +67,7 @@
     <string name="app_language_label">Jazyk aplikácie</string>
     <string name="menu_help">Pomocník</string>
     <string name="menu_privacy_policy">Zásady ochrany osobných údajov</string>
+    <string name="menu_licenses">Licencie open source</string>
     <string name="app_language_system_default">Predvolené systémom</string>
 
     <string name="share_logs">Zdieľať záznamy</string>
