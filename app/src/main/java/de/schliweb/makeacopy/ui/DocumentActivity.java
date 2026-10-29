@@ -25,11 +25,13 @@ import android.util.TypedValue;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import de.schliweb.makeacopy.R;
 import de.schliweb.makeacopy.databinding.ActivityDocumentBinding;
 import de.schliweb.makeacopy.utils.docs.MarkdownDocument;
 import de.schliweb.makeacopy.utils.docs.MarkdownDocument.Block;
@@ -60,6 +62,12 @@ public class DocumentActivity extends AppCompatActivity {
   private static final String EXTRA_ASSET = "asset";
 
   /**
+   * The menu entry's title, for a page that exists only in English (privacy policy, licenses), so
+   * the toolbar names it in the app's language as the menu does.
+   */
+  private static final String EXTRA_TITLE = "title";
+
+  /**
    * A web address with a path, such as github.com/egdels/makeacopy, without punctuation that ends
    * the sentence. Not Patterns.WEB_URL: that takes file names like CHANGELOG.md for a domain (.md
    * is Moldova's) and keeps a full stop after the address. Nor the closing ">" of an address in
@@ -70,11 +78,11 @@ public class DocumentActivity extends AppCompatActivity {
       Pattern.compile("(https?://)?[\\w-]+(\\.[\\w-]+)+/([^\\s>]*[^\\s.,;:)>])?");
 
   public static void showPrivacyPolicy(@NonNull Context context) {
-    start(context, PRIVACY_POLICY);
+    start(context, PRIVACY_POLICY, R.string.menu_privacy_policy);
   }
 
   public static void showLicenses(@NonNull Context context) {
-    start(context, LICENSES);
+    start(context, LICENSES, R.string.menu_licenses);
   }
 
   /**
@@ -91,11 +99,14 @@ public class DocumentActivity extends AppCompatActivity {
     } catch (IOException ignore) {
       // Fall back to the English help
     }
-    start(context, asset);
+    start(context, asset, 0);
   }
 
-  private static void start(Context context, String asset) {
-    context.startActivity(new Intent(context, DocumentActivity.class).putExtra(EXTRA_ASSET, asset));
+  private static void start(Context context, String asset, @StringRes int title) {
+    context.startActivity(
+        new Intent(context, DocumentActivity.class)
+            .putExtra(EXTRA_ASSET, asset)
+            .putExtra(EXTRA_TITLE, title));
   }
 
   @Override
@@ -123,7 +134,8 @@ public class DocumentActivity extends AppCompatActivity {
     String asset = getIntent().getStringExtra(EXTRA_ASSET);
     MarkdownDocument document =
         MarkdownDocument.parse(readAsset(asset != null ? asset : HELP), "MakeACopy");
-    setTitle(document.title());
+    int title = getIntent().getIntExtra(EXTRA_TITLE, 0);
+    setTitle(title != 0 ? getString(title) : document.title());
     for (Block block : document.blocks()) {
       binding.documentContent.addView(blockView(block));
     }

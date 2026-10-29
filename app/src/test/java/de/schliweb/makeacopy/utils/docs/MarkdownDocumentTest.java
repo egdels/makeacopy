@@ -63,6 +63,89 @@ public class MarkdownDocumentTest {
   }
 
   @Test
+  public void parse_fencedBlock_joinsWrappedLinesAndKeepsBreaksOfTheText() {
+    String license =
+        String.join(
+            "\n",
+            "```",
+            "                     Some License",
+            "                 Version 1, May 2000",
+            "",
+            "Kotlin Compiler",
+            "Copyright 2010-2024 JetBrains s.r.o and respective authors and developers",
+            "",
+            "Copyright(c) 2013, 2014, 2015, the respective contributors of the project",
+            "All rights reserved.",
+            "",
+            "Permission is hereby granted, free of charge, to any person obtaining a",
+            "copy of this software, to deal in the Software without restriction.",
+            "",
+            "    * Redistributions of source code must retain the above copyright",
+            "notice, this list of conditions and the following disclaimer.",
+            "    * Redistributions in binary form must reproduce the above copyright",
+            "notice.",
+            "",
+            "1.1. \"Contributor\"",
+            "    means each individual or legal entity that creates, contributes to",
+            "    the creation of, or owns Covered Software.",
+            "",
+            "Sources:",
+            "https://example.org/one",
+            "https://example.org/two",
+            "```");
+    List<String> texts = new ArrayList<>();
+    for (Block block : MarkdownDocument.parse(license, "x").blocks()) {
+      assertEquals(BlockType.VERBATIM, block.type());
+      texts.add(text(block));
+    }
+    assertEquals(
+        List.of(
+            "Some License\nVersion 1, May 2000",
+            "Kotlin Compiler\nCopyright 2010-2024 JetBrains s.r.o and respective authors and"
+                + " developers",
+            "Copyright(c) 2013, 2014, 2015, the respective contributors of the project\nAll rights"
+                + " reserved.",
+            "Permission is hereby granted, free of charge, to any person obtaining a copy of this"
+                + " software, to deal in the Software without restriction.",
+            "* Redistributions of source code must retain the above copyright notice, this list"
+                + " of conditions and the following disclaimer.\n* Redistributions in binary form"
+                + " must reproduce the above copyright notice.",
+            "1.1. \"Contributor\" means each individual or legal entity that creates, contributes"
+                + " to the creation of, or owns Covered Software.",
+            "Sources:\nhttps://example.org/one\nhttps://example.org/two"),
+        texts);
+  }
+
+  @Test
+  public void parse_fencedBlock_dropsAsteriskFrame() {
+    String license =
+        String.join(
+            "\n",
+            "```",
+            "************************************************************************",
+            "*                                                                      *",
+            "*  6. Disclaimer of Warranty                                           *",
+            "*  -------------------------                                           *",
+            "*                                                                      *",
+            "*  Covered Software is provided under this License on an \"as is\"",
+            "*  basis, without warranty of any kind.",
+            "*",
+            "************************************************************************",
+            "",
+            "8. Litigation",
+            "```");
+    List<String> texts = new ArrayList<>();
+    for (Block block : MarkdownDocument.parse(license, "x").blocks()) texts.add(text(block));
+    assertEquals(
+        List.of(
+            "6. Disclaimer of Warranty",
+            "Covered Software is provided under this License on an \"as is\" basis, without"
+                + " warranty of any kind.",
+            "8. Litigation"),
+        texts);
+  }
+
+  @Test
   public void openSourceLicenses_fencesStandAloneAndHeadingsSurvive() throws Exception {
     File file = new File(root(), "OPEN-SOURCE-LICENSES.md");
     String markdown = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);

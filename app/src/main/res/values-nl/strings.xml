@@ -65,7 +65,7 @@
     <string name="app_language_label">App-taal</string>
     <string name="menu_help">Help</string>
     <string name="menu_privacy_policy">Privacybeleid</string>
-    <string name="menu_licenses">Opensourcelicenties</string>
+    <string name="menu_licenses">Open-sourcelicenties</string>
     <string name="app_language_system_default">Systeemstandaard</string>
 
     <string name="share_logs">Logbestanden delen</string>

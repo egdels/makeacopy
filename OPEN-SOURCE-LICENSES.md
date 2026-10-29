@@ -30,8 +30,8 @@ ONNX Runtime contains code from these projects:
   TensorFlow Authors. Apache License 2.0.
   https://github.com/tensorflow/tensorflow
 - **Caffe2**, parts of which ONNX Runtime took over. Copyright (c)
-  2016-present, Facebook, Inc. Apache License 2.0.
-  https://github.com/pytorch/pytorch
+  2016-present, Facebook, Inc. Apache License 2.0, with the notice below.
+  https://github.com/facebookarchive/caffe2
 - **ONNX** (Open Neural Network Exchange). Copyright (c) ONNX Project
   Contributors. Apache License 2.0. https://github.com/onnx/onnx
 - **Abseil**. Copyright The Abseil Authors. Apache License 2.0.
@@ -67,7 +67,7 @@ ONNX Runtime contains code from these projects:
   https://github.com/google/dagger
 - **Gson**. Copyright 2008 Google Inc. Apache License 2.0.
   https://github.com/google/gson
-- **Guava**, used by Dagger and CameraX. Copyright The Guava Authors. Apache
+- **Guava**, used by CameraX and Media3. Copyright The Guava Authors. Apache
   License 2.0. https://github.com/google/guava
 - **Kotlin standard library**, **kotlinx.coroutines**,
   **kotlinx.serialization**, **atomicfu** and **JetBrains Java Annotations**,
@@ -75,9 +75,9 @@ ONNX Runtime contains code from these projects:
   Language contributors. Apache License 2.0, with the attribution notices of
   their NOTICE files below. https://github.com/JetBrains/kotlin and
   https://github.com/Kotlin
-- **Jakarta Dependency Injection** and **javax.inject**, used by Dagger.
-  Copyright the Eclipse Foundation contributors and The JSR-330 Expert
-  Group. Apache License 2.0, with the notice below.
+- **Jakarta Dependency Injection** and **javax.inject**, used by Dagger and
+  CameraX. Copyright the Jakarta Dependency Injection contributors and The
+  JSR-330 Expert Group. Apache License 2.0, with the notice below.
   https://github.com/eclipse-ee4j/injection-api
 - **Error Prone annotations**, **JSpecify**, **J2ObjC annotations**, **AutoValue
   annotations** and **JSR-305 annotations**, used by the libraries above.
@@ -90,40 +90,189 @@ ONNX Runtime contains code from these projects:
   the Checker Framework developers. MIT License.
   https://github.com/typetools/checker-framework
 
-## Notice: Kotlin
+## Notices: Kotlin libraries
+
+The attribution notices of the NOTICE files of Kotlin 2.1.20,
+kotlinx.coroutines 1.9.0, kotlinx.serialization 1.7.3 and atomicfu 0.28.0, as
+their authors wrote them:
 
 ```
 Kotlin Compiler
 Copyright 2010-2024 JetBrains s.r.o and respective authors and developers
 ```
 
-## Notice: kotlinx.coroutines
-
 ```
 kotlinx.coroutines library.
-Copyright 2016-2021 JetBrains s.r.o and respective authors and developers
+Copyright 2016-2024 JetBrains s.r.o and contributors
+```
+
+```
+kotlinx.serialization library.
+Copyright 2017-2019 JetBrains s.r.o and respective authors and developers
+```
+
+```
+kotlinx.atoimcfu library.
+Copyright 2017 JetBrains s.r.o and respective authors and developers
+```
+
+## Notice: Caffe2
+
+The NOTICE file of Caffe2, parts of which ONNX Runtime contains:
+
+```
+Copyright (c) 2016-present, Facebook Inc. All rights reserved.
+
+All contributions by Facebook:
+Copyright (c) 2016 Facebook Inc.
+
+All contributions by Google:
+Copyright (c) 2015 Google Inc.
+All rights reserved.
+
+All contributions by Yangqing Jia:
+Copyright (c) 2015 Yangqing Jia
+All rights reserved.
+
+All contributions from Caffe:
+Copyright(c) 2013, 2014, 2015, the respective contributors
+All rights reserved.
+
+All other contributions:
+Copyright(c) 2015, 2016 the respective contributors
+All rights reserved.
+
+Caffe2 uses a copyright model similar to Caffe: each contributor holds
+copyright over their contributions to Caffe2. The project versioning records
+all such contribution and copyright details. If a contributor wants to further
+mark their specific copyright on a particular contribution, they should
+indicate their copyright solely in the commit message of the change when it is
+committed.
+
+=======================================================================
+Software under third_party
+=======================================================================
+Software libraries under third_party are provided as github submodule
+links, and their content is not part of the Caffe2 codebase. Their
+licences can be found under the respective software repositories.
+
+=======================================================================
+Earlier BSD License
+=======================================================================
+Early development of Caffe2 in 2015 and early 2016 is licensed under the
+BSD license. The license is attached below:
+
+All contributions by Facebook:
+Copyright (c) 2016 Facebook Inc.
+
+All contributions by Google:
+Copyright (c) 2015 Google Inc.
+All rights reserved.
+
+All contributions by Yangqing Jia:
+Copyright (c) 2015 Yangqing Jia
+All rights reserved.
+
+All other contributions:
+Copyright(c) 2015, 2016 the respective contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+=======================================================================
+Caffe's BSD License
+=======================================================================
+Some parts of the caffe2 code is derived from the original Caffe code, which is
+created by Yangqing Jia and is now a BSD-licensed open-source project. The Caffe
+license is as follows:
+
+COPYRIGHT
+
+All contributions by the University of California:
+Copyright (c) 2014, The Regents of the University of California (Regents)
+All rights reserved.
+
+All other contributions:
+Copyright (c) 2014, the respective contributors
+All rights reserved.
+
+Caffe uses a shared copyright model: each contributor holds copyright over
+their contributions to Caffe. The project versioning records all such
+contribution and copyright details. If a contributor wants to further mark
+their specific copyright on a particular contribution, they should indicate
+their copyright solely in the commit message of the change when it is
+committed.
+
+LICENSE
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+CONTRIBUTION AGREEMENT
+
+By contributing to the BVLC/caffe repository through pull-request, comment,
+or otherwise, the contributor releases their content to the
+license and copyright terms herein.
 ```
 
 ## Notice: Jakarta Dependency Injection
 
-```
-# Notices for Eclipse Jakarta Dependency Injection
+The NOTICE.md file of Jakarta Dependency Injection 2.0.1:
 
-This content is produced and maintained by the Eclipse Jakarta Dependency Injection project.
+**Notices for Eclipse Jakarta Dependency Injection**
 
-* Project home: https://projects.eclipse.org/projects/cdi.batch
+This content is produced and maintained by the Eclipse Jakarta Dependency
+Injection project.
 
-## Trademarks
+- Project home: https://projects.eclipse.org/projects/cdi.batch
+
+**Trademarks**
 
 Jakarta Dependency Injection is a trademark of the Eclipse Foundation.
 
-## Copyright
+**Copyright**
 
 All content is the property of the respective authors or their employers. For
 more information regarding authorship of content, please consult the listed
 source code repository logs.
 
-## Declared Project Licenses
+**Declared Project Licenses**
 
 This program and the accompanying materials are made available under the terms
 of the Apache License, Version 2.0 which is available at
@@ -131,24 +280,23 @@ https://www.apache.org/licenses/LICENSE-2.0.
 
 SPDX-License-Identifier: Apache-2.0
 
-## Source Code
+**Source Code**
 
 The project maintains the following source code repositories:
 
-https://github.com/eclipse-ee4j/injection-api
-https://github.com/eclipse-ee4j/injection-spec
-https://github.com/eclipse-ee4j/injection-tck
+- https://github.com/eclipse-ee4j/injection-api
+- https://github.com/eclipse-ee4j/injection-spec
+- https://github.com/eclipse-ee4j/injection-tck
 
-## Third-party Content
+**Third-party Content**
 
 This project leverages the following third party content.
 
 None
 
-## Cryptography
+**Cryptography**
 
 None
-```
 
 ## Apache License, version 2.0
 
@@ -406,8 +554,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-_____
 ```
 
 ## MIT License: Guidelines Support Library
@@ -439,8 +585,6 @@ THE SOFTWARE.
 ## MIT License: date
 
 ```
-HowardHinnant/date
-
 The source code in this project is released using the MIT License. There is no
 global license for the project because each file is licensed individually with
 different author names and/or dates.
@@ -470,6 +614,8 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ## MIT License: Checker Framework qualifiers
