@@ -72,6 +72,8 @@ Both editions include the same ML-based document detection (ONNX model), image p
 
 OCR runs on PaddleOCR V5 in both editions. The Full edition is what is published on F-Droid and Google Play; the Light edition is available via [GitHub Releases](https://github.com/egdels/makeacopy/releases).
 
+Prefer a scanner without options? See [Sheet](#sheet), a simpler sibling of MakeACopy.
+
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
 alt="Get it on F-Droid"
 height="80">](https://f-droid.org/packages/de.schliweb.makeacopy/)
@@ -379,6 +381,29 @@ NAS / archive
 This combination turns an Android phone into a **mobile document scanner
 for network-based archives**.
 
+### Sheet
+
+[Sheet](https://github.com/egdels/sheet) is a rewrite of MakeACopy in Kotlin,
+developed entirely by prompting an AI coding agent, directed and checked by the
+same developer.
+
+The two apps take different paths. MakeACopy is powerful and offers many
+options: document library, import of images and PDFs, filters, OCR review,
+Inbox Mode, Accessibility Mode. Sheet is simple from the user's point of view:
+point the camera at a page, get a searchable PDF in a folder you chose. No
+settings screen, and the OCR language is detected automatically. Both share the
+same corner model and PaddleOCR pipeline.
+
+Several results from Sheet have already flowed back into MakeACopy: image
+processing in plain Java instead of OpenCV, a single PaddleOCR path instead of
+Tesseract, edge snapping without a contour fallback, and a PDF writer of its
+own instead of PDFBox. Code ported from Sheet is contributed to MakeACopy by its
+author under the Apache License 2.0.
+
+Sheet is a demonstration and is not published on F-Droid or Google Play. Its
+README also documents an experiment on how AI-assisted code can, and cannot,
+be recognised.
+
 ## Contributing
 
 Contributions welcome!
@@ -392,6 +417,7 @@ Contributions welcome!
 
 - Add more languages to OCR detection
 - Extend and refine the PaddleOCR V5 path
+
 ## 🙌 Community Hall of Fame
 
 A big thank you to the people who make *MakeACopy* better:
