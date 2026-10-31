@@ -66,7 +66,7 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 | Edition | OCR Languages | Fonts | APK Size (arm64-v8a) |
 |---------|--------------|-------|---------------------|
 | **Full** | all PaddleOCR language groups (Latin, English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~108 MB |
-| **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, Vietnamese, …) | none (glyphless text layer) | ~42 MB |
+| **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, …) | none (glyphless text layer) | ~42 MB |
 
 Both editions include the same ML-based document detection (ONNX model), image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection and PaddleOCR. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
 
