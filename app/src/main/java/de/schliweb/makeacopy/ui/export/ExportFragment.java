@@ -1912,11 +1912,14 @@ public class ExportFragment extends Fragment {
 
   /**
    * If the current export was triggered via Inbox Mode and auto-new-scan is enabled, navigates back
-   * to the camera fragment to start a new scan immediately.
+   * to the camera fragment to start a new scan immediately. Only after a successful export: after a
+   * failed one the document stays on the Export screen with the error shown, instead of a "saved"
+   * toast and a new scan.
    */
   private void maybeAutoNewScan() {
     if (!inboxExportInProgress) return;
     inboxExportInProgress = false;
+    if (lastExportedDocumentUri == null) return;
     Context ctx = getContext();
     if (ctx == null) return;
     if (!ExportPrefsHelper.isInboxAutoNewScan(ctx)) return;
