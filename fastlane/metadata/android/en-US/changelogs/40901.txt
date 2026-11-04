@@ -1,0 +1,3 @@
+MakeACopy 4.9.1
+* Fixed: a saved document is no longer offered as unfinished when the app starts again.
+* Fixed: when saving to the inbox fails, the document stays open with the error instead of a new scan starting.
