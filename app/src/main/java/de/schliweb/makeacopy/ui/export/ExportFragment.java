@@ -1840,6 +1840,7 @@ public class ExportFragment extends Fragment {
 
     // Index exported PDF into scan library (feature-guarded via service locator)
     indexScanLibraryAsync(displayName, pageCount, exportedUri);
+    markDocumentExportedAsync();
     startTxtExport(includeTxt, inboxExportInProgress);
   }
 
@@ -2072,6 +2073,7 @@ public class ExportFragment extends Fragment {
                         // Begin: index exported scan in background (feature-guarded via service
                         // locator)
                         indexScanLibraryAsync(displayName, 1, exportUriFinal);
+                        markDocumentExportedAsync();
                         // End: index
                         startTxtExport(includeOcr, inboxExportInProgress);
                       } else {
@@ -2238,6 +2240,7 @@ public class ExportFragment extends Fragment {
                         // Begin: index exported multi-page scan in background (feature-guarded via
                         // service locator)
                         indexScanLibraryAsync(displayName, totalPages, exportUri);
+                        markDocumentExportedAsync();
                         // End: index
                         // ZIP export has no inbox mode: the TXT always goes through the file picker
                         startTxtExport(
@@ -2512,6 +2515,32 @@ public class ExportFragment extends Fragment {
             de.schliweb.makeacopy.data.DocumentSessionRepository.get(app).upsertActive(docId, ids);
           } catch (Throwable t) {
             Log.w(TAG, "DocumentSession sync failed", t);
+          }
+        });
+  }
+
+  /**
+   * Records the document as exported with its current pages, so the camera does not offer it as
+   * unfinished after a restart. Runs on the session executor after any pending sync of the same
+   * pages; changing the pages afterwards makes it unfinished again.
+   */
+  private void markDocumentExportedAsync() {
+    Context c = getContext();
+    if (c == null || exportSessionViewModel == null) return;
+    final Context app = c.getApplicationContext();
+    final String docId = exportSessionViewModel.getDocumentId();
+    final List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
+    if (docId == null || pages == null) return;
+    final ArrayList<String> ids = new ArrayList<>();
+    for (CompletedScan s : pages) {
+      if (s != null && s.id() != null) ids.add(s.id());
+    }
+    documentSessionExecutor.execute(
+        () -> {
+          try {
+            de.schliweb.makeacopy.data.DocumentSessionRepository.get(app).markExported(docId, ids);
+          } catch (Throwable t) {
+            Log.w(TAG, "DocumentSession markExported failed", t);
           }
         });
   }

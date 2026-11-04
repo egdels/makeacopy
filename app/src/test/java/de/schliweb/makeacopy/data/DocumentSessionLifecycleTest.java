@@ -272,4 +272,63 @@ public class DocumentSessionLifecycleTest {
     DocumentSession after = repo.appendPageToActive("doc-1", "B");
     assertTrue(after.updatedAt() > before.updatedAt());
   }
+
+  // ===== Exported documents are not unfinished =====
+
+  @Test
+  public void activeSession_withoutExport_isUnfinished() {
+    repo.upsertActive("doc-1", Arrays.asList("A", "B"));
+    assertTrue(repo.isActiveUnfinished());
+  }
+
+  @Test
+  public void exportedSession_isNotUnfinished_butStaysActive() {
+    repo.upsertActive("doc-1", Arrays.asList("A", "B"));
+    repo.markExported("doc-1", Arrays.asList("A", "B"));
+    assertFalse(repo.isActiveUnfinished());
+    assertEquals("doc-1", repo.getActiveDocumentId());
+    assertEquals(Arrays.asList("A", "B"), repo.getActiveSession().pageIds());
+  }
+
+  @Test
+  public void exportedSession_resyncedWithSamePages_staysFinished() {
+    repo.upsertActive("doc-1", Arrays.asList("A", "B"));
+    repo.markExported("doc-1", Arrays.asList("A", "B"));
+    repo.upsertActive("doc-1", Arrays.asList("A", "B"));
+    assertFalse(repo.isActiveUnfinished());
+  }
+
+  @Test
+  public void exportedSession_changedAfterwards_isUnfinishedAgain() {
+    repo.upsertActive("doc-1", Arrays.asList("A", "B"));
+    repo.markExported("doc-1", Arrays.asList("A", "B"));
+    repo.upsertActive("doc-1", Arrays.asList("A", "B", "C"));
+    assertTrue(repo.isActiveUnfinished());
+    repo.markExported("doc-1", Arrays.asList("A", "B", "C"));
+    repo.upsertActive("doc-1", Arrays.asList("B", "A", "C"));
+    assertTrue(repo.isActiveUnfinished());
+  }
+
+  @Test
+  public void inboxNextScan_reusingTheDocumentId_isUnfinished() {
+    repo.upsertActive("doc-1", Arrays.asList("A"));
+    repo.markExported("doc-1", Arrays.asList("A"));
+    repo.upsertActive("doc-1", Arrays.asList("B"));
+    assertTrue(repo.isActiveUnfinished());
+  }
+
+  @Test
+  public void exportMark_survivesReload() {
+    repo.upsertActive("doc-1", Arrays.asList("A"));
+    repo.markExported("doc-1", Arrays.asList("A"));
+    assertFalse(new DocumentSessionRepository(indexFile).isActiveUnfinished());
+  }
+
+  @Test
+  public void noActiveSession_isNotUnfinished() {
+    assertFalse(repo.isActiveUnfinished());
+    repo.upsertActive("doc-1", Arrays.asList("A"));
+    repo.endActiveSession(false);
+    assertFalse(repo.isActiveUnfinished());
+  }
 }

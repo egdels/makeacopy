@@ -101,6 +101,32 @@ public final class DocumentSessionRepository {
     return toRuntime(e);
   }
 
+  /**
+   * Records that the session was exported with exactly these pages. The session stays active (its
+   * pages stay protected and Export still restores it), but it no longer counts as unfinished until
+   * its pages change.
+   */
+  public synchronized void markExported(String documentId, List<String> pageIds) {
+    if (documentId == null || pageIds == null || pageIds.isEmpty()) return;
+    StoreFile sf = safeLoad();
+    SessionEntry e = findEntry(sf, documentId);
+    if (e == null) return;
+    e.exportedPageIds = new ArrayList<>(pageIds);
+    persist(sf);
+  }
+
+  /**
+   * Whether the active session holds pages that were not exported as they are now: without an
+   * export, or changed since (pages added, removed or reordered).
+   */
+  public synchronized boolean isActiveUnfinished() {
+    StoreFile sf = safeLoad();
+    if (sf.activeDocumentId == null) return false;
+    SessionEntry e = findEntry(sf, sf.activeDocumentId);
+    if (e == null || e.pageIds == null || e.pageIds.isEmpty()) return false;
+    return !e.pageIds.equals(e.exportedPageIds);
+  }
+
   /** Loads a session by id (active or not). */
   @Nullable
   public synchronized DocumentSession findById(String documentId) {
@@ -478,5 +504,6 @@ public final class DocumentSessionRepository {
     long updatedAt;
     @Nullable String title;
     List<String> pageIds = new ArrayList<>();
+    @Nullable List<String> exportedPageIds;
   }
 }

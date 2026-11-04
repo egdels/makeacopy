@@ -680,10 +680,11 @@ public class CameraFragment extends Fragment implements SensorEventListener {
   /**
    * Session 3: when an active persisted {@link de.schliweb.makeacopy.data.DocumentSession} with at
    * least one resolvable page exists and the runtime session is empty (fresh process / process
-   * death), ask the user whether to resume the unfinished document or start a new one. The prompt
-   * is shown at most once per process so normal camera startup is never disturbed repeatedly.
-   * "Start new" keeps the old session data persisted (nothing is silently deleted) but clears the
-   * active pointer.
+   * death) and it was not exported as it is (see {@link
+   * de.schliweb.makeacopy.data.DocumentSessionRepository#isActiveUnfinished()}), ask the user
+   * whether to resume the unfinished document or start a new one. The prompt is shown at most once
+   * per process so normal camera startup is never disturbed repeatedly. "Start new" keeps the old
+   * session data persisted (nothing is silently deleted) but clears the active pointer.
    */
   private void maybeOfferDocumentResume() {
     if (resumePromptShownThisProcess) return;
@@ -704,8 +705,9 @@ public class CameraFragment extends Fragment implements SensorEventListener {
                 try {
                   de.schliweb.makeacopy.data.DocumentSessionRepository repo =
                       de.schliweb.makeacopy.data.DocumentSessionRepository.get(app);
-                  de.schliweb.makeacopy.data.DocumentSession session = repo.getActiveSession();
-                  if (session == null) return;
+                  // An exported document is not unfinished: it is not offered again until its
+                  // pages change.
+                  if (!repo.isActiveUnfinished()) return;
                   java.util.List<de.schliweb.makeacopy.ui.export.session.CompletedScan> resolved =
                       repo.resolveActivePages(
                           de.schliweb.makeacopy.data.CompletedScansRegistry.get(app));
