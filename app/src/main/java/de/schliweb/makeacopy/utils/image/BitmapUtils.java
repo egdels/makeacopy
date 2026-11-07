@@ -282,8 +282,22 @@ public final class BitmapUtils {
       prefetchPreviews(source, page, cleanupMode);
       return out;
     } catch (Throwable ignore) {
-      return source;
+      // Still display-safe: the caller puts the result on screen.
+      return ensureDisplaySafe(source);
     }
+  }
+
+  /**
+   * Drops the cached previews, so that a backgrounded app does not keep them (Play vitals: bitmap
+   * memory in the cached state). They are only dropped, never recycled, since an ImageView may
+   * still show one; the next {@link #processForPreview} renders them again.
+   */
+  public static synchronized void releasePreviewCache() {
+    previewSource = null;
+    previewWork = null;
+    previewCleanupMode = null;
+    previewCleaned = null;
+    java.util.Arrays.fill(previewOutputs, null);
   }
 
   /**

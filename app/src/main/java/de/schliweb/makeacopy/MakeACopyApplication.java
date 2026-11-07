@@ -15,6 +15,7 @@ import com.google.android.material.color.DynamicColors;
 import dagger.hilt.android.HiltAndroidApp;
 import de.schliweb.makeacopy.data.library.CollectionsRepository;
 import de.schliweb.makeacopy.services.CacheCleanupService;
+import de.schliweb.makeacopy.utils.image.BitmapUtils;
 import de.schliweb.makeacopy.utils.infra.FeatureFlags;
 import de.schliweb.makeacopy.utils.ocr.PaddleEngineProvider;
 import javax.inject.Inject;
@@ -141,6 +142,12 @@ public class MakeACopyApplication extends Application {
     super.onTrimMemory(level);
 
     Log.d(TAG, "Memory trim requested with level: " + level);
+
+    // The UI is gone: the export previews are cheap to render again but large to keep, and a
+    // cached process is measured by its bitmap memory (Play vitals limit 400 MB).
+    if (level >= TRIM_MEMORY_UI_HIDDEN) {
+      BitmapUtils.releasePreviewCache();
+    }
 
     // Trigger cache cleanup when app is in the background and memory is low (non-deprecated level)
     if (level >= TRIM_MEMORY_BACKGROUND) {

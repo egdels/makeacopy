@@ -39,6 +39,7 @@ import de.schliweb.makeacopy.ui.ocr.review.model.OcrDocReadingOrder;
 import de.schliweb.makeacopy.ui.ocr.review.view.MinimapView;
 import de.schliweb.makeacopy.ui.ocr.review.view.OcrOverlayView;
 import de.schliweb.makeacopy.ui.ocr.review.view.OcrTextLayerView;
+import de.schliweb.makeacopy.utils.image.BitmapUtils;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.OCRPostProcessor;
 import de.schliweb.makeacopy.utils.ocr.OCRUtils;
@@ -602,7 +603,10 @@ public class OcrReviewFragment extends Fragment {
     Bitmap bmp = sourceBitmap();
     if (bmp != null && !bmp.isRecycled() && documentImage != null) {
       int rotDeg = sourceRotation();
-      documentImage.setImageBitmap((rotDeg != 0) ? rotateBitmap(bmp, rotDeg) : bmp);
+      // A canvas refuses bitmaps above ~100 MB (RecordingCanvas.throwIfCannotDraw). Scaling keeps
+      // the aspect ratio, and updateDocumentImageMatrix fits by it, so the boxes stay in place.
+      Bitmap shown = BitmapUtils.ensureDisplaySafe(bmp);
+      documentImage.setImageBitmap((rotDeg != 0) ? rotateBitmap(shown, rotDeg) : shown);
     }
     if (documentOcrOverlay == null) return;
     // Sync OCR overlay with document
