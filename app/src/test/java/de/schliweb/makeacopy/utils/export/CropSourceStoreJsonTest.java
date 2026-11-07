@@ -51,6 +51,15 @@ public class CropSourceStoreJsonTest {
   }
 
   @Test
+  public void version_isThreeNowAndOneForUnversionedOrBrokenDocuments() {
+    // 3 marks corners in the space of the capped decode (ImageLoader.MAX_EDGE)
+    assertEquals(3, CropSourceStore.versionFromJson(CropSourceStore.toJson(CORNERS, 0, null)));
+    assertEquals(2, CropSourceStore.versionFromJson("{\"version\":2,\"corners\":[]}"));
+    assertEquals(1, CropSourceStore.versionFromJson("{\"corners\":[]}"));
+    assertEquals(1, CropSourceStore.versionFromJson("broken"));
+  }
+
+  @Test
   public void dewarpFromJson_toleratesLegacyAndBrokenDocuments() {
     // Version 1 documents (before issue #91 settings were stored) simply have no dewarp block
     assertNull(

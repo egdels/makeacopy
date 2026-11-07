@@ -18,6 +18,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import de.schliweb.makeacopy.utils.image.DewarpState;
+import de.schliweb.makeacopy.utils.image.ImageLoader;
 import de.schliweb.makeacopy.utils.infra.LogSafe;
 import java.io.File;
 import java.io.FileInputStream;
@@ -78,7 +79,7 @@ public final class CropSourceStore {
    *
    * @param srcPath path of the original capture (nullable)
    * @param srcUri URI of the original image, used when there is no readable path (nullable)
-   * @param corners accepted corners in coordinates of the rotated full-res original
+   * @param corners accepted corners in coordinates of the rotated original as ImageLoader decodes it
    * @param userRotationDeg user rotation that was baked into the crop source
    * @param dewarp curved-selection settings of the crop, or {@code null} for a straight trapezoid
    * @return whether both the original and the crop parameters were stored
@@ -207,8 +208,11 @@ public final class CropSourceStore {
       String json = new String(Files.readAllBytes(crop.toPath()), StandardCharsets.UTF_8);
       float[] flat = cornersFromJson(json);
       if (flat == null) return null;
+      double scale = versionFromJson(json) < 3 ? legacyScale(original) : 1.0;
       PointF[] corners = new PointF[4];
-      for (int i = 0; i < 4; i++) corners[i] = new PointF(flat[2 * i], flat[2 * i + 1]);
+      for (int i = 0; i < 4; i++) {
+        corners[i] = new PointF((float) (flat[2 * i] * scale), (float) (flat[2 * i + 1] * scale));
+      }
       return new CropSource(
           original.getAbsolutePath(), corners, rotationFromJson(json), dewarpFromJson(json));
     } catch (IOException e) {
@@ -217,7 +221,28 @@ public final class CropSourceStore {
     }
   }
 
+  /**
+   * Corners written before version 3 live in the space of the original decoded without the {@link
+   * ImageLoader#MAX_EDGE} cap; this is the factor into today's decode of the same file.
+   */
+  private static double legacyScale(File original) {
+    android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+    o.inJustDecodeBounds = true;
+    android.graphics.BitmapFactory.decodeFile(original.getAbsolutePath(), o);
+    return ImageLoader.legacyDecodeScale(o.outWidth, o.outHeight);
+  }
+
   // ---- JSON (pure, JVM-testable) ----
+
+  /** The document version; 1 for documents that predate the field. */
+  static int versionFromJson(String json) {
+    try {
+      JsonObject o = JsonParser.parseString(json).getAsJsonObject();
+      return o.has("version") ? o.get("version").getAsInt() : 1;
+    } catch (RuntimeException e) {
+      return 1;
+    }
+  }
 
   /**
    * Serializes the crop parameters.
@@ -242,7 +267,8 @@ public final class CropSourceStore {
       arr.add(pt);
     }
     JsonObject o = new JsonObject();
-    o.addProperty("version", 2);
+    // 3: corners in the space of the original decoded with the ImageLoader.MAX_EDGE cap
+    o.addProperty("version", 3);
     o.addProperty("userRotationDeg", normalizeDeg(userRotationDeg));
     o.add("corners", arr);
     if (dewarp != null && dewarp.isFinite()) o.add("dewarp", dewarpToJson(dewarp));

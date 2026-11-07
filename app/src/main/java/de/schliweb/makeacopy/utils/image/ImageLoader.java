@@ -39,6 +39,9 @@ import lombok.experimental.UtilityClass;
 public final class ImageLoader {
   private static final String TAG = "ImageLoader";
 
+  /** Longest edge of a decoded page image; about 350 dpi on A4, plenty for OCR and export. */
+  static final int MAX_EDGE = 4096;
+
   private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
   private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
@@ -75,8 +78,8 @@ public final class ImageLoader {
           opts.inJustDecodeBounds = true;
           BitmapFactory.decodeFile(path, opts);
           opts.inJustDecodeBounds = false;
-          opts.inSampleSize = calcInSampleSize(opts, 4096, 4096);
-          Bitmap bmp = BitmapFactory.decodeFile(path, opts);
+          opts.inSampleSize = calcInSampleSize(opts, MAX_EDGE, MAX_EDGE);
+          Bitmap bmp = capToMaxEdge(BitmapFactory.decodeFile(path, opts));
           if (bmp != null) {
             where = "path";
             // Apply EXIF rotation for file source
@@ -113,11 +116,11 @@ public final class ImageLoader {
           BitmapFactory.decodeStream(is2, null, opts2);
         }
         opts2.inJustDecodeBounds = false;
-        opts2.inSampleSize = calcInSampleSize(opts2, 4096, 4096);
+        opts2.inSampleSize = calcInSampleSize(opts2, MAX_EDGE, MAX_EDGE);
         Bitmap bmp;
         try (InputStream is3 = ctx.getContentResolver().openInputStream(uri)) {
           if (is3 == null) return null;
-          bmp = BitmapFactory.decodeStream(is3, null, opts2);
+          bmp = capToMaxEdge(BitmapFactory.decodeStream(is3, null, opts2));
         }
         if (bmp != null) {
           where = "uri";
@@ -182,9 +185,43 @@ public final class ImageLoader {
         });
   }
 
+  /**
+   * {@code bmp} scaled down to at most {@link #MAX_EDGE} on its longer edge. The power-of-two
+   * sample size alone leaves a 50 MP photo (8160 x 6120) at full size, about 200 MB per bitmap,
+   * and the flow keeps the original and the crop: Play vitals flagged the cached process at over
+   * 400 MB, and a canvas refuses to draw anything above 100 MB.
+   */
+  @Nullable
+  static Bitmap capToMaxEdge(@Nullable Bitmap bmp) {
+    if (bmp == null) return null;
+    int longEdge = Math.max(bmp.getWidth(), bmp.getHeight());
+    if (longEdge <= MAX_EDGE) return bmp;
+    double s = MAX_EDGE / (double) longEdge;
+    int w = Math.max(1, (int) Math.round(bmp.getWidth() * s));
+    int h = Math.max(1, (int) Math.round(bmp.getHeight() * s));
+    Bitmap scaled = Bitmap.createScaledBitmap(bmp, w, h, true);
+    if (scaled != bmp) bmp.recycle();
+    return scaled;
+  }
+
+  /**
+   * The factor from the coordinates of an image decoded before {@link #capToMaxEdge} existed to
+   * those of the same image decoded now, for a file of {@code width} x {@code height} pixels: 1
+   * unless the old power-of-two sampling left the longer edge above {@link #MAX_EDGE}.
+   */
+  public static double legacyDecodeScale(int width, int height) {
+    if (width <= 0 || height <= 0) return 1.0;
+    int sample = calcInSampleSize(width, height, MAX_EDGE, MAX_EDGE);
+    // The decoder rounds a sampled dimension up.
+    int oldLongEdge = (Math.max(width, height) + sample - 1) / sample;
+    return oldLongEdge > MAX_EDGE ? MAX_EDGE / (double) oldLongEdge : 1.0;
+  }
+
   private static int calcInSampleSize(BitmapFactory.Options opts, int reqW, int reqH) {
-    int height = opts.outHeight;
-    int width = opts.outWidth;
+    return calcInSampleSize(opts.outWidth, opts.outHeight, reqW, reqH);
+  }
+
+  private static int calcInSampleSize(int width, int height, int reqW, int reqH) {
     int inSampleSize = 1;
     if (height > reqH || width > reqW) {
       final int halfHeight = height / 2;
