@@ -581,6 +581,9 @@ public class OCRFragment extends Fragment {
    * becomes "Process" so that the user can re-run OCR with the new settings.
    */
   private void showOcrPrepModeDialog() {
+    // A confirm on another screen leaves its result in the FragmentManager; registering would
+    // deliver that stale result at once and remove the listener, losing this confirm.
+    getParentFragmentManager().clearFragmentResult(OptionsDialogFragment.REQUEST_KEY);
     getParentFragmentManager()
         .setFragmentResultListener(
             OptionsDialogFragment.REQUEST_KEY,

@@ -1340,6 +1340,10 @@ public class ExportFragment extends Fragment {
 
   /** Opens the export options dialog without starting export. */
   private void openExportOptions() {
+    // The options dialog sends the export result on every confirm, also from the camera, OCR and
+    // library screens, where nobody listens; the FragmentManager keeps it. Registering would
+    // deliver that stale result at once and remove the listener, so this confirm got lost.
+    getParentFragmentManager().clearFragmentResult(ExportOptionsPanel.REQUEST_KEY);
     getParentFragmentManager()
         .setFragmentResultListener(
             ExportOptionsPanel.REQUEST_KEY,

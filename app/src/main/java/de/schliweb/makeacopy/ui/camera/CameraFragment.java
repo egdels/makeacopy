@@ -479,6 +479,9 @@ public class CameraFragment extends Fragment implements SensorEventListener {
   }
 
   private void showCameraOptions() {
+    // A confirm on another screen leaves its result in the FragmentManager; registering would
+    // deliver that stale result at once and remove the listener, losing this confirm.
+    getParentFragmentManager().clearFragmentResult(OptionsDialogFragment.REQUEST_KEY);
     getParentFragmentManager()
         .setFragmentResultListener(
             OptionsDialogFragment.REQUEST_KEY,
