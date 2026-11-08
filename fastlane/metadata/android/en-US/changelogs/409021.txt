@@ -1,0 +1,4 @@
+MakeACopy 4.9.2
+* Improved: photos from high-resolution cameras (e.g. 50 MP) use far less memory.
+* Changed: a file shared into the app opens in the running app; with a document open, you add it or start a new one.
+* Fixed: a possible crash when reviewing very large images.
