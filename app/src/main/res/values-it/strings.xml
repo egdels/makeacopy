@@ -509,4 +509,10 @@
     <string name="resume_document_message">Hai un documento incompleto con %1$d pagina/e. Vuoi riprenderlo?</string>
     <string name="resume_document_resume">Riprendi</string>
     <string name="resume_document_start_new">Inizia nuovo</string>
+    <string name="share_into_open_title">File condiviso</string>
+    <string name="share_into_open_message">È aperto un documento con %1$d pagina/e. Aggiungere il file condiviso o iniziare un nuovo documento?</string>
+    <string name="share_add_page">Aggiungi al documento</string>
+    <string name="share_new_document">Nuovo documento</string>
+    <string name="share_discard_page_message">La pagina corrente non è ancora finita. Aprire comunque il file condiviso? La pagina corrente verrà scartata.</string>
+    <string name="share_open_anyway">Apri</string>
 </resources>

@@ -486,4 +486,10 @@
     <string name="resume_document_message">您有一个包含 %1$d 页的未完成文档，是否要继续？</string>
     <string name="resume_document_resume">继续</string>
     <string name="resume_document_start_new">新建</string>
+    <string name="share_into_open_title">共享的文件</string>
+    <string name="share_into_open_message">已打开一个包含 %1$d 页的文档。要将共享的文件添加到其中，还是新建文档？</string>
+    <string name="share_add_page">添加到文档</string>
+    <string name="share_new_document">新建文档</string>
+    <string name="share_discard_page_message">当前页面尚未完成。仍要打开共享的文件吗？当前页面将被丢弃。</string>
+    <string name="share_open_anyway">打开</string>
 </resources>

@@ -511,4 +511,10 @@
     <string name="resume_document_message">Tiene un documento sin terminar con %1$d página(s). ¿Desea continuar con él?</string>
     <string name="resume_document_resume">Continuar</string>
     <string name="resume_document_start_new">Empezar nuevo</string>
+    <string name="share_into_open_title">Archivo compartido</string>
+    <string name="share_into_open_message">Hay un documento abierto con %1$d página(s). ¿Añadir el archivo compartido o empezar un documento nuevo?</string>
+    <string name="share_add_page">Añadir al documento</string>
+    <string name="share_new_document">Documento nuevo</string>
+    <string name="share_discard_page_message">La página actual aún no está terminada. ¿Abrir el archivo compartido de todos modos? Se descartará la página actual.</string>
+    <string name="share_open_anyway">Abrir</string>
 </resources>

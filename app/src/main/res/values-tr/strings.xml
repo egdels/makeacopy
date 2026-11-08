@@ -502,4 +502,10 @@
     <string name="resume_document_message">Bitmemiş, %1$d sayfalık bir belgeniz var. Devam etmek ister misiniz?</string>
     <string name="resume_document_resume">Devam et</string>
     <string name="resume_document_start_new">Yeni başlat</string>
+    <string name="share_into_open_title">Paylaşılan dosya</string>
+    <string name="share_into_open_message">%1$d sayfalık bir belge açık. Paylaşılan dosya bu belgeye eklensin mi, yoksa yeni bir belge mi başlatılsın?</string>
+    <string name="share_add_page">Belgeye ekle</string>
+    <string name="share_new_document">Yeni belge</string>
+    <string name="share_discard_page_message">Geçerli sayfa henüz tamamlanmadı. Paylaşılan dosya yine de açılsın mı? Geçerli sayfa silinecek.</string>
+    <string name="share_open_anyway">Aç</string>
 </resources>

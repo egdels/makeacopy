@@ -501,4 +501,10 @@
     <string name="resume_document_message">Du har ett ofullständigt dokument med %1$d sidor. Vill du fortsätta med det?</string>
     <string name="resume_document_resume">Fortsätt</string>
     <string name="resume_document_start_new">Starta nytt</string>
+    <string name="share_into_open_title">Delad fil</string>
+    <string name="share_into_open_message">Ett dokument med %1$d sida/sidor är öppet. Vill du lägga till den delade filen eller börja ett nytt dokument?</string>
+    <string name="share_add_page">Lägg till i dokument</string>
+    <string name="share_new_document">Nytt dokument</string>
+    <string name="share_discard_page_message">Den aktuella sidan är inte klar än. Vill du öppna den delade filen ändå? Den aktuella sidan förkastas.</string>
+    <string name="share_open_anyway">Öppna</string>
 </resources>

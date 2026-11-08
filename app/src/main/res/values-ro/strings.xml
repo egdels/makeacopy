@@ -508,4 +508,10 @@
     <string name="resume_document_message">Aveți un document neterminat cu %1$d pagini. Doriți să continuați?</string>
     <string name="resume_document_resume">Continuă</string>
     <string name="resume_document_start_new">Începe unul nou</string>
+    <string name="share_into_open_title">Fișier partajat</string>
+    <string name="share_into_open_message">Este deschis un document cu %1$d pagină/pagini. Adăugați fișierul partajat sau începeți un document nou?</string>
+    <string name="share_add_page">Adaugă la document</string>
+    <string name="share_new_document">Document nou</string>
+    <string name="share_discard_page_message">Pagina curentă nu este încă terminată. Deschideți totuși fișierul partajat? Pagina curentă va fi renunțată.</string>
+    <string name="share_open_anyway">Deschide</string>
 </resources>

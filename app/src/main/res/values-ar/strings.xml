@@ -498,4 +498,10 @@
     <string name="resume_document_message">لديك مستند غير مكتمل يحتوي على %1$d صفحة. هل تريد المتابعة؟</string>
     <string name="resume_document_resume">متابعة</string>
     <string name="resume_document_start_new">بدء مستند جديد</string>
+    <string name="share_into_open_title">ملف مشترك</string>
+    <string name="share_into_open_message">يوجد مستند مفتوح يحتوي على %1$d صفحة. هل تريد إضافة الملف المشترك إليه أم بدء مستند جديد؟</string>
+    <string name="share_add_page">إضافة إلى المستند</string>
+    <string name="share_new_document">مستند جديد</string>
+    <string name="share_discard_page_message">الصفحة الحالية لم تكتمل بعد. هل تريد فتح الملف المشترك على أي حال؟ سيتم تجاهل الصفحة الحالية.</string>
+    <string name="share_open_anyway">فتح</string>
 </resources>

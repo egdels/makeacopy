@@ -515,4 +515,10 @@
     <string name="resume_document_message">Es existiert ein unfertiges Dokument mit %1$d Seite(n). Möchten Sie es fortsetzen?</string>
     <string name="resume_document_resume">Fortsetzen</string>
     <string name="resume_document_start_new">Neu beginnen</string>
+    <string name="share_into_open_title">Geteilte Datei</string>
+    <string name="share_into_open_message">Ein Dokument mit %1$d Seite(n) ist geöffnet. Die geteilte Datei hinzufügen oder ein neues Dokument beginnen?</string>
+    <string name="share_add_page">Zum Dokument hinzufügen</string>
+    <string name="share_new_document">Neues Dokument</string>
+    <string name="share_discard_page_message">Die aktuelle Seite ist noch nicht fertig. Geteilte Datei trotzdem öffnen? Die aktuelle Seite wird verworfen.</string>
+    <string name="share_open_anyway">Öffnen</string>
 </resources>

@@ -495,4 +495,10 @@
     <string name="resume_document_message">คุณมีเอกสารที่ยังไม่เสร็จซึ่งมี %1$d หน้า ต้องการดำเนินการต่อหรือไม่?</string>
     <string name="resume_document_resume">ดำเนินการต่อ</string>
     <string name="resume_document_start_new">เริ่มใหม่</string>
+    <string name="share_into_open_title">ไฟล์ที่แชร์</string>
+    <string name="share_into_open_message">มีเอกสาร %1$d หน้าเปิดอยู่ ต้องการเพิ่มไฟล์ที่แชร์ลงในเอกสารนี้หรือเริ่มเอกสารใหม่?</string>
+    <string name="share_add_page">เพิ่มลงในเอกสาร</string>
+    <string name="share_new_document">เอกสารใหม่</string>
+    <string name="share_discard_page_message">หน้าปัจจุบันยังไม่เสร็จ ต้องการเปิดไฟล์ที่แชร์ต่อหรือไม่? หน้าปัจจุบันจะถูกละทิ้ง</string>
+    <string name="share_open_anyway">เปิด</string>
 </resources>

@@ -26,6 +26,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 import de.schliweb.makeacopy.databinding.ActivityMainBinding;
 import de.schliweb.makeacopy.services.CacheCleanupService;
 import de.schliweb.makeacopy.ui.camera.CameraViewModel;
+import de.schliweb.makeacopy.ui.camera.IncomingShareRouter;
 import de.schliweb.makeacopy.utils.infra.IncomingUriPolicy;
 import de.schliweb.makeacopy.utils.ui.ScreenProtection;
 
@@ -50,8 +51,9 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     // Capture share/view intents BEFORE Fragments are created so the start
-    // destination (CameraFragment) can consume the pending Uri on first frame.
-    handleShareIntent(getIntent());
+    // destination (CameraFragment) can consume the pending Uri on first frame. Not when the
+    // activity is recreated (process death, dark mode switch): the share was imported already.
+    if (savedInstanceState == null) handleShareIntent(getIntent());
 
     // Before any content is drawn, so a scan never reaches a screenshot or the recents preview
     ScreenProtection.apply(this);
@@ -100,18 +102,22 @@ public class MainActivity extends AppCompatActivity {
   protected void onNewIntent(Intent intent) {
     super.onNewIntent(intent);
     setIntent(intent);
-    handleShareIntent(intent);
+    // launchMode singleTask: a share reaches the running instance instead of starting another one
+    // in a new task (each kept its own page bitmaps alive, about 70 MB per shared 50 MP image).
+    if (handleShareIntent(intent)) IncomingShareRouter.route(this);
   }
 
   /**
    * Inspects the launching {@link Intent} for a shared image or PDF (ACTION_SEND / ACTION_VIEW)
    * and, if found, hands the Uri off to {@link CameraViewModel} so the start fragment can route it
    * through the regular import pipeline.
+   *
+   * @return true when a Uri was stored as pending share
    */
-  private void handleShareIntent(Intent intent) {
-    if (intent == null) return;
+  private boolean handleShareIntent(Intent intent) {
+    if (intent == null) return false;
     String action = intent.getAction();
-    if (action == null) return;
+    if (action == null) return false;
 
     Uri uri = null;
     if (Intent.ACTION_SEND.equals(action)) {
@@ -119,12 +125,12 @@ public class MainActivity extends AppCompatActivity {
     } else if (Intent.ACTION_VIEW.equals(action)) {
       uri = intent.getData();
     } else {
-      return;
+      return false;
     }
 
-    if (uri == null) return;
+    if (uri == null) return false;
     // Only other apps' content Uris: never a file Uri or one of our own providers (audit F-01)
-    if (!IncomingUriPolicy.isAllowed(this, uri)) return;
+    if (!IncomingUriPolicy.isAllowed(this, uri)) return false;
 
     String mime = intent.getType();
     if (mime == null) {
@@ -139,8 +145,10 @@ public class MainActivity extends AppCompatActivity {
     try {
       CameraViewModel vm = new ViewModelProvider(this).get(CameraViewModel.class);
       vm.setPendingShare(uri, mime);
+      return true;
     } catch (Exception e) {
       Log.w(TAG, "Could not store pending share Uri", e);
+      return false;
     }
   }
 

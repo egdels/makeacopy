@@ -491,4 +491,10 @@
     <string name="resume_document_message">Έχετε ένα ημιτελές έγγραφο με %1$d σελίδες. Θέλετε να συνεχίσετε;</string>
     <string name="resume_document_resume">Συνέχεια</string>
     <string name="resume_document_start_new">Έναρξη νέου</string>
+    <string name="share_into_open_title">Κοινόχρηστο αρχείο</string>
+    <string name="share_into_open_message">Είναι ανοιχτό ένα έγγραφο με %1$d σελίδα(ες). Προσθήκη του κοινόχρηστου αρχείου ή έναρξη νέου εγγράφου;</string>
+    <string name="share_add_page">Προσθήκη στο έγγραφο</string>
+    <string name="share_new_document">Νέο έγγραφο</string>
+    <string name="share_discard_page_message">Η τρέχουσα σελίδα δεν έχει ολοκληρωθεί. Άνοιγμα του κοινόχρηστου αρχείου; Η τρέχουσα σελίδα θα απορριφθεί.</string>
+    <string name="share_open_anyway">Άνοιγμα</string>
 </resources>

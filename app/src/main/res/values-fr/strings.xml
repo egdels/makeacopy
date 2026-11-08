@@ -504,4 +504,10 @@
     <string name="resume_document_message">Vous avez un document inachevé de %1$d page(s). Voulez-vous le reprendre ?</string>
     <string name="resume_document_resume">Reprendre</string>
     <string name="resume_document_start_new">Nouveau document</string>
+    <string name="share_into_open_title">Fichier partagé</string>
+    <string name="share_into_open_message">Un document de %1$d page(s) est ouvert. Ajouter le fichier partagé à ce document ou commencer un nouveau document ?</string>
+    <string name="share_add_page">Ajouter au document</string>
+    <string name="share_new_document">Nouveau document</string>
+    <string name="share_discard_page_message">La page actuelle n\'est pas terminée. Ouvrir quand même le fichier partagé ? La page actuelle sera abandonnée.</string>
+    <string name="share_open_anyway">Ouvrir</string>
 </resources>

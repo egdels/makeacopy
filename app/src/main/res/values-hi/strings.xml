@@ -492,4 +492,10 @@
     <string name="resume_document_message">आपके पास %1$d पृष्ठ वाला एक अधूरा दस्तावेज़ है। क्या आप उसे जारी रखना चाहते हैं?</string>
     <string name="resume_document_resume">जारी रखें</string>
     <string name="resume_document_start_new">नया शुरू करें</string>
+    <string name="share_into_open_title">साझा की गई फ़ाइल</string>
+    <string name="share_into_open_message">%1$d पेज वाला एक दस्तावेज़ खुला है। साझा की गई फ़ाइल इसमें जोड़ें या नया दस्तावेज़ शुरू करें?</string>
+    <string name="share_add_page">दस्तावेज़ में जोड़ें</string>
+    <string name="share_new_document">नया दस्तावेज़</string>
+    <string name="share_discard_page_message">वर्तमान पेज अभी पूरा नहीं हुआ है। फिर भी साझा की गई फ़ाइल खोलें? वर्तमान पेज हटा दिया जाएगा।</string>
+    <string name="share_open_anyway">खोलें</string>
 </resources>

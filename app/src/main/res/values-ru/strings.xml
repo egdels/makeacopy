@@ -505,4 +505,10 @@
     <string name="resume_document_message">У вас есть незавершённый документ на %1$d стр. Хотите продолжить его?</string>
     <string name="resume_document_resume">Продолжить</string>
     <string name="resume_document_start_new">Начать новый</string>
+    <string name="share_into_open_title">Общий файл</string>
+    <string name="share_into_open_message">Открыт документ (страниц: %1$d). Добавить полученный файл в него или начать новый документ?</string>
+    <string name="share_add_page">Добавить в документ</string>
+    <string name="share_new_document">Новый документ</string>
+    <string name="share_discard_page_message">Текущая страница ещё не готова. Всё равно открыть полученный файл? Текущая страница будет удалена.</string>
+    <string name="share_open_anyway">Открыть</string>
 </resources>

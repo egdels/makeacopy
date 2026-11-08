@@ -503,4 +503,10 @@
     <string name="resume_document_message">Van egy befejezetlen, %1$d oldalas dokumentuma. Szeretné folytatni?</string>
     <string name="resume_document_resume">Folytatás</string>
     <string name="resume_document_start_new">Új indítása</string>
+    <string name="share_into_open_title">Megosztott fájl</string>
+    <string name="share_into_open_message">Meg van nyitva egy %1$d oldalas dokumentum. Hozzáadja a megosztott fájlt, vagy új dokumentumot kezd?</string>
+    <string name="share_add_page">Hozzáadás a dokumentumhoz</string>
+    <string name="share_new_document">Új dokumentum</string>
+    <string name="share_discard_page_message">Az aktuális oldal még nincs kész. Mégis megnyitja a megosztott fájlt? Az aktuális oldal elvész.</string>
+    <string name="share_open_anyway">Megnyitás</string>
 </resources>

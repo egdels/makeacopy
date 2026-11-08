@@ -512,4 +512,10 @@
     <string name="resume_document_message">You have an unfinished document with %1$d page(s). Do you want to resume it?</string>
     <string name="resume_document_resume">Resume</string>
     <string name="resume_document_start_new">Start new</string>
+    <string name="share_into_open_title">Shared file</string>
+    <string name="share_into_open_message">A document with %1$d page(s) is open. Add the shared file to it or start a new document?</string>
+    <string name="share_add_page">Add to document</string>
+    <string name="share_new_document">New document</string>
+    <string name="share_discard_page_message">The current page is not finished yet. Open the shared file anyway? The current page will be discarded.</string>
+    <string name="share_open_anyway">Open</string>
 </resources>

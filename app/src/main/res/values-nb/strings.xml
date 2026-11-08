@@ -498,4 +498,10 @@
     <string name="resume_document_message">Du har et ufullført dokument med %1$d side(r). Vil du fortsette med det?</string>
     <string name="resume_document_resume">Fortsett</string>
     <string name="resume_document_start_new">Start nytt</string>
+    <string name="share_into_open_title">Delt fil</string>
+    <string name="share_into_open_message">Et dokument med %1$d side(r) er åpent. Vil du legge til den delte filen eller starte et nytt dokument?</string>
+    <string name="share_add_page">Legg til i dokument</string>
+    <string name="share_new_document">Nytt dokument</string>
+    <string name="share_discard_page_message">Den gjeldende siden er ikke ferdig ennå. Vil du åpne den delte filen likevel? Den gjeldende siden forkastes.</string>
+    <string name="share_open_anyway">Åpne</string>
 </resources>

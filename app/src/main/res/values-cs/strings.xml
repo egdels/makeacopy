@@ -503,4 +503,10 @@
     <string name="resume_document_message">Máte nedokončený dokument s %1$d stránkami. Chcete v něm pokračovat?</string>
     <string name="resume_document_resume">Pokračovat</string>
     <string name="resume_document_start_new">Začít nový</string>
+    <string name="share_into_open_title">Sdílený soubor</string>
+    <string name="share_into_open_message">Je otevřen dokument s počtem stran: %1$d. Přidat sdílený soubor, nebo začít nový dokument?</string>
+    <string name="share_add_page">Přidat do dokumentu</string>
+    <string name="share_new_document">Nový dokument</string>
+    <string name="share_discard_page_message">Aktuální stránka ještě není hotová. Přesto otevřít sdílený soubor? Aktuální stránka bude zahozena.</string>
+    <string name="share_open_anyway">Otevřít</string>
 </resources>

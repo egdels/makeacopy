@@ -502,4 +502,10 @@
     <string name="resume_document_message">Masz niedokończony dokument z %1$d stronami. Czy chcesz go kontynuować?</string>
     <string name="resume_document_resume">Kontynuuj</string>
     <string name="resume_document_start_new">Rozpocznij nowy</string>
+    <string name="share_into_open_title">Udostępniony plik</string>
+    <string name="share_into_open_message">Otwarty jest dokument z liczbą stron: %1$d. Dodać udostępniony plik czy rozpocząć nowy dokument?</string>
+    <string name="share_add_page">Dodaj do dokumentu</string>
+    <string name="share_new_document">Nowy dokument</string>
+    <string name="share_discard_page_message">Bieżąca strona nie jest jeszcze gotowa. Otworzyć mimo to udostępniony plik? Bieżąca strona zostanie odrzucona.</string>
+    <string name="share_open_anyway">Otwórz</string>
 </resources>

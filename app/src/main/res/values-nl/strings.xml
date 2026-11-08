@@ -503,4 +503,10 @@
     <string name="resume_document_message">Je hebt een onvoltooid document met %1$d pagina(\'s). Wil je hiermee doorgaan?</string>
     <string name="resume_document_resume">Doorgaan</string>
     <string name="resume_document_start_new">Nieuw beginnen</string>
+    <string name="share_into_open_title">Gedeeld bestand</string>
+    <string name="share_into_open_message">Er is een document met %1$d pagina(\'s) geopend. Het gedeelde bestand toevoegen of een nieuw document beginnen?</string>
+    <string name="share_add_page">Aan document toevoegen</string>
+    <string name="share_new_document">Nieuw document</string>
+    <string name="share_discard_page_message">De huidige pagina is nog niet klaar. Het gedeelde bestand toch openen? De huidige pagina wordt verwijderd.</string>
+    <string name="share_open_anyway">Openen</string>
 </resources>

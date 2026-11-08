@@ -500,4 +500,10 @@
     <string name="resume_document_message">یک سند ناتمام با %1$d صفحه دارید. آیا می‌خواهید آن را ادامه دهید؟</string>
     <string name="resume_document_resume">ادامه</string>
     <string name="resume_document_start_new">شروع سند جدید</string>
+    <string name="share_into_open_title">فایل اشتراک‌گذاری‌شده</string>
+    <string name="share_into_open_message">سندی با %1$d صفحه باز است. فایل اشتراک‌گذاری‌شده به آن افزوده شود یا سند جدیدی آغاز شود؟</string>
+    <string name="share_add_page">افزودن به سند</string>
+    <string name="share_new_document">سند جدید</string>
+    <string name="share_discard_page_message">صفحهٔ فعلی هنوز تمام نشده است. فایل اشتراک‌گذاری‌شده با این حال باز شود؟ صفحهٔ فعلی کنار گذاشته می‌شود.</string>
+    <string name="share_open_anyway">باز کردن</string>
 </resources>

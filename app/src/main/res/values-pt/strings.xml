@@ -504,4 +504,10 @@
     <string name="resume_document_message">Tem um documento inacabado com %1$d página(s). Deseja continuar?</string>
     <string name="resume_document_resume">Continuar</string>
     <string name="resume_document_start_new">Iniciar novo</string>
+    <string name="share_into_open_title">Ficheiro partilhado</string>
+    <string name="share_into_open_message">Está aberto um documento com %1$d página(s). Adicionar o ficheiro partilhado ou iniciar um novo documento?</string>
+    <string name="share_add_page">Adicionar ao documento</string>
+    <string name="share_new_document">Novo documento</string>
+    <string name="share_discard_page_message">A página atual ainda não está concluída. Abrir o ficheiro partilhado mesmo assim? A página atual será descartada.</string>
+    <string name="share_open_anyway">Abrir</string>
 </resources>
