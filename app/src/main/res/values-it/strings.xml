@@ -124,6 +124,7 @@
 
     <string name="pdf_bw_mode_robust">Bianco e nero</string>
     <string name="skip_ocr_export_only">Salta OCR (solo esportazione)</string>
+    <string name="ocr_in_background">OCR in background (controlla il testo dalla schermata di esportazione)</string>
     <string name="skip_cropping">Salta il ritaglio</string>
     <string name="skip_edge_detection">Salta rilevamento bordi</string>
     <string name="preview_corner_detection">Anteprima del rilevamento degli angoli</string>

@@ -122,6 +122,7 @@
 
     <string name="pdf_bw_mode_robust">Svart/hvitt</string>
     <string name="skip_ocr_export_only">Hopp over OCR (kun eksport)</string>
+    <string name="ocr_in_background">OCR i bakgrunnen (sjekk teksten på eksportskjermen)</string>
     <string name="skip_cropping">Hopp over beskjæring</string>
     <string name="skip_edge_detection">Hopp over kantdeteksjon</string>
     <string name="preview_corner_detection">Forhåndsvisning av hjørnedeteksjon</string>

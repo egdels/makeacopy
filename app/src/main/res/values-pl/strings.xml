@@ -121,6 +121,7 @@
 
     <string name="pdf_bw_mode_robust">Czarno-biały</string>
     <string name="skip_ocr_export_only">Pomiń OCR (tylko eksport)</string>
+    <string name="ocr_in_background">OCR w tle (sprawdź tekst na ekranie eksportu)</string>
     <string name="skip_cropping">Pomiń przycinanie</string>
     <string name="skip_edge_detection">Pomiń wykrywanie krawędzi</string>
     <string name="preview_corner_detection">Podgląd wykrywania narożników</string>

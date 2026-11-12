@@ -121,6 +121,7 @@
 
     <string name="pdf_bw_mode_robust">Fekete-fehér</string>
     <string name="skip_ocr_export_only">OCR kihagyása (csak exportálás)</string>
+    <string name="ocr_in_background">OCR a háttérben (szöveg ellenőrzése az exportálási képernyőn)</string>
     <string name="skip_cropping">Kivágás kihagyása</string>
     <string name="skip_edge_detection">Szélfelismerés kihagyása</string>
     <string name="preview_corner_detection">Sarokérzékelés előnézete</string>

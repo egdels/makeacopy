@@ -117,6 +117,7 @@
     <string name="pdf_bw_mode_robust">Ασπρόμαυρο</string>
     <string name="output_color_title" translatable="false">Χρώμα εξόδου</string>
     <string name="skip_ocr_export_only">Παράλειψη OCR (μόνο εξαγωγή)</string>
+    <string name="ocr_in_background">OCR στο παρασκήνιο (έλεγχος κειμένου από την οθόνη εξαγωγής)</string>
     <string name="preview_corner_detection">Προεπισκόπηση ανίχνευσης γωνιών</string>
     <string name="skip_cropping">Παράλειψη περικοπής</string>
     <string name="skip_edge_detection">Παράλειψη ανίχνευσης ακμών</string>

@@ -122,6 +122,7 @@
 
     <string name="pdf_bw_mode_robust">Alb-negru</string>
     <string name="skip_ocr_export_only">Omite OCR (doar export)</string>
+    <string name="ocr_in_background">OCR în fundal (verifică textul din ecranul de export)</string>
     <string name="skip_cropping">Omite decuparea</string>
     <string name="skip_edge_detection">Omite detectarea marginilor</string>
     <string name="preview_corner_detection">Previzualizare detecție colțuri</string>

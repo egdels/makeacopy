@@ -121,6 +121,7 @@
 
     <string name="pdf_bw_mode_robust">Sort/hvid</string>
     <string name="skip_ocr_export_only">Spring OCR over (kun eksport)</string>
+    <string name="ocr_in_background">OCR i baggrunden (tjek teksten på eksportskærmen)</string>
     <string name="skip_cropping">Spring beskæring over</string>
     <string name="skip_edge_detection">Spring kantdetektering over</string>
     <string name="preview_corner_detection">Forhåndsvisning af hjørnedetektion</string>

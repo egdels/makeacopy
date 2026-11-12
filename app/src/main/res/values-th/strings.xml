@@ -119,6 +119,7 @@
 
     <string name="pdf_bw_mode_robust">ขาวดำ</string>
     <string name="skip_ocr_export_only">ข้าม OCR (ส่งออกเท่านั้น)</string>
+    <string name="ocr_in_background">OCR ในเบื้องหลัง (ตรวจข้อความจากหน้าส่งออก)</string>
     <string name="skip_cropping">ข้ามการครอบตัด</string>
     <string name="skip_edge_detection">ข้ามการตรวจจับขอบ</string>
     <string name="preview_corner_detection">แสดงตัวอย่างการตรวจจับมุม</string>

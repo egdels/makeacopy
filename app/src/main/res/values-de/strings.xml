@@ -123,6 +123,7 @@
     <string name="output_color_title">Ausgabefarbe</string>
 
     <string name="skip_ocr_export_only">OCR überspringen (nur Export)</string>
+    <string name="ocr_in_background">OCR im Hintergrund (Text im Export prüfen)</string>
     <string name="skip_cropping">Zuschneiden überspringen</string>
     <string name="skip_edge_detection">Kantenerkennung überspringen</string>
     <string name="preview_corner_detection">Vorschau Eckenerkennung</string>

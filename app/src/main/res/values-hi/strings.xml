@@ -116,6 +116,7 @@
     <string name="pdf_bw_mode_none">रंगीन</string>
     <string name="pdf_bw_mode_robust">श्वेत-श्याम</string>
     <string name="skip_ocr_export_only">OCR छोड़ें (केवल निर्यात)</string>
+    <string name="ocr_in_background">पृष्ठभूमि में OCR (निर्यात स्क्रीन से पाठ जाँचें)</string>
     <string name="skip_cropping">क्रॉपिंग छोड़ें</string>
     <string name="skip_edge_detection">किनारा पहचान छोड़ें</string>
     <string name="preview_corner_detection">कोना पहचान पूर्वावलोकन</string>

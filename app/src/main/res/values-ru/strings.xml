@@ -123,6 +123,7 @@
     <string name="pdf_bw_mode_robust">Чёрно-белый</string>
 
     <string name="skip_ocr_export_only">Пропустить OCR (только экспорт)</string>
+    <string name="ocr_in_background">OCR в фоне (проверка текста на экране экспорта)</string>
     <string name="skip_cropping">Пропустить обрезку</string>
     <string name="skip_edge_detection">Пропустить определение краёв</string>
     <string name="preview_corner_detection">Предпросмотр обнаружения углов</string>

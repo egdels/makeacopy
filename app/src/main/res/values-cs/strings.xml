@@ -122,6 +122,7 @@
     <!-- JPEG mode labels -->
     <string name="pdf_bw_mode_robust">Černobílý</string>
     <string name="skip_ocr_export_only">Přeskočit OCR (pouze export)</string>
+    <string name="ocr_in_background">OCR na pozadí (kontrola textu na obrazovce exportu)</string>
     <string name="skip_cropping">Přeskočit oříznutí</string>
     <string name="skip_edge_detection">Přeskočit detekci okrajů</string>
     <string name="preview_corner_detection">Náhled detekce rohů</string>

@@ -124,6 +124,7 @@
     <string name="pdf_bw_mode_robust">Preto e branco</string>
 
     <string name="skip_ocr_export_only">Pular OCR (apenas exportar)</string>
+    <string name="ocr_in_background">OCR em segundo plano (revisar o texto na tela de exportação)</string>
     <string name="skip_cropping">Pular corte</string>
     <string name="skip_edge_detection">Ignorar detecção de bordas</string>
     <string name="preview_corner_detection">Pré-visualização da deteção de cantos</string>

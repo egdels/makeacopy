@@ -124,6 +124,7 @@
 
     <string name="pdf_bw_mode_robust">Čiernobiely</string>
     <string name="skip_ocr_export_only">Preskočiť OCR (iba export)</string>
+    <string name="ocr_in_background">OCR na pozadí (kontrola textu na obrazovke exportu)</string>
     <string name="skip_cropping">Preskočiť orezanie</string>
     <string name="skip_edge_detection">Preskočiť detekciu okrajov</string>
     <string name="preview_corner_detection">Náhľad detekcie rohov</string>

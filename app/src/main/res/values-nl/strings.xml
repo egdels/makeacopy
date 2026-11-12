@@ -122,6 +122,7 @@
 
     <string name="pdf_bw_mode_robust">Zwart-wit</string>
     <string name="skip_ocr_export_only">OCR overslaan (alleen exporteren)</string>
+    <string name="ocr_in_background">OCR op de achtergrond (tekst controleren in het exportscherm)</string>
     <string name="skip_cropping">Bijsnijden overslaan</string>
     <string name="skip_edge_detection">Randdetectie overslaan</string>
     <string name="preview_corner_detection">Voorbeeld van hoekdetectie</string>

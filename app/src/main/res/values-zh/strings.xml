@@ -116,6 +116,7 @@
 
     <string name="pdf_bw_mode_robust">黑白</string>
     <string name="skip_ocr_export_only">跳过 OCR（仅导出）</string>
+    <string name="ocr_in_background">后台 OCR（在导出界面检查文本）</string>
     <string name="skip_cropping">跳过裁剪</string>
     <string name="skip_edge_detection">跳过边缘检测</string>
     <string name="preview_corner_detection">角点检测预览</string>

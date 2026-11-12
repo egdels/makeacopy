@@ -119,6 +119,7 @@
     <!-- JPEG mode labels -->
     <string name="pdf_bw_mode_robust">أبيض وأسود</string>
     <string name="skip_ocr_export_only">تخطي OCR (تصدير فقط)</string>
+    <string name="ocr_in_background">OCR في الخلفية (مراجعة النص من شاشة التصدير)</string>
     <string name="preview_corner_detection">معاينة اكتشاف الزوايا</string>
     <string name="skip_cropping">تخطي الاقتصاص</string>
     <string name="skip_edge_detection">تخطي اكتشاف الحواف</string>
