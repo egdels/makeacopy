@@ -82,6 +82,18 @@ public final class ExportPrefsHelper {
     return getPrefs(context).getBoolean("skip_ocr", false);
   }
 
+  /** Preference key: no OCR step in the scan flow, the page is read in the background. */
+  public static final String KEY_OCR_IN_BACKGROUND = "ocr_in_background";
+
+  /**
+   * Whether the scan flow goes from the crop straight to the export and the page gets its OCR in
+   * the background. Skip OCR wins: then there is no OCR at all.
+   */
+  public static boolean isOcrInBackground(Context context) {
+    android.content.SharedPreferences prefs = getPrefs(context);
+    return prefs.getBoolean(KEY_OCR_IN_BACKGROUND, false) && !prefs.getBoolean("skip_ocr", false);
+  }
+
   /**
    * The output colour of PDF and JPEG export alike: {@code GRAYSCALE}, {@code ROBUST} (black and
    * white; a saved {@code CLASSIC} means the same) or {@code null} for colour. It keeps its old

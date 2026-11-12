@@ -130,6 +130,8 @@
     <string name="pdf_bw_mode_robust">Black &amp; White</string>
     <string name="output_color_title" translatable="false">Output color</string>
     <string name="skip_ocr_export_only">Skip OCR (export only)</string>
+    <!-- Prototype: not translated yet -->
+    <string name="ocr_in_background" translatable="false">OCR in the background (no OCR step)</string>
     <string name="preview_corner_detection">Preview corner detection</string>
     <string name="skip_cropping">Skip cropping</string>
     <string name="skip_edge_detection">Skip edge detection</string>

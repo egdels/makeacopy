@@ -48,6 +48,44 @@ public class ExportSessionViewModel extends ViewModel {
   private final Set<String> ocrStateReplaced = new HashSet<>();
 
   /** Marks the in-memory OCR state of {@code pageId} as replaced by its persisted result. */
+  // Background OCR of scan-flow pages: requested (the page is still being written) and queued
+  // (the job was handed to OcrBackgroundJobs). Written from the persisting thread as well.
+  private final Set<String> backgroundOcrRequested =
+      java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+  private final Set<String> backgroundOcrQueued =
+      java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+  /** The page is being written and gets its OCR as soon as its image is on disk. */
+  public void requestBackgroundOcr(String pageId) {
+    if (pageId != null) backgroundOcrRequested.add(pageId);
+  }
+
+  /** The OCR job of the page was handed to the job runner. */
+  public void markBackgroundOcrQueued(String pageId) {
+    if (pageId == null) return;
+    backgroundOcrQueued.add(pageId);
+    backgroundOcrRequested.remove(pageId);
+  }
+
+  /** The OCR of the page ended (result applied, failed, or never started). */
+  public void backgroundOcrDone(String pageId) {
+    if (pageId == null) return;
+    backgroundOcrRequested.remove(pageId);
+    backgroundOcrQueued.remove(pageId);
+  }
+
+  /** Whether the page still waits for its background OCR result. */
+  public boolean isBackgroundOcrPending(String pageId) {
+    return pageId != null
+        && (backgroundOcrRequested.contains(pageId) || backgroundOcrQueued.contains(pageId));
+  }
+
+  /** Pages whose job was queued; the job has ended once the runner no longer knows it. */
+  public Set<String> backgroundOcrQueuedSnapshot() {
+    return new HashSet<>(backgroundOcrQueued);
+  }
+
   public void markOcrStateReplaced(String pageId) {
     if (pageId != null) ocrStateReplaced.add(pageId);
   }

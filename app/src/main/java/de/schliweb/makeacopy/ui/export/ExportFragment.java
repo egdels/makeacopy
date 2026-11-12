@@ -210,15 +210,22 @@ public class ExportFragment extends Fragment {
                   de.schliweb.makeacopy.jobs.OcrBackgroundJobs.EXTRA_SUCCESS, false);
           if (id == null) return;
           boolean batchActive = ocrBatchController != null && ocrBatchController.isRunning();
+          // OCR in the background reports through the page badge, not through toasts; a failure
+          // is only worth a toast while the page is still part of the document.
+          boolean background = exportSessionViewModel.isBackgroundOcrPending(id);
+          exportSessionViewModel.backgroundOcrDone(id);
           if (success) {
             // The page's files now hold a newer result than the scan flow's in-memory state.
             exportSessionViewModel.markOcrStateReplaced(id);
             try {
               SessionOcrUpdater.applyOcrResultToSession(
-                  requireContext(), exportSessionViewModel, id);
+                  requireContext(), exportSessionViewModel, id, !background);
             } catch (Exception e) {
               Log.w(TAG, "Failed to update session after OCR job", e);
             }
+            if (background) refreshOcrBadges();
+          } else if (background && !exportSessionViewModel.contains(id)) {
+            // The page was removed while its OCR ran: nothing to report
           } else if (!batchActive) {
             UIUtils.showToast(
                 requireContext(), getString(R.string.ocr_processing_failed), Toast.LENGTH_SHORT);
@@ -346,6 +353,12 @@ public class ExportFragment extends Fragment {
    * #showOcrBatchOptions(int)}: OCR of this page (or selected/all pages), the OCR language and,
    * when the page has OCR words, the Review of its text.
    */
+  /** Redraws the preview badge and the filmstrip badges, e.g. when a background OCR ended. */
+  private void refreshOcrBadges() {
+    updatePreviewOcrBadge();
+    if (pagesAdapter != null) pagesAdapter.notifyDataSetChanged();
+  }
+
   private void updatePreviewOcrBadge() {
     if (binding == null || binding.previewOcrBadge == null) return;
     android.widget.TextView badge = binding.previewOcrBadge;
@@ -391,6 +404,9 @@ public class ExportFragment extends Fragment {
       if (hasOcr) {
         badge.setText("[OCR]");
         badge.setBackgroundColor(0x8032CD32); // semi green
+      } else if (exportSessionViewModel.isBackgroundOcrPending(s.id())) {
+        badge.setText("[\u2026]"); // OCR in the background still runs
+        badge.setBackgroundColor(0x80808080); // semi gray
       } else {
         badge.setText("[\u26A0]");
         badge.setBackgroundColor(0x80FFA500); // semi orange
@@ -800,6 +816,7 @@ public class ExportFragment extends Fragment {
         new androidx.recyclerview.widget.LinearLayoutManager(
             requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false);
     binding.pagesRecycler.setLayoutManager(lm);
+    pagesAdapter.setOcrPendingPredicate(exportSessionViewModel::isBackgroundOcrPending);
     binding.pagesRecycler.setAdapter(pagesAdapter);
 
     // Enable drag & drop reordering via ItemTouchHelper (horizontal)
@@ -2625,11 +2642,20 @@ public class ExportFragment extends Fragment {
     final android.content.Context appContext = requireContext().getApplicationContext();
     final String id = s.id();
     // Respect user preference: Skip OCR (export only)
-    boolean skipOcrPref = ExportPrefsHelper.isSkipOcr(requireContext());
+    // OCR in the background: the page comes without OCR as well and is read once it is on disk
+    final boolean backgroundOcr = ExportPrefsHelper.isOcrInBackground(requireContext());
+    boolean skipOcrPref = backgroundOcr || ExportPrefsHelper.isSkipOcr(requireContext());
     // Capture current in-memory OCR text/words at call time unless Skip OCR is enabled
     final String ocrTextAtCall = skipOcrPref ? null : getOcrTextFromState();
     final java.util.List<RecognizedWord> ocrWordsAtCall =
         skipOcrPref ? null : getOcrWordsFromState();
+    final String backgroundOcrLanguage =
+        backgroundOcr ? BackgroundOcr.language(appContext, ocrViewModel) : null;
+    final de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionForOcr =
+        exportSessionViewModel;
+    final javax.inject.Provider<OCRHelper> helperForOcr = ocrHelperProvider;
+    // Pending from now on, so an export started before the page is on disk waits as well
+    if (backgroundOcr) sessionForOcr.requestBackgroundOcr(id);
     // Capture the crop source at call time as well: CameraViewModel/CropViewModel only describe
     // THIS page until the next capture. Only a page that went through the crop step has one.
     final android.graphics.PointF[] cornersAtCall =
@@ -2690,8 +2716,18 @@ public class ExportFragment extends Fragment {
                         }
                       }
                     });
+                // After the session update above was posted, so the job's result arrives later.
+                // Started from this thread: it must not depend on the screen still being shown.
+                if (backgroundOcr) {
+                  BackgroundOcr.start(
+                      appContext, sessionForOcr, id, backgroundOcrLanguage, helperForOcr::get);
+                }
               } catch (Exception e) {
                 Log.w(TAG, "Persist scan failed", e);
+                if (backgroundOcr) {
+                  sessionForOcr.backgroundOcrDone(id);
+                  postToUiSafe(() -> exportOcrWait.onJobFinished(id));
+                }
               }
             })
         .start();
@@ -3242,6 +3278,7 @@ public class ExportFragment extends Fragment {
         String id = p != null ? p.id() : null;
         if (id == null) continue;
         if (ocrJobsAwaitingResult.contains(id)
+            || exportSessionViewModel.isBackgroundOcrPending(id)
             || de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id)) {
           runningIds.add(id);
         }
@@ -3311,9 +3348,22 @@ public class ExportFragment extends Fragment {
       }
       if (sessionPageOcrComplete(id)) exportSessionViewModel.markOcrStateReplaced(id);
     }
+    // Background OCR of scan-flow pages: a queued job the runner no longer knows has ended
+    for (String id : exportSessionViewModel.backgroundOcrQueuedSnapshot()) {
+      if (de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id)) continue;
+      exportSessionViewModel.backgroundOcrDone(id);
+      try {
+        SessionOcrUpdater.applyOcrResultToSession(
+            requireContext(), exportSessionViewModel, id, false);
+      } catch (Exception e) {
+        Log.w(TAG, "Failed to update session after background OCR", e);
+      }
+      if (sessionPageOcrComplete(id)) exportSessionViewModel.markOcrStateReplaced(id);
+    }
     exportOcrWait.refresh(
         id ->
             ocrJobsAwaitingResult.contains(id)
+                || exportSessionViewModel.isBackgroundOcrPending(id)
                 || de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id));
   }
 

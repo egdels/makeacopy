@@ -63,6 +63,10 @@ public class CropFragment extends Fragment {
   }
 
   @javax.inject.Inject de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner docQuadOrtRunner;
+
+  @javax.inject.Inject
+  javax.inject.Provider<de.schliweb.makeacopy.utils.ocr.OCRHelper> ocrHelperProvider;
+
   private static final String TAG = "CropFragment";
   private static final long CROP_A11Y_COOLDOWN_MS = 10000L;
   private FragmentCropBinding binding;
@@ -1301,7 +1305,11 @@ public class CropFragment extends Fragment {
       android.content.SharedPreferences prefs =
           requireContext()
               .getSharedPreferences("export_options", android.content.Context.MODE_PRIVATE);
-      boolean skipOcr = prefs.getBoolean("skip_ocr", false);
+      // OCR in the background: no OCR step either, the export screen starts the OCR of the page
+      boolean skipOcr =
+          prefs.getBoolean("skip_ocr", false)
+              || de.schliweb.makeacopy.ui.export.ExportPrefsHelper.isOcrInBackground(
+                  requireContext());
       int dest = skipOcr ? R.id.navigation_export : R.id.navigation_ocr;
       NavOptions.Builder navOptionsBuilder = new NavOptions.Builder().setLaunchSingleTop(true);
       if (skipOcr) {
@@ -1336,6 +1344,20 @@ public class CropFragment extends Fragment {
         normalizeDegrees(cropViewModel.getLastAcceptedUserRotationDeg().getValue());
     final DewarpState acceptedDewarp = cropViewModel.getLastAcceptedDewarp();
     final boolean fromOriginal = cropViewModel.isReEditFromOriginal();
+    // OCR in the background: the new crop invalidated the page's OCR, so read it again once the
+    // edited image is on disk. Pending from now on, so an export waits for it.
+    final boolean backgroundOcr =
+        de.schliweb.makeacopy.ui.export.ExportPrefsHelper.isOcrInBackground(appContext);
+    final String backgroundOcrLanguage =
+        backgroundOcr
+            ? de.schliweb.makeacopy.ui.export.BackgroundOcr.language(
+                appContext,
+                new androidx.lifecycle.ViewModelProvider(requireActivity())
+                    .get(de.schliweb.makeacopy.ui.ocr.OCRViewModel.class))
+            : null;
+    final javax.inject.Provider<de.schliweb.makeacopy.utils.ocr.OCRHelper> helperForOcr =
+        ocrHelperProvider;
+    if (backgroundOcr) sessionVm.requestBackgroundOcr(id);
     new Thread(
             () -> {
               try {
@@ -1383,8 +1405,14 @@ public class CropFragment extends Fragment {
                             }
                           }
                         });
+                // After the session update above was posted, so the job's result arrives later
+                if (backgroundOcr) {
+                  de.schliweb.makeacopy.ui.export.BackgroundOcr.start(
+                      appContext, sessionVm, id, backgroundOcrLanguage, helperForOcr::get);
+                }
               } catch (Exception e) {
                 android.util.Log.w(TAG, "Re-Edit: persisting edited page failed", e);
+                if (backgroundOcr) sessionVm.backgroundOcrDone(id);
               }
             })
         .start();

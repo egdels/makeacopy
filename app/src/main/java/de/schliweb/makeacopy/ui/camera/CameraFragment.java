@@ -649,7 +649,11 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     if (ctx != null) {
       android.content.SharedPreferences prefs =
           ctx.getSharedPreferences("export_options", Context.MODE_PRIVATE);
-      skipOcr = prefs.getBoolean("skip_ocr", false);
+      // OCR in the background leaves out the OCR step just like Skip OCR; the export screen
+      // then starts the OCR of the page
+      skipOcr =
+          prefs.getBoolean("skip_ocr", false)
+              || de.schliweb.makeacopy.ui.export.ExportPrefsHelper.isOcrInBackground(ctx);
       skipCropping = prefs.getBoolean("skip_cropping", false);
     }
     return scanFlowDestination(skipCropping, skipOcr);

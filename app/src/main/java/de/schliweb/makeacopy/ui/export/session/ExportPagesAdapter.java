@@ -274,6 +274,9 @@ public class ExportPagesAdapter extends RecyclerView.Adapter<ExportPagesAdapter.
     if (hasOcr) {
       badge = "[OCR]";
       badgeBg = 0x8032CD32; // semi green
+    } else if (ocrPending != null && ocrPending.test(s.id())) {
+      badge = "[\u2026]"; // OCR in the background still runs
+      badgeBg = 0x80808080; // semi gray
     } else {
       badge = "[⚠]";
       badgeBg = 0x80FFA500; // semi orange
@@ -399,6 +402,13 @@ public class ExportPagesAdapter extends RecyclerView.Adapter<ExportPagesAdapter.
    * <p>This interface is intended to be implemented by components that need to handle specific
    * events such as item removal, item clicks, and reordering operations in a list of items.
    */
+  private java.util.function.Predicate<String> ocrPending;
+
+  /** Tells the adapter which pages (by id) still wait for a background OCR result. */
+  public void setOcrPendingPredicate(java.util.function.Predicate<String> ocrPending) {
+    this.ocrPending = ocrPending;
+  }
+
   public interface Callbacks {
     /**
      * Handles the event when the remove button is clicked for a specific item in the list.

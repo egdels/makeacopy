@@ -47,6 +47,7 @@ public class OptionsDialogFragment extends DialogFragment {
 
   public static final String REQUEST_KEY = "camera_options";
   public static final String BUNDLE_SKIP_OCR = "skip_ocr";
+  public static final String BUNDLE_OCR_IN_BACKGROUND = "ocr_in_background";
   public static final String BUNDLE_ANALYSIS_ENABLED = "analysis_enabled";
   public static final String BUNDLE_SKIP_CROPPING = "skip_cropping";
   public static final String BUNDLE_SKIP_EDGE_DETECTION = "skip_edge_detection";
@@ -210,6 +211,7 @@ public class OptionsDialogFragment extends DialogFragment {
   private static void applyDependencies(
       boolean scanGroupShown,
       CheckBox cbSkipOcr,
+      CheckBox cbOcrInBackground,
       CheckBox cbSkipCropping,
       CheckBox cbSkipEdgeDetection,
       OcrOptionsPanel ocrPanel,
@@ -217,6 +219,9 @@ public class OptionsDialogFragment extends DialogFragment {
     boolean ocr = !scanGroupShown || !cbSkipOcr.isChecked();
     ocrPanel.setEnabled(ocr);
     exportPanel.setOcrDependentEnabled(ocr);
+    // Without OCR there is nothing to run in the background
+    de.schliweb.makeacopy.utils.ui.UIUtils.setEnabledWithAlpha(
+        cbOcrInBackground, !cbSkipOcr.isChecked());
     de.schliweb.makeacopy.utils.ui.UIUtils.setEnabledWithAlpha(
         cbSkipEdgeDetection, !cbSkipCropping.isChecked());
   }
@@ -503,6 +508,7 @@ public class OptionsDialogFragment extends DialogFragment {
     libraryPanel.bind(ctx);
 
     CheckBox cbSkip = view.findViewById(R.id.dialog_checkbox_skip_ocr);
+    CheckBox cbOcrInBackground = view.findViewById(R.id.dialog_checkbox_ocr_in_background);
     CheckBox cbSkipCropping = view.findViewById(R.id.dialog_checkbox_skip_cropping);
     CheckBox cbSkipEdgeDetection = view.findViewById(R.id.dialog_checkbox_skip_edge_detection);
     CheckBox cbAnalysis = view.findViewById(R.id.dialog_checkbox_analysis_enabled);
@@ -525,6 +531,7 @@ public class OptionsDialogFragment extends DialogFragment {
     boolean focusQualityEnabled = prefs.getBoolean(BUNDLE_FOCUS_QUALITY_INDICATOR, false);
     boolean lowLightPromptEnabled = prefs.getBoolean(BUNDLE_LOW_LIGHT_PROMPT, true);
     cbSkip.setChecked(skipOcr);
+    cbOcrInBackground.setChecked(prefs.getBoolean(BUNDLE_OCR_IN_BACKGROUND, false));
     if (cbSkipCropping != null) cbSkipCropping.setChecked(skipPerspective);
     if (cbSkipEdgeDetection != null) cbSkipEdgeDetection.setChecked(skipEdgeDetection);
     if (cbAnalysis != null) cbAnalysis.setChecked(analysisEnabled);
@@ -546,7 +553,13 @@ public class OptionsDialogFragment extends DialogFragment {
     Runnable dependencies =
         () ->
             applyDependencies(
-                scanGroupShown, cbSkip, cbSkipCropping, cbSkipEdgeDetection, ocrPanel, exportPanel);
+                scanGroupShown,
+                cbSkip,
+                cbOcrInBackground,
+                cbSkipCropping,
+                cbSkipEdgeDetection,
+                ocrPanel,
+                exportPanel);
     dependencies.run();
     cbSkip.setOnCheckedChangeListener((b, checked) -> dependencies.run());
     cbSkipCropping.setOnCheckedChangeListener((b, checked) -> dependencies.run());
@@ -595,6 +608,7 @@ public class OptionsDialogFragment extends DialogFragment {
           prefs
               .edit()
               .putBoolean(BUNDLE_SKIP_OCR, skip)
+              .putBoolean(BUNDLE_OCR_IN_BACKGROUND, cbOcrInBackground.isChecked())
               .putBoolean(BUNDLE_SKIP_CROPPING, skipCropping)
               .putBoolean(BUNDLE_SKIP_EDGE_DETECTION, skipEdge)
               .putBoolean(BUNDLE_ANALYSIS_ENABLED, analysis)

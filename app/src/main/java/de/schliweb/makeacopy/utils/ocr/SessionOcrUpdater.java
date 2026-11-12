@@ -43,6 +43,15 @@ public final class SessionOcrUpdater {
    */
   public static void applyOcrResultToSession(
       Context context, ExportSessionViewModel sessionVM, String pageId) {
+    applyOcrResultToSession(context, sessionVM, pageId, true);
+  }
+
+  /**
+   * Like {@link #applyOcrResultToSession(Context, ExportSessionViewModel, String)}; with {@code
+   * notifyUser} false there is no toast (OCR in the background reports through the page badge).
+   */
+  public static void applyOcrResultToSession(
+      Context context, ExportSessionViewModel sessionVM, String pageId, boolean notifyUser) {
     if (context == null || sessionVM == null || pageId == null) return;
     try {
       Context app = context.getApplicationContext();
@@ -82,6 +91,7 @@ public final class SessionOcrUpdater {
           break;
         }
       }
+      if (!notifyUser) return;
       try {
         UIUtils.showToast(
             context,

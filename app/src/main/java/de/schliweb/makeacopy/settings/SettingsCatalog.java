@@ -82,6 +82,7 @@ public final class SettingsCatalog {
       List.of(
           // Scan: what happens between capture and export
           bool("skip_ocr", false, Group.SCAN),
+          bool("ocr_in_background", false, Group.SCAN),
           bool("skip_cropping", false, Group.SCAN),
           bool("skip_edge_detection", false, Group.SCAN),
           bool("analysis_enabled", false, Group.SCAN),
