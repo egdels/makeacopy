@@ -4,8 +4,8 @@ Features:
 • Camera scanning: Capture documents using your device’s camera
 • Edge detection: Automatic document boundary detection with a custom-trained ONNX inference model
 • Perspective correction: Manually or automatically adjust document perspective
-• Grayscale export: Optional grayscale filter applied during PDF creation
-• OCR: Offline text recognition using PaddleOCR in the published paddle flavor
+• Output color: Export in color, grayscale or black and white, as scanned (Original) or cleaned up (Enhanced)
+• OCR: Offline text recognition with PaddleOCR
 • PDF export: Save scanned documents as searchable PDFs
 • Share & save: Export locally or share via other apps
 • Dark mode: System-based Material 3 theme with light and dark appearance

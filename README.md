@@ -113,7 +113,7 @@ apksigner verify --print-certs MakeACopy-vX.Y.Z.apk
 - **Camera Scanning**: Capture documents using the device camera
 - **Edge Detection**: Automatic document edge detection with a custom-trained machine learning model (ONNX, Apache 2.0), snapped to the page edges
 - **Perspective Correction**: Adjust and crop documents with manual or automatic perspective correction
-- **Image Enhancement**: Apply filters (grayscale, contrast, sharpening)
+- **Image Enhancement**: Output in color, grayscale or black and white, as scanned (Original) or cleaned up (Enhanced)
 - **OCR**: Offline text recognition with PaddleOCR
 - **OCR Review**: Interactive review and correction of OCR results with word-level editing, confidence highlighting, and re-OCR for individual words
 - **PDF Export**: Save as searchable PDF with recognized text
