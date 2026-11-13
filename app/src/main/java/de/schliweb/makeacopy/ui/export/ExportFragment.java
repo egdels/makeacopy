@@ -2649,8 +2649,7 @@ public class ExportFragment extends Fragment {
     final String ocrTextAtCall = skipOcrPref ? null : getOcrTextFromState();
     final java.util.List<RecognizedWord> ocrWordsAtCall =
         skipOcrPref ? null : getOcrWordsFromState();
-    final String backgroundOcrLanguage =
-        backgroundOcr ? BackgroundOcr.language(appContext, ocrViewModel) : null;
+    final String backgroundOcrLanguage = backgroundOcr ? BackgroundOcr.language(appContext) : null;
     final de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel sessionForOcr =
         exportSessionViewModel;
     final javax.inject.Provider<OCRHelper> helperForOcr = ocrHelperProvider;

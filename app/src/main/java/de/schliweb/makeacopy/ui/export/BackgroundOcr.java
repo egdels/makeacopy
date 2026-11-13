@@ -12,9 +12,11 @@ package de.schliweb.makeacopy.ui.export;
 import android.content.Context;
 import de.schliweb.makeacopy.jobs.OcrBackgroundJobs;
 import de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel;
-import de.schliweb.makeacopy.ui.ocr.OCRViewModel;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.OCRUtils;
+import de.schliweb.makeacopy.utils.ocr.paddle.PaddleEngineFactory;
+import java.util.Locale;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -30,29 +32,35 @@ public final class BackgroundOcr {
   private BackgroundOcr() {}
 
   /**
-   * The OCR language of a job: the persisted choice first, then the view model's, then a default
-   * derived from the system language. The persisted choice leads because the view model starts with
-   * a fixed language and only the OCR screen, which this flow never opens, corrects it.
+   * The OCR language of a job: the persisted choice first, then the default the OCR screen would
+   * pick for the system language. The view model is not asked: it starts with a fixed language and
+   * only the OCR screen, which this flow never opens, corrects it.
    */
-  public static String language(Context ctx, OCRViewModel ocrViewModel) {
-    String lang = null;
+  public static String language(Context ctx) {
+    String persisted = null;
     if (ctx != null) {
       try {
-        lang =
+        persisted =
             ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getString(PREF_KEY_OCR_LANG, null);
       } catch (RuntimeException ignore) {
-        // Best-effort; the fallbacks below apply
+        // Best-effort; the default below applies
       }
     }
-    if (lang == null || lang.trim().isEmpty()) {
-      OCRViewModel.OcrUiState st = ocrViewModel != null ? ocrViewModel.getState().getValue() : null;
-      lang = (st != null) ? st.language() : null;
-    }
-    if (lang == null || lang.trim().isEmpty()) {
-      lang = OCRUtils.resolveEffectiveLanguage(lang);
-    }
-    return lang;
+    return pickLanguage(
+        persisted,
+        OCRUtils.mapSystemLanguageToPaddleModel(Locale.getDefault()),
+        lang -> ctx == null || PaddleEngineFactory.isLanguageBundled(ctx, lang));
+  }
+
+  /**
+   * {@code persisted} if set, else {@code systemDefault} if its model is bundled, else Latin (the
+   * model every edition ships).
+   */
+  static String pickLanguage(String persisted, String systemDefault, Predicate<String> bundled) {
+    if (persisted != null && !persisted.trim().isEmpty()) return persisted;
+    if (systemDefault != null && bundled.test(systemDefault)) return systemDefault;
+    return "latin";
   }
 
   /**

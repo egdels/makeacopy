@@ -1349,12 +1349,7 @@ public class CropFragment extends Fragment {
     final boolean backgroundOcr =
         de.schliweb.makeacopy.ui.export.ExportPrefsHelper.isOcrInBackground(appContext);
     final String backgroundOcrLanguage =
-        backgroundOcr
-            ? de.schliweb.makeacopy.ui.export.BackgroundOcr.language(
-                appContext,
-                new androidx.lifecycle.ViewModelProvider(requireActivity())
-                    .get(de.schliweb.makeacopy.ui.ocr.OCRViewModel.class))
-            : null;
+        backgroundOcr ? de.schliweb.makeacopy.ui.export.BackgroundOcr.language(appContext) : null;
     final javax.inject.Provider<de.schliweb.makeacopy.utils.ocr.OCRHelper> helperForOcr =
         ocrHelperProvider;
     if (backgroundOcr) sessionVm.requestBackgroundOcr(id);
