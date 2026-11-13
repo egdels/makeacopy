@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The OCR options (PaddleOCR switches), without padding or scrolling, so that the OCR
+<!-- The OCR options (language and PaddleOCR switches), without padding or scrolling, so that the OCR
      screen's dialog and the camera options dialog can both include them. OcrOptionsPanel binds
      this layout. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/ocr_options_panel"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
+
+    <!-- Opens the language choice; hidden on the OCR screen, which has its own -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_ocr_language_dialog"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textAlignment="viewStart"
+        tools:text="OCR language (Latin script)…" />
 
     <CheckBox
         android:id="@+id/checkbox_ocr_auto_rotate_apply_export_dialog"

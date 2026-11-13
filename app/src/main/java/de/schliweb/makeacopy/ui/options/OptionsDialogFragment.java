@@ -61,6 +61,9 @@ public class OptionsDialogFragment extends DialogFragment {
 
   private static final String FRAGMENT_TAG = "OptionsDialogFragment";
   private static final String ARG_SECTION = "section";
+  private static final String STATE_OCR_LANGUAGE = "picked_ocr_language";
+
+  @Nullable private OcrOptionsPanel ocrPanel;
   private static final String SAVED_EXPANDED = "expanded_sections";
 
   /**
@@ -155,7 +158,14 @@ public class OptionsDialogFragment extends DialogFragment {
     Section first = requestedSection();
     for (Section section : Section.values()) {
       TextView heading = view.findViewById(headingId(section));
-      if (section.compareTo(first) < 0) {
+      // With OCR in the background there is no OCR screen: the Export screen is where its options
+      // are reached, and pages added later are still read with them.
+      boolean ocrFromExport =
+          section == Section.OCR
+              && first == Section.EXPORT
+              && de.schliweb.makeacopy.ui.export.ExportPrefsHelper.isOcrInBackground(
+                  requireContext());
+      if (section.compareTo(first) < 0 && !ocrFromExport) {
         // A step of the workflow that lies behind the calling screen: not offered from here
         heading.setVisibility(View.GONE);
         view.findViewById(groupId(section)).setVisibility(View.GONE);
@@ -197,6 +207,7 @@ public class OptionsDialogFragment extends DialogFragment {
     int i = 0;
     for (Section s : expanded) names[i++] = s.name();
     outState.putStringArray(SAVED_EXPANDED, names);
+    if (ocrPanel != null) outState.putString(STATE_OCR_LANGUAGE, ocrPanel.pickedLanguage());
   }
 
   /**
@@ -502,6 +513,11 @@ public class OptionsDialogFragment extends DialogFragment {
     // OCR and Export groups: the shared panels, showing both output formats side by side
     OcrOptionsPanel ocrPanel = new OcrOptionsPanel(view);
     ocrPanel.bind(ctx);
+    ocrPanel.setLanguageChoiceVisible(requestedSection() != Section.OCR);
+    if (savedInstanceState != null) {
+      ocrPanel.restorePickedLanguage(ctx, savedInstanceState.getString(STATE_OCR_LANGUAGE));
+    }
+    this.ocrPanel = ocrPanel;
     exportPanel = new ExportOptionsPanel(view);
     exportPanel.bind(ctx, ExportOptionsPanel.Formats.ALL, inboxFolderLauncher);
     LibraryOptionsPanel libraryPanel = new LibraryOptionsPanel(view);
@@ -622,7 +638,13 @@ public class OptionsDialogFragment extends DialogFragment {
           // Takes effect at once, not only after the next start
           ScreenProtection.apply(getActivity());
 
-          ocrPanel.apply(ctx);
+          OcrOptionsPanel.Choice ocrChoice = ocrPanel.apply(ctx);
+          if (ocrChoice.language() != null) {
+            // Batch OCR on the export screen asks the view model first
+            new androidx.lifecycle.ViewModelProvider(requireActivity())
+                .get(de.schliweb.makeacopy.ui.ocr.OCRViewModel.class)
+                .setLanguage(ocrChoice.language());
+          }
           Bundle exportResult = exportPanel.apply(ctx);
           libraryPanel.apply(ctx);
 

@@ -48,6 +48,8 @@ public class SettingsCatalogTest {
           "collectionId", "collectionName", "scanId",
           // OcrSearchIndexer states
           "empty", "error", "indexed",
+          // Options dialog: language picked but not confirmed yet (saved instance state)
+          "picked_ocr_language",
           // Preference files that hold runtime state only
           "scan_library", "session_ids");
 
