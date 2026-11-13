@@ -39,6 +39,14 @@ Recadrer, OCR et Exporter. Tout ce qui se règle se trouve sous
   application.
 - Touchez **Suivant** pour passer à l'export. Si vous changez ensuite de
   langue, **Traiter** apparaît pour reconnaître la page à nouveau.
+- Avec **OCR en arrière-plan** (Options → Numérisation), cet écran est
+  omis : après le recadrage, vous arrivez directement à l'export pendant
+  que le texte est reconnu. La page porte la marque **[…]** jusqu'à ce
+  que son texte soit prêt, puis **[OCR]**. Touchez cette marque pour
+  **Vérifier le texte** ou changer la **Langue OCR**. **Enregistrer**
+  attend que le texte soit prêt. Les pages chargées depuis un PDF de
+  plusieurs pages ne sont pas lues automatiquement : touchez leur marque
+  pour lancer l'OCR.
 
 ## Exporter
 
@@ -66,13 +74,14 @@ Recadrer, OCR et Exporter. Tout ce qui se règle se trouve sous
 
 ## Options
 
-- **Numérisation** : ignorer l'étape OCR, le recadrage ou la détection
-  des bords, ou afficher en direct le contour détecté de la page dans
-  l'aperçu.
+- **Numérisation** : ignorer l'étape OCR ou la lancer en arrière-plan,
+  ignorer le recadrage ou la détection des bords, ou afficher en direct
+  le contour détecté de la page dans l'aperçu.
 - **Caméra** : correction d'exposition, mise au point manuelle, et si
   l'application propose la lampe quand la lumière est faible.
-- **OCR** : la rotation automatique, la détection du texte en haute
-  résolution et l'ordre de lecture des pages à plusieurs colonnes.
+- **OCR** : la langue OCR, la rotation automatique, la détection du
+  texte en haute résolution et l'ordre de lecture des pages à plusieurs
+  colonnes.
 - **Exporter** : format de page, qualité, couleur, la couche de texte du
   PDF, un fichier TXT séparé avec le texte, et le mode Boîte de
   réception.

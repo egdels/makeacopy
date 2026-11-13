@@ -39,6 +39,14 @@ der Schieberegler-Taste auf dem Kamerabildschirm.
   andere App weiter.
 - Tippe auf **Weiter**, um zum Export zu gelangen. Änderst du danach die
   Sprache, erscheint **Verarbeiten**, um die Seite neu zu erkennen.
+- Mit **OCR im Hintergrund** (Optionen → Scannen) entfällt dieser
+  Bildschirm: Nach dem Zuschneiden bist du sofort im Export, während der
+  Text erkannt wird. Die Seite trägt die Markierung **[…]**, bis ihr Text
+  fertig ist, danach **[OCR]**. Tippe auf diese Markierung, um den **Text
+  zu prüfen** oder die **OCR-Sprache** zu ändern. **Speichern** wartet,
+  bis der Text fertig ist. Seiten aus einem PDF mit mehreren Seiten
+  werden nicht automatisch gelesen: Tippe auf ihre Markierung, um die
+  OCR zu starten.
 
 ## Exportieren
 
@@ -66,13 +74,13 @@ der Schieberegler-Taste auf dem Kamerabildschirm.
 
 ## Optionen
 
-- **Scannen**: den OCR-Schritt, das Zuschneiden oder die Kantenerkennung
-  überspringen, oder den erkannten Seitenumriss live in der
-  Kameravorschau zeigen.
+- **Scannen**: den OCR-Schritt überspringen oder im Hintergrund laufen
+  lassen, das Zuschneiden oder die Kantenerkennung überspringen, oder
+  den erkannten Seitenumriss live in der Kameravorschau zeigen.
 - **Kamera**: Belichtungskorrektur, manueller Fokus und ob die App bei
   wenig Licht die Taschenlampe anbietet.
-- **OCR**: automatisches Drehen, hochauflösende Texterkennung und die
-  Lesereihenfolge bei mehrspaltigen Seiten.
+- **OCR**: die OCR-Sprache, automatisches Drehen, hochauflösende
+  Texterkennung und die Lesereihenfolge bei mehrspaltigen Seiten.
 - **Exportieren**: Seitengröße, Qualität, Farbe, die Textebene im PDF,
   eine eigene TXT-Datei mit dem Text und der Inbox-Modus.
 - **App**: Barrierefreiheitsmodus, Schutz der Scans vor Screenshots und

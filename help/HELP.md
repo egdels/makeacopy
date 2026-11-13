@@ -36,6 +36,13 @@ can set is under **Options**, the slider button on the camera screen.
   correct it. **Share text** hands the text to another app.
 - Tap **Next** to go to the export. Changing the language later shows
   **Process** to recognise the page again.
+- With **OCR in the background** (Options → Scan) this screen is left
+  out: after cropping you are on the export right away while the text is
+  recognised. The page is marked **[…]** until its text is ready, then
+  **[OCR]**. Tap that mark for **Review text** or to change the **OCR
+  language**. **Save** waits until the text is ready. Pages loaded from
+  a PDF with several pages are not read automatically: tap their mark to
+  run OCR.
 
 ## Exporting
 
@@ -60,12 +67,13 @@ can set is under **Options**, the slider button on the camera screen.
 
 ## Options
 
-- **Scan**: skip the OCR step, skip cropping or edge detection, or show
-  the detected page outline live in the camera preview.
+- **Scan**: skip the OCR step or run it in the background, skip cropping
+  or edge detection, or show the detected page outline live in the
+  camera preview.
 - **Camera**: exposure compensation, manual focus, and whether the app
   offers the flashlight in low light.
-- **OCR**: auto-rotation, high-resolution text detection, and the reading
-  order for multi-column pages.
+- **OCR**: the OCR language, auto-rotation, high-resolution text
+  detection, and the reading order for multi-column pages.
 - **Export**: page size, quality, colour, the PDF text layer, a separate
   TXT file with the text, and Inbox Mode.
 - **App**: Accessibility Mode, hiding scans from screenshots and the
