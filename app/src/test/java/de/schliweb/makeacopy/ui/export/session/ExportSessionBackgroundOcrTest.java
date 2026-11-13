@@ -102,4 +102,12 @@ public class ExportSessionBackgroundOcrTest {
     vm.backgroundOcrDone("p1");
     assertEquals(Set.of("p1"), snapshot);
   }
+
+  @Test
+  public void anInterruptedOcrIsResumedOnlyOnce() {
+    assertTrue(vm.claimBackgroundOcrResume("p1"));
+    assertFalse(vm.claimBackgroundOcrResume("p1"));
+    assertTrue(vm.claimBackgroundOcrResume("p2"));
+    assertFalse(vm.claimBackgroundOcrResume(null));
+  }
 }

@@ -10,7 +10,10 @@
 package de.schliweb.makeacopy.ui.export;
 
 import android.content.Context;
+import android.util.Log;
+import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.jobs.OcrBackgroundJobs;
+import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.ui.export.session.ExportSessionViewModel;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.OCRUtils;
@@ -26,6 +29,7 @@ import java.util.function.Supplier;
  * pending from the request until the result reached it, so an export waits for it.
  */
 public final class BackgroundOcr {
+  private static final String TAG = "BackgroundOcr";
   private static final String PREFS_NAME = "export_options";
   private static final String PREF_KEY_OCR_LANG = "ocr_language";
 
@@ -74,9 +78,34 @@ public final class BackgroundOcr {
       String language,
       Supplier<OCRHelper> ocrHelperSupplier) {
     if (ctx == null || session == null || pageId == null) return;
+    markPending(ctx.getApplicationContext(), pageId);
     OcrBackgroundJobs.enqueueReprocess(
         ctx.getApplicationContext(), pageId, language, ocrHelperSupplier);
     // Queued only after the runner knows the job: "queued and not running" then means it ended
     session.markBackgroundOcrQueued(pageId);
+  }
+
+  /**
+   * Records in the registry that the page still waits for its OCR, so a document resumed after the
+   * process died mid-job reads the page again ({@link #isInterrupted}). The job replaces the status
+   * when it ends.
+   */
+  private static void markPending(Context app, String pageId) {
+    try {
+      CompletedScansRegistry reg = CompletedScansRegistry.get(app);
+      CompletedScan s = reg.findById(pageId);
+      if (s == null || s.ocrTextPath() != null) return;
+      reg.insertOrReplace(s.withOcr(null, null, CompletedScan.STATUS_OCR_PENDING));
+    } catch (Exception e) {
+      Log.w(TAG, "Could not mark page as waiting for OCR: " + pageId, e);
+    }
+  }
+
+  /** Whether {@code page} was left waiting for a background OCR that never delivered. */
+  public static boolean isInterrupted(CompletedScan page) {
+    return page != null
+        && page.id() != null
+        && page.ocrTextPath() == null
+        && CompletedScan.STATUS_OCR_PENDING.equals(page.pageStatus());
   }
 }

@@ -56,6 +56,17 @@ public class ExportSessionViewModel extends ViewModel {
   private final Set<String> backgroundOcrQueued =
       java.util.concurrent.ConcurrentHashMap.newKeySet();
 
+  private final Set<String> backgroundOcrResumed =
+      java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+  /**
+   * Claims the one restart of an interrupted background OCR of {@code pageId}; {@code false} if it
+   * was claimed before, so a page whose OCR keeps failing is not read in a loop.
+   */
+  public boolean claimBackgroundOcrResume(String pageId) {
+    return pageId != null && backgroundOcrResumed.add(pageId);
+  }
+
   /** The page is being written and gets its OCR as soon as its image is on disk. */
   public void requestBackgroundOcr(String pageId) {
     if (pageId != null) backgroundOcrRequested.add(pageId);

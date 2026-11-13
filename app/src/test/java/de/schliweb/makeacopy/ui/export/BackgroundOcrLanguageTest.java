@@ -10,10 +10,13 @@
 package de.schliweb.makeacopy.ui.export;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import org.junit.Test;
 
-/** Language of a background OCR job when the OCR screen was never opened. */
+/** Language of a background OCR job, and which pages count as interrupted. */
 public class BackgroundOcrLanguageTest {
 
   @Test
@@ -30,5 +33,35 @@ public class BackgroundOcrLanguageTest {
   @Test
   public void systemLanguageWithoutBundledModel_fallsBackToLatin() {
     assertEquals("latin", BackgroundOcr.pickLanguage(null, "arabic", "latin"::equals));
+  }
+
+  @Test
+  public void onlyAPageStillWaitingWithoutTextCountsAsInterrupted() {
+    assertTrue(BackgroundOcr.isInterrupted(page(null, CompletedScan.STATUS_OCR_PENDING)));
+    // OCR_PROCESSING is normalised to OCR_PENDING when the entry is loaded
+    assertTrue(BackgroundOcr.isInterrupted(page(null, CompletedScan.STATUS_OCR_PROCESSING)));
+    assertFalse(BackgroundOcr.isInterrupted(page(null, CompletedScan.STATUS_IMPORTED)));
+    assertFalse(BackgroundOcr.isInterrupted(page(null, CompletedScan.STATUS_OCR_FAILED)));
+    assertFalse(BackgroundOcr.isInterrupted(page("/x/words.json", null)));
+    assertFalse(BackgroundOcr.isInterrupted(null));
+  }
+
+  private static CompletedScan page(String ocrPath, String status) {
+    return new CompletedScan(
+        "p1",
+        "/x/page.jpg",
+        0,
+        ocrPath,
+        ocrPath != null ? "words_json" : null,
+        null,
+        0L,
+        10,
+        10,
+        null,
+        2,
+        "baked",
+        CompletedScan.SOURCE_CAMERA,
+        CompletedScan.NO_PDF_PAGE,
+        status);
   }
 }

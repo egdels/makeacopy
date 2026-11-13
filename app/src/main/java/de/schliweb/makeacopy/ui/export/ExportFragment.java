@@ -2601,6 +2601,7 @@ public class ExportFragment extends Fragment {
                   Log.i(
                       TAG,
                       "Restored DocumentSession " + docId + " with " + resolved.size() + " pages");
+                  if (isAdded()) resumeInterruptedBackgroundOcr();
                 });
           } catch (Throwable t) {
             Log.w(TAG, "DocumentSession restore failed", t);
@@ -3394,6 +3395,33 @@ public class ExportFragment extends Fragment {
       }
     }
     catchUpOnMissedOcrResults();
+    resumeInterruptedBackgroundOcr();
+  }
+
+  /**
+   * Reads pages again whose background OCR never delivered because the process died mid-job (a
+   * resumed document). Once per page and session.
+   */
+  private void resumeInterruptedBackgroundOcr() {
+    android.content.Context app = requireContext().getApplicationContext();
+    if (!ExportPrefsHelper.isOcrInBackground(app)) return;
+    List<CompletedScan> pages = exportSessionViewModel.getPages().getValue();
+    if (pages == null) return;
+    boolean started = false;
+    for (CompletedScan p : pages) {
+      if (!BackgroundOcr.isInterrupted(p)) continue;
+      String id = p.id();
+      if (exportSessionViewModel.isBackgroundOcrPending(id)
+          || de.schliweb.makeacopy.jobs.OcrBackgroundJobs.isRunning(id)
+          || !exportSessionViewModel.claimBackgroundOcrResume(id)) {
+        continue;
+      }
+      exportSessionViewModel.requestBackgroundOcr(id);
+      BackgroundOcr.start(
+          app, exportSessionViewModel, id, BackgroundOcr.language(app), ocrHelperProvider::get);
+      started = true;
+    }
+    if (started) refreshOcrBadges();
   }
 
   @Override
