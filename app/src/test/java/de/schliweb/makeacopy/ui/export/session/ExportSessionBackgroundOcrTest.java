@@ -110,4 +110,29 @@ public class ExportSessionBackgroundOcrTest {
     assertTrue(vm.claimBackgroundOcrResume("p2"));
     assertFalse(vm.claimBackgroundOcrResume(null));
   }
+
+  @Test
+  public void endedListenerHearsOnlyPagesThatWerePending() {
+    ExportSessionViewModel vm = new ExportSessionViewModel();
+    int[] calls = {0};
+    vm.setBackgroundOcrEndedListener(() -> calls[0]++);
+
+    vm.backgroundOcrDone("never-requested");
+    assertEquals(0, calls[0]);
+
+    vm.requestBackgroundOcr("p1");
+    vm.backgroundOcrDone("p1"); // e.g. the page could not be written
+    assertEquals(1, calls[0]);
+
+    vm.requestBackgroundOcr("p2");
+    vm.markBackgroundOcrQueued("p2");
+    vm.backgroundOcrDone("p2");
+    vm.backgroundOcrDone("p2");
+    assertEquals(2, calls[0]);
+
+    vm.setBackgroundOcrEndedListener(null);
+    vm.requestBackgroundOcr("p3");
+    vm.backgroundOcrDone("p3");
+    assertEquals(2, calls[0]);
+  }
 }

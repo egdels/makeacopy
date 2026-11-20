@@ -58,6 +58,15 @@ public final class OcrBackgroundJobs {
   private static final Set<String> running = Collections.synchronizedSet(new HashSet<>());
   private static final Set<String> cancelled = Collections.synchronizedSet(new HashSet<>());
 
+  // Pages whose image is being replaced while a job for the old image is in flight (see
+  // supersede). Both guarded by the monitor of "running".
+  private static final Set<String> superseded = new HashSet<>();
+  private static final java.util.Map<String, Runnable> rerun = new java.util.HashMap<>();
+
+  // Held while a job checks for cancellation and writes its result, so that after supersede()
+  // returned no result for the old image can appear any more
+  private static final Object PERSIST_LOCK = new Object();
+
   /** Whether an OCR job for {@code pageId} is queued or running. */
   public static boolean isRunning(String pageId) {
     return pageId != null && running.contains(pageId);
@@ -71,6 +80,24 @@ public final class OcrBackgroundJobs {
   public static void cancel(String pageId) {
     if (pageId == null) return;
     cancelled.add(pageId);
+  }
+
+  /**
+   * The image of {@code pageId} is about to be replaced (the crop was edited again): a job still
+   * queued or running for the old image must neither deliver its result nor report an end. It is
+   * cancelled, and once this method returned it writes nothing any more. A job requested for the
+   * page afterwards ({@link #enqueueReprocess}) runs when the old one has wound down. Call it
+   * before the new image is written, not on the main thread. No-op without a job in flight.
+   */
+  public static void supersede(String pageId) {
+    if (pageId == null) return;
+    synchronized (PERSIST_LOCK) {
+      synchronized (running) {
+        if (!running.contains(pageId)) return;
+        superseded.add(pageId);
+        cancelled.add(pageId);
+      }
+    }
   }
 
   /**
@@ -94,10 +121,17 @@ public final class OcrBackgroundJobs {
     final Context app = ctx.getApplicationContext();
     synchronized (running) {
       if (running.contains(pageId)) {
-        Log.d(TAG, "Job already running for pageId=" + pageId);
+        if (superseded.contains(pageId)) {
+          // The job in flight reads the old image: this one follows as soon as it has ended
+          rerun.put(pageId, () -> runJob(app, pageId, languageOpt, ocrHelperSupplier));
+          Log.d(TAG, "Job for the replaced image follows for pageId=" + pageId);
+        } else {
+          Log.d(TAG, "Job already running for pageId=" + pageId);
+        }
         return;
       }
       running.add(pageId);
+      superseded.remove(pageId);
     }
     cancelled.remove(pageId);
     EXEC.execute(() -> runJob(app, pageId, languageOpt, ocrHelperSupplier));
@@ -133,7 +167,14 @@ public final class OcrBackgroundJobs {
           OcrRecognitionPipeline.recognizeBestRotation(
                   helper, bmp, prefs, () -> cancelled.contains(pageId))
               .best();
-      persistResult(app, reg, s, best != null ? best.result() : null);
+      synchronized (PERSIST_LOCK) {
+        // Cancelled while reading: the page was removed or its image replaced (supersede), and
+        // this result, with the registry entry from the job's start, would overwrite the new state
+        if (cancelled.contains(pageId)) {
+          throw new OcrRecognitionPipeline.CancelledException("Cancelled before saving the result");
+        }
+        persistResult(app, reg, s, best != null ? best.result() : null);
+      }
       success = true;
     } catch (OcrRecognitionPipeline.CancelledException c) {
       // Cancelled jobs end without success and without persisting OCR_FAILED.
@@ -143,9 +184,20 @@ public final class OcrBackgroundJobs {
       // Persist OCR_FAILED so the failure survives process death and stays visible in the UI.
       markPageOcrFailed(app, pageId);
     } finally {
-      running.remove(pageId);
-      cancelled.remove(pageId);
-      broadcastUpdated(app, pageId, success);
+      Runnable next;
+      boolean silent;
+      synchronized (running) {
+        // A superseded job ends without a word: whoever replaced the image reports for the page
+        silent = superseded.remove(pageId);
+        next = rerun.remove(pageId);
+        cancelled.remove(pageId);
+        if (next == null) running.remove(pageId);
+      }
+      if (next != null) {
+        EXEC.execute(next);
+      } else if (!silent) {
+        broadcastUpdated(app, pageId, success);
+      }
     }
   }
 

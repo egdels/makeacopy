@@ -3360,6 +3360,11 @@ public class ExportFragment extends Fragment {
       }
       if (sessionPageOcrComplete(id)) exportSessionViewModel.markOcrStateReplaced(id);
     }
+    refreshExportOcrWait();
+  }
+
+  /** Lets a waiting export go on once none of its pages waits for OCR any more. */
+  private void refreshExportOcrWait() {
     exportOcrWait.refresh(
         id ->
             ocrJobsAwaitingResult.contains(id)
@@ -3394,6 +3399,17 @@ public class ExportFragment extends Fragment {
         Log.w(TAG, "Failed to register OCR update receiver", e);
       }
     }
+    // A page whose background OCR ends without a job result (it could not be written) reports
+    // through the session only. Always posted: whoever ended the wait applies the result to the
+    // session first, and the export must not go on before that.
+    exportSessionViewModel.setBackgroundOcrEndedListener(
+        () ->
+            mainHandler.post(
+                () -> {
+                  if (!isAdded() || binding == null) return;
+                  refreshOcrBadges();
+                  refreshExportOcrWait();
+                }));
     catchUpOnMissedOcrResults();
     resumeInterruptedBackgroundOcr();
   }
@@ -3426,6 +3442,7 @@ public class ExportFragment extends Fragment {
 
   @Override
   public void onStop() {
+    exportSessionViewModel.setBackgroundOcrEndedListener(null);
     if (ocrReceiverRegistered) {
       android.content.Context app = requireContext().getApplicationContext();
       try {

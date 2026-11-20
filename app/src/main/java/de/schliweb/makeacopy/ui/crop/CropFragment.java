@@ -1356,6 +1356,10 @@ public class CropFragment extends Fragment {
     new Thread(
             () -> {
               try {
+                // A job still reading the old image must not deliver its text for the new one
+                if (backgroundOcr) {
+                  de.schliweb.makeacopy.jobs.OcrBackgroundJobs.supersede(id);
+                }
                 de.schliweb.makeacopy.ui.export.session.CompletedScan persisted =
                     de.schliweb.makeacopy.utils.export.ScanPersister.persistEditedPage(
                         appContext, edited);

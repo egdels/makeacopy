@@ -82,8 +82,22 @@ public class ExportSessionViewModel extends ViewModel {
   /** The OCR of the page ended (result applied, failed, or never started). */
   public void backgroundOcrDone(String pageId) {
     if (pageId == null) return;
-    backgroundOcrRequested.remove(pageId);
-    backgroundOcrQueued.remove(pageId);
+    boolean wasPending = backgroundOcrRequested.remove(pageId);
+    wasPending |= backgroundOcrQueued.remove(pageId);
+    Runnable listener = backgroundOcrEndedListener;
+    if (wasPending && listener != null) listener.run();
+  }
+
+  // Told when a pending page stops being pending; called on whatever thread ended it
+  private volatile Runnable backgroundOcrEndedListener;
+
+  /**
+   * Sets who is told when a page stops waiting for its background OCR, so an export waiting for it
+   * and the page badges follow even when no job result arrives (the page could not be written).
+   * Called on the thread that ended the wait; {@code null} removes the listener.
+   */
+  public void setBackgroundOcrEndedListener(Runnable listener) {
+    backgroundOcrEndedListener = listener;
   }
 
   /** Whether the page still waits for its background OCR result. */

@@ -10,6 +10,8 @@
 package de.schliweb.makeacopy.ui.export;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import de.schliweb.makeacopy.data.CompletedScansRegistry;
 import de.schliweb.makeacopy.jobs.OcrBackgroundJobs;
@@ -78,11 +80,21 @@ public final class BackgroundOcr {
       String language,
       Supplier<OCRHelper> ocrHelperSupplier) {
     if (ctx == null || session == null || pageId == null) return;
-    markPending(ctx.getApplicationContext(), pageId);
-    OcrBackgroundJobs.enqueueReprocess(
-        ctx.getApplicationContext(), pageId, language, ocrHelperSupplier);
-    // Queued only after the runner knows the job: "queued and not running" then means it ended
-    session.markBackgroundOcrQueued(pageId);
+    final Context app = ctx.getApplicationContext();
+    markPending(app, pageId);
+    // On the main thread, where the job's end is received as well: the end of a job that fails at
+    // once cannot slip in between the two steps and leave the page queued for good. Queued only
+    // after the runner knows the job: "queued and not running" then means it ended.
+    Runnable enqueue =
+        () -> {
+          OcrBackgroundJobs.enqueueReprocess(app, pageId, language, ocrHelperSupplier);
+          session.markBackgroundOcrQueued(pageId);
+        };
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      enqueue.run();
+    } else {
+      new Handler(Looper.getMainLooper()).post(enqueue);
+    }
   }
 
   /**
