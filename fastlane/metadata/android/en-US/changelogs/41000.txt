@@ -1,4 +1,6 @@
 MakeACopy 4.10.0
-* New: "OCR in the background" (Options, Scan): after cropping you go straight to Export while the text is recognised; saving waits until it is ready. Off by default.
-* New: the OCR language can be chosen in the options (OCR section).
-* Note: with the new option, pages imported from a multi-page PDF are not read automatically; tap their badge to run OCR.
+* New: "OCR in the background" (Options, Scan): after cropping you go straight to Export; saving waits until the text is ready. Off by default.
+* New: OCR language can be chosen in the options.
+* Fixed: OCR review, Text tab: the cursor no longer jumps to the end; adding or removing words keeps the rest in place.
+* Fixed: dragging a crop corner near the screen edge no longer triggers Back.
+* Note: with the new option, pages from a multi-page PDF are not read automatically.
