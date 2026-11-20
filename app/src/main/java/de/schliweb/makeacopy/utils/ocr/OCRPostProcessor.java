@@ -111,8 +111,24 @@ public class OCRPostProcessor {
     return lines;
   }
 
-  private static String horizontalWordsToText(List<RecognizedWord> words) {
+  /** The lines of a horizontal page, top to bottom, each with its words in reading order. */
+  private static List<List<RecognizedWord>> orderedLines(List<RecognizedWord> words) {
     List<List<RecognizedWord>> lines = groupLines(words);
+    for (List<RecognizedWord> line : lines) {
+      // Determine if this line is predominantly RTL based on Unicode directionality
+      boolean isRtlLine = isLineRtl(line);
+
+      // Sort words left to right, then into reading order: an RTL line reads its Arabic words
+      // right to left but embedded Latin words in their own order, an LTR line the other way
+      // round (issue #101)
+      line.sort((a, b) -> Float.compare(a.getBoundingBox().left, b.getBoundingBox().left));
+      BidiWordOrder.toLogical(line, RecognizedWord::getText, isRtlLine);
+    }
+    return lines;
+  }
+
+  private static String horizontalWordsToText(List<RecognizedWord> words) {
+    List<List<RecognizedWord>> lines = orderedLines(words);
 
     // Calculate average line height for paragraph detection
     float totalLineHeight = 0;
@@ -133,15 +149,6 @@ public class OCRPostProcessor {
 
     for (int i = 0; i < lines.size(); i++) {
       List<RecognizedWord> line = lines.get(i);
-
-      // Determine if this line is predominantly RTL based on Unicode directionality
-      boolean isRtlLine = isLineRtl(line);
-
-      // Sort words left to right, then into reading order: an RTL line reads its Arabic words
-      // right to left but embedded Latin words in their own order, an LTR line the other way
-      // round (issue #101)
-      line.sort((a, b) -> Float.compare(a.getBoundingBox().left, b.getBoundingBox().left));
-      BidiWordOrder.toLogical(line, RecognizedWord::getText, isRtlLine);
 
       // Calculate line's top Y for paragraph detection
       float lineTopY = Float.MAX_VALUE;
@@ -194,6 +201,27 @@ public class OCRPostProcessor {
    *     (caller falls back to the single-flow reconstruction)
    */
   private static String multiColumnWordsToText(List<RecognizedWord> words) {
+    List<List<RecognizedWord>> segments = columnSegments(words);
+    if (segments == null) {
+      return null;
+    }
+    StringBuilder result = new StringBuilder();
+    for (List<RecognizedWord> segmentWords : segments) {
+      String segmentText = horizontalWordsToText(segmentWords);
+      if (segmentText.isEmpty()) continue;
+      if (result.length() > 0) {
+        result.append("\n\n");
+      }
+      result.append(segmentText);
+    }
+    return result.toString();
+  }
+
+  /**
+   * The segments of a multi-column page in reading order (a full-width band or one column of a
+   * band), or {@code null} if the boxes do not form a multi-column layout.
+   */
+  private static List<List<RecognizedWord>> columnSegments(List<RecognizedWord> words) {
     int n = words.size();
     float[] lefts = new float[n];
     float[] tops = new float[n];
@@ -212,20 +240,15 @@ public class OCRPostProcessor {
     if (segments.size() < 2) {
       return null;
     }
-    StringBuilder result = new StringBuilder();
-    for (int s = 0; s < segments.size(); s++) {
-      List<RecognizedWord> segmentWords = new ArrayList<>(segments.get(s).length);
-      for (int idx : segments.get(s)) {
+    List<List<RecognizedWord>> result = new ArrayList<>(segments.size());
+    for (int[] segment : segments) {
+      List<RecognizedWord> segmentWords = new ArrayList<>(segment.length);
+      for (int idx : segment) {
         segmentWords.add(words.get(idx));
       }
-      String segmentText = horizontalWordsToText(segmentWords);
-      if (segmentText.isEmpty()) continue;
-      if (result.length() > 0) {
-        result.append("\n\n");
-      }
-      result.append(segmentText);
+      result.add(segmentWords);
     }
-    return result.toString();
+    return result;
   }
 
   /**
@@ -239,6 +262,23 @@ public class OCRPostProcessor {
    * @return the reconstructed text in vertical reading order
    */
   private static String verticalWordsToText(List<RecognizedWord> words) {
+    List<List<RecognizedWord>> columns = verticalColumns(words);
+    StringBuilder result = new StringBuilder();
+    for (int c = 0; c < columns.size(); c++) {
+      if (c > 0) {
+        result.append('\n');
+      }
+      for (RecognizedWord word : columns.get(c)) {
+        String text = word.getText();
+        if (text == null) continue;
+        result.append(decodeHtmlEntities(text));
+      }
+    }
+    return result.toString();
+  }
+
+  /** The columns of a vertical page, right to left, each with its segments top to bottom. */
+  private static List<List<RecognizedWord>> verticalColumns(List<RecognizedWord> words) {
     int n = words.size();
     float[] lefts = new float[n];
     float[] tops = new float[n];
@@ -251,20 +291,70 @@ public class OCRPostProcessor {
       rights[i] = r.right;
       bottoms[i] = r.bottom;
     }
-    List<int[]> columns =
-        VerticalTextLayoutPolicy.groupIntoVerticalColumns(lefts, tops, rights, bottoms);
-    StringBuilder result = new StringBuilder();
-    for (int c = 0; c < columns.size(); c++) {
-      if (c > 0) {
-        result.append('\n');
+    List<List<RecognizedWord>> result = new ArrayList<>();
+    for (int[] column :
+        VerticalTextLayoutPolicy.groupIntoVerticalColumns(lefts, tops, rights, bottoms)) {
+      List<RecognizedWord> members = new ArrayList<>(column.length);
+      for (int idx : column) members.add(words.get(idx));
+      result.add(members);
+    }
+    return result;
+  }
+
+  /**
+   * The pieces of {@link #wordsToText(List, boolean)} in the order the text shows them, each with
+   * the words it is made of: on a horizontal page every word is one piece (the text separates them
+   * by whitespace), on a vertical page every column is one piece (one text line, its words joined
+   * without spaces). An edited text is mapped back onto the words with it.
+   */
+  public static final class TextPieces {
+    /** The words of each piece, in text order. */
+    public final List<List<RecognizedWord>> pieces;
+
+    /** Whether the page is vertical: a piece is a column and a line of the text. */
+    public final boolean vertical;
+
+    TextPieces(List<List<RecognizedWord>> pieces, boolean vertical) {
+      this.pieces = pieces;
+      this.vertical = vertical;
+    }
+
+    /** The text {@link #wordsToText(List, boolean)} shows for the piece. */
+    public static String textOf(List<RecognizedWord> piece) {
+      StringBuilder sb = new StringBuilder();
+      for (RecognizedWord word : piece) {
+        if (word.getText() != null) sb.append(decodeHtmlEntities(word.getText()));
       }
-      for (int idx : columns.get(c)) {
-        String text = words.get(idx).getText();
-        if (text == null) continue;
-        result.append(decodeHtmlEntities(text));
+      return sb.toString();
+    }
+  }
+
+  /**
+   * @param words the recognized words
+   * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
+   * @return the pieces of the text of {@link #wordsToText(List, boolean)} for the same arguments
+   */
+  public static TextPieces textPieces(List<RecognizedWord> words, boolean multiColumn) {
+    List<List<RecognizedWord>> pieces = new ArrayList<>();
+    if (words == null || words.isEmpty()) {
+      return new TextPieces(pieces, false);
+    }
+    if (VerticalTextLayoutPolicy.isVerticalLayout(words)) {
+      pieces.addAll(verticalColumns(words));
+      return new TextPieces(pieces, true);
+    }
+    List<List<RecognizedWord>> segments = multiColumn ? columnSegments(words) : null;
+    if (segments == null) {
+      segments = java.util.Collections.singletonList(words);
+    }
+    for (List<RecognizedWord> segment : segments) {
+      for (List<RecognizedWord> line : orderedLines(segment)) {
+        for (RecognizedWord word : line) {
+          pieces.add(java.util.Collections.singletonList(word));
+        }
       }
     }
-    return result.toString();
+    return new TextPieces(pieces, false);
   }
 
   /**

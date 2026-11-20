@@ -36,6 +36,8 @@ import de.schliweb.makeacopy.ui.crop.CropViewModel;
 import de.schliweb.makeacopy.ui.export.session.CompletedScan;
 import de.schliweb.makeacopy.ui.ocr.review.model.OcrDoc;
 import de.schliweb.makeacopy.ui.ocr.review.model.OcrDocReadingOrder;
+import de.schliweb.makeacopy.ui.ocr.review.model.OcrDocUtils;
+import de.schliweb.makeacopy.ui.ocr.review.model.OcrTextEdit;
 import de.schliweb.makeacopy.ui.ocr.review.view.MinimapView;
 import de.schliweb.makeacopy.ui.ocr.review.view.OcrOverlayView;
 import de.schliweb.makeacopy.ui.ocr.review.view.OcrTextLayerView;
@@ -259,6 +261,13 @@ public class OcrReviewFragment extends Fragment {
 
   // True while the editor text is replaced programmatically (suppresses the write-back)
   private boolean updatingEditor;
+  // True while the editor's own text is written to the document: the editor is the source then
+  // and must not be replaced by the rebuilt document text (that would move the cursor)
+  private boolean applyingEditorText;
+  // The document as it was when the editor text was last taken from it. The editor text is always
+  // written onto a copy of this one, so the result depends only on the text, not on where the
+  // user paused while typing.
+  @Nullable private OcrDoc editorBaseDoc;
   // Guard flag to prevent infinite recursion between overlay and documentOcrOverlay viewport
   // listeners
   private boolean syncingViewport;
@@ -277,6 +286,7 @@ public class OcrReviewFragment extends Fragment {
     View root = inflater.inflate(R.layout.fragment_ocr_review, container, false);
     viewModel = new ViewModelProvider(requireActivity()).get(OcrReviewViewModel.class);
     updatingEditor = false;
+    applyingEditorText = false;
     syncingViewport = false;
     bindViews(root);
 
@@ -514,14 +524,22 @@ public class OcrReviewFragment extends Fragment {
   /** Replaces the Text Mode editor content with the document text without triggering write-back. */
   private void syncEditorFromDoc(@Nullable OcrDoc doc) {
     if (textModeEditor == null) return;
+    // The change came from the editor itself: what the user typed stays as it is. The rebuilt
+    // text differs from it as soon as spacing or the number of words differs, and replacing it
+    // would throw the cursor to the end in the middle of typing.
+    if (applyingEditorText) return;
     try {
+      editorBaseDoc = doc == null ? null : OcrDocUtils.deepCopy(doc);
       String text = buildFullText(doc);
       // Avoid resetting cursor if text is identical
       String current = textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
       if (!text.equals(current)) {
+        // Keep the cursor where it was (e.g. undo/redo while typing); first fill goes to the end
+        int cursor = current.isEmpty() ? text.length() : textModeEditor.getSelectionStart();
         updatingEditor = true;
         textModeEditor.setText(text);
-        textModeEditor.setSelection(textModeEditor.getText().length());
+        int length = textModeEditor.getText().length();
+        textModeEditor.setSelection(cursor < 0 ? length : Math.min(cursor, length));
       }
     } catch (Throwable t) {
       dbgWarn("Syncing TextMode editor from doc failed", t);
@@ -652,29 +670,57 @@ public class OcrReviewFragment extends Fragment {
         });
   }
 
-  /** Writes the whitespace-separated editor tokens back onto the document words, in order. */
+  /**
+   * Writes the editor text onto the document words: changed, added, removed, split and joined words
+   * are found by comparing the text with the words in the order the text shows them (see {@link
+   * OcrTextEdit}), so the words the user did not touch stay as they are.
+   */
   private void applyEditorTextToDoc() {
     try {
-      if (textModeEditor == null) return;
-      OcrDoc doc = viewModel.getDoc().getValue();
-      if (doc == null || doc.words == null || doc.words.isEmpty()) return;
+      if (textModeEditor == null || editorBaseDoc == null) return;
+      OcrDoc doc = OcrDocUtils.deepCopy(editorBaseDoc);
+      if (doc.words == null || doc.words.isEmpty()) return;
       String src = textModeEditor.getText() == null ? "" : textModeEditor.getText().toString();
-      String trimmed = src.trim();
-      String[] tokens = trimmed.isEmpty() ? new String[0] : trimmed.split("\\s+");
-      int n = Math.min(doc.words.size(), tokens.length);
-      if (n == 0) return;
-      viewModel.markModified();
-      for (int i = 0; i < n; i++) {
-        OcrDoc.Word w = doc.words.get(i);
-        if (w != null && !tokens[i].equals(w.t)) {
-          w.t = tokens[i];
-          w.e = true;
-        }
+
+      // The pieces of the text as buildFullText shows it, with the document words behind them
+      java.util.IdentityHashMap<RecognizedWord, OcrDoc.Word> source =
+          new java.util.IdentityHashMap<>();
+      java.util.List<RecognizedWord> recognized = new java.util.ArrayList<>();
+      for (OcrDoc.Word word : doc.words) {
+        RecognizedWord rw = toRecognizedWord(word);
+        if (rw == null) continue;
+        recognized.add(rw);
+        source.put(rw, word);
       }
+      OCRPostProcessor.TextPieces textPieces =
+          OCRPostProcessor.textPieces(
+              recognized,
+              de.schliweb.makeacopy.utils.ocr.MultiColumnOcrPrefs.isEnabled(getContext()));
+      java.util.List<java.util.List<OcrDoc.Word>> pieces = new java.util.ArrayList<>();
+      java.util.List<String> pieceTexts = new java.util.ArrayList<>();
+      for (java.util.List<RecognizedWord> piece : textPieces.pieces) {
+        String pieceText = OCRPostProcessor.TextPieces.textOf(piece).trim();
+        if (pieceText.isEmpty()) continue; // not in the text, so the text cannot change it
+        java.util.List<OcrDoc.Word> members = new java.util.ArrayList<>(piece.size());
+        for (RecognizedWord rw : piece) members.add(source.get(rw));
+        pieces.add(members);
+        pieceTexts.add(pieceText);
+      }
+
+      OcrTextEdit.apply(
+          doc,
+          pieces,
+          pieceTexts,
+          OcrTextEdit.Tokens.of(src, textPieces.vertical),
+          textPieces.vertical);
+      viewModel.markModified();
+      applyingEditorText = true;
       viewModel.setDoc(doc);
       propagateAndAutosave();
     } catch (Throwable t) {
       dbgWarn("Applying editor changes failed", t);
+    } finally {
+      applyingEditorText = false;
     }
   }
 
@@ -1815,18 +1861,25 @@ public class OcrReviewFragment extends Fragment {
     }
   }
 
+  /** The word as the text reconstruction sees it, or {@code null} if it has no box. */
+  @Nullable
+  private static RecognizedWord toRecognizedWord(@Nullable OcrDoc.Word word) {
+    if (word == null || word.b == null || word.b.length < 4) return null;
+    android.graphics.RectF box =
+        new android.graphics.RectF(
+            word.b[0], word.b[1], word.b[0] + word.b[2], word.b[1] + word.b[3]);
+    RecognizedWord rw = new RecognizedWord(word.t != null ? word.t : "", box, word.c, word.lang);
+    rw.setBlockId(word.k);
+    rw.setLineId(word.l);
+    return rw;
+  }
+
   private java.util.List<RecognizedWord> toRecognizedWords(@Nullable OcrDoc doc) {
     java.util.List<RecognizedWord> reviewedWords = new java.util.ArrayList<>();
     if (doc == null || doc.words == null) return reviewedWords;
     for (OcrDoc.Word word : doc.words) {
-      if (word != null && word.b != null && word.b.length >= 4) {
-        android.graphics.RectF box =
-            new android.graphics.RectF(
-                word.b[0], word.b[1], word.b[0] + word.b[2], word.b[1] + word.b[3]);
-        RecognizedWord rw =
-            new RecognizedWord(word.t != null ? word.t : "", box, word.c, word.lang);
-        rw.setBlockId(word.k);
-        rw.setLineId(word.l);
+      RecognizedWord rw = toRecognizedWord(word);
+      if (rw != null) {
         reviewedWords.add(rw);
       }
     }
@@ -1884,6 +1937,11 @@ public class OcrReviewFragment extends Fragment {
    * result to the reviewed session page and/or the OCRViewModel and navigates back.
    */
   private void handleSaveAction() {
+    // A text edit still waiting for its write-back belongs to what is saved
+    if (editorHandler.hasCallbacks(applyEditorRunnable)) {
+      editorHandler.removeCallbacks(applyEditorRunnable);
+      applyEditorTextToDoc();
+    }
     OcrDoc doc = viewModel.getDocValue();
     if (doc == null) {
       navigateBack();
