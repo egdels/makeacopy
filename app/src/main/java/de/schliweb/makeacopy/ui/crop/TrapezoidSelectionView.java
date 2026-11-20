@@ -11,7 +11,6 @@ package de.schliweb.makeacopy.ui.crop;
 
 import android.content.Context;
 import android.graphics.*;
-import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -396,6 +395,8 @@ public class TrapezoidSelectionView extends View {
   }
 
   private void notifyViewTransformChanged() {
+    // Zoom and pan move the handles on screen
+    updateSystemGestureExclusion();
     if (viewTransformChangedListener == null) return;
     try {
       viewTransformChangedListener.onViewTransformChanged(
@@ -760,160 +761,95 @@ public class TrapezoidSelectionView extends View {
   }
 
   /**
-   * Updates the system gesture exclusion regions to minimize interference from system gestures when
-   * interacting with crop handles. This method is applicable for API level 29 and above.
+   * Keeps the system back gesture away from the handles that sit in the left/right gesture zone
+   * (API 29+).
    *
-   * <p>The method defines small rectangular regions around the four corner handles of the crop
-   * overlay. These regions are excluded from edge system gestures, ensuring that touch interactions
-   * in these areas are not intercepted by system edge gestures.
-   *
-   * <p>If the dimensions of the view are not valid or corners are not defined, the system gesture
-   * exclusion regions are cleared.
-   *
-   * <p>Any exceptions thrown during the execution of this method are silently ignored to prevent
-   * unintended crashes or disruptions.
+   * <p>The system decides on the first touch whether a swipe from the side is "back", so only the
+   * rects that are in place before a drag starts count. It also honours at most 200dp per side,
+   * counted from the bottom upwards: a strip over the whole side protects only its lowest 200dp and
+   * leaves the upper corners to the back gesture. The budget is therefore spent on the handles in
+   * the zone: corners first, then the edge midpoints.
    */
   private void updateSystemGestureExclusion() {
     try {
       int w = getWidth();
       int h = getHeight();
-      if (w <= 0 || h <= 0) {
-        setSystemGestureExclusionRects(java.util.Collections.emptyList());
-        return;
-      }
+      java.util.ArrayList<Rect> rects = new java.util.ArrayList<>();
+      if (w > 0 && h > 0 && corners != null && corners.length >= 4) {
+        float density = getResources().getDisplayMetrics().density;
+        int[] zones = sideGestureZones(w, density);
+        // One pixel below the limit, so rounding never pushes a span out
+        int budget = (int) (200f * density) - 1;
+        float scale = viewTransform.getScale();
+        float tx = viewTransform.getTx();
+        float ty = viewTransform.getTy();
 
-      float density = getResources().getDisplayMetrics().density;
-      int pad = (int) (24f * density + 0.5f); // default handle padding
-      int activePad = (int) (40f * density + 0.5f); // larger while dragging
-
-      // On newer Android (SDK>=34, Android 14/15), the back-edge gesture is wider/more aggressive
-      // on Pixels.
-      // Use broader exclusion strips there; keep legacy widths on older SDKs to avoid
-      // over-excluding.
-      final boolean modernBackGesture = (Build.VERSION.SDK_INT >= 34);
-      // Always-on small side strips to reduce chance of edge gestures eating DOWN near edges
-      int alwaysOnSideStrip = (int) ((modernBackGesture ? 40f : 24f) * density + 0.5f);
-      // Larger strips while actively dragging
-      int draggingSideStrip = (int) ((modernBackGesture ? 112f : 72f) * density + 0.5f);
-
-      java.util.ArrayList<android.graphics.Rect> rects = new java.util.ArrayList<>();
-
-      // While actively dragging (corner or edge), aggressively exclude the left/right side
-      // strips from the system back-gesture. Android limits gesture exclusion to 200dp per edge
-      // (vertical extent on left/right), so we cannot cover the full view height; instead we
-      // place two 200dp tall strips per side, anchored around the active drag point so the
-      // user's current finger position is always inside an exclusion zone.
-      // Treat implicit Pan as a "dragging" state for the purpose of back-gesture exclusion: the
-      // user is performing a single-finger drag across the view and must not be interrupted by
-      // the system's edge-back gesture (concept §6, pan-mode rule).
-      final boolean dragging = (activeCornerIndex != -1) || (activeEdgeIndex != -1) || isPanning;
-      if (dragging) {
-        // 200dp per edge is the system cap; use full width strips on both sides.
-        int sideStrip = (int) (200f * density + 0.5f); // very wide horizontal coverage
-        int vertExtent = (int) (200f * density + 0.5f); // vertical cap per edge
-
-        // Anchor the vertical center near the active drag point if known, otherwise view center.
-        float anchorY = h * 0.5f;
-        if (activeCornerIndex != -1 && corners != null) {
-          anchorY = corners[activeCornerIndex].y;
-        } else if (activeEdgeIndex != -1 && corners != null) {
-          int a = activeEdgeIndex;
-          int b = (activeEdgeIndex + 1) % 4;
-          anchorY = 0.5f * (corners[a].y + corners[b].y);
-        }
-        int top = Math.max(0, Math.round(anchorY - vertExtent * 0.5f));
-        int bottom = Math.min(h, top + vertExtent);
-        if (bottom - top < vertExtent) {
-          top = Math.max(0, bottom - vertExtent);
-        }
-
-        // Left strip
-        rects.add(new android.graphics.Rect(0, top, Math.min(w, sideStrip), bottom));
-        // Right strip
-        rects.add(new android.graphics.Rect(Math.max(0, w - sideStrip), top, w, bottom));
-        setSystemGestureExclusionRects(rects);
-        lastExclusionRects = new java.util.ArrayList<>(rects);
-        if (debugLogsEnabled) {
-          Log.d(
-              TAG,
-              "updateSystemGestureExclusion (dragging) side-strips rects="
-                  + rects.size()
-                  + " anchorY="
-                  + anchorY);
-        }
-        return;
-      }
-
-      // Exclude around handles (bigger for active one while dragging)
-      if (corners != null) {
+        // Handles in drawing order of importance: 4 corners, then the edge midpoints
+        float[] xs = new float[8];
+        float[] ys = new float[8];
+        float[] rs = new float[8];
+        int n = 0;
         for (int i = 0; i < 4; i++) {
-          float cx = corners[i].x;
-          float cy = corners[i].y;
-          int p = (i == activeCornerIndex && activeCornerIndex != -1) ? activePad : pad;
-          int left = Math.max(0, Math.round(cx - p));
-          int top = Math.max(0, Math.round(cy - p));
-          int right = Math.min(w, Math.round(cx + p));
-          int bottom = Math.min(h, Math.round(cy + p));
-          if (right > left && bottom > top) {
-            rects.add(new android.graphics.Rect(left, top, right, bottom));
+          xs[n] = corners[i].x * scale + tx;
+          ys[n] = corners[i].y * scale + ty;
+          rs[n++] = CORNER_TOUCH_RADIUS * scale;
+        }
+        for (int i = 0; i < 4; i++) {
+          if (curvedMode && (i == 0 || i == 2)) continue;
+          int j = (i + 1) % 4;
+          xs[n] = (corners[i].x + corners[j].x) * 0.5f * scale + tx;
+          ys[n] = (corners[i].y + corners[j].y) * 0.5f * scale + ty;
+          rs[n++] = EDGE_TOUCH_RADIUS_DP * density * scale;
+        }
+
+        for (int side = 0; side < 2; side++) {
+          int zone = zones[side];
+          if (zone <= 0) continue;
+          float[] centers = new float[n];
+          float[] radii = new float[n];
+          int count = 0;
+          for (int i = 0; i < n; i++) {
+            boolean inZone = side == 0 ? xs[i] - rs[i] < zone : xs[i] + rs[i] > w - zone;
+            if (!inZone) continue;
+            centers[count] = ys[i];
+            radii[count++] = rs[i];
+          }
+          for (int[] span : CropGestureExclusion.spans(centers, radii, count, h, budget)) {
+            rects.add(
+                side == 0
+                    ? new Rect(0, span[0], Math.min(w, zone), span[1])
+                    : new Rect(Math.max(0, w - zone), span[0], w, span[1]));
           }
         }
       }
-
-      // Always-on thin strips at the extreme left/right of the view to protect initial touches
-      rects.add(new android.graphics.Rect(0, 0, Math.min(w, alwaysOnSideStrip), h));
-      rects.add(new android.graphics.Rect(Math.max(0, w - alwaysOnSideStrip), 0, w, h));
-
-      // Additionally, while dragging, exclude thin strips along the displayed image edges
-      if (activeCornerIndex != -1) {
-        android.graphics.RectF img = getDisplayedImageRectF(w, h);
-        if (img != null) {
-          int strip = (int) (16f * density + 0.5f);
-          // Top
-          rects.add(
-              new android.graphics.Rect(
-                  Math.max(0, Math.round(img.left)),
-                  Math.max(0, Math.round(img.top - strip)),
-                  Math.min(w, Math.round(img.right)),
-                  Math.max(0, Math.round(img.top + strip))));
-          // Bottom
-          rects.add(
-              new android.graphics.Rect(
-                  Math.max(0, Math.round(img.left)),
-                  Math.min(h, Math.round(img.bottom - strip)),
-                  Math.min(w, Math.round(img.right)),
-                  Math.min(h, Math.round(img.bottom + strip))));
-          // Left (image edge)
-          rects.add(
-              new android.graphics.Rect(
-                  Math.max(0, Math.round(img.left - strip)),
-                  Math.max(0, Math.round(img.top)),
-                  Math.max(0, Math.round(img.left + strip)),
-                  Math.min(h, Math.round(img.bottom))));
-          // Right (image edge)
-          rects.add(
-              new android.graphics.Rect(
-                  Math.min(w, Math.round(img.right - strip)),
-                  Math.max(0, Math.round(img.top)),
-                  Math.min(w, Math.round(img.right + strip)),
-                  Math.min(h, Math.round(img.bottom))));
-        }
-
-        // Also exclude along the view's extreme left/right edges to counter system back gestures
-        // (wider while dragging)
-        rects.add(new android.graphics.Rect(0, 0, Math.min(w, draggingSideStrip), h));
-        rects.add(new android.graphics.Rect(Math.max(0, w - draggingSideStrip), 0, w, h));
-      }
-
+      if (rects.equals(lastExclusionRects)) return;
       setSystemGestureExclusionRects(rects);
-      // Keep a copy for debug overlay and optional logging
-      lastExclusionRects = new java.util.ArrayList<>(rects);
+      lastExclusionRects = rects;
       if (debugLogsEnabled) {
-        Log.d(TAG, "updateSystemGestureExclusion applied rects=" + rects.size());
+        Log.d(TAG, "updateSystemGestureExclusion applied rects=" + rects);
       }
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }
+  }
+
+  /**
+   * Widths of the system back-gesture zones inside this view: {@code {left, right}} in pixels, 0
+   * where the view does not reach into the zone or there is no gesture navigation.
+   */
+  private int[] sideGestureZones(int w, float density) {
+    int fallback = (int) (40f * density + 0.5f);
+    android.view.WindowInsets insets = getRootWindowInsets();
+    View root = getRootView();
+    if (insets == null || root == null || root.getWidth() <= 0) {
+      return new int[] {fallback, fallback};
+    }
+    android.graphics.Insets gesture = insets.getSystemGestureInsets();
+    int[] loc = new int[2];
+    getLocationInWindow(loc);
+    int left = gesture.left - loc[0];
+    int right = gesture.right - (root.getWidth() - (loc[0] + w));
+    return new int[] {Math.max(0, left), Math.max(0, right)};
   }
 
   /**
@@ -2406,6 +2342,9 @@ public class TrapezoidSelectionView extends View {
     if (applyViewMatrix) {
       canvas.restoreToCount(viewMatrixSaveCount);
     }
+
+    // Whatever moved the handles ends up here; a no-op while the rects stay the same
+    updateSystemGestureExclusion();
 
     Log.d(TAG, "Trapezoid drawn with dimensions: " + getWidth() + "x" + getHeight());
   }
