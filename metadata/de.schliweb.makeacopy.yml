@@ -5179,6 +5179,102 @@ Builds:
       - enableAbiSplits=true
       - ABIS=x86_64
 
+  - versionName: 4.10.0
+    versionCode: 410001
+    commit: v4.10.0
+    timeout: 3600
+    subdir: app
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y make cmake
+    gradle:
+      - yes
+    output: build/outputs/apk/release/app-armeabi-v7a-release-unsigned.apk
+    binary:
+      https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-armeabi-v7a-release.apk
+    build:
+      - cd ../scripts
+      - chmod +x *.sh
+      - export ABIS="armeabi-v7a"
+      - ./build_ncnn_android.sh
+    ndk: 28.0.13004108
+    gradleprops:
+      - enableAbiSplits=true
+      - ABIS=armeabi-v7a
+
+  - versionName: 4.10.0
+    versionCode: 410002
+    commit: v4.10.0
+    timeout: 3600
+    subdir: app
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y make cmake
+    gradle:
+      - yes
+    output: build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk
+    binary:
+      https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-arm64-v8a-release.apk
+    build:
+      - cd ../scripts
+      - chmod +x *.sh
+      - export ABIS="arm64-v8a"
+      - ./build_ncnn_android.sh
+    ndk: 28.0.13004108
+    gradleprops:
+      - enableAbiSplits=true
+      - ABIS=arm64-v8a
+
+  - versionName: 4.10.0
+    versionCode: 410003
+    commit: v4.10.0
+    timeout: 3600
+    subdir: app
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y make cmake
+    gradle:
+      - yes
+    output: build/outputs/apk/release/app-x86-release-unsigned.apk
+    binary:
+      https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-x86-release.apk
+    build:
+      - cd ../scripts
+      - chmod +x *.sh
+      - export ABIS="x86"
+      - ./build_ncnn_android.sh
+    ndk: 28.0.13004108
+    gradleprops:
+      - enableAbiSplits=true
+      - ABIS=x86
+
+  - versionName: 4.10.0
+    versionCode: 410004
+    commit: v4.10.0
+    timeout: 3600
+    subdir: app
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y make cmake
+    gradle:
+      - yes
+    output: build/outputs/apk/release/app-x86_64-release-unsigned.apk
+    binary:
+      https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-x86_64-release.apk
+    build:
+      - cd ../scripts
+      - chmod +x *.sh
+      - export ABIS="x86_64"
+      - ./build_ncnn_android.sh
+    ndk: 28.0.13004108
+    gradleprops:
+      - enableAbiSplits=true
+      - ABIS=x86_64
+
 AllowedAPKSigningKeys: ae322d3fb71afe21df4727e37a5c6803511d5a2fe1fc3135430cee0699fa1b34
 
 AutoUpdateMode: Version
@@ -5188,5 +5284,5 @@ VercodeOperation:
   - 10 * %c + 2
   - 10 * %c + 3
   - 10 * %c + 4
-CurrentVersion: 4.0.0
-CurrentVersionCode: 400004
+CurrentVersion: 4.10.0
+CurrentVersionCode: 410004

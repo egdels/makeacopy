@@ -27,7 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          # Only this repository's own submodule (external/ncnn); NCNN's nested ones are not built.
+          submodules: true
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -35,12 +36,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      # Python für deterministische CMake-Skripte pinnen (nur Host-Interpreter, keine Py-Bindings)
-      - name: Set up Python 3.11.2
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11.2'
 
       # NDK installieren
       - name: Install Android SDK NDK 28.0.13004108
@@ -55,22 +50,13 @@ jobs:
         with:
           cmake-version: '3.31.6'
 
-      - name: Install Python deps for ONNX Runtime minimal build
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install flatbuffers
-          python3 -c "import flatbuffers; print('flatbuffers OK:', flatbuffers.__file__)"
-
       # Use the installed CMake on PATH to align with FDroid
-      - name: Export ANDROID_*, CMake and Python paths
+      - name: Export ANDROID_* and CMake paths
         run: |
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "BUILD_GENERATOR=Unix Makefiles" >> $GITHUB_ENV
-          echo "ORT_CMAKE=$(which cmake)" >> $GITHUB_ENV
-          echo "PY3_BIN=$(which python3)" >> $GITHUB_ENV
+          echo "NCNN_CMAKE=$(which cmake)" >> $GITHUB_ENV
           cmake --version
-          python3 --version
 
       - name: Set deterministic environment
         run: |
@@ -87,10 +73,10 @@ jobs:
       - name: Limit ABIs to arm64-v8a armeabi-v7a x86 x86_64
         run: echo "ABIS=arm64-v8a armeabi-v7a x86 x86_64" >> $GITHUB_ENV
 
-      - name: Build ONNX Runtime
+      - name: Build NCNN
         run: |
-          chmod +x scripts/build_onnxruntime_android.sh
-          ./scripts/build_onnxruntime_android.sh
+          chmod +x scripts/build_ncnn_android.sh
+          ./scripts/build_ncnn_android.sh
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -191,9 +177,9 @@ jobs:
           fi
           for f in "${apks[@]}"; do
             "$APKSIGNER" verify --verbose "$f"
-            # Each split has to carry the ONNX Runtime of its ABI; a missing one only shows on the phones that need it.
-            if ! unzip -l "$f" | grep -qE 'lib/[^/]+/libonnxruntime\.so$'; then
-              echo "::error::$f has no libonnxruntime.so"
+            # Each split has to carry the NCNN library of its ABI; a missing one only shows on the phones that need it.
+            if ! unzip -l "$f" | grep -qE 'lib/[^/]+/libmakeacopy_ncnn\.so$'; then
+              echo "::error::$f has no libmakeacopy_ncnn.so"
               exit 1
             fi
           done
@@ -272,9 +258,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-libs
-          path: |
-            app/src/main/jniLibs/
-            app/libs/
+          path: app/src/main/jniLibs/
 
   build-light:
     runs-on: ubuntu-latest
@@ -288,7 +272,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
+          # Only this repository's own submodule (external/ncnn); NCNN's nested ones are not built.
+          submodules: true
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -316,11 +301,11 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: native-libs
-          path: app
+          path: app/src/main/jniLibs
 
       - name: Verify native libraries
         run: |
-          find app/src/main/jniLibs app/libs -type f
+          find app/src/main/jniLibs -type f
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
