@@ -1,6 +1,6 @@
 MakeACopy 4.10.0
-* New: "OCR in the background" (Options, Scan): after cropping you go straight to Export; saving waits until the text is ready. Off by default.
-* New: OCR language can be chosen in the options.
-* Fixed: OCR review, Text tab: the cursor no longer jumps to the end; adding or removing words keeps the rest in place.
-* Fixed: dragging a crop corner near the screen edge no longer triggers Back.
-* Note: with the new option, pages from a multi-page PDF are not read automatically.
+* New: "OCR in the background" (Options, Scan): after cropping you go straight to Export; saving waits for the text. Off by default; not for pages from multi-page PDFs.
+* New: OCR language and open-source licenses in the options.
+* Changed: NCNN replaces ONNX Runtime: same results, smaller app.
+* Fixed: Text tab: the cursor no longer jumps to the end; adding or removing words keeps the rest in place.
+* Fixed: dragging a crop corner near the edge no longer triggers Back.
