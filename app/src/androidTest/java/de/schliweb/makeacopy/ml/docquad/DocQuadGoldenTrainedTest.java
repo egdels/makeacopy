@@ -13,7 +13,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * M4 Golden-Test (trained snapshot): Android ONNX Runtime liefert für das trainierte Modell die
+ * M4 Golden-Test (trained snapshot): NCNN auf Android liefert für das trainierte Modell die
  * erwarteten Snapshot-Stats.
  *
  * <p>- Input ist synthetisch und entspricht exakt `training/docquad_m3/golden_samples.py` (v1). -

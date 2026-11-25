@@ -12,7 +12,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * M4 Golden-Test: Android ONNX Runtime liefert für das Zero-Init-Modell exakt die erwarteten Stats.
+ * M4 Golden-Test: NCNN auf Android liefert für das Zero-Init-Modell exakt die erwarteten Stats.
  *
  * <p>- Input ist synthetisch und entspricht exakt `training/docquad_m3/golden_samples.py` (v1). -
  * `mask_area` ist v1-definiert als `sigmoid(mask_logits) > 0.5` (strict).

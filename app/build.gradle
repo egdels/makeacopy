@@ -497,7 +497,7 @@ tasks.register("pullEvalReports") {
 }
 
 androidComponents {
-    // Die reduced ORT Runtime (libonnxruntime.so) liegt für alle vier ABIs
+    // Die NCNN-Bibliothek (libmakeacopy_ncnn.so) liegt für alle vier ABIs
     // (arm64-v8a, armeabi-v7a, x86, x86_64) unter src/main/jniLibs/, F-Droid liefert
     // pro ABI ein eigenes APK aus. Die ABI-Auswahl bleibt der enableAbiSplits-Mechanik überlassen.
 
