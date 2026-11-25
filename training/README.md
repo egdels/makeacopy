@@ -2,7 +2,7 @@
 
 This document describes the training pipeline for **DocQuadNet-256**, the document corner detection model used in the MakeACopy Android app.
 
-Only the exported **ONNX** model is shipped with **MakeACopy**. Datasets and intermediate checkpoints are **not redistributed**.
+Only the exported model, converted from ONNX to **NCNN** format, is shipped with **MakeACopy**. Datasets and intermediate checkpoints are **not redistributed**.
 
 ---
 
@@ -417,13 +417,15 @@ python -m training.docquad_m3.export_onnx \
 - Run from repo root (so `training.*` module can be imported)
 - Outputs: `corner_heatmaps` first, then `mask_logits` (both logits)
 - Backbone type is auto-detected from checkpoint
-- Use this module for app models. `scripts/export_docquad_heatmap_onnx.py` (adds a PyTorch↔ORT parity check and golden stats) exports dynamic shape handling (`Shape`/`Gather`/`Unsqueeze`) with recent PyTorch versions — operators the app's operator-stripped ONNX Runtime build does not contain. See the operator check in [section 17](#17-ort-format-conversion-optional-size-optimized).
+- Use this module for app models. `scripts/export_docquad_heatmap_onnx.py` (adds a PyTorch↔ORT parity check and golden stats) exports dynamic shape handling (`Shape`/`Gather`/`Unsqueeze`) with recent PyTorch versions, which the fixed-size app model does not need; the app's NCNN build contains only the layers of the shipped models. See the layer check in [section 17](#17-ncnn-conversion).
 
 ---
 
 ## 11) FP16 Quantization
 
 The exported FP32 ONNX model (13.3 MB, large) can be converted to FP16 to reduce size by 50% with practically no quality loss.
+
+> **Note**: This is an offline comparison with Python `onnxruntime` only. The app's NCNN build runs in single precision only, and the NCNN conversion keeps the weights in single precision (`fp16=0`); an FP16 model is not shipped.
 
 ### Why FP16?
 
@@ -432,30 +434,14 @@ The exported FP32 ONNX model (13.3 MB, large) can be converted to FP16 to reduce
 | **Model size** | 13.3 MB | 6.7 MB |
 | **Corner error Δ** | — | ±0.03 px |
 | **Max output diff** | — | 0.24 |
-| **NNAPI/GPU support** | ✅ | ✅ (native) |
 
-The deviation is far below one pixel and has no measurable impact on document detection quality. FP16 is safe for both the Full and Light app variants.
-
-### Important: ONNX Runtime Version Alignment
-
-The Python ONNX Runtime version used for quantization **must match** the ONNX Runtime version used in the Android app (currently v1.24.1). Version mismatches can produce models that load incorrectly or produce wrong results on-device:
-
-- `onnxruntime.transformers.float16` may generate duplicate node names or value_info entries that older/newer ORT versions handle differently.
-- XNNPACK execution provider in ORT 1.24.1 does not correctly handle FP16-quantized models — the app uses NNAPI + CPU fallback instead.
-
-Check versions:
-```bash
-# Python
-python3 -c "import onnxruntime; print(onnxruntime.__version__)"
-# App (see build.gradle or libs/)
-ls app/libs/onnxruntime-*.jar
-```
+The deviation is far below one pixel and has no measurable impact on document detection quality.
 
 ### Convert and Compare
 
 ```bash
 python3 training/scripts/quantize_fp16_compare.py \
-  --model app/src/main/assets/docquad/docquadnet256_trained_opset17.onnx \
+  --model training/runs/docquad_v1_smartdoc_bg_uvtail_from_uvdoc_small/checkpoints/best.onnx \
   --dataset training/data/my_data_trainable \
   --out /tmp/docquadnet256_fp16.onnx
 ```
@@ -465,43 +451,26 @@ The script:
 2. Runs inference on all images in the dataset with both models
 3. Reports output deviations, mean corner error comparison, and inference times
 
-### Apply FP16 Model
-
-After verifying acceptable quality:
-
-```bash
-cp /tmp/docquadnet256_fp16.onnx \
-  app/src/main/assets/docquad/docquadnet256_trained_opset17.onnx
-```
-
-The filename stays the same — no code changes required in `DocQuadOrtRunner`.
-
 ---
 
 ## 12) Integration into MakeACopy
 
-The app ships the ORT-format model (see [section 17](#17-ort-format-conversion-optional-size-optimized)); the plain ONNX copy below is the intermediate step.
+The app ships the model in NCNN format (see [section 17](#17-ncnn-conversion)); the ONNX export is the intermediate step.
 
 **Preprocessing contract** — the app must feed the model exactly what training does (`DocQuadDetector`):
 
 - letterbox to 256×256 on a **black** canvas. Mid-gray padding was tried in the app and measured worse (lower heatmap peak confidence; single-pass mean corner error 3.1% → 2.4% on upright photos when switching back to black). If the padding ever changes, change it in `DocQuadHeatmapDataset` too and retrain;
 - RGB, `float32`, 0..1, NCHW;
-- ONNX Runtime **CPU execution provider with 2 intra-op threads** (`DocQuadOrtRunner`). NNAPI made inference ~12× slower on a Pixel 7a (≈620 ms vs. ≈54 ms) with bit-identical results, XNNPACK brought no gain; `DocQuadLatencyBenchmarkTest` reproduces the comparison on other devices.
+- NCNN on the **CPU with 2 threads** (`DocQuadRunner`); `DocQuadLatencyBenchmarkTest` measures the latency on a device.
 
-**Measure before swapping a model**: evaluate the candidate on the device with `CornerPipelineEvalTest -PcornerEvalModel=<file.ort>` against the shipped model on sets neither has seen ([EVALUATION.md](EVALUATION.md)). The test-time-rotation and best-of thresholds in the app depend on the model's confidence distribution and have to be re-checked for a new model.
-
-```bash
-cp training/runs/docquad_v1_smartdoc_bg_uvtail_from_uvdoc_small/checkpoints/best.onnx \
-  app/src/main/assets/docquad/docquadnet256_trained_opset17.onnx
-```
-
-**Integrity check**:
+**Measure before swapping a model**: evaluate the candidate on the device with `CornerPipelineEvalTest -PcornerEvalModel=<path/name>` (the candidate's `<name>.ncnn.param` / `<name>.ncnn.bin`) against the shipped model on sets neither has seen ([EVALUATION.md](EVALUATION.md)). The test-time-rotation and best-of thresholds in the app depend on the model's confidence distribution and have to be re-checked for a new model.
 
 ```bash
-shasum -a 256 \
-  training/runs/docquad_v1_smartdoc_bg_uvtail_from_uvdoc_small/checkpoints/best.onnx \
-  app/src/main/assets/docquad/docquadnet256_trained_opset17.onnx
+scripts/convert_models_to_ncnn.sh <PADDLE_ONNX_DIR> \
+  training/runs/docquad_v1_smartdoc_bg_uvtail_from_uvdoc_small/checkpoints/best.onnx
 ```
+
+**Integrity check**: the script rewrites `app/src/main/assets/docquad/SHA256SUMS`; the Gradle task `verifyModelAssetSha256` verifies the model files against it at build time.
 
 ---
 
@@ -524,8 +493,7 @@ shasum -a 256 \
 | `augmentation.py` | Data augmentation for own images |
 | `analyze_cord_receipts.py` | Analyze CORD receipt aspect ratios |
 | `synthesize_receipt_on_background.py` | Place receipts on DTD backgrounds with perspective |
-| `quantize_fp16_compare.py` | FP16 quantization with quality comparison |
-| `convert_onnx_to_ort.py` | Convert ONNX to ORT format with reduced op config |
+| `quantize_fp16_compare.py` | FP16 quantization with quality comparison (offline) |
 | `make_tilt_eval_set.py` | Build a tilted-document evaluation set by rotating a labelled set (see EVALUATION.md) |
 
 ---
@@ -694,67 +662,48 @@ python3 training/scripts/train_docquad_heatmap.py \
 | 9 | (Optional) V2 hard-focus | Repeat mix + train with HARD emphasis |
 | 10 | Rotation fine-tune | `train_docquad_heatmap.py --aug_rotate_deg 40 --aug_rotate_prob 0.5` |
 | 11 | Export ONNX | `export_onnx` module |
-| 12 | FP16 quantization | `quantize_fp16_compare.py` |
-| 13 | ORT conversion + operator check | `convert_onnx_to_ort.py`, diff the `.required_operators.config` against the shipped one |
+| 12 | (Optional) FP16 comparison, offline only | `quantize_fp16_compare.py` |
+| 13 | NCNN conversion + layer check | `scripts/convert_models_to_ncnn.sh`, compare the printed layers with `app/src/main/cpp/ncnn_config.cmake` |
 | 14 | Measure on device | `CornerPipelineEvalTest -PcornerEvalModel=…` vs. the shipped model |
-| 15 | Integrate into app | Copy to `app/src/main/assets/docquad/`, update golden stats, re-check app thresholds |
+| 15 | Integrate into app | Converted files in `app/src/main/assets/docquad/`, update golden stats, re-check app thresholds |
 
 ---
 
-## 17) ORT Format Conversion (Optional, Size-Optimized)
+## 17) NCNN Conversion
 
-The `.ort` format is ONNX Runtime's optimized flatbuffer format. It reduces model load time and enables `--minimal_build extended` for smaller `libonnxruntime.so` binaries.
+The app runs its models with NCNN. The ONNX export is converted with NCNN's converter pnnx (pinned version `20261020`, weights in single precision, `fp16=0`). In NCNN format each model is two files: `<name>.ncnn.param` (layer list) and `<name>.ncnn.bin` (weights).
 
 ### Prerequisites
 
-```bash
-pip install onnxruntime==1.24.1 numpy
-```
+`python3`; the script installs the pinned pnnx into a temporary virtual environment.
 
-> **Version alignment**: The Python `onnxruntime` version **must match** the version used in the Android app (currently 1.24.1). See Section 11 for details.
-
-### Convert ONNX → ORT
+### Convert ONNX → NCNN
 
 ```bash
-python3 training/scripts/convert_onnx_to_ort.py \
-  --model app/src/main/assets/docquad/docquadnet256_trained_opset17.onnx \
-  --out_dir /tmp/ort_output \
-  --optimization_level basic \
-  --show_ops \
-  --verify
+scripts/convert_models_to_ncnn.sh <PADDLE_ONNX_DIR> \
+  training/runs/docquad_v1_smartdoc_bg_uvtail_from_uvdoc_small/checkpoints/best.onnx
 ```
 
-This produces:
+The first argument is the directory with the PaddleOCR ONNX files (output of `scripts/convert_paddleocr_v5_all.sh`, default `paddle-spike/onnx`); the script always converts those models as well. With the second argument it also converts the corner model and writes:
 
 | File | Purpose |
 |------|---------|
-| `docquadnet256_trained_opset17.ort` | ORT-format model for Android |
-| `docquadnet256_trained_opset17.required_operators.config` | Reduced op config for minimal build |
-| `docquadnet256_trained_opset17.optimized.onnx` | Intermediate optimized ONNX (debugging) |
+| `app/src/main/assets/docquad/docquadnet256_trained_opset17.ncnn.param` | Layer list of the model |
+| `app/src/main/assets/docquad/docquadnet256_trained_opset17.ncnn.bin` | Weights |
+| `app/src/main/assets/docquad/SHA256SUMS` | Hashes of both files, checked by the Gradle task `verifyModelAssetSha256` |
 
-### Optimization Levels
-
-| Level | Description | Recommended for |
-|-------|-------------|-----------------|
-| `basic` | Constant folding, redundant node elimination | Production (safest) |
-| `extended` | + operator fusions (Conv+BN, etc.) | Production (if validated) |
-| `all` | + layout optimizations | Desktop only (may not work on mobile) |
-
-### Validate the ORT Model
-
-The script automatically validates that the `.ort` model loads and reports input/output shapes. Use `--verify` to additionally compare inference outputs against the original ONNX model with random input.
-
-### Operator Check (Required for App Models)
-
-The app's ONNX Runtime is built with only the operators of the shipped model. A model that needs any other operator does not load on the device, so compare the generated config with the shipped one:
+To convert a candidate without touching the assets (e.g. for `-PcornerEvalModel`), run the same pnnx call directly; it writes `<name>.ncnn.param` and `<name>.ncnn.bin` next to the ONNX file:
 
 ```bash
-diff <(grep -v '^#' /tmp/ort_output/<model>.required_operators.config) \
-     <(grep -v '^#' app/src/main/assets/docquad/docquadnet256_trained_opset17.required_operators.config) \
-  && echo "compatible with the shipped ONNX Runtime build"
+pip install pnnx==20261020
+pnnx <name>.onnx "inputshape=[1,3,256,256]" fp16=0
 ```
 
-If it differs because of shape operators (`Shape`, `Gather`, `Unsqueeze`, `Concat`, `Slice`), constant-fold them with a fixed input shape and convert again — the outputs stay identical within float tolerance:
+### Layer Check (Required for App Models)
+
+The app's NCNN is built with only the layers the shipped models use. A model that needs any other layer does not load on the device. At the end, `convert_models_to_ncnn.sh` prints the layers used by the converted models; every one of them must be listed in `app/src/main/cpp/ncnn_config.cmake` (for a candidate converted by hand, read the layer names from the first column of its `.ncnn.param` file).
+
+If additional layers appear because of shape operators in the ONNX export (`Shape`, `Gather`, `Unsqueeze`, `Concat`, `Slice`), constant-fold them with a fixed input shape and convert again — the outputs stay identical within float tolerance:
 
 ```python
 import onnx
@@ -765,34 +714,19 @@ assert ok
 onnx.save(model, "best.static.onnx")
 ```
 
-Any other difference means the ONNX Runtime libraries have to be rebuilt with the new config (next section).
+Any other additional layer has to be added to `ncnn_config.cmake`, and the native library has to be rebuilt (next section).
 
-### Build ONNX Runtime with Minimal Operators
-
-Using the generated `.required_operators.config`, build a smaller `libonnxruntime.so` via the project's build script:
+### Rebuild the Native Library
 
 ```bash
-# Use the project build script with ORT_OPS_CONFIG:
-ORT_OPS_CONFIG=/tmp/ort_output/docquadnet256_trained_opset17.required_operators.config \
-  ./scripts/build_onnxruntime_android.sh
+./scripts/build_ncnn_android.sh
 ```
 
-This passes `--minimal_build extended` and `--include_ops_by_config` to the ONNX Runtime build, stripping all operators not used by the model and significantly reducing binary size.
-
-Without `ORT_OPS_CONFIG`, the script builds a full (non-minimal) ONNX Runtime as before.
+This rebuilds `app/src/main/jniLibs/<ABI>/libmakeacopy_ncnn.so` with the layers listed in `ncnn_config.cmake`.
 
 ### Android Integration
 
-```bash
-# Copy ORT model to assets
-cp /tmp/ort_output/docquadnet256_trained_opset17.ort \
-  app/src/main/assets/docquad/
-
-# Update model path in DocQuadDetector.java:
-#   DEFAULT_MODEL_ASSET_PATH = "docquad/docquadnet256_trained_opset17.ort";
-```
-
-> **Note**: The app's `DocQuadOrtRunner` must use `SessionOptions` compatible with ORT format loading. ORT format models are loaded the same way as ONNX models via `OrtSession` — no code changes are needed beyond the asset path.
+The script writes the converted files into `app/src/main/assets/docquad/` under the shipped name, so no code change is needed: `DocQuadDetector.DEFAULT_MODEL_ASSET_PATH` names the model without the `.ncnn.param` / `.ncnn.bin` suffix, and `DocQuadRunner` reads both files straight from the APK assets.
 
 ---
 

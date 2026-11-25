@@ -2,7 +2,7 @@
 
 This guide explains how to set up a development environment for MakeACopy on **Linux** and **macOS**.
 
-> **Version alignment:** All local tool versions (JDK, NDK, CMake, Python) must match the versions defined in the GitHub Actions workflow (`.github/workflows/build-release.yml`) to ensure reproducible builds and F-Droid compatibility. The versions listed below are derived from that workflow.
+> **Version alignment:** All local tool versions (JDK, NDK, CMake) must match the versions defined in the GitHub Actions workflow (`.github/workflows/build-release.yml`) to ensure reproducible builds and F-Droid compatibility. The versions listed below are derived from that workflow.
 
 ## Prerequisites
 
@@ -12,24 +12,20 @@ This guide explains how to set up a development environment for MakeACopy on **L
 | **Android SDK** | API 36 | `compileSdk = 36`, `minSdk = 29` |
 | **Android NDK** | 28.0.13004108 | Only needed if building native libs from source (Option B) |
 | **CMake** | 3.31.6 | Only needed if building native libs from source (Option B) |
-| **Python** | 3.11.x | Only needed if building native libs from source (Option B) |
 | **Git** | any recent | With submodule support |
 
 ## 1. Clone the Repository
 
 ```bash
-git clone --recurse-submodules https://github.com/egdels/makeacopy.git
+git clone https://github.com/egdels/makeacopy.git
 cd makeacopy
-```
-
-If you already cloned without `--recurse-submodules`:
-
-```bash
-git submodule update --init --recursive
+git submodule update --init external/ncnn
 ```
 
 The project uses one Git submodule:
-- `external/onnxruntime` — ONNX Runtime v1.24.1
+- `external/ncnn` — [NCNN](https://github.com/Tencent/ncnn), pinned to tag `20261020`
+
+NCNN's own nested submodules are not needed, so `--recursive` is not required.
 
 ## 2. Install JDK 21
 
@@ -113,31 +109,9 @@ Verify:
 cmake --version   # should show 3.31.6
 ```
 
-## 5. Install Python 3.11
+## 5. Obtain Native Libraries
 
-Python is needed by CMake scripts during native library builds.
-
-### macOS
-
-```bash
-brew install python@3.11
-```
-
-### Linux (Debian/Ubuntu)
-
-```bash
-sudo apt-get install -y python3.11
-```
-
-Verify:
-
-```bash
-python3 --version   # should show 3.11.x
-```
-
-## 6. Obtain Native Libraries
-
-The app requires the ONNX Runtime native libraries. You have two options:
+The app requires one native library per ABI, `libmakeacopy_ncnn.so` (NCNN linked statically plus a small JNI bridge). You have two options:
 
 ### Option A: Extract from a Release APK (recommended for contributors not modifying native code)
 
@@ -145,17 +119,17 @@ Recommended for contributors working exclusively on Java/Kotlin code, UI, OCR fl
 
 #### From CI artifacts
 
-Every CI build on `main` uploads a **`native-libs`** artifact containing `jniLibs/` and `libs/`. Download it from the [Actions tab](https://github.com/egdels/makeacopy/actions/workflows/build-release.yml), extract it, and place the contents into your project:
+Every CI build on `main` uploads a **`native-libs`** artifact containing the contents of `jniLibs/` (one directory per ABI). Download it from the [Actions tab](https://github.com/egdels/makeacopy/actions/workflows/build-release.yml) and extract it into your project:
 
 ```bash
-# After downloading and unzipping native-libs.zip:
-cp -r app/src/main/jniLibs/ <project>/app/src/main/jniLibs/
-cp -r app/libs/              <project>/app/libs/
+# After downloading native-libs.zip:
+mkdir -p <project>/app/src/main/jniLibs
+unzip native-libs.zip -d <project>/app/src/main/jniLibs/
 ```
 
 #### From a release APK
 
-You can also extract the native libraries from any official release APK:
+You can also extract the native library from an official release APK that was built with NCNN (it contains `lib/<abi>/libmakeacopy_ncnn.so`; older releases ship ONNX Runtime libraries instead, which the current code does not use):
 
 ```bash
 # 1. Download a release APK (e.g. arm64-v8a)
@@ -169,11 +143,9 @@ mkdir -p app/src/main/jniLibs/arm64-v8a
 cp /tmp/apk_extract/lib/arm64-v8a/*.so app/src/main/jniLibs/arm64-v8a/
 ```
 
-For the ONNX Runtime JAR, download it from the same CI artifact or from [Maven Central](https://central.sonatype.com/artifact/com.microsoft.onnxruntime/onnxruntime-android) (version 1.24.1) and place it in `app/libs/`.
-
 > **Note:** Each APK contains only one ABI. For development on an emulator (x86_64) or a physical device (arm64-v8a), you only need the matching ABI. Extract from the corresponding APK.
 
-> **Important:** The `app/src/main/jniLibs/` directory is listed in `.gitignore` and must **not** be committed to the repository. The same applies to `app/libs/` (ONNX Runtime JAR). These directories contain build artifacts that are either built from source (Option B) or obtained from CI/release APKs (Option A). Committing them would violate the project's policy of not storing prebuilt binaries in the repository.
+> **Important:** The `app/src/main/jniLibs/` directory is listed in `.gitignore` and must **not** be committed to the repository. It contains build artifacts that are either built from source (Option B) or obtained from CI/release APKs (Option A). Committing them would violate the project's policy of not storing prebuilt binaries in the repository.
 
 ### Option B: Build from source (required for native changes and F-Droid)
 
@@ -185,31 +157,29 @@ If you need to modify native code or reproduce F-Droid builds, compile the nativ
 export ANDROID_HOME="$HOME/Android/Sdk"                    # adjust for your system
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.0.13004108"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
-export ORT_CMAKE="$(which cmake)"
-export PY3_BIN="$(which python3)"
-export BUILD_GENERATOR="Unix Makefiles"
+export NCNN_CMAKE="$(which cmake)"
 ```
 
-#### Build ONNX Runtime
+#### Build NCNN
 
 ```bash
-chmod +x scripts/build_onnxruntime_android.sh
-./scripts/build_onnxruntime_android.sh
+chmod +x scripts/build_ncnn_android.sh
+./scripts/build_ncnn_android.sh
 ```
 
-The script builds ONNX Runtime with the **CPU execution provider only** and strips it down to the operators of the bundled models. Notes for local builds:
+The script builds one library per ABI, `app/src/main/jniLibs/<ABI>/libmakeacopy_ncnn.so`: NCNN from the submodule `external/ncnn`, linked statically, plus the JNI bridge in `app/src/main/cpp/` (`ncnn_jni.cpp`, `CMakeLists.txt`, build configuration in `ncnn_config.cmake`). NCNN is built **CPU-only**, in single precision only (no half precision, no int8, no Vulkan/GPU), and reduced to the layers the bundled models use. Notes for local builds:
 
-- The host `python3` needs the `flatbuffers` package (`python3 -m pip install flatbuffers`); without it the operator reduction fails with `cannot import name 'parse_config'`.
-- If the script picks an older CMake from the Android SDK, point it to the required one: `ORT_CMAKE=/path/to/cmake-3.31.6/bin/cmake`.
+- It needs the NDK version pinned in `app/build.gradle` (28.0.13004108) and CMake 3.22 or newer; neither Python nor a JDK is required for this step.
+- If the script picks an unwanted CMake, point it to the required one: `NCNN_CMAKE=/path/to/cmake-3.31.6/bin/cmake`.
 - `JOBS=<n>` limits the parallel compile jobs (default: all cores).
-- `ORT_USE_XNNPACK=1` and/or `ORT_USE_NNAPI=1` build the optional execution providers in again. The app does not use them (NNAPI was ~12× slower for the corner model on a Pixel 7a, XNNPACK brought no gain); this is only useful to repeat that measurement with `DocQuadLatencyBenchmarkTest` on other hardware.
+- `VERBOSE=1` shows the full compiler output.
 
-> **Tip:** To build only for a specific ABI (faster for development):
+> **Tip:** To build only for a specific ABI (default: all four — `arm64-v8a armeabi-v7a x86 x86_64`):
 > ```bash
-> ABIS="arm64-v8a" ./scripts/build_onnxruntime_android.sh
+> ABIS="arm64-v8a" ./scripts/build_ncnn_android.sh
 > ```
 
-## 7. Build the App
+## 6. Build the App
 
 ```bash
 chmod +x gradlew
@@ -224,7 +194,7 @@ chmod +x gradlew
 ./gradlew :app:assembleRelease
 ```
 
-## 8. Run Tests
+## 7. Run Tests
 
 ### JVM Unit Tests
 
@@ -269,11 +239,12 @@ The project uses Lombok (`compileOnly` + `annotationProcessor`). Install the Lom
 makeacopy/
 ├── app/                          # Android application module
 │   ├── src/main/java/            # Main source code
+│   ├── src/main/cpp/             # JNI bridge and NCNN build configuration
 │   ├── src/test/java/            # JVM unit tests
 │   ├── src/androidTest/java/     # Instrumented tests
 │   └── src/main/jniLibs/         # Native libraries (generated)
 ├── external/
-│   └── onnxruntime/              # ONNX Runtime submodule
+│   └── ncnn/                     # NCNN submodule
 ├── scripts/                      # Build scripts for native libraries
 ├── fastlane/                     # Fastlane metadata and changelogs
 ├── docs/                         # Documentation
@@ -296,7 +267,7 @@ The app uses `BuildConfig` booleans to gate features:
 
 When adding new features, prefer **default-off** for risky or experimental changes.
 
-## 9. Code Quality
+## 8. Code Quality
 
 The project uses three code-quality plugins. Run them regularly before pushing changes.
 
@@ -363,7 +334,7 @@ This checks formatting (Spotless), runs Android Lint, compiles the code (Error P
 - **ABI splits**: Enabled by default. Use `-PenableAbiSplits=false` for a single universal APK during development.
 - **Hamcrest**: The project pins a single Hamcrest version for `androidTest`. When adding test dependencies, exclude `hamcrest-core` and `hamcrest-library` to avoid duplicate classes.
 - **Test PDFs**: Place test assets under `app/src/debug/assets` or test directories, not in `main` — test PDFs are excluded from release builds.
-- **Native builds take time**: The first ONNX Runtime build can take 30–60 minutes. Subsequent builds are faster if the build directories are cached.
+- **Native builds are quick**: The NCNN build takes about a minute per ABI.
 
 ## License
 

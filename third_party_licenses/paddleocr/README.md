@@ -2,7 +2,7 @@
 
 This directory documents the upstream source, license, and provenance of the
 PaddleOCR **PP-OCRv5 mobile** detection and recognition models that are
-shipped — only in the `paddle` build flavor — as **ORT** assets under
+shipped — only in the `paddle` build flavor — as **NCNN** assets under
 `app/src/main/assets/paddleocr/v5/`.
 
 This file replaces the previous single-recognition-model documentation
@@ -40,7 +40,7 @@ loader so that `len(dict)+1 == V` (vocab dimension of the rec model).
 
 ## Pipeline (provenance)
 
-The shipped `*.ort` files are produced from upstream Paddle inference weights
+The shipped `*.ncnn.param` / `*.ncnn.bin` files are produced from upstream Paddle inference weights
 through the following local pipeline:
 
 1. **Download** Paddle inference weights via
@@ -48,38 +48,30 @@ through the following local pipeline:
    (uses `paddlex.create_model` under the hood, plus the detection model).
 2. **Convert** Paddle → ONNX (`opset=11`) with `paddle2onnx`, see
    [`scripts/convert_paddleocr_v5_all.sh`](../../scripts/convert_paddleocr_v5_all.sh).
-3. **Reduce / convert** ONNX → ORT (basic optimization, with the operator set
-   pinned in `paddleocr_v5.required_operators.config`), see
-   [`scripts/convert_paddleocr_v5_to_ort_basic_all.py`](../../scripts/convert_paddleocr_v5_to_ort_basic_all.py)
-   and
-   [`scripts/generate_paddleocr_v5_ops_config_all.sh`](../../scripts/generate_paddleocr_v5_ops_config_all.sh).
-4. **Stage** the resulting `*.ort`, `*_dict.txt`,
-   `paddleocr_v5.required_operators.config`, `SHA256SUMS` and `SUMMARY.txt`
-   into the asset directory via
-   [`scripts/copy_paddleocr_v5_all_to_assets.sh`](../../scripts/copy_paddleocr_v5_all_to_assets.sh).
+3. **Convert** ONNX → NCNN with NCNN's converter pnnx (pinned version
+   `20261020`, weights in single precision, `fp16=0`), see
+   [`scripts/convert_models_to_ncnn.sh`](../../scripts/convert_models_to_ncnn.sh).
+   The script writes the `*.ncnn.param` / `*.ncnn.bin` files and the
+   `*_dict.txt` files into the asset directory and rewrites its `SHA256SUMS`.
 
 The intermediate `*.onnx` files are spike / conversion artifacts only and
-are **never** shipped as release assets. Two independent gates enforce this:
-
-- **Build-time:** the Gradle task `failOnPaddleOnnxAssets` fails the build
-  if any `*.onnx` is found under `app/src/main/assets/paddleocr/v5/`.
-- **Runtime:** `PaddleAssets.rejectOnnxAssetsOrThrow` refuses to start the
-  Paddle engine if a `.onnx` ever appears in the extracted asset cache.
+are **never** shipped as release assets.
 
 ## Shipped artifacts
 
 What is actually packaged into the `paddle` flavor APK under
 `assets/paddleocr/v5/`:
 
-- `PP-OCRv5_mobile_det.ort` (≈ 4.7 MB) — detection
-- `<lang>_PP-OCRv5_mobile_rec.ort` × 8 + `PP-OCRv5_mobile_rec.ort`
-  (≈ 7.6–7.9 MB each, generic multilingual ≈ 16 MB) — recognition
+- `det.ncnn.param` + `det.ncnn.bin` (≈ 4.7 MB) — detection
+- `<lang>_PP-OCRv5_mobile_rec.ncnn.param` + `.ncnn.bin` × 8 and
+  `PP-OCRv5_mobile_rec.ncnn.param` + `.ncnn.bin`
+  (≈ 7.7–8.0 MB each, generic multilingual ≈ 16 MB) — recognition; per model
+  the `.param` file is the layer list, the `.bin` file holds the weights
 - `<lang>_PP-OCRv5_mobile_rec_dict.txt` × 8 + `PP-OCRv5_mobile_rec_dict.txt`
   — per-model character dictionaries
-- `paddleocr_v5.required_operators.config` — pinned operator set used by the
-  reduced ONNX Runtime build (includes `com.microsoft;1;FusedConv,FusedMatMul,QuickGelu,SkipLayerNormalization`)
-- `SHA256SUMS` — asset-internal pin file (consumed by `verifyPaddleAssetSha256`
-  at build time and by `PaddleAssets` at runtime; pins the 9 dict files only)
+- `SHA256SUMS` — asset-internal pin file (consumed by `verifyModelAssetSha256`
+  at build time, pinning every model and dictionary file, and by `PaddleAssets`
+  at runtime for the dictionaries it copies to the cache)
 - `SUMMARY.txt` — human-readable provenance summary
 
 The `standard` (F-Droid) flavor contains **none** of these files; Paddle
@@ -90,7 +82,7 @@ The `paddle` flavor is additionally ABI-gated to `arm64-v8a`.
 
 The redistributed weights and dictionaries are © the PaddleOCR / PaddlePaddle
 authors and contributors and are redistributed here under the terms of the
-Apache License, Version 2.0. ONNX / ORT conversion does not change the
+Apache License, Version 2.0. ONNX / NCNN conversion does not change the
 upstream license.
 
 - **PaddleOCR** — https://github.com/PaddlePaddle/PaddleOCR
@@ -105,19 +97,17 @@ upstream license.
   - License: Apache License 2.0.
   - Used at build/spike time to convert Paddle inference graphs to ONNX
     (`opset=11`). Not redistributed in the APK.
-- **ONNX Runtime** — https://github.com/microsoft/onnxruntime
-  - License: MIT.
-  - Used at build/spike time to convert ONNX → ORT (basic optimization) and
-    at runtime as the inference engine. The Android runtime artifact is built
-    as a *reduced* ORT build pinned to the operator set in
-    `paddleocr_v5.required_operators.config`. The `com.microsoft` fused ops
-    (`FusedConv`, `FusedMatMul`, `QuickGelu`, `SkipLayerNormalization`) are
-    intentional members of that operator set; do not strip them.
+- **NCNN** — https://github.com/Tencent/ncnn
+  - License: BSD 3-Clause — see [`../ncnn_LICENSE.txt`](../ncnn_LICENSE.txt).
+  - Its converter pnnx is used at build/spike time to convert ONNX → NCNN;
+    NCNN itself is the inference engine at runtime. The Android library is
+    built from source from the submodule `external/ncnn` as a *reduced* build
+    (CPU only, single precision, only the layers the bundled models use; see
+    `app/src/main/cpp/ncnn_config.cmake`).
 
 The full text of the Apache 2.0 license is included verbatim in this folder
-as `LICENSE-Apache-2.0.txt`. The MIT license of ONNX Runtime is reproduced in
-the upstream project; ONNX Runtime binaries are not redistributed from this
-folder (they are pulled as a Maven/AAR dependency by Gradle).
+as `LICENSE-Apache-2.0.txt`. The BSD 3-Clause license of NCNN is included as
+`third_party_licenses/ncnn_LICENSE.txt`.
 
 ## Trademarks
 
@@ -130,27 +120,24 @@ or the PaddlePaddle / PaddleOCR project. The PaddleOCR PP-OCRv5 mobile models
 are used here solely as a third-party component under the terms of the Apache
 License 2.0; their inclusion does not imply any trademark license.
 
-Likewise, "ONNX" and "ONNX Runtime" are trademarks of their respective owners
-(the LF AI & Data Foundation / Microsoft Corporation); ONNX Runtime is used
-here under the terms of the MIT license without any trademark grant.
+Likewise, "ONNX" is a trademark of its respective owner (the LF AI & Data
+Foundation); the ONNX format is used here only as an intermediate conversion
+format, without any trademark grant.
 
 ## SHA-256 pins
 
 Cryptographic pins for the redistributed payload live in
 [`SHA256SUMS`](SHA256SUMS) in this folder. Only the **dictionary** files are
-pinned here — these are stable, byte-reproducible text artifacts and are the
-primary correctness anchor between the upstream `inference.yml` and the
-runtime CTC decoder.
+pinned in this folder's file — these are stable, byte-reproducible text
+artifacts and are the primary correctness anchor between the upstream
+`inference.yml` and the runtime CTC decoder.
 
-The reason `*.ort` files are *not* pinned:
-
-- They are produced by a local `onnxruntime` basic-optimization conversion
-  whose output is not guaranteed to be bit-for-bit reproducible across host
-  toolchains. Pinning their SHA-256 would create false build failures on
-  legitimate re-conversions.
-- The Gradle task `verifyPaddleAssetSha256` therefore checks `*.ort` only for
-  presence and non-empty size, while verifying every `*_dict.txt` against the
-  asset-internal `SHA256SUMS`.
+The model files (`*.ncnn.param`, `*.ncnn.bin`) are pinned in the
+asset-internal `app/src/main/assets/paddleocr/v5/SHA256SUMS`, which
+`scripts/convert_models_to_ncnn.sh` rewrites on every conversion. The Gradle
+task `verifyModelAssetSha256` verifies every model and dictionary file against
+that file (and likewise the corner model against
+`app/src/main/assets/docquad/SHA256SUMS`).
 
 The `*_dict.txt` hashes in this file MUST stay identical to the corresponding
 entries in `app/src/main/assets/paddleocr/v5/SHA256SUMS` (the latter is the

@@ -68,7 +68,7 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 | **Full** | all PaddleOCR language groups (Latin, English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~108 MB |
 | **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, …) | none (glyphless text layer) | ~42 MB |
 
-Both editions include the same ML-based document detection (ONNX model), image processing, and full offline functionality. Both editions use an operator-stripped ONNX Runtime build that includes only the operators required for document detection and PaddleOCR. Inference runs on the ONNX Runtime CPU execution provider in both editions; XNNPACK and NNAPI are not built in (they brought no benefit for the bundled models, see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
+Both editions include the same ML-based document detection (NCNN model, converted from the ONNX export), image processing, and full offline functionality. Both editions use a reduced NCNN build that includes only the layers required for document detection and PaddleOCR. Inference runs on the CPU with NCNN in both editions (see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
 
 OCR runs on PaddleOCR V5 in both editions. The Full edition is what is published on F-Droid and Google Play; the Light edition is available via [GitHub Releases](https://github.com/egdels/makeacopy/releases).
 
@@ -111,7 +111,7 @@ apksigner verify --print-certs MakeACopy-vX.Y.Z.apk
 ## Features
 
 - **Camera Scanning**: Capture documents using the device camera
-- **Edge Detection**: Automatic document edge detection with a custom-trained machine learning model (ONNX, Apache 2.0), snapped to the page edges
+- **Edge Detection**: Automatic document edge detection with a custom-trained machine learning model (Apache 2.0), snapped to the page edges
 - **Perspective Correction**: Adjust and crop documents with manual or automatic perspective correction
 - **Image Enhancement**: Output in color, grayscale or black and white, as scanned (Original) or cleaned up (Enhanced)
 - **OCR**: Offline text recognition with PaddleOCR
@@ -184,9 +184,9 @@ Notes:
 
 MakeACopy is F-Droid compliant. The app builds all required native components from source during CI/local builds:
 
-1. **ONNX Runtime Native Libraries**: For ML-assisted edge detection, ONNX Runtime is built from source (CPU execution provider, Java bindings) using the submodule at `external/onnxruntime` via `scripts/build_onnxruntime_android.sh`. The resulting artifacts are integrated into `app/src/main/jniLibs/<ABI>/` (e.g., `libonnxruntime.so`, `libonnxruntime4j_jni.so`) and `app/libs/` (`onnxruntime-*.jar`).
+1. **NCNN Native Library**: For ML-assisted edge detection and OCR, NCNN is built from source (CPU only) using the submodule at `external/ncnn` via `scripts/build_ncnn_android.sh`. The result is one library per ABI, `app/src/main/jniLibs/<ABI>/libmakeacopy_ncnn.so` (NCNN linked statically plus a small JNI bridge).
 
-Image processing (perspective correction, dewarping, Enhanced, black and white) is plain Java in the app; ONNX Runtime is the only native component. No pre-compiled binaries are stored in the repository.
+Image processing (perspective correction, dewarping, Enhanced, black and white) is plain Java in the app; NCNN is the only native component. No pre-compiled binaries are stored in the repository.
 
 ### GitHub Releases
 
@@ -203,15 +203,15 @@ The workflow contains two parallel jobs:
 
 **Full build** (`build`):
 - Sets up JDK 21 (Temurin) and installs Android NDK 28.0.13004108
-- Pins CMake 3.31.6 and Python 3.11.2 for deterministic native builds
-- Checks out the external/onnxruntime submodule
-- Builds ONNX Runtime for Android (CPU execution provider, Java bindings) via scripts/build_onnxruntime_android.sh — the operator config supports DocQuad corner detection and PaddleOCR V5
+- Pins CMake 3.31.6 for deterministic native builds
+- Checks out the external/ncnn submodule
+- Builds NCNN for Android (CPU only, plus the JNI bridge) via scripts/build_ncnn_android.sh — reduced to the layers used by DocQuad corner detection and PaddleOCR V5
 - Builds the Full edition Android app with Gradle
 - Verifies that no test data leaks into release APKs via `:app:verifyNoTestDataInApk`
 - Renames artifacts to `MakeACopy-vX.Y.Z-<abi>-release.apk`, plus the release AAB
 
 **Light build** (`build-light`):
-- Depends on the Full build job and downloads the native libraries (jniLibs and JARs) built from source
+- Depends on the Full build job and downloads the native libraries (jniLibs) built from source
 - Sets up JDK 21 only (no native build scripts needed)
 - Builds the Light edition: `./gradlew :app:assembleRelease -Pedition=light`
 - Produces per-ABI APKs named `MakeACopy-Light-vX.Y.Z-<abi>-release.apk`
@@ -232,11 +232,11 @@ Behavior by event type:
 How to trigger a release build:
 1. Create a tag starting with v (e.g., v1.0.0)
 2. Push the tag to GitHub
-3. The workflow will build ONNX Runtime from source, build the app, sign (if secrets provided), verify, checksum, and publish a GitHub Release with artifacts
+3. The workflow will build NCNN from source, build the app, sign (if secrets provided), verify, checksum, and publish a GitHub Release with artifacts
 
 Notes:
 - All native components are built from source to stay F-Droid compatible; no prebuilt binaries are stored in the repo.
-- Both editions use an operator-stripped ONNX Runtime build. The Full edition's ONNX Runtime is built via `scripts/build_onnxruntime_android.sh` (CPU execution provider only; `ORT_USE_XNNPACK=1` / `ORT_USE_NNAPI=1` build the optional providers in again, e.g. for benchmarking). The Light edition reuses the ONNX Runtime libraries from the Full build.
+- Both editions use the same reduced NCNN build, built via `scripts/build_ncnn_android.sh` (CPU only). The Light edition reuses the NCNN libraries from the Full build.
 - The edition is controlled via the Gradle property `edition` (default: `full`). F-Droid builds use the default and require no special configuration.
 - A look at [.github/workflows/build-release.yml](.github/workflows/build-release.yml) shows you how the build process works and how you can reproduce it in your own development environment.
 
@@ -261,9 +261,9 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 
 | Purpose | Library / Model | License |
 |---------|-----------------|--------|
-| ML Inference | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT |
-| Document Corner Detection | Custom-trained ONNX model | Apache 2.0 |
-| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, exported to ORT) | Apache 2.0 |
+| ML Inference | [NCNN](https://github.com/Tencent/ncnn) | BSD 3-Clause |
+| Document Corner Detection | Custom-trained model (NCNN, converted from the ONNX export) | Apache 2.0 |
+| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec, converted to NCNN) | Apache 2.0 |
 | PDF | own PDF writer (export), Android PdfRenderer (import) | – |
 | UI | Material Components | Apache 2.0 |
 
@@ -272,15 +272,15 @@ For full attribution details, see the [`NOTICE`](NOTICE) file.
 
 ## Submodules
 
-- external/onnxruntime — ONNX Runtime source required for ML-assisted corner detection; MIT License.
-  - Built from source via scripts/build_onnxruntime_android.sh (CPU execution provider, Java bindings).
-  - Artifacts integrated into app/src/main/jniLibs/<ABI>/ (libonnxruntime.so, libonnxruntime4j_jni.so) and app/libs/ (onnxruntime-*.jar).
+- external/ncnn — NCNN source (tag 20261020) required for ML-assisted corner detection and OCR; BSD 3-Clause License.
+  - Built from source via scripts/build_ncnn_android.sh (CPU only, reduced to the layers the bundled models use).
+  - Result integrated into app/src/main/jniLibs/<ABI>/ (libmakeacopy_ncnn.so: NCNN linked statically plus a small JNI bridge).
   - See [NOTICE](NOTICE) for attributions.
 
 ## Training data & models
 
 This project includes a machine-learning model for document corner detection.
-Only the **exported ONNX inference model** is distributed with the application.
+Only the **exported inference model** (converted to NCNN format) is distributed with the application.
 No training datasets, images, labels, or intermediate checkpoints are included
 or redistributed.
 
@@ -288,7 +288,7 @@ or redistributed.
 
 - **Live preview**: one model pass per analysed frame (throttled), smoothed with a One-Euro filter; without a confident result no outline is shown.
 - **Crop screen**: if the first pass is not confident, the image is additionally evaluated at a few fixed rotations (test-time rotation), because strongly tilted documents are the model's main weakness. Confidence is the heatmap peak probability × the agreement between the corner quad and the segmentation mask. The quad is finally snapped to image gradients at full resolution; there is no contour fallback.
-- **Inference** runs on the ONNX Runtime CPU execution provider with two threads. NNAPI and XNNPACK are not used and no longer built in: measured on a Pixel 7a, NNAPI was about 12× slower with identical results and XNNPACK brought no gain.
+- **Inference** runs on the CPU with NCNN, using two threads.
 
 Accuracy and latency of this pipeline are measured on the device with instrumented tests (`CornerPipelineEvalTest`, `DocQuadLatencyBenchmarkTest`); see [training/EVALUATION.md](training/EVALUATION.md).
 
@@ -333,7 +333,7 @@ and evaluation purposes only:
 
 ### Licensing note
 
-The exported ONNX inference model is an independently created work and is
+The exported inference model is an independently created work and is
 licensed under the **Apache License 2.0**, consistent with the rest of this
 project.
 

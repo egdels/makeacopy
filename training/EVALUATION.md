@@ -461,15 +461,15 @@ adb pull /sdcard/Android/data/de.schliweb.makeacopy/files/corner_eval_report/ .
 
 ### Evaluating a candidate model
 
-`-PcornerEvalModel=<file.ort>` additionally bundles a model into the test APK; the harness then evaluates it instead of the shipped asset, which stays untouched. The report header and `meta.model` name the model that was used.
+`-PcornerEvalModel=<path/name>` additionally bundles a model (`<name>.ncnn.param` and `<name>.ncnn.bin`) into the test APK; the harness then evaluates it instead of the shipped asset, which stays untouched. The report header and `meta.model` name the model that was used.
 
 ```bash
 ./gradlew :app:assembleDebugAndroidTest \
   -PcornerEvalDir=training/data/<eval_set> \
-  -PcornerEvalModel=training/runs/<run>/ort/<distinct_name>.ort
+  -PcornerEvalModel=training/runs/<run>/ncnn/<distinct_name>
 ```
 
-Give candidates distinct file names: the runner caches models in the app's cache directory by name. The candidate must pass the operator check in [README.md, section 17](README.md#17-ort-format-conversion-optional-size-optimized), otherwise it does not load on the device.
+The candidate is read straight from the test APK's assets. It must pass the layer check in [README.md, section 17](README.md#17-ncnn-conversion), otherwise it does not load on the device.
 
 Stages reported (each also as `+refine`, i.e. after `EdgeSnapCornerRefiner`):
 

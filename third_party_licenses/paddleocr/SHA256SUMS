@@ -9,22 +9,20 @@
 # SHA256SUMS file shipped next to the assets themselves
 # (`app/src/main/assets/paddleocr/v5/SHA256SUMS`). They MUST stay identical
 # for the *_dict.txt entries; the asset-internal file is the one consumed by
-# the Gradle build (`verifyPaddleAssetSha256`) and at runtime by
+# the Gradle build (`verifyModelAssetSha256`) and at runtime by
 # `de.schliweb.makeacopy.utils.ocr.paddle.PaddleAssets`.
 #
 # Notes
 # - Recognition models are now multi-model (8 language-group recognizers +
-#   1 detection model). The previous single-rec layout (`rec.ort` /
+#   1 detection model). The previous single-rec layout (one recognition model /
 #   `rec_dict.txt` / fixed V=438) has been removed and is intentionally NOT
 #   pinned here anymore.
-# - `*.ort` files are intentionally NOT pinned: they are produced by a local
-#   reduced-ORT conversion (paddle2onnx → onnxruntime basic-opt) which is not
-#   bit-for-bit reproducible across host toolchains. The build verifies their
-#   presence and non-empty size only; the dict files are the cryptographic
-#   anchor of the redistributed payload.
+# - The model files (`*.ncnn.param` / `*.ncnn.bin`, converted with NCNN's pnnx
+#   by `scripts/convert_models_to_ncnn.sh`) are not listed in this file. They
+#   are pinned in the asset-internal SHA256SUMS, against which the build
+#   verifies every model and dictionary file.
 # - `*.onnx` files are intermediate spike/conversion artifacts and are NEVER
-#   shipped as release assets. The Gradle task `failOnPaddleOnnxAssets` and
-#   the runtime gate `PaddleAssets.rejectOnnxAssetsOrThrow` enforce this.
+#   shipped as release assets.
 #
 # Format: `<sha256>  <filename>` — same convention as `sha256sum -c`.
 
