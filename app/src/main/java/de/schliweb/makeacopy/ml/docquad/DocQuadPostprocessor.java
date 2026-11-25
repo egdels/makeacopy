@@ -39,21 +39,21 @@ public class DocQuadPostprocessor {
     REFINE_5X5_QUADRATIC,
   }
 
-  public static Result postprocess(DocQuadOrtRunner.Outputs out) {
+  public static Result postprocess(DocQuadRunner.Outputs out) {
     if (out == null) {
       throw new IllegalArgumentException("out must not be null");
     }
     return postprocess(out.cornerHeatmaps(), out.maskLogits(), null, PeakMode.ARGMAX);
   }
 
-  public static Result postprocess(DocQuadOrtRunner.Outputs out, PeakMode peakMode) {
+  public static Result postprocess(DocQuadRunner.Outputs out, PeakMode peakMode) {
     if (out == null) {
       throw new IllegalArgumentException("out must not be null");
     }
     return postprocess(out.cornerHeatmaps(), out.maskLogits(), null, peakMode);
   }
 
-  public static Result postprocess(DocQuadOrtRunner.Outputs out, DocQuadLetterbox lb) {
+  public static Result postprocess(DocQuadRunner.Outputs out, DocQuadLetterbox lb) {
     if (out == null) {
       throw new IllegalArgumentException("out must not be null");
     }
@@ -61,7 +61,7 @@ public class DocQuadPostprocessor {
   }
 
   public static Result postprocess(
-      DocQuadOrtRunner.Outputs out, DocQuadLetterbox lb, PeakMode peakMode) {
+      DocQuadRunner.Outputs out, DocQuadLetterbox lb, PeakMode peakMode) {
     if (out == null) {
       throw new IllegalArgumentException("out must not be null");
     }

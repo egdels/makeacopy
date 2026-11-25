@@ -115,7 +115,7 @@ import java.util.concurrent.TimeUnit;
 @dagger.hilt.android.AndroidEntryPoint
 public class CameraFragment extends Fragment implements SensorEventListener {
 
-  @javax.inject.Inject de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner docQuadOrtRunner;
+  @javax.inject.Inject de.schliweb.makeacopy.ml.docquad.DocQuadRunner docQuadRunner;
 
   private static final String TAG = "CameraFragment";
   private static final String PREF_EXPOSURE_INDEX = "exposure_compensation_index";
@@ -295,7 +295,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     // the navigation graph and bindings are fully ready.
     consumePendingShareIfAny();
 
-    // DocQuad runner is now injected via Hilt (docQuadOrtRunner field).
+    // DocQuad runner is now injected via Hilt (docQuadRunner field).
     // No proactive loading needed — the singleton is created eagerly by the DI container.
 
     final TextView textView = binding.textCamera;
@@ -3322,7 +3322,7 @@ public class CameraFragment extends Fragment implements SensorEventListener {
     if (liveDetector == null || !cachedLiveCornerDetectorFlag) {
       liveDetector =
           de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forLive(
-              requireContext(), docQuadOrtRunner);
+              requireContext(), docQuadRunner);
       cachedLiveCornerDetector = liveDetector;
       cachedLiveCornerDetectorFlag = true;
     }

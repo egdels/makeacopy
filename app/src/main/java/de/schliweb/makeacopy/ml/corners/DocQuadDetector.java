@@ -19,8 +19,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import de.schliweb.makeacopy.BuildConfig;
 import de.schliweb.makeacopy.ml.docquad.DocQuadLetterbox;
-import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
 import de.schliweb.makeacopy.ml.docquad.DocQuadPostprocessor;
+import de.schliweb.makeacopy.ml.docquad.DocQuadRunner;
 
 /** Produktiver Adapter für DocQuadNet-256. */
 public final class DocQuadDetector implements CornerDetector {
@@ -32,12 +32,12 @@ public final class DocQuadDetector implements CornerDetector {
   private long lastLogMs = 0L;
 
   // Release-Asset (F-Droid kompatibel, kein Download)
-  public static final String DEFAULT_MODEL_ASSET_PATH = "docquad/docquadnet256_trained_opset17.ort";
+  public static final String DEFAULT_MODEL_ASSET_PATH = "docquad/docquadnet256_trained_opset17";
 
-  private final DocQuadOrtRunner runner;
+  private final DocQuadRunner runner;
 
   /** Creates a detector with the given ORT runner. */
-  public DocQuadDetector(DocQuadOrtRunner runner) {
+  public DocQuadDetector(DocQuadRunner runner) {
     Log.d(TAG, "DocQuadDetector created");
     this.runner = runner;
   }
@@ -57,10 +57,10 @@ public final class DocQuadDetector implements CornerDetector {
       int srcH = src.getHeight();
       if (srcW <= 0 || srcH <= 0) return null;
       DocQuadLetterbox lb =
-          DocQuadLetterbox.create(srcW, srcH, DocQuadOrtRunner.IN_W, DocQuadOrtRunner.IN_H);
+          DocQuadLetterbox.create(srcW, srcH, DocQuadRunner.IN_W, DocQuadRunner.IN_H);
       in256 = renderLetterbox256(src, lb);
       float[] input = bitmapToNchwFloat01(in256);
-      DocQuadOrtRunner.Outputs outputs = runner.run(input);
+      DocQuadRunner.Outputs outputs = runner.run(input);
       return DocQuadPostprocessor.postprocess(outputs, lb, PEAK_MODE);
     } catch (Throwable t) {
       return null;
@@ -137,7 +137,7 @@ public final class DocQuadDetector implements CornerDetector {
   private static float[] bitmapToNchwFloat01(Bitmap bmp) {
     int w = bmp.getWidth();
     int h = bmp.getHeight();
-    if (w != DocQuadOrtRunner.IN_W || h != DocQuadOrtRunner.IN_H) {
+    if (w != DocQuadRunner.IN_W || h != DocQuadRunner.IN_H) {
       throw new IllegalArgumentException("bitmap must be 256x256");
     }
     int hw = h * w;
@@ -167,7 +167,7 @@ public final class DocQuadDetector implements CornerDetector {
 
   private static Bitmap renderLetterbox256(Bitmap src, DocQuadLetterbox lb) {
     Bitmap out =
-        Bitmap.createBitmap(DocQuadOrtRunner.IN_W, DocQuadOrtRunner.IN_H, Bitmap.Config.ARGB_8888);
+        Bitmap.createBitmap(DocQuadRunner.IN_W, DocQuadRunner.IN_H, Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(out);
     canvas.drawColor(LETTERBOX_PAD_COLOR);
 

@@ -485,8 +485,8 @@ public class TrapezoidSelectionView extends View {
   private int magnifierSizePx = 0;
   private boolean isDraggingWithMagnifier = false;
 
-  // Injected DocQuadOrtRunner (set by hosting Fragment via setter)
-  @Setter @Nullable private de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner docQuadOrtRunner;
+  // Injected DocQuadRunner (set by hosting Fragment via setter)
+  @Setter @Nullable private de.schliweb.makeacopy.ml.docquad.DocQuadRunner docQuadRunner;
 
   // === Debug/diagnostics ===
   @Setter private boolean debugLogsEnabled = false; // enable verbose logs
@@ -1358,8 +1358,7 @@ public class TrapezoidSelectionView extends View {
   private de.schliweb.makeacopy.utils.geom.Point[] detectDocQuadCorners(
       Bitmap work, float scaleToOrig) {
     DetectionResult r =
-        de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(
-                getContext(), docQuadOrtRunner)
+        de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(getContext(), docQuadRunner)
             .detect(work, getContext());
     if (r == null || !r.success) return null;
     de.schliweb.makeacopy.utils.geom.Point[] corners = pointsFromDetectionResult(r);

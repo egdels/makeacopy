@@ -33,8 +33,8 @@ public class DocQuadPostprocessTrainedTest extends DocQuadGoldenTestBase {
 
     float[] input = makeGoldenInputV1Nchw();
 
-    DocQuadOrtRunner.Outputs out;
-    try (DocQuadOrtRunner runner = new DocQuadOrtRunner(ctx, modelAsset)) {
+    DocQuadRunner.Outputs out;
+    try (DocQuadRunner runner = new DocQuadRunner(ctx, modelAsset)) {
       out = runner.run(input);
     }
     assertNotNull(out);

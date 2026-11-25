@@ -27,7 +27,7 @@ final class TrainedTestConfig {
   }
 
   /**
-   * Liefert den Asset-Namen für das trainierte ONNX.
+   * Liefert den Asset-Namen des trainierten Modells (ohne {@code .ncnn.param} / {@code .ncnn.bin}).
    *
    * <p>Kanonischer Name ist ohne Versionssuffix.
    */
@@ -35,7 +35,10 @@ final class TrainedTestConfig {
     // Das trainierte Modell ist ein Runtime-Asset (App-APK), nicht ein Test-Asset.
     // Deshalb muss hier i.d.R. der *targetContext* (nicht der instrumentation context)
     // verwendet werden.
-    return requireExistingAsset(ctx, "docquad/docquadnet256_trained_opset17.ort");
+    String base = "docquad/docquadnet256_trained_opset17";
+    requireExistingAsset(ctx, base + ".ncnn.param");
+    requireExistingAsset(ctx, base + ".ncnn.bin");
+    return base;
   }
 
   /**

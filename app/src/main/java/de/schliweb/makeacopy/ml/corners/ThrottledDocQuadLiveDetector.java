@@ -16,7 +16,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 import de.schliweb.makeacopy.BuildConfig;
-import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
+import de.schliweb.makeacopy.ml.docquad.DocQuadRunner;
 
 /**
  * Live-DocQuad Detector mit: - ORT/Model init genau einmal - deterministischem Time-Throttle
@@ -60,7 +60,7 @@ final class ThrottledDocQuadLiveDetector implements CornerDetector {
   private volatile long lastSmoothLogMs = 0L;
 
   /** Production ctor with a pre-loaded ORT runner (injected via DI). */
-  ThrottledDocQuadLiveDetector(@NonNull Context appCtx, @NonNull DocQuadOrtRunner injectedRunner) {
+  ThrottledDocQuadLiveDetector(@NonNull Context appCtx, @NonNull DocQuadRunner injectedRunner) {
     this(appCtx, injectedRunner, null);
   }
 
@@ -70,7 +70,7 @@ final class ThrottledDocQuadLiveDetector implements CornerDetector {
    */
   ThrottledDocQuadLiveDetector(
       @NonNull Context appCtx,
-      @NonNull DocQuadOrtRunner injectedRunner,
+      @NonNull DocQuadRunner injectedRunner,
       OneEuroCornerSmoother smoother) {
     this.appCtx = appCtx;
     this.timeSource = SystemClock::uptimeMillis;

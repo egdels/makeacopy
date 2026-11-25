@@ -6,45 +6,23 @@ includes third-party components under their respective licenses as noted below.
 1) OpenCV – no longer used (image processing is plain Java in
     app/src/main/java/de/schliweb/makeacopy/utils/image/raster/)
 
-2) ONNX Runtime (submodule, required runtime)
-    - Project: https://github.com/microsoft/onnxruntime
-    - Path: external/onnxruntime (Git submodule)
-    - License: MIT License
-    - Notes: Built from source for Android (CPU execution provider, Java bindings) via
-      scripts/build_onnxruntime_android.sh. The resulting native libraries and
-      Java JAR are integrated into app/jniLibs and app/libs respectively as part
-      of the required ONNX Runtime support. The MIT license text is included at
-      third_party_licenses/onnxruntime_LICENSE.txt.
-    - Pinned build files (external/onnxruntime_pinned/):
-      Three Gradle build files from the upstream ONNX Runtime repository
-      (java/build-android.gradle, java/settings-android.gradle,
-      java/gradle/wrapper/gradle-wrapper.properties) have been copied and
-      modified to enable building the Android AAR with JDK 21 and to keep
-      versions aligned with the Make a Copy host project. The following
-      changes were made compared to the upstream originals:
-        * build-android.gradle:
-          – Android Gradle Plugin updated from 7.4.2 to 8.12.0 (kept in sync
-            with makeacopy gradle/libs.versions.toml).
-          – compileSdkVersion raised from 34 to 36 (kept in sync with
-            makeacopy app/build.gradle).
-          – Nested `android { lintOptions }` block flattened to top-level
-            `lintOptions` inside the `android` block.
-          – Removed upstream code comments (QNN format notes, version-code
-            format documentation, artifact-id comment, publish-repo comment,
-            AAR header-packaging comment).
-          – Reformatted indentation from tabs to spaces for consistency.
-          – `task.doLast` closure in `whenTaskAdded` wrapped correctly to
-            reference `task.archivePath`.
-          – Added sync-marker comments referencing makeacopy configuration.
-        * settings-android.gradle:
-          – Added `pluginManagement` block with google(), mavenCentral(), and
-            gradlePluginPortal() repositories (required by AGP 8.x).
-          – Added sync-marker comment referencing makeacopy AGP version.
-        * gradle-wrapper.properties:
-          – Gradle distribution updated from 8.7 to 8.13 (kept in sync with
-            makeacopy gradle/wrapper/gradle-wrapper.properties).
-          – SHA-256 checksum updated accordingly.
-          – Added sync-marker comment referencing makeacopy wrapper.
+2) NCNN (submodule, required runtime)
+    - Project: https://github.com/Tencent/ncnn
+    - Path: external/ncnn (Git submodule, tag 20261020)
+    - Copyright (C) 2017 Tencent. All rights reserved.
+    - License: BSD 3-Clause License. NCNN contains math routines under the
+      zlib License (neon_mathfun.h, Copyright (C) 2011 Julien Pommier;
+      sse_mathfun.h, Copyright (C) 2007 Julien Pommier; avx_mathfun.h,
+      Copyright (C) 2012 Giovanni Garberoglio, Fondazione Bruno Kessler and
+      University of Trento), which are compiled into the library.
+    - Notes: Built from source for Android via scripts/build_ncnn_android.sh:
+      CPU only, single precision only, reduced to the layers of the bundled
+      models (app/src/main/cpp/ncnn_config.cmake), and linked statically into
+      app/src/main/jniLibs/<ABI>/libmakeacopy_ncnn.so together with the JNI
+      bridge app/src/main/cpp/ncnn_jni.cpp. The NCNN sources are not modified.
+      The full license text is included at third_party_licenses/ncnn_LICENSE.txt.
+      The library also contains the LLVM OpenMP runtime and libc++ of the
+      Android NDK (Apache License 2.0 with LLVM Exceptions).
 
 3) Noto Sans CJK / Noto Sans JP – no longer bundled (the PDF text layer uses a glyphless
     font built in code, see app/src/main/java/de/schliweb/makeacopy/utils/export/GlyphlessFont.java)
@@ -127,35 +105,35 @@ The following datasets were used:
     - Notes: Only included in the experimental `paddle` product flavor (not in
       the default `standard` / F-Droid flavor). The shipped artifacts under
       app/src/main/assets/paddleocr/v5/ are:
-        * 1× detection model: PP-OCRv5_mobile_det.ort
+        * 1× detection model: det.ncnn.param / det.ncnn.bin
+          (PP-OCRv5_mobile_det)
         * 9× recognition models: en_, latin_, eslav_, cyrillic_, arabic_,
-          devanagari_, th_, el_, and the generic PP-OCRv5_mobile_rec.ort
+          devanagari_, th_, el_, and the generic PP-OCRv5_mobile_rec
+          (each as .ncnn.param / .ncnn.bin)
         * Per-model character dictionaries (*_dict.txt)
-        * paddleocr_v5.required_operators.config (reduced ORT op-list)
         * SHA256SUMS, SUMMARY.txt
       The original PaddleOCR PP-OCRv5 mobile checkpoints were obtained via
-      PaddleX, converted to ONNX with paddle2onnx, and finally to ORT format
-      (basic optimization) for the reduced ONNX Runtime build. Conversion
-      scripts live under scripts/ (download_paddleocr_v5_*, convert_paddleocr_v5_*,
-      generate_paddleocr_v5_ops_config_*, copy_paddleocr_v5_*). Intermediate
-      *.onnx artifacts are never shipped (enforced by the Gradle task
-      `failOnPaddleOnnxAssets` and the runtime gate
-      `PaddleAssets.rejectOnnxAssetsOrThrow`). The Apache 2.0 license text
+      PaddleX, converted to ONNX with paddle2onnx, and finally to the NCNN
+      format with NCNN's converter pnnx, weights in single precision.
+      Conversion scripts live under scripts/ (download_paddleocr_v5_*,
+      convert_paddleocr_v5_*, convert_models_to_ncnn.sh). Intermediate
+      *.onnx artifacts are not shipped. The Apache 2.0 license text
       and a detailed provenance README are included at
       third_party_licenses/paddleocr/ (LICENSE-Apache-2.0.txt, README.md,
       SHA256SUMS).
 
 12) DocQuadNet-256 (corner model, trained weights)
-    - File: app/src/main/assets/docquad/docquadnet256_trained_opset17.ort
-      SHA-256 f0f2f52d7d79ff02d346c8f9d0c9e903407366aeea1747cdcff160c401e3e72a
+    - Files: app/src/main/assets/docquad/docquadnet256_trained_opset17.ncnn.param
+      and .ncnn.bin; SHA-256 in app/src/main/assets/docquad/SHA256SUMS
     - Copyright (C) 2026 Christian Kierdorf
     - License: Apache License, Version 2.0 (as this project, see LICENSE)
     - Notes: MobileNetV3-Large with a small feature pyramid, 256x256 input,
       four corner heatmaps and a page mask. Trained from scratch (no
       pretrained backbone weights) with the code under training/, on the
-      datasets listed in 10, and exported as the ONNX Runtime model of the
-      training run docquad_v6_rot40_from_v2_receipts, epoch 35. The file
-      contains the trained weights; it is an independently created work.
+      datasets listed in 10. The files are the ONNX export of the training
+      run docquad_v6_rot40_from_v2_receipts, epoch 35, converted to the NCNN
+      format with weights in single precision. They contain the trained
+      weights; the model is an independently created work.
 
 For full license texts, see the corresponding upstream repositories and their
 LICENSE files. The Apache License 2.0 for this project is provided in LICENSE.

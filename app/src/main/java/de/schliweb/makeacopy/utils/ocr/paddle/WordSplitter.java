@@ -186,7 +186,7 @@ final class WordSplitter {
    * shifts every boundary as soon as the recogniser drops a character).
    */
   static List<RecognizedWord> split(
-      Quad q, Bitmap crop, String text, float conf100, PaddleRecOrtRunner.RecOutput out) {
+      Quad q, Bitmap crop, String text, float conf100, PaddleRecRunner.RecOutput out) {
     if (crop == null || text == null) return null;
     String trimmed = text.trim();
     if (trimmed.length() < 2) return null;
@@ -286,7 +286,7 @@ final class WordSplitter {
    * width gives the fraction of the crop width.
    */
   private static double[] charPositions(
-      String text, String trimmed, PaddleRecOrtRunner.RecOutput out, int cropW) {
+      String text, String trimmed, PaddleRecRunner.RecOutput out, int cropW) {
     if (out == null || out.charFrames() == null) return null;
     int[] frames = out.charFrames();
     if (frames.length != text.length()

@@ -11,18 +11,18 @@ package de.schliweb.makeacopy.ml.docquad;
 
 import android.content.Context;
 
-/** Test-only access to {@link DocQuadOrtRunner} construction for candidate models. */
+/** Test-only access to {@link DocQuadRunner} construction for candidate models. */
 public final class DocQuadTestRunners {
 
   private DocQuadTestRunners() {}
 
   /**
    * Loads a model from the assets of {@code assetCtx} (e.g. the instrumentation context, so a
-   * candidate model can be evaluated without replacing the app's shipped asset). The model is
-   * cached in the app's cache dir under its file name, so candidates need distinct names.
+   * candidate model can be evaluated without replacing the app's shipped asset).
+   *
+   * @param assetPath asset path without the {@code .ncnn.param} / {@code .ncnn.bin} suffix
    */
-  public static DocQuadOrtRunner fromAssets(Context assetCtx, Context appCtx, String assetPath)
-      throws Exception {
-    return new DocQuadOrtRunner(assetCtx, assetPath, appCtx.getCacheDir());
+  public static DocQuadRunner fromAssets(Context assetCtx, String assetPath) throws Exception {
+    return new DocQuadRunner(assetCtx, assetPath);
   }
 }

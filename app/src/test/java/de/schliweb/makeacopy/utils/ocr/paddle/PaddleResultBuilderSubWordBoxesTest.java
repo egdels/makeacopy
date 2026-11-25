@@ -46,17 +46,17 @@ public class PaddleResultBuilderSubWordBoxesTest {
     }
 
     /** Stub-Recognizer mit FIFO-Outputs (inkl. Sub-Word-Geometrie). */
-    private static final class StubRec extends PaddleRecOrtRunner {
-        private final List<PaddleRecOrtRunner.RecOutput> outs;
+    private static final class StubRec extends PaddleRecRunner {
+        private final List<PaddleRecRunner.RecOutput> outs;
         int callCount = 0;
 
-        StubRec(List<PaddleRecOrtRunner.RecOutput> outs) {
+        StubRec(List<PaddleRecRunner.RecOutput> outs) {
             super();
             this.outs = outs;
         }
 
         @Override
-        PaddleRecOrtRunner.RecOutput recognize(Bitmap quadCrop) {
+        PaddleRecRunner.RecOutput recognize(Bitmap quadCrop) {
             return outs.get(callCount++);
         }
     }
@@ -107,8 +107,8 @@ public class PaddleResultBuilderSubWordBoxesTest {
                 new CtcDecoder.RecognizedToken("foo", 0.90f, 0, 4),
                 new CtcDecoder.RecognizedToken("bar", 0.80f, 7, 11),
                 new CtcDecoder.RecognizedToken("baz", 0.70f, 14, 19));
-        PaddleRecOrtRunner.RecOutput out =
-                new PaddleRecOrtRunner.RecOutput(
+        PaddleRecRunner.RecOutput out =
+                new PaddleRecRunner.RecOutput(
                         "foo bar baz", 0.80f, tokens, T, scaledW, paddedW, scaledW);
 
         StubRec rec = new StubRec(Collections.singletonList(out));
@@ -157,8 +157,8 @@ public class PaddleResultBuilderSubWordBoxesTest {
         Quad q = horizontalQuad(0, 0, 100, 20);
         List<CtcDecoder.RecognizedToken> tokens = Collections.singletonList(
                 new CtcDecoder.RecognizedToken("hello", 0.5f, 2, 8));
-        PaddleRecOrtRunner.RecOutput out =
-                new PaddleRecOrtRunner.RecOutput("hello", 0.5f, tokens, 12, 100, 100, 100);
+        PaddleRecRunner.RecOutput out =
+                new PaddleRecRunner.RecOutput("hello", 0.5f, tokens, 12, 100, 100, 100);
 
         StubRec rec = new StubRec(Collections.singletonList(out));
         OCRHelper.OcrResultWords result =
@@ -189,7 +189,7 @@ public class PaddleResultBuilderSubWordBoxesTest {
     public void build_emptyTokensWithText_fallsBackToFullText() throws Exception {
         Quad q = horizontalQuad(0, 0, 50, 10);
         // Keine Tokens, aber Text: legacy 2-arg Konstruktor.
-        PaddleRecOrtRunner.RecOutput out = new PaddleRecOrtRunner.RecOutput("legacy", 0.6f);
+        PaddleRecRunner.RecOutput out = new PaddleRecRunner.RecOutput("legacy", 0.6f);
         StubRec rec = new StubRec(Collections.singletonList(out));
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(null, Collections.singletonList(q), rec, PASSTHROUGH);

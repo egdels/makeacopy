@@ -49,27 +49,27 @@ public class PaddleResultBuilderVerticalTest {
     }
 
     /** Recognizer, der pro Quad einen RecOutput liefert, indiziert über {@code Quad.score}. */
-    private static final class IdRec extends PaddleRecOrtRunner {
-        private final Map<Double, PaddleRecOrtRunner.RecOutput> byId;
+    private static final class IdRec extends PaddleRecRunner {
+        private final Map<Double, PaddleRecRunner.RecOutput> byId;
         final List<Double> callOrder = new ArrayList<>();
         // Letztes Quad, das zum Crop reichte – über Cropper-Hook gesetzt.
         Quad lastQuad;
 
-        IdRec(Map<Double, PaddleRecOrtRunner.RecOutput> byId) {
+        IdRec(Map<Double, PaddleRecRunner.RecOutput> byId) {
             super();
             this.byId = byId;
         }
 
         @Override
-        PaddleRecOrtRunner.RecOutput recognize(Bitmap quadCrop) {
+        PaddleRecRunner.RecOutput recognize(Bitmap quadCrop) {
             double id = lastQuad.score;
             callOrder.add(id);
             return byId.get(id);
         }
     }
 
-    private static PaddleRecOrtRunner.RecOutput textOnly(String text) {
-        return new PaddleRecOrtRunner.RecOutput(text, 0.8f);
+    private static PaddleRecRunner.RecOutput textOnly(String text) {
+        return new PaddleRecRunner.RecOutput(text, 0.8f);
     }
 
     /** Führt build(...) seriell (full=null) mit einem ID-basierten Fake-Recognizer aus. */
@@ -231,7 +231,7 @@ public class PaddleResultBuilderVerticalTest {
         Quad middle = rectQuad(200, 0, 30, 400, 2.0);
         Quad left = rectQuad(100, 0, 30, 400, 3.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("Satz 1"));
         byId.put(2.0, textOnly("Satz 2"));
         byId.put(3.0, textOnly("Satz 3"));
@@ -254,7 +254,7 @@ public class PaddleResultBuilderVerticalTest {
         Quad rightBottom = rectQuad(300, 220, 30, 180, 2.0);
         Quad leftFull = rectQuad(100, 0, 30, 400, 3.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("すると、"));
         byId.put(2.0, textOnly("1億円を"));
         byId.put(3.0, textOnly("受け取った"));
@@ -271,7 +271,7 @@ public class PaddleResultBuilderVerticalTest {
         Quad top = rectQuad(300, 0, 30, 180, 1.0);
         Quad bottom = rectQuad(300, 220, 30, 180, 2.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("oben"));
         byId.put(2.0, textOnly("unten"));
 
@@ -289,7 +289,7 @@ public class PaddleResultBuilderVerticalTest {
         Quad a = rectQuad(300, 0, 30, 180, 1.0);
         Quad b = rectQuad(305, 220, 30, 180, 2.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("A"));
         byId.put(2.0, textOnly("B"));
 
@@ -307,7 +307,7 @@ public class PaddleResultBuilderVerticalTest {
         Quad line1Right = rectQuad(110, 10, 80, 20, 2.0);
         Quad line2 = rectQuad(10, 60, 180, 20, 3.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("Hello"));
         byId.put(2.0, textOnly("World"));
         byId.put(3.0, textOnly("again"));

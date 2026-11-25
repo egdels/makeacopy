@@ -216,7 +216,7 @@ final class LineSplitter {
     double w = Math.max(1.0, q.maxX() - q.minX());
     double h = Math.max(1.0, q.maxY() - q.minY());
     double aspect = w / h;
-    double scaledW = w * PaddleRecOrtRunner.REC_INPUT_HEIGHT / h;
+    double scaledW = w * PaddleRecRunner.REC_INPUT_HEIGHT / h;
     if (aspect < WIDE_QUAD_MIN_ASPECT || scaledW <= WIDE_QUAD_TARGET_SCALED_WIDTH) {
       return null;
     }

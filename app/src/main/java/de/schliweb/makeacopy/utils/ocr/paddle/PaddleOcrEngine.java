@@ -13,6 +13,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.util.Log;
 import androidx.annotation.VisibleForTesting;
+import de.schliweb.makeacopy.ml.ncnn.NcnnNet;
 import de.schliweb.makeacopy.utils.ocr.OCRHelper;
 import de.schliweb.makeacopy.utils.ocr.OcrEngine;
 import java.util.List;
@@ -46,17 +47,17 @@ public final class PaddleOcrEngine implements OcrEngine {
    * implemented to create custom or test-specific runner suppliers.
    */
   interface RunnerSupplier {
-    PaddleDetOrtRunner det() throws Exception;
+    PaddleDetRunner det() throws Exception;
 
     /**
-     * Provides a PaddleRecOrtRunner instance for the specified recognition model.
+     * Provides a PaddleRecRunner instance for the specified recognition model.
      *
      * @param modelKey the key identifying the recognition model to be used.
-     * @return an instance of PaddleRecOrtRunner for the specified model.
+     * @return an instance of PaddleRecRunner for the specified model.
      * @throws Exception if there is an error during the runner initialization or model loading
      *     process.
      */
-    PaddleRecOrtRunner rec(String modelKey) throws Exception;
+    PaddleRecRunner rec(String modelKey) throws Exception;
 
     /** Whether the APK carries the recognition model {@code modelKey}. */
     default boolean hasRec(String modelKey) {
@@ -91,13 +92,13 @@ public final class PaddleOcrEngine implements OcrEngine {
     final Context appCtx = context.getApplicationContext();
     return new RunnerSupplier() {
       @Override
-      public PaddleDetOrtRunner det() throws Exception {
-        return PaddleDetOrtRunner.getInstanceAsync(appCtx).get(60, TimeUnit.SECONDS);
+      public PaddleDetRunner det() throws Exception {
+        return PaddleDetRunner.getInstanceAsync(appCtx).get(60, TimeUnit.SECONDS);
       }
 
       @Override
-      public PaddleRecOrtRunner rec(String modelKey) throws Exception {
-        return PaddleRecOrtRunner.getInstanceAsync(appCtx, modelKey).get(60, TimeUnit.SECONDS);
+      public PaddleRecRunner rec(String modelKey) throws Exception {
+        return PaddleRecRunner.getInstanceAsync(appCtx, modelKey).get(60, TimeUnit.SECONDS);
       }
 
       @Override
@@ -116,7 +117,8 @@ public final class PaddleOcrEngine implements OcrEngine {
   public boolean isAvailable(Context ctx) {
     try {
       // Verfügbar, wenn Detection vorhanden und mindestens ein Recognition-Modell.
-      if (!PaddleAssets.getDetModelFile(ctx).exists() && !assetExists(ctx, PaddleAssets.DET_NAME)) {
+      if (!assetExists(ctx, PaddleAssets.DET_BASE + NcnnNet.PARAM_SUFFIX)
+          || !assetExists(ctx, PaddleAssets.DET_BASE + NcnnNet.BIN_SUFFIX)) {
         return false;
       }
       return PaddleAssets.anyRecModelPresent(ctx);
@@ -175,8 +177,8 @@ public final class PaddleOcrEngine implements OcrEngine {
       Log.i(TAG, "no rec model for lang=" + language + " → empty result");
       return new OCRHelper.OcrResultWords("", null, new java.util.ArrayList<>());
     }
-    PaddleDetOrtRunner det = supplier.det();
-    PaddleRecOrtRunner rec = supplier.rec(modelKey);
+    PaddleDetRunner det = supplier.det();
+    PaddleRecRunner rec = supplier.rec(modelKey);
     long tInit = System.nanoTime();
 
     if (PaddleResultBuilder.ENABLE_DEBUG_DUMPS) {
@@ -188,7 +190,7 @@ public final class PaddleOcrEngine implements OcrEngine {
     // Second pass for low-confidence lines with the base model, whose Latin recognition is
     // stronger than the script-specific mobile models' on digits, capitals and wide gaps.
     // Loaded lazily, only when a line actually falls below the threshold.
-    java.util.concurrent.Callable<PaddleRecOrtRunner> fallbackRec =
+    java.util.concurrent.Callable<PaddleRecRunner> fallbackRec =
         PaddleLanguageRouter.hasBaseModelFallback(modelKey)
                 && supplier.hasRec(PaddleLanguageRouter.BASE_MODEL_KEY)
             ? () -> supplier.rec(PaddleLanguageRouter.BASE_MODEL_KEY)
@@ -202,7 +204,7 @@ public final class PaddleOcrEngine implements OcrEngine {
         "recognize modelKey="
             + modelKey
             + " live="
-            + PaddleRecOrtRunner.liveSessionCount()
+            + PaddleRecRunner.liveSessionCount()
             + " initMs="
             + ((tInit - tStart) / 1_000_000L)
             + " totalMs="
@@ -225,20 +227,20 @@ public final class PaddleOcrEngine implements OcrEngine {
    * Releases resources and instances associated with the OCR engine.
    *
    * <p>This method ensures the proper deallocation of resources used by both the detection and
-   * recognition models. It attempts to release the PaddleDetOrtRunner and PaddleRecOrtRunner
-   * instances. If any error occurs while releasing resources, a warning message is logged.
+   * recognition models. It attempts to release the PaddleDetRunner and PaddleRecRunner instances.
+   * If any error occurs while releasing resources, a warning message is logged.
    *
    * <p>Potential uses include calling this method when the engine is no longer needed to free up
    * system resources.
    */
   void release() {
     try {
-      PaddleDetOrtRunner.releaseInstance();
+      PaddleDetRunner.releaseInstance();
     } catch (Throwable t) {
       Log.w(TAG, "Det releaseInstance failed", t);
     }
     try {
-      PaddleRecOrtRunner.releaseAll();
+      PaddleRecRunner.releaseAll();
     } catch (Throwable t) {
       Log.w(TAG, "Rec releaseAll failed", t);
     }

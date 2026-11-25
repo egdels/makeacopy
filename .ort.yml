@@ -35,13 +35,9 @@ excludes:
       comment: "Test JPEGs excluded from release APK via aaptOptions."
 
     # ── External source trees (build inputs, not shipped as-is) ──
-    - pattern: "external/onnxruntime/**"
+    - pattern: "external/ncnn/**"
       reason: "BUILD_TOOL_OF"
-      comment: "ONNX Runtime full source tree used to build prebuilt artifacts. The shipped JAR/AAR in app/libs is covered by dependency analysis."
-
-    - pattern: "external/onnxruntime_pinned/**"
-      reason: "BUILD_TOOL_OF"
-      comment: "Pinned ONNX Runtime sources used during native build."
+      comment: "NCNN source tree, built into libmakeacopy_ncnn.so by scripts/build_ncnn_android.sh. Its license is recorded in NOTICE and third_party_licenses/ncnn_LICENSE.txt."
 
     # ── Training / ML pipeline (not shipped) ──
     - pattern: "training/**"
@@ -117,9 +113,13 @@ excludes:
       reason: "DATA_FILE_OF"
       comment: "Prebuilt native shared libraries. License info comes from source repos, not binaries."
 
-    - pattern: "**/*.ort"
+    - pattern: "**/*.ncnn.bin"
       reason: "DATA_FILE_OF"
-      comment: "ONNX Runtime model files (binary ML models)."
+      comment: "NCNN model weights (binary ML models)."
+
+    - pattern: "**/*.ncnn.param"
+      reason: "DATA_FILE_OF"
+      comment: "NCNN model descriptions (layer lists of the ML models)."
 
     - pattern: "**/*.ttf"
       reason: "DATA_FILE_OF"

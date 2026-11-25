@@ -27,7 +27,7 @@ import org.junit.runner.RunWith;
 /**
  * Optionaler Smoke-Test für die Paddle-OCR-Engine.
  *
- * <p>Läuft auf jeder ABI: {@code libonnxruntime.so} liegt für arm64-v8a, armeabi-v7a, x86 und
+ * <p>Läuft auf jeder ABI: {@code libmakeacopy_ncnn.so} liegt für arm64-v8a, armeabi-v7a, x86 und
  * x86_64 unter {@code src/main/jniLibs/}, die PP-OCRv5 {@code .ort}-Modelle unter
  * {@code src/main/assets/paddleocr/v5/} sind ABI-neutral.
  *

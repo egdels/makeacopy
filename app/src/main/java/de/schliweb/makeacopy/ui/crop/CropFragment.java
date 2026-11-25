@@ -62,7 +62,7 @@ public class CropFragment extends Fragment {
     TransitionUtils.applySharedAxisXForwardOnly(this);
   }
 
-  @javax.inject.Inject de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner docQuadOrtRunner;
+  @javax.inject.Inject de.schliweb.makeacopy.ml.docquad.DocQuadRunner docQuadRunner;
 
   @javax.inject.Inject
   javax.inject.Provider<de.schliweb.makeacopy.utils.ocr.OCRHelper> ocrHelperProvider;
@@ -240,8 +240,8 @@ public class CropFragment extends Fragment {
   }
 
   private void setupTrapezoidSelection() {
-    // Pass the Hilt-injected DocQuadOrtRunner to the TrapezoidSelectionView
-    binding.trapezoidSelection.setDocQuadOrtRunner(docQuadOrtRunner);
+    // Pass the Hilt-injected DocQuadRunner to the TrapezoidSelectionView
+    binding.trapezoidSelection.setDocQuadRunner(docQuadRunner);
 
     // Hint binding: when at least one corner of the trapezoid leaves the original image
     // rectangle (off-image), show a dedicated hint warning the user that the warped output
@@ -557,7 +557,7 @@ public class CropFragment extends Fragment {
               try {
                 de.schliweb.makeacopy.ml.corners.CornerDetector detector =
                     de.schliweb.makeacopy.ml.corners.CornerDetectorFactory.forCrop(
-                        requireContext(), docQuadOrtRunner);
+                        requireContext(), docQuadRunner);
                 de.schliweb.makeacopy.ml.corners.DetectionResult r =
                     detector.detect(bmp, requireContext());
                 if (r != null

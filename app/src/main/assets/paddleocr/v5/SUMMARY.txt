@@ -1,31 +1,40 @@
-FORMAT=ORT (basic optimization, reduced ops build)
-OPSET=11
+PaddleOCR PP-OCRv5 mobile models for MakeACopy (NCNN format)
 
-Recognition models (multi-model V5) and dictionaries:
+Each model is two files: <name>.ncnn.param (layers) and <name>.ncnn.bin (weights, single precision).
+Converted from the ONNX exports with scripts/convert_models_to_ncnn.sh.
 
-file                                                  size
-----                                                  ----
-det.ort                                            4898208
-arabic_PP-OCRv5_mobile_rec.ort                     8106064
-arabic_PP-OCRv5_mobile_rec_dict.txt                   2371
-cyrillic_PP-OCRv5_mobile_rec.ort                   8155912
-cyrillic_PP-OCRv5_mobile_rec_dict.txt                 2783
-devanagari_PP-OCRv5_mobile_rec.ort                 8019424
-devanagari_PP-OCRv5_mobile_rec_dict.txt               1945
-el_PP-OCRv5_mobile_rec.ort                         7915848
-el_PP-OCRv5_mobile_rec_dict.txt                       1105
-en_PP-OCRv5_mobile_rec.ort                         7955536
-en_PP-OCRv5_mobile_rec_dict.txt                       1418
-eslav_PP-OCRv5_mobile_rec.ort                      7994744
-eslav_PP-OCRv5_mobile_rec_dict.txt                    1665
-latin_PP-OCRv5_mobile_rec.ort                      8149136
-latin_PP-OCRv5_mobile_rec_dict.txt                    2618
-PP-OCRv5_mobile_rec.ort                           16641888
-PP-OCRv5_mobile_rec_dict.txt                         74014
-th_PP-OCRv5_mobile_rec.ort                         7998128
-th_PP-OCRv5_mobile_rec_dict.txt                       1769
+File                                               Bytes
+PP-OCRv5_mobile_rec.ncnn.bin                        16442228
+PP-OCRv5_mobile_rec.ncnn.param                         19336
+PP-OCRv5_mobile_rec_dict.txt                           74014
+arabic_PP-OCRv5_mobile_rec.ncnn.bin                  7906404
+arabic_PP-OCRv5_mobile_rec.ncnn.param                  19343
+arabic_PP-OCRv5_mobile_rec_dict.txt                     2371
+cyrillic_PP-OCRv5_mobile_rec.ncnn.bin                7956256
+cyrillic_PP-OCRv5_mobile_rec.ncnn.param                19358
+cyrillic_PP-OCRv5_mobile_rec_dict.txt                   2783
+det.ncnn.bin                                         4685856
+det.ncnn.param                                         23530
+devanagari_PP-OCRv5_mobile_rec.ncnn.bin              7819768
+devanagari_PP-OCRv5_mobile_rec.ncnn.param              19359
+devanagari_PP-OCRv5_mobile_rec_dict.txt                 1945
+el_PP-OCRv5_mobile_rec.ncnn.bin                      7716192
+el_PP-OCRv5_mobile_rec.ncnn.param                      19367
+el_PP-OCRv5_mobile_rec_dict.txt                         1105
+en_PP-OCRv5_mobile_rec.ncnn.bin                      7755880
+en_PP-OCRv5_mobile_rec.ncnn.param                      19341
+en_PP-OCRv5_mobile_rec_dict.txt                         1418
+eslav_PP-OCRv5_mobile_rec.ncnn.bin                   7795084
+eslav_PP-OCRv5_mobile_rec.ncnn.param                   19359
+eslav_PP-OCRv5_mobile_rec_dict.txt                      1665
+latin_PP-OCRv5_mobile_rec.ncnn.bin                   7949480
+latin_PP-OCRv5_mobile_rec.ncnn.param                   19352
+latin_PP-OCRv5_mobile_rec_dict.txt                      2618
+th_PP-OCRv5_mobile_rec.ncnn.bin                      7798472
+th_PP-OCRv5_mobile_rec.ncnn.param                      19338
+th_PP-OCRv5_mobile_rec_dict.txt                         1769
 
 Notes:
-- Only *.ort, *_dict.txt, paddleocr_v5.required_operators.config, SHA256SUMS, SUMMARY.txt are shipped.
-- *.onnx assets MUST NOT be present (enforced at build by failOnPaddleOnnxAssets and at runtime by PaddleAssets.rejectOnnxAssetsOrThrow).
-- SHA256SUMS pins only *_dict.txt; *.ort files are verified by existence and non-zero size only (basic-opt ORT not byte-reproducible across toolchains).
+- Only *.ncnn.param, *.ncnn.bin, *_dict.txt, SHA256SUMS and SUMMARY.txt are shipped.
+- SHA256SUMS pins every model and dictionary file; the Gradle task verifyModelAssetSha256 checks them at build time.
+- Models are read straight from the APK assets; dictionaries are copied to the cache and checked against SHA256SUMS at runtime.

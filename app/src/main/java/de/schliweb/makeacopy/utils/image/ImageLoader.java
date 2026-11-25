@@ -187,9 +187,9 @@ public final class ImageLoader {
 
   /**
    * {@code bmp} scaled down to at most {@link #MAX_EDGE} on its longer edge. The power-of-two
-   * sample size alone leaves a 50 MP photo (8160 x 6120) at full size, about 200 MB per bitmap,
-   * and the flow keeps the original and the crop: Play vitals flagged the cached process at over
-   * 400 MB, and a canvas refuses to draw anything above 100 MB.
+   * sample size alone leaves a 50 MP photo (8160 x 6120) at full size, about 200 MB per bitmap, and
+   * the flow keeps the original and the crop: Play vitals flagged the cached process at over 400
+   * MB, and a canvas refuses to draw anything above 100 MB.
    */
   @Nullable
   static Bitmap capToMaxEdge(@Nullable Bitmap bmp) {

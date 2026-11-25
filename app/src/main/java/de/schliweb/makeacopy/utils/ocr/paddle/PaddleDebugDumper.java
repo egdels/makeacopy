@@ -206,8 +206,7 @@ final class PaddleDebugDumper {
    *     crop width, frame count, and argmax ID head information. If null, some of these fields are
    *     omitted in the JSON metadata.
    */
-  static void dumpCrop(
-      Bitmap full, int index, Quad q, Bitmap crop, PaddleRecOrtRunner.RecOutput out) {
+  static void dumpCrop(Bitmap full, int index, Quad q, Bitmap crop, PaddleRecRunner.RecOutput out) {
     if (!enabled || full == null) return;
     SampleState s;
     synchronized (states) {

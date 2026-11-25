@@ -45,20 +45,20 @@ public class PaddleResultBuilderReadingOrderTest {
     }
 
     /** Recognizer, der pro Quad einen RecOutput liefert, indiziert über {@code Quad.score}. */
-    private static final class IdRec extends PaddleRecOrtRunner {
-        private final Map<Double, PaddleRecOrtRunner.RecOutput> byId;
+    private static final class IdRec extends PaddleRecRunner {
+        private final Map<Double, PaddleRecRunner.RecOutput> byId;
         private final List<Double> callOrder = new ArrayList<>();
         private final List<Bitmap> capturedCrops = new ArrayList<>();
         // Letztes Quad, das zum Crop reichte – über Cropper-Hook gesetzt.
         Quad lastQuad;
 
-        IdRec(Map<Double, PaddleRecOrtRunner.RecOutput> byId) {
+        IdRec(Map<Double, PaddleRecRunner.RecOutput> byId) {
             super();
             this.byId = byId;
         }
 
         @Override
-        PaddleRecOrtRunner.RecOutput recognize(Bitmap quadCrop) {
+        PaddleRecRunner.RecOutput recognize(Bitmap quadCrop) {
             // Aufrufreihenfolge gemerkt vom Cropper-Hook (siehe build()).
             double id = lastQuad.score;
             callOrder.add(id);
@@ -67,9 +67,9 @@ public class PaddleResultBuilderReadingOrderTest {
         }
     }
 
-    private static PaddleRecOrtRunner.RecOutput textOnly(String text) {
+    private static PaddleRecRunner.RecOutput textOnly(String text) {
         // Legacy 2-arg: keine Sub-Word-Geometrie → Builder verwendet ganze Det-Box als BBox.
-        return new PaddleRecOrtRunner.RecOutput(text, 0.8f);
+        return new PaddleRecRunner.RecOutput(text, 0.8f);
     }
 
     @Test
@@ -82,7 +82,7 @@ public class PaddleResultBuilderReadingOrderTest {
         Quad q2B = rectQuad(70, 60, 50, 20, 4.0);      // "bar"
         Quad q2C = rectQuad(130, 60, 50, 20, 5.0);     // "baz"
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("Hello"));
         byId.put(2.0, textOnly("World"));
         byId.put(3.0, textOnly("foo"));
@@ -110,7 +110,7 @@ public class PaddleResultBuilderReadingOrderTest {
     @Test
     public void build_singleQuad_emitsOnlyTextNoSeparators() throws Exception {
         Quad only = rectQuad(0, 0, 100, 20, 1.0);
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("solo"));
 
         IdRec rec = new IdRec(byId);
@@ -131,7 +131,7 @@ public class PaddleResultBuilderReadingOrderTest {
         Quad qB = rectQuad(0, 0, 50, 20, 2.0);   // links
         Quad qC = rectQuad(400, 0, 50, 20, 3.0); // rechts
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("B"));
         byId.put(2.0, textOnly("A"));
         byId.put(3.0, textOnly("C"));
@@ -162,7 +162,7 @@ public class PaddleResultBuilderReadingOrderTest {
         // Quad C: deutlich tiefer, centerY ≈ 60
         Quad qC = rectQuad(0, 50, 100, 20, 3.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("alpha"));
         byId.put(2.0, textOnly("beta"));
         byId.put(3.0, textOnly("gamma"));
@@ -204,7 +204,7 @@ public class PaddleResultBuilderReadingOrderTest {
         String aMidVisual = PaddleResultBuilder.reverseByCodepoints(aMidLogical);
         String aLeftVisual = PaddleResultBuilder.reverseByCodepoints(aLeftLogical);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly(aLeftVisual));
         byId.put(2.0, textOnly(aMidVisual));
         byId.put(3.0, textOnly(aRightVisual));
@@ -264,7 +264,7 @@ public class PaddleResultBuilderReadingOrderTest {
         String logical = "مستند اختبار العربية";
         String visualFromRec = PaddleResultBuilder.reverseByCodepoints(logical);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(42.0, textOnly(visualFromRec));
 
         IdRec rec = new IdRec(byId);
@@ -348,7 +348,7 @@ public class PaddleResultBuilderReadingOrderTest {
         Quad qUrl = rectQuad(0, 0, 300, 20, 1.0);
         Quad qWord = rectQuad(320, 0, 60, 20, 2.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("https://example.com/makeacopy"));
         byId.put(2.0, textOnly(PaddleResultBuilder.reverseByCodepoints("رابط")));
 
@@ -372,7 +372,7 @@ public class PaddleResultBuilderReadingOrderTest {
         Quad qB = rectQuad(60, 0, 50, 20, 2.0);
         Quad qC = rectQuad(120, 0, 50, 20, 3.0);
 
-        Map<Double, PaddleRecOrtRunner.RecOutput> byId = new HashMap<>();
+        Map<Double, PaddleRecRunner.RecOutput> byId = new HashMap<>();
         byId.put(1.0, textOnly("Hello"));
         byId.put(2.0, textOnly("nice"));
         byId.put(3.0, textOnly("World"));

@@ -79,7 +79,8 @@ public final class CropSourceStore {
    *
    * @param srcPath path of the original capture (nullable)
    * @param srcUri URI of the original image, used when there is no readable path (nullable)
-   * @param corners accepted corners in coordinates of the rotated original as ImageLoader decodes it
+   * @param corners accepted corners in coordinates of the rotated original as ImageLoader decodes
+   *     it
    * @param userRotationDeg user rotation that was baked into the crop source
    * @param dewarp curved-selection settings of the crop, or {@code null} for a straight trapezoid
    * @return whether both the original and the crop parameters were stored

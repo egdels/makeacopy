@@ -37,7 +37,7 @@ import org.junit.Test;
 public class PaddleOcrEngineTest {
 
     /** Stub-Det: liefert eine fest verdrahtete, unsortierte Quad-Liste. */
-    private static final class StubDet extends PaddleDetOrtRunner {
+    private static final class StubDet extends PaddleDetRunner {
         private final List<Quad> quads;
 
         StubDet(List<Quad> quads) {
@@ -57,17 +57,17 @@ public class PaddleOcrEngineTest {
     }
 
     /** Stub-Rec: deterministische Tokens+Konfidenzen aus FIFO-Liste. */
-    private static final class StubRec extends PaddleRecOrtRunner {
-        private final List<PaddleRecOrtRunner.RecOutput> outputs;
+    private static final class StubRec extends PaddleRecRunner {
+        private final List<PaddleRecRunner.RecOutput> outputs;
         int callCount = 0;
 
-        StubRec(List<PaddleRecOrtRunner.RecOutput> outputs) {
+        StubRec(List<PaddleRecRunner.RecOutput> outputs) {
             super();
             this.outputs = outputs;
         }
 
         @Override
-        PaddleRecOrtRunner.RecOutput recognize(Bitmap quadCrop) {
+        PaddleRecRunner.RecOutput recognize(Bitmap quadCrop) {
             return outputs.get(callCount++);
         }
     }
@@ -95,9 +95,9 @@ public class PaddleOcrEngineTest {
         StubRec rec =
                 new StubRec(
                         Arrays.asList(
-                                new PaddleRecOrtRunner.RecOutput("alpha", 0.80f),
-                                new PaddleRecOrtRunner.RecOutput("beta", 0.90f),
-                                new PaddleRecOrtRunner.RecOutput("gamma", 0.70f)));
+                                new PaddleRecRunner.RecOutput("alpha", 0.80f),
+                                new PaddleRecRunner.RecOutput("beta", 0.90f),
+                                new PaddleRecRunner.RecOutput("gamma", 0.70f)));
 
         StubDet det = new StubDet(unsorted);
 
@@ -108,12 +108,12 @@ public class PaddleOcrEngineTest {
         PaddleOcrEngine.RunnerSupplier supplier =
                 new PaddleOcrEngine.RunnerSupplier() {
                     @Override
-                    public PaddleDetOrtRunner det() {
+                    public PaddleDetRunner det() {
                         return det;
                     }
 
                     @Override
-                    public PaddleRecOrtRunner rec(String modelKey) {
+                    public PaddleRecRunner rec(String modelKey) {
                         return rec;
                     }
 
@@ -183,18 +183,18 @@ public class PaddleOcrEngineTest {
         // Light edition: only the Latin model is bundled. English is read with it, and the
         // low-confidence second pass with the (missing) base model is not attempted.
         StubRec latin =
-                new StubRec(Arrays.asList(new PaddleRecOrtRunner.RecOutput("lowconf", 0.10f)));
+                new StubRec(Arrays.asList(new PaddleRecRunner.RecOutput("lowconf", 0.10f)));
         StubDet det = new StubDet(Arrays.asList(quadAt(10, 10, 50, 14)));
         List<String> requested = new java.util.ArrayList<>();
         PaddleOcrEngine.RunnerSupplier supplier =
                 new PaddleOcrEngine.RunnerSupplier() {
                     @Override
-                    public PaddleDetOrtRunner det() {
+                    public PaddleDetRunner det() {
                         return det;
                     }
 
                     @Override
-                    public PaddleRecOrtRunner rec(String modelKey) {
+                    public PaddleRecRunner rec(String modelKey) {
                         requested.add(modelKey);
                         if (!"latin".equals(modelKey)) {
                             throw new IllegalStateException("not bundled: " + modelKey);
@@ -227,12 +227,12 @@ public class PaddleOcrEngineTest {
         PaddleOcrEngine.RunnerSupplier supplier =
                 new PaddleOcrEngine.RunnerSupplier() {
                     @Override
-                    public PaddleDetOrtRunner det() {
+                    public PaddleDetRunner det() {
                         throw new AssertionError("no detection without a rec model");
                     }
 
                     @Override
-                    public PaddleRecOrtRunner rec(String modelKey) {
+                    public PaddleRecRunner rec(String modelKey) {
                         throw new AssertionError("not bundled: " + modelKey);
                     }
 

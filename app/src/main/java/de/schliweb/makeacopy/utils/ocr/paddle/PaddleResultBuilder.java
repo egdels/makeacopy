@@ -50,9 +50,9 @@ final class PaddleResultBuilder {
   @VisibleForTesting static final int PARALLEL_RECOGNITION_MIN_QUADS = 2;
 
   /**
-   * Quads read at the same time, one single-threaded ORT run each (see PaddleRecOrtRunner), over
-   * all lines of the page and longest first; a line is usually a single quad, so reading the quads
-   * of one line in parallel gained nothing. Sheet, Pixel 7a, A4 letter with 263 words: 5.6-6.6 s ->
+   * Quads read at the same time, one single-threaded ORT run each (see PaddleRecRunner), over all
+   * lines of the page and longest first; a line is usually a single quad, so reading the quads of
+   * one line in parallel gained nothing. Sheet, Pixel 7a, A4 letter with 263 words: 5.6-6.6 s ->
    * 4.5-5.0 s, same text.
    */
   @VisibleForTesting static final int PARALLEL_RECOGNITION_THREADS = 4;
@@ -235,14 +235,14 @@ final class PaddleResultBuilder {
     Bitmap crop(Bitmap full, Quad quad);
   }
 
-  static OCRHelper.OcrResultWords build(Bitmap full, List<Quad> quads, PaddleRecOrtRunner rec)
+  static OCRHelper.OcrResultWords build(Bitmap full, List<Quad> quads, PaddleRecRunner rec)
       throws Exception {
     return build(full, quads, rec, PaddleQuadCropper::crop);
   }
 
   @VisibleForTesting
   static OCRHelper.OcrResultWords build(
-      Bitmap full, List<Quad> quads, PaddleRecOrtRunner rec, Cropper cropper) throws Exception {
+      Bitmap full, List<Quad> quads, PaddleRecRunner rec, Cropper cropper) throws Exception {
     return build(full, quads, rec, cropper, null);
   }
 
@@ -253,9 +253,9 @@ final class PaddleResultBuilder {
   static OCRHelper.OcrResultWords build(
       Bitmap full,
       List<Quad> quads,
-      PaddleRecOrtRunner rec,
+      PaddleRecRunner rec,
       Cropper cropper,
-      Callable<PaddleRecOrtRunner> fallbackRec)
+      Callable<PaddleRecRunner> fallbackRec)
       throws Exception {
     if (quads == null || quads.isEmpty()) {
       return new OCRHelper.OcrResultWords("", null, new ArrayList<>());
@@ -404,8 +404,8 @@ final class PaddleResultBuilder {
   private static QuadRecognition[][] recognizeLines(
       Bitmap full,
       List<List<Quad>> lines,
-      PaddleRecOrtRunner rec,
-      Callable<PaddleRecOrtRunner> fallbackRec,
+      PaddleRecRunner rec,
+      Callable<PaddleRecRunner> fallbackRec,
       Cropper cropper,
       AtomicInteger globalCropIndex,
       List<Quad> allQuads,
@@ -515,8 +515,8 @@ final class PaddleResultBuilder {
   private static QuadRecognition recognizeQuad(
       Bitmap full,
       Quad q,
-      PaddleRecOrtRunner rec,
-      Callable<PaddleRecOrtRunner> fallbackRec,
+      PaddleRecRunner rec,
+      Callable<PaddleRecRunner> fallbackRec,
       Cropper cropper,
       AtomicInteger globalCropIndex,
       List<Quad> allQuads)
@@ -532,7 +532,7 @@ final class PaddleResultBuilder {
       // rotiert; die 0°/180°-Ambiguität (CCW vs. CW) wird per Konfidenzvergleich
       // aufgelöst. Der unrotierte Crop bleibt als Kandidat, um Regressionen bei
       // schmalen horizontalen Crops (z. B. Einzelzeichen) zu vermeiden.
-      PaddleRecOrtRunner.RecOutput out;
+      PaddleRecRunner.RecOutput out;
       boolean rotatedVertical = false;
       String overrideText = null;
       if (isTallCrop(crop)) {
@@ -567,9 +567,9 @@ final class PaddleResultBuilder {
         Bitmap ccw = padWhiteVertical(rotateBitmap(crop, 270), padFraction);
         Bitmap cw = padWhiteVertical(rotateBitmap(crop, 90), padFraction);
         try {
-          PaddleRecOrtRunner.RecOutput out0 = rec.recognize(crop);
-          PaddleRecOrtRunner.RecOutput outCcw = rec.recognize(ccw);
-          PaddleRecOrtRunner.RecOutput outCw = rec.recognize(cw);
+          PaddleRecRunner.RecOutput out0 = rec.recognize(crop);
+          PaddleRecRunner.RecOutput outCcw = rec.recognize(ccw);
+          PaddleRecRunner.RecOutput outCw = rec.recognize(cw);
           int chosen =
               chooseRotationCandidate(
                   new String[] {out0.text(), outCcw.text(), outCw.text()},
@@ -594,7 +594,7 @@ final class PaddleResultBuilder {
                     rotateBitmap(variantB, chosen == 1 ? 270 : 90),
                     VERTICAL_CROP_PAD_FRACTION_PHOTO_FULL_SCALE);
             try {
-              PaddleRecOrtRunner.RecOutput outB = rec.recognize(rotB);
+              PaddleRecRunner.RecOutput outB = rec.recognize(rotB);
               if (outB.text() != null
                   && !outB.text().isEmpty()
                   && outB.confidence() >= PHOTO_VARIANT_MIN_CONFIDENCE
@@ -624,7 +624,7 @@ final class PaddleResultBuilder {
       } else {
         out = rec.recognize(crop);
         if (fallbackRec != null && out.confidence() < LOW_CONFIDENCE_RETRY_THRESHOLD) {
-          PaddleRecOrtRunner.RecOutput outB = fallbackRec.call().recognize(crop);
+          PaddleRecRunner.RecOutput outB = fallbackRec.call().recognize(crop);
           if (outB != null
               && outB.text() != null
               && !outB.text().isEmpty()
@@ -665,7 +665,7 @@ final class PaddleResultBuilder {
    * für den PDF-Layer).
    */
   private static QuadRecognition emitQuadWords(
-      Quad q, Bitmap crop, String text, PaddleRecOrtRunner.RecOutput out, boolean rotatedVertical) {
+      Quad q, Bitmap crop, String text, PaddleRecRunner.RecOutput out, boolean rotatedVertical) {
     // Space-/Token-Rekonstruktion: Recognition liefert keine Spaces.
     // Versuche, den Crop per vertikalem Projection-Profile in Wort-Segmente
     // zu trennen und den erkannten Text proportional zu verteilen.
@@ -1500,7 +1500,7 @@ final class PaddleResultBuilder {
    * @return a list of {@link RecognizedWord} objects representing the constructed sub-words, each
    *     with its own text, bounding box, and confidence score
    */
-  private static List<RecognizedWord> buildSubWords(Quad q, PaddleRecOrtRunner.RecOutput out) {
+  private static List<RecognizedWord> buildSubWords(Quad q, PaddleRecRunner.RecOutput out) {
     String fullText = out.text() != null ? out.text() : "";
     // Aggregat-Konfidenz der Engine, 0..1 → 0..100 (für Fallback und als Mittel).
     float aggConf100 = clampConf100(out.confidence() * 100f);

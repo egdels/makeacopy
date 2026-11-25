@@ -9,9 +9,6 @@
  */
 package de.schliweb.makeacopy.ml.docquad;
 
-import ai.onnxruntime.OnnxTensor;
-import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtSession;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -20,24 +17,21 @@ import android.util.Log;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import de.schliweb.makeacopy.ml.corners.DocQuadDetector;
+import de.schliweb.makeacopy.ml.ncnn.NcnnNet;
 import de.schliweb.makeacopy.utils.image.ImageOps;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Map;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Latency benchmark for DocQuad inference. Breaks the product path into stages and compares ORT
- * execution-provider / thread configurations on the device under test.
+ * Latency benchmark for DocQuad inference. Breaks the product path into stages and compares NCNN
+ * thread counts on the device under test.
  *
  * <p>Disabled by default; run with {@code -e RUN_BENCHMARKS 1}. It measures, it never fails on
  * timing. The report goes to logcat (tag {@code DocQuadBench}) and to {@code
@@ -53,10 +47,6 @@ public class DocQuadLatencyBenchmarkTest {
 
   private interface Step {
     void run() throws Exception;
-  }
-
-  private interface SessionConfig {
-    void apply(OrtSession.SessionOptions opts) throws Exception;
   }
 
   @Test
@@ -93,20 +83,20 @@ public class DocQuadLatencyBenchmarkTest {
             RUNS));
 
     // --- 1) Product path, stage by stage -------------------------------------------------------
-    DocQuadOrtRunner runner =
-        DocQuadOrtRunner.getInstance(appCtx, DocQuadDetector.DEFAULT_MODEL_ASSET_PATH);
+    DocQuadRunner runner =
+        DocQuadRunner.getInstance(appCtx, DocQuadDetector.DEFAULT_MODEL_ASSET_PATH);
     DocQuadDetector detector = new DocQuadDetector(runner);
-    float[] input = new float[3 * DocQuadOrtRunner.IN_H * DocQuadOrtRunner.IN_W];
+    float[] input = new float[3 * DocQuadRunner.IN_H * DocQuadRunner.IN_W];
     Arrays.fill(input, 0.5f);
     DocQuadLetterbox lb =
         DocQuadLetterbox.create(
-            work.getWidth(), work.getHeight(), DocQuadOrtRunner.IN_W, DocQuadOrtRunner.IN_H);
-    final DocQuadOrtRunner.Outputs[] lastOutputs = new DocQuadOrtRunner.Outputs[1];
+            work.getWidth(), work.getHeight(), DocQuadRunner.IN_W, DocQuadRunner.IN_H);
+    final DocQuadRunner.Outputs[] lastOutputs = new DocQuadRunner.Outputs[1];
 
-    md.append("## Product path (current session config)\n\n");
+    md.append("## Product path (shipped configuration)\n\n");
     md.append("| stage | median ms | p90 ms | min ms |\n|---|---|---|---|\n");
     row(md, "DocQuadDetector.detect (total)", measure(() -> detector.detect(work, appCtx)));
-    row(md, "DocQuadOrtRunner.run (ORT + output copy)", measure(() -> lastOutputs[0] = runner.run(input)));
+    row(md, "DocQuadRunner.run (NCNN + output copy)", measure(() -> lastOutputs[0] = runner.run(input)));
     row(
         md,
         "DocQuadPostprocessor.postprocess",
@@ -115,79 +105,31 @@ public class DocQuadLatencyBenchmarkTest {
                 DocQuadPostprocessor.postprocess(
                     lastOutputs[0], lb, DocQuadPostprocessor.PeakMode.REFINE_5X5_QUADRATIC)));
 
-    // --- 2) Raw ORT sessions with different configurations --------------------------------------
-    File model = copyModel(appCtx);
+    // --- 2) The bare network with different thread counts -------------------------------------
     int cores = Runtime.getRuntime().availableProcessors();
-    Map<String, SessionConfig> configs = new LinkedHashMap<>();
-    configs.put(
-        "previous default: NNAPI + XNNPACK, intra=" + Math.max(1, cores / 2),
-        o -> {
-          o.setIntraOpNumThreads(Math.max(1, cores / 2));
-          o.addNnapi();
-          o.addXnnpack(Collections.emptyMap());
-        });
-    configs.put(
-        "NNAPI only, intra=" + Math.max(1, cores / 2),
-        o -> {
-          o.setIntraOpNumThreads(Math.max(1, cores / 2));
-          o.addNnapi();
-        });
-    for (int t : new int[] {1, 2, 4}) {
-      configs.put("CPU only, intra=" + t, o -> o.setIntraOpNumThreads(t));
-    }
-    configs.put(
-        "XNNPACK (own pool 2), intra=1",
-        o -> {
-          o.setIntraOpNumThreads(1);
-          o.addConfigEntry("session.intra_op.allow_spinning", "0");
-          o.addXnnpack(Collections.singletonMap("intra_op_num_threads", "2"));
-        });
-    configs.put(
-        "XNNPACK (own pool 4), intra=1",
-        o -> {
-          o.setIntraOpNumThreads(1);
-          o.addConfigEntry("session.intra_op.allow_spinning", "0");
-          o.addXnnpack(Collections.singletonMap("intra_op_num_threads", "4"));
-        });
-    configs.put(
-        "XNNPACK (default opts), intra=" + Math.max(1, cores / 2),
-        o -> {
-          o.setIntraOpNumThreads(Math.max(1, cores / 2));
-          o.addXnnpack(Collections.emptyMap());
-        });
-
-    md.append("\n## ORT session.run only (same model, same input)\n\n");
-    md.append("| config | create ms | median ms | p90 ms | min ms |\n|---|---|---|---|---|\n");
-    OrtEnvironment env = OrtEnvironment.getEnvironment();
-    long[] shape = new long[] {1, 3, DocQuadOrtRunner.IN_H, DocQuadOrtRunner.IN_W};
-    for (Map.Entry<String, SessionConfig> e : configs.entrySet()) {
-      try (OrtSession.SessionOptions opts = new OrtSession.SessionOptions()) {
-        opts.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-        e.getValue().apply(opts);
-        long t0 = SystemClock.elapsedRealtimeNanos();
-        try (OrtSession session = env.createSession(model.getAbsolutePath(), opts)) {
-          double createMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1e6;
-          double[] times =
-              measure(
-                  () -> {
-                    try (OnnxTensor in = OnnxTensor.createTensor(env, FloatBuffer.wrap(input), shape);
-                        OrtSession.Result r = session.run(Collections.singletonMap("input", in))) {
-                      r.get(0).getValue();
-                      r.get(1).getValue();
-                    }
-                  });
-          md.append(
-              String.format(
-                  Locale.US,
-                  "| %s | %.0f | %.1f | %.1f | %.1f |\n",
-                  e.getKey(),
-                  createMs,
-                  percentile(times, 0.5),
-                  percentile(times, 0.9),
-                  times[0]));
-        }
+    md.append("\n## NCNN run only (same model, same input)\n\n");
+    md.append("| threads | load ms | median ms | p90 ms | min ms |\n|---|---|---|---|---|\n");
+    String[] outputs = {"out0", "out1"};
+    for (int threads : new int[] {1, 2, 4, cores}) {
+      if (threads > cores) continue;
+      long t0 = SystemClock.elapsedRealtimeNanos();
+      try (NcnnNet net =
+          NcnnNet.fromAssets(
+              appCtx.getAssets(), DocQuadDetector.DEFAULT_MODEL_ASSET_PATH, threads)) {
+        double loadMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1e6;
+        double[] times =
+            measure(() -> net.run(input, 3, DocQuadRunner.IN_H, DocQuadRunner.IN_W, outputs));
+        md.append(
+            String.format(
+                Locale.US,
+                "| %d | %.0f | %.1f | %.1f | %.1f |\n",
+                threads,
+                loadMs,
+                percentile(times, 0.5),
+                percentile(times, 0.9),
+                times[0]));
       } catch (Throwable t) {
-        md.append(String.format(Locale.US, "| %s | failed: %s | | | |\n", e.getKey(), t));
+        md.append(String.format(Locale.US, "| %d | failed: %s | | | |\n", threads, t));
       }
     }
 
@@ -235,14 +177,5 @@ public class DocQuadLatencyBenchmarkTest {
     return sorted[Math.max(0, Math.min(sorted.length - 1, idx))];
   }
 
-  private static File copyModel(Context ctx) throws Exception {
-    File out = new File(ctx.getCacheDir(), "bench_docquad.ort");
-    try (InputStream is = ctx.getAssets().open(DocQuadDetector.DEFAULT_MODEL_ASSET_PATH);
-        FileOutputStream fos = new FileOutputStream(out)) {
-      byte[] buf = new byte[256 * 1024];
-      int n;
-      while ((n = is.read(buf)) > 0) fos.write(buf, 0, n);
-    }
-    return out;
-  }
+
 }

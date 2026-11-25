@@ -13,6 +13,7 @@ import android.content.Context;
 import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import de.schliweb.makeacopy.ml.ncnn.NcnnNet;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,12 +34,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A utility class for managing and extracting PaddleOCR-related assets. Handles verification,
- * caching, and extraction of required model and dictionary files from the assets directory to the
- * application's cache.
- *
- * <p>This class is designed to ensure model availability while maintaining integrity checks using
- * SHA256 hashes.
+ * Knows where the PaddleOCR models and dictionaries lie. Models are read straight from the assets;
+ * dictionaries are copied into the cache directory and verified against their pinned SHA-256.
  */
 final class PaddleAssets {
 
@@ -47,7 +44,9 @@ final class PaddleAssets {
   static final String ASSET_DIR = "paddleocr/v5";
   static final String CACHE_SUBDIR = "paddleocr/v5";
 
-  static final String DET_NAME = "det.ort";
+  /** Name of the detection model without the {@code .ncnn.param} / {@code .ncnn.bin} suffix. */
+  static final String DET_BASE = "det";
+
   static final String SHA256SUMS_NAME = "SHA256SUMS";
 
   private PaddleAssets() {
@@ -89,50 +88,45 @@ final class PaddleAssets {
   // ---------------------------------------------------------------
 
   /**
-   * Ensures that the detection model assets are extracted to the cache directory. If the assets are
-   * already extracted and valid, this method does nothing. Otherwise, it extracts the detection
-   * model asset and verifies its integrity.
+   * Checks that the detection model is part of the app. Models are read straight from the assets;
+   * nothing is copied.
    *
-   * @param context the context used to access the assets and cache directory
-   * @throws IOException if the context is null, if a forbidden .onnx asset is found, or if there is
-   *     an issue with extraction or asset integrity
+   * @throws IOException if the context is null or the model files are missing
    */
-  static synchronized void ensureDetExtracted(Context context) throws IOException {
+  static synchronized void ensureDetAvailable(Context context) throws IOException {
     if (context == null) throw new IOException("context is null");
-    rejectOnnxAssetsOrThrow(context);
-    File outDir = cacheDir(context);
-    extractRaw(context, DET_NAME, outDir, /* expectedSha= */ null);
+    if (!modelAssetsExist(context, DET_BASE)) {
+      throw new IOException("Detection model missing in assets: " + detModelAssetBase());
+    }
+    deleteLegacyModelCopies(context);
   }
 
   /**
-   * Ensures that the recognition model assets are extracted to the cache directory. If the assets
-   * are already extracted and valid, this method does nothing. Otherwise, it extracts the specified
-   * recognition model assets and verifies their integrity.
+   * Checks that the recognition model for {@code modelKey} is part of the app and copies its
+   * dictionary into the cache directory, verified against the pinned SHA-256. The model itself is
+   * read straight from the assets.
    *
-   * @param context the context used to access the assets and cache directory
-   * @param modelKey the key identifying the recognition model whose assets need to be extracted
-   * @throws IOException if the context is null, if the modelKey is null, if the modelKey is
-   *     unknown, if a forbidden .onnx asset is found, or if there is an issue with extraction or
-   *     asset integrity
+   * @throws IOException if the model key is unknown, a file is missing or the dictionary does not
+   *     match its pinned hash
    */
-  static synchronized void ensureRecExtracted(Context context, String modelKey) throws IOException {
+  static synchronized void ensureRecAvailable(Context context, String modelKey) throws IOException {
     if (context == null) throw new IOException("context is null");
     if (modelKey == null) throw new IOException("modelKey is null");
     String base = PaddleLanguageRouter.assetBaseName(modelKey);
     if (base == null) throw new IOException("Unknown rec modelKey: " + modelKey);
-    rejectOnnxAssetsOrThrow(context);
+    if (!modelAssetsExist(context, base)) {
+      throw new IOException("Recognition model missing in assets: " + ASSET_DIR + "/" + base);
+    }
     File outDir = cacheDir(context);
     Map<String, String> shaMap = loadAssetSha256Map(context);
     String dictName = base + "_dict.txt";
-    String ortName = base + ".ort";
     String dictExpected = shaMap.get(dictName);
     if (dictExpected == null) {
-      // SHA256SUMS muss alle Dicts pinnen — Mismatch ist Build-Bug.
+      // SHA256SUMS must pin every dictionary; a missing entry is a build bug.
       throw new IOException("Missing SHA256 entry for asset: " + dictName);
     }
     extractRaw(context, dictName, outDir, dictExpected);
-    // .ort: kein pinned SHA verfügbar → nur Existenz/Größe.
-    extractRaw(context, ortName, outDir, /* expectedSha= */ null);
+    deleteLegacyModelCopies(context);
   }
 
   /**
@@ -149,7 +143,7 @@ final class PaddleAssets {
       if (!getDetAssetExists(context)) return false;
       String base = PaddleLanguageRouter.assetBaseName(modelKey);
       if (base == null) return false;
-      return assetExists(context, base + ".ort") && assetExists(context, base + "_dict.txt");
+      return modelAssetsExist(context, base) && assetExists(context, base + "_dict.txt");
     } catch (Throwable t) {
       Log.w(TAG, "areModelsPresent failed", t);
       return false;
@@ -159,7 +153,7 @@ final class PaddleAssets {
   /**
    * Checks if any recognition model is present in the application's assets. The method iterates
    * through all predefined model keys, verifies the asset base name, and checks for the existence
-   * of the corresponding model file (.ort). Logs a warning if an exception occurs during execution.
+   * of the corresponding model files. Logs a warning if an exception occurs during execution.
    *
    * @param context the context used to access the application's assets
    * @return {@code true} if at least one recognition model is found; {@code false} otherwise
@@ -168,7 +162,7 @@ final class PaddleAssets {
     try {
       for (String mk : PaddleLanguageRouter.MODEL_KEYS) {
         String base = PaddleLanguageRouter.assetBaseName(mk);
-        if (base != null && assetExists(context, base + ".ort")) return true;
+        if (base != null && modelAssetsExist(context, base)) return true;
       }
     } catch (Throwable t) {
       Log.w(TAG, "anyRecModelPresent failed", t);
@@ -177,31 +171,20 @@ final class PaddleAssets {
   }
 
   /**
-   * Returns a {@link File} object representing the detection model file in the cache directory.
-   *
-   * @param context the context used to access the application's cache directory
-   * @return a {@link File} object pointing to the detection model file
+   * Asset path of the detection model without the {@code .ncnn.param} / {@code .ncnn.bin} suffix.
    */
-  static File getDetModelFile(Context context) {
-    return new File(cacheDir(context), DET_NAME);
+  static String detModelAssetBase() {
+    return ASSET_DIR + "/" + DET_BASE;
   }
 
   /**
-   * Returns a {@link File} object representing the recognition model file in the application's
-   * cache directory based on the provided model key.
+   * Asset path of the recognition model for {@code modelKey} without the {@code .ncnn.param} /
+   * {@code .ncnn.bin} suffix.
    *
-   * <p>This method uses the {@code modelKey} to determine the base name of the recognition model
-   * file and appends the ".ort" extension to it. The resulting file is located in the cache
-   * directory of the given context.
-   *
-   * @param context the context used to access the application's cache directory
-   * @param modelKey the key identifying the recognition model
-   * @return a {@link File} object pointing to the recognition model file in the cache directory
-   * @throws IllegalArgumentException if the {@code modelKey} is unrecognized
+   * @throws IllegalArgumentException if the model key is unknown
    */
-  static File getRecModelFile(Context context, String modelKey) {
-    String base = requireBase(modelKey);
-    return new File(cacheDir(context), base + ".ort");
+  static String recModelAssetBase(String modelKey) {
+    return ASSET_DIR + "/" + requireBase(modelKey);
   }
 
   /**
@@ -314,7 +297,27 @@ final class PaddleAssets {
   }
 
   private static boolean getDetAssetExists(Context context) throws IOException {
-    return assetExists(context, DET_NAME);
+    return modelAssetsExist(context, DET_BASE);
+  }
+
+  /** True if both files of the model named {@code base} lie in the Paddle asset directory. */
+  private static boolean modelAssetsExist(Context context, String base) throws IOException {
+    return assetExists(context, base + NcnnNet.PARAM_SUFFIX)
+        && assetExists(context, base + NcnnNet.BIN_SUFFIX);
+  }
+
+  /**
+   * Versions up to 4.9 copied every model into the cache directory as {@code <name>.ort}. Models
+   * are now read from the assets, so those copies are dead weight; remove them.
+   */
+  private static void deleteLegacyModelCopies(Context context) {
+    File[] stale = cacheDir(context).listFiles((dir, name) -> name.endsWith(".ort"));
+    if (stale == null) return;
+    for (File f : stale) {
+      if (f.delete()) {
+        Log.i(TAG, "Deleted cached model of an older version: " + f.getName());
+      }
+    }
   }
 
   private static volatile Set<String> assetEntryCache;
@@ -333,19 +336,6 @@ final class PaddleAssets {
       }
     }
     return c;
-  }
-
-  private static void rejectOnnxAssetsOrThrow(Context context) throws IOException {
-    for (String name : listAssetEntries(context)) {
-      if (name.endsWith(".onnx")) {
-        throw new IOException(
-            "Forbidden .onnx asset present in "
-                + ASSET_DIR
-                + "/: "
-                + name
-                + " — only .ort models are allowed.");
-      }
-    }
   }
 
   /**

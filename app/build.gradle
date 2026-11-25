@@ -162,8 +162,8 @@ android {
 // Optional real-world corner eval set for CornerPipelineEvalTest (layout: images/ + labels/,
 // see training/EVALUATION.md). It is bundled into the androidTest APK only when
 // -PcornerEvalDir=<dir> is passed, so regular test builds are not bloated by the photos.
-// -PcornerEvalModel=<file.ort> additionally bundles a candidate model that is evaluated instead of
-// the shipped one (give candidates distinct file names; they are cached on the device by name).
+// -PcornerEvalModel=<path/name> additionally bundles a candidate model (<name>.ncnn.param and
+// <name>.ncnn.bin) that is evaluated instead of the shipped one.
 def cornerEvalDir = providers.gradleProperty('cornerEvalDir').orNull
 def cornerEvalModel = providers.gradleProperty('cornerEvalModel').orNull
 if (cornerEvalDir != null) {
@@ -177,11 +177,13 @@ if (cornerEvalDir != null) {
             include 'images/**', 'labels/**'
         }
         if (cornerEvalModel != null) {
-            def modelFile = rootProject.file(cornerEvalModel)
-            if (!modelFile.isFile()) {
-                throw new GradleException("cornerEvalModel is not a file: ${modelFile}")
+            def modelFiles = ['.ncnn.param', '.ncnn.bin'].collect { rootProject.file(cornerEvalModel + it) }
+            modelFiles.each {
+                if (!it.isFile()) {
+                    throw new GradleException("cornerEvalModel is missing a file: ${it}")
+                }
             }
-            from(modelFile) {
+            from(modelFiles) {
                 into 'model'
             }
         }
@@ -218,9 +220,6 @@ dependencies {
     implementation libs.camerax.camera2
     implementation libs.camerax.lifecycle
     implementation libs.camerax.view
-
-    // Onnx-Runtime dependency
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     // PdfBox-Android: only the tests read the exported PDFs with it; the app writes them itself
     testImplementation libs.pdfbox.android
@@ -306,121 +305,67 @@ tasks.named("preBuild").configure {
     dependsOn("copyNotices", "copyDocs")
 }
 
-// Verifies that the PaddleOCR V5 multi-model assets match the pinned SHA256 hashes from the
-// asset-side SHA256SUMS (which is the source of truth for the multi-model architecture, see
-// docs/paddleocr_v5_integration_concept.md §0/§A).
-//
-// Only *_dict.txt entries are pinned (basic-opt *.ort artifacts are not byte-reproducible
-// across toolchains; their integrity is checked by existence + non-zero size and by the
-// reduced ORT runtime ops config).
-tasks.register("verifyPaddleAssetSha256") {
-    description = "Verifies SHA256 of PaddleOCR V5 dict assets against src/main/assets/paddleocr/v5/SHA256SUMS and checks that all *.ort/*_dict.txt files exist"
+// Verifies every model asset against the SHA256SUMS file next to it: the PaddleOCR models and
+// dictionaries under assets/paddleocr/v5 and the corner model under assets/docquad. A listed file
+// that is missing or differs fails the build, and so does a model or dictionary that is not listed.
+tasks.register("verifyModelAssetSha256") {
+    description = "Verifies the model assets against their SHA256SUMS files"
     group = "verification"
-    def assetsDir = file("$projectDir/src/main/assets/paddleocr/v5")
-    def sumsFile = new File(assetsDir, "SHA256SUMS")
-    inputs.dir(assetsDir)
+    def assetDirs = [file("$projectDir/src/main/assets/paddleocr/v5"), file("$projectDir/src/main/assets/docquad")]
+    assetDirs.each { inputs.dir(it) }
     doLast {
-        if (!sumsFile.exists()) {
-            throw new GradleException("Missing SHA256SUMS file: ${sumsFile.absolutePath}")
-        }
-        def expected = [:]
-        sumsFile.eachLine { line ->
-            def trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) return
-            def parts = trimmed.split(/\s+/, 2)
-            if (parts.length == 2) {
-                expected[parts[1].trim()] = parts[0].trim().toLowerCase()
-            }
-        }
-        // All recognition model keys + dict file names (must exist and be non-empty).
-        def recKeys = [
-            "PP-OCRv5_mobile_rec",
-            "en_PP-OCRv5_mobile_rec",
-            "latin_PP-OCRv5_mobile_rec",
-            "eslav_PP-OCRv5_mobile_rec",
-            "cyrillic_PP-OCRv5_mobile_rec",
-            "th_PP-OCRv5_mobile_rec",
-            "arabic_PP-OCRv5_mobile_rec",
-            "devanagari_PP-OCRv5_mobile_rec",
-	    "el_PP-OCRv5_mobile_rec",
-        ]
-        def ortNames = ["det.ort"] + recKeys.collect { it + ".ort" }
-        def dictNames = recKeys.collect { it + "_dict.txt" }
-
-        // 1) *.ort: existence + non-zero size only.
-        ortNames.each { name ->
-            def f = new File(assetsDir, name)
-            if (!f.exists()) {
-                throw new GradleException("Missing Paddle ORT asset: ${f.absolutePath}")
-            }
-            if (f.length() <= 0) {
-                throw new GradleException("Empty Paddle ORT asset: ${f.absolutePath}")
-            }
-        }
-
-        // 2) *_dict.txt: pinned SHA-256 against asset-side SHA256SUMS.
         def md = java.security.MessageDigest.getInstance("SHA-256")
-        dictNames.each { name ->
-            def f = new File(assetsDir, name)
-            if (!f.exists()) {
-                throw new GradleException("Missing Paddle dict asset: ${f.absolutePath}")
+        assetDirs.each { assetsDir ->
+            def sumsFile = new File(assetsDir, "SHA256SUMS")
+            if (!sumsFile.exists()) {
+                throw new GradleException("Missing SHA256SUMS file: ${sumsFile.absolutePath}")
             }
-            def exp = expected[name]
-            if (exp == null) {
-                throw new GradleException("No expected SHA256 for ${name} in ${sumsFile.absolutePath}")
+            def expected = [:]
+            sumsFile.eachLine { line ->
+                def trimmed = line.trim()
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) return
+                def parts = trimmed.split(/\s+/, 2)
+                if (parts.length == 2) {
+                    expected[parts[1].trim()] = parts[0].trim().toLowerCase()
+                }
             }
-            md.reset()
-            f.withInputStream { is ->
-                def buf = new byte[8192]
-                int n
-                while ((n = is.read(buf)) > 0) md.update(buf, 0, n)
+            def pinned = assetsDir.listFiles().findAll {
+                it.isFile() && (it.name.endsWith(".ncnn.param") || it.name.endsWith(".ncnn.bin") || it.name.endsWith("_dict.txt"))
             }
-            def actual = md.digest().collect { String.format("%02x", it & 0xff) }.join("")
-            if (!actual.equalsIgnoreCase(exp)) {
-                throw new GradleException(
-                    "Paddle dict SHA256 mismatch for ${f.absolutePath}\n" +
-                    "  expected: ${exp}\n" +
-                    "  actual:   ${actual}")
+            pinned.each { f ->
+                if (!expected.containsKey(f.name)) {
+                    throw new GradleException("No SHA256 for ${f.name} in ${sumsFile.absolutePath}")
+                }
             }
-            logger.lifecycle("✓ Paddle dict ${name}: SHA256 verified")
+            expected.each { name, exp ->
+                def f = new File(assetsDir, name)
+                if (!f.isFile() || f.length() <= 0) {
+                    throw new GradleException("Missing or empty model asset: ${f.absolutePath}")
+                }
+                md.reset()
+                f.withInputStream { is ->
+                    def buf = new byte[65536]
+                    int n
+                    while ((n = is.read(buf)) > 0) md.update(buf, 0, n)
+                }
+                def actual = md.digest().collect { String.format("%02x", it & 0xff) }.join("")
+                if (!actual.equalsIgnoreCase(exp)) {
+                    throw new GradleException(
+                        "SHA256 mismatch for ${f.absolutePath}\n" +
+                        "  expected: ${exp}\n" +
+                        "  actual:   ${actual}")
+                }
+            }
+            logger.lifecycle("✓ ${expected.size()} model assets verified in ${assetsDir.name}")
         }
-        logger.lifecycle("✓ Paddle V5 multi-model assets verified (${ortNames.size()} *.ort + ${dictNames.size()} *_dict.txt)")
     }
 }
 
-// Build-time gate: fail the build if any *.onnx file is shipped under
-// src/main/assets/paddleocr/v5/. Intentionally early (build) instead of late
-// (PaddleAssets.rejectOnnxAssetsOrThrow at runtime).
-tasks.register("failOnPaddleOnnxAssets") {
-    description = "Fails the build if any *.onnx asset is present under src/main/assets/paddleocr/v5/"
-    group = "verification"
-    def assetsDir = file("$projectDir/src/main/assets/paddleocr/v5")
-    inputs.dir(assetsDir)
-    doLast {
-        if (!assetsDir.exists()) {
-            return
-        }
-        def offenders = []
-        assetsDir.eachFileRecurse { f ->
-            if (f.isFile() && f.name.toLowerCase().endsWith(".onnx")) {
-                offenders << f.absolutePath
-            }
-        }
-        if (!offenders.isEmpty()) {
-            throw new GradleException(
-                "PaddleOCR V5 assets must be ORT-only; found forbidden *.onnx file(s):\n" +
-                "  - " + offenders.join("\n  - ") + "\n" +
-                "Remove them or rebuild via scripts/convert_paddleocr_v5_to_ort_basic_all.py.")
-        }
-        logger.lifecycle("✓ No *.onnx assets present under ${assetsDir.absolutePath}")
-    }
-}
-
-// Hook the verify + onnx-gate tasks into the asset merge so they run as part of
+// Hook the verification into the asset merge so it runs as part of
 // assembleDebug / assembleRelease.
 tasks.whenTaskAdded { task ->
     if (task.name == "mergeDebugAssets" || task.name == "mergeReleaseAssets") {
-        task.dependsOn("failOnPaddleOnnxAssets", "verifyPaddleAssetSha256")
+        task.dependsOn("verifyModelAssetSha256")
     }
 }
 
@@ -607,7 +552,7 @@ if (isLight) {
                 def paddleDir = new File(outDir, "paddleocr/v5")
                 def dropped = []
                 paddleDir.listFiles()?.each { f ->
-                    def m = f.name =~ /^(.+_rec)(\.ort|_dict\.txt)$/
+                    def m = f.name =~ /^(.+_rec)(\.ncnn\.param|\.ncnn\.bin|_dict\.txt)$/
                     if (m.matches() && !lightRecModels.contains(m.group(1))) {
                         f.delete()
                         dropped << f.name

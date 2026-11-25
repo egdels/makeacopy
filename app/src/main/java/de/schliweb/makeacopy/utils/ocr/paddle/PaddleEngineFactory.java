@@ -33,7 +33,7 @@ public final class PaddleEngineFactory {
    * @throws Exception if the detection assets cannot be extracted or if the engine creation fails.
    */
   public static OcrEngine create(Context context) throws Exception {
-    PaddleAssets.ensureDetExtracted(context);
+    PaddleAssets.ensureDetAvailable(context);
     return new PaddleOcrEngine(context);
   }
 
@@ -78,18 +78,18 @@ public final class PaddleEngineFactory {
    *
    * <p>This method is intended to clean up resources allocated by the underlying Paddle engines for
    * detection and recognition tasks. It makes a "best effort" attempt to release these resources by
-   * calling the respective release methods on {@code PaddleDetOrtRunner} and {@code
-   * PaddleRecOrtRunner}. Any exceptions or errors encountered during this process are caught and
-   * ignored to ensure the method completes execution without failure.
+   * calling the respective release methods on {@code PaddleDetRunner} and {@code PaddleRecRunner}.
+   * Any exceptions or errors encountered during this process are caught and ignored to ensure the
+   * method completes execution without failure.
    */
   public static void releaseAll() {
     try {
-      PaddleDetOrtRunner.releaseInstance();
+      PaddleDetRunner.releaseInstance();
     } catch (Throwable ignored) {
       // best effort
     }
     try {
-      PaddleRecOrtRunner.releaseAll();
+      PaddleRecRunner.releaseAll();
     } catch (Throwable ignored) {
       // best effort
     }

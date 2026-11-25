@@ -27,17 +27,17 @@ import org.junit.Test;
 public class PaddleResultBuilderTest {
 
     /** Stub-Recognizer: liefert Texte/Konfidenzen aus einer FIFO-Liste. */
-    private static final class StubRec extends PaddleRecOrtRunner {
-        private final List<PaddleRecOrtRunner.RecOutput> outputs;
+    private static final class StubRec extends PaddleRecRunner {
+        private final List<PaddleRecRunner.RecOutput> outputs;
         int callCount = 0;
 
-        StubRec(List<PaddleRecOrtRunner.RecOutput> outputs) {
+        StubRec(List<PaddleRecRunner.RecOutput> outputs) {
             super();
             this.outputs = outputs;
         }
 
         @Override
-        PaddleRecOrtRunner.RecOutput recognize(Bitmap quadCrop) {
+        PaddleRecRunner.RecOutput recognize(Bitmap quadCrop) {
             return outputs.get(callCount++);
         }
     }
@@ -59,11 +59,11 @@ public class PaddleResultBuilderTest {
         StubRec rec =
                 new StubRec(
                         Collections.singletonList(
-                                new PaddleRecOrtRunner.RecOutput("0orempsu", 0.30f)));
+                                new PaddleRecRunner.RecOutput("0orempsu", 0.30f)));
         StubRec fallback =
                 new StubRec(
                         Collections.singletonList(
-                                new PaddleRecOrtRunner.RecOutput("01Lorem ipsum", 0.97f)));
+                                new PaddleRecRunner.RecOutput("01Lorem ipsum", 0.97f)));
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(
                         null, Collections.singletonList(q), rec, PASSTHROUGH, () -> fallback);
@@ -78,7 +78,7 @@ public class PaddleResultBuilderTest {
         StubRec rec =
                 new StubRec(
                         Collections.singletonList(
-                                new PaddleRecOrtRunner.RecOutput("hello", 0.90f)));
+                                new PaddleRecRunner.RecOutput("hello", 0.90f)));
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(
                         null,
@@ -96,10 +96,10 @@ public class PaddleResultBuilderTest {
         Quad q = quadAt(10, 20, 200, 12);
         StubRec rec =
                 new StubRec(
-                        Collections.singletonList(new PaddleRecOrtRunner.RecOutput("abc", 0.50f)));
+                        Collections.singletonList(new PaddleRecRunner.RecOutput("abc", 0.50f)));
         StubRec fallback =
                 new StubRec(
-                        Collections.singletonList(new PaddleRecOrtRunner.RecOutput("xyz", 0.40f)));
+                        Collections.singletonList(new PaddleRecRunner.RecOutput("xyz", 0.40f)));
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(
                         null, Collections.singletonList(q), rec, PASSTHROUGH, () -> fallback);
@@ -116,8 +116,8 @@ public class PaddleResultBuilderTest {
         StubRec rec =
                 new StubRec(
                         Arrays.asList(
-                                new PaddleRecOrtRunner.RecOutput("first", 0.80f),
-                                new PaddleRecOrtRunner.RecOutput("second", 0.90f)));
+                                new PaddleRecRunner.RecOutput("first", 0.80f),
+                                new PaddleRecRunner.RecOutput("second", 0.90f)));
 
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(null, quads, rec, PASSTHROUGH);
@@ -159,7 +159,7 @@ public class PaddleResultBuilderTest {
         StubRec rec =
                 new StubRec(
                         Collections.singletonList(
-                                new PaddleRecOrtRunner.RecOutput("hello", 0.42f)));
+                                new PaddleRecRunner.RecOutput("hello", 0.42f)));
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(null, Collections.singletonList(q), rec, PASSTHROUGH);
         assertEquals("hello", result.text);
@@ -174,7 +174,7 @@ public class PaddleResultBuilderTest {
         StubRec rec =
                 new StubRec(
                         Collections.singletonList(
-                                new PaddleRecOrtRunner.RecOutput("x", 1.5f))); // außerhalb 0..1
+                                new PaddleRecRunner.RecOutput("x", 1.5f))); // außerhalb 0..1
         OCRHelper.OcrResultWords result =
                 PaddleResultBuilder.build(null, Collections.singletonList(q), rec, PASSTHROUGH);
         assertEquals(100f, result.words.get(0).getConfidence(), 1e-3f);

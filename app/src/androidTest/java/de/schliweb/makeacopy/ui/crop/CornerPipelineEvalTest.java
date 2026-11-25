@@ -22,7 +22,7 @@ import de.schliweb.makeacopy.ml.corners.CornerDetectorFactory;
 import de.schliweb.makeacopy.ml.corners.DetectionResult;
 import de.schliweb.makeacopy.ml.corners.DocQuadDetector;
 import de.schliweb.makeacopy.ml.corners.EdgeSnapCornerRefiner;
-import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
+import de.schliweb.makeacopy.ml.docquad.DocQuadRunner;
 import de.schliweb.makeacopy.ml.docquad.DocQuadTestRunners;
 import de.schliweb.makeacopy.utils.image.ImageOps;
 import java.io.ByteArrayOutputStream;
@@ -92,12 +92,14 @@ public class CornerPipelineEvalTest {
     // A candidate model bundled via -PcornerEvalModel replaces the shipped one for this run.
     String[] candidateModels = assets.list(ASSET_ROOT + "/model");
     String modelName = DocQuadDetector.DEFAULT_MODEL_ASSET_PATH;
-    DocQuadOrtRunner runner;
+    DocQuadRunner runner;
     if (candidateModels != null && candidateModels.length > 0) {
-      modelName = ASSET_ROOT + "/model/" + candidateModels[0];
-      runner = DocQuadTestRunners.fromAssets(testCtx, appCtx, modelName);
+      // The candidate is two files, <name>.ncnn.param and <name>.ncnn.bin; the model is <name>.
+      String file = candidateModels[0];
+      modelName = ASSET_ROOT + "/model/" + file.substring(0, file.indexOf(".ncnn."));
+      runner = DocQuadTestRunners.fromAssets(testCtx, modelName);
     } else {
-      runner = DocQuadOrtRunner.getInstance(appCtx, modelName);
+      runner = DocQuadRunner.getInstance(appCtx, modelName);
     }
     Log.i(TAG, "model: " + modelName);
     CornerDetector docQuad = CornerDetectorFactory.docQuadForCrop(runner);

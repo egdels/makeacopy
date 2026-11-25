@@ -21,8 +21,8 @@ public abstract class DocQuadGoldenTestBase {
    * <p>Shape: [1,3,256,256] NCHW, float32, value range 0..1.
    */
   protected static float[] makeGoldenInputV1Nchw() {
-    int h = DocQuadOrtRunner.IN_H;
-    int w = DocQuadOrtRunner.IN_W;
+    int h = DocQuadRunner.IN_H;
+    int w = DocQuadRunner.IN_W;
     float[] out = new float[1 * 3 * h * w];
 
     // Channel 0 (R): horizontal gradient x/255
@@ -58,7 +58,7 @@ public abstract class DocQuadGoldenTestBase {
    * Computes the NCHW index for a given channel, y, and x coordinate. NCHW: ((c * H) + y) * W + x
    */
   protected static int idx(int c, int y, int x) {
-    return ((c * DocQuadOrtRunner.IN_H) + y) * DocQuadOrtRunner.IN_W + x;
+    return ((c * DocQuadRunner.IN_H) + y) * DocQuadRunner.IN_W + x;
   }
 
   /**
@@ -68,8 +68,8 @@ public abstract class DocQuadGoldenTestBase {
   protected static int computeMaskAreaV1(float[][][][] maskLogits) {
     float[][] m = maskLogits[0][0];
     int area = 0;
-    for (int y = 0; y < DocQuadOrtRunner.OUT_H; y++) {
-      for (int x = 0; x < DocQuadOrtRunner.OUT_W; x++) {
+    for (int y = 0; y < DocQuadRunner.OUT_H; y++) {
+      for (int x = 0; x < DocQuadRunner.OUT_W; x++) {
         double logit = (double) m[y][x];
         double prob = 1.0 / (1.0 + Math.exp(-logit));
         if (prob > 0.5) {
@@ -113,12 +113,12 @@ public abstract class DocQuadGoldenTestBase {
       float best = -Float.MAX_VALUE;
       int bestIdx = 0;
       float[][] hm = cornerHeatmaps[0][c];
-      for (int y = 0; y < DocQuadOrtRunner.OUT_H; y++) {
-        for (int x = 0; x < DocQuadOrtRunner.OUT_W; x++) {
+      for (int y = 0; y < DocQuadRunner.OUT_H; y++) {
+        for (int x = 0; x < DocQuadRunner.OUT_W; x++) {
           float v = hm[y][x];
           if (v > best) {
             best = v;
-            bestIdx = y * DocQuadOrtRunner.OUT_W + x;
+            bestIdx = y * DocQuadRunner.OUT_W + x;
           }
         }
       }

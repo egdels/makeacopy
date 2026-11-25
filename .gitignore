@@ -14,7 +14,7 @@
 .cxx
 local.properties
 
-# Native build output (ONNX Runtime)
+# Native build output (NCNN, scripts/build_ncnn_android.sh)
 /app/src/main/jniLibs/
 /build-android/
 

@@ -48,14 +48,12 @@
 -keep public class * extends androidx.viewpager.widget.ViewPager
 -keep public class * extends androidx.fragment.app.Fragment
 
-# Keep native methods (ONNX Runtime's JNI bindings)
+# Keep native methods (the JNI bridge to NCNN finds them by name)
 -keepclasseswithmembernames class * {
     native <methods>;
 }
 
 -keepattributes *Annotation*
-
--keep class ai.onnxruntime.** { *; }
 
 # ---- Gson/Registry JSON model keeps ----
 # Keep JSON layout stable for persisted registry across releases.

@@ -12,7 +12,7 @@ package de.schliweb.makeacopy.ml.corners;
 import android.content.Context;
 import androidx.annotation.NonNull;
 import de.schliweb.makeacopy.BuildConfig;
-import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
+import de.schliweb.makeacopy.ml.docquad.DocQuadRunner;
 
 /**
  * A factory class for creating instances of {@link CornerDetector}. This factory provides
@@ -31,11 +31,11 @@ public final class CornerDetectorFactory {
    * #docQuadForCrop}.
    *
    * @param ctx the application context used for initializing the detector.
-   * @param runner the pre-loaded {@link DocQuadOrtRunner} instance for DocQuad-based detection.
+   * @param runner the pre-loaded {@link DocQuadRunner} instance for DocQuad-based detection.
    * @return a {@link CornerDetector} instance suitable for cropping operations.
    */
   @NonNull
-  public static CornerDetector forCrop(@NonNull Context ctx, @NonNull DocQuadOrtRunner runner) {
+  public static CornerDetector forCrop(@NonNull Context ctx, @NonNull DocQuadRunner runner) {
     return docQuadForCrop(runner);
   }
 
@@ -45,7 +45,7 @@ public final class CornerDetectorFactory {
    * preview, where a weak frame would cost several inferences.
    */
   @NonNull
-  public static CornerDetector docQuadForCrop(@NonNull DocQuadOrtRunner runner) {
+  public static CornerDetector docQuadForCrop(@NonNull DocQuadRunner runner) {
     return BuildConfig.FEATURE_DOCQUAD_ROTATION_TTA
         ? new RotatingDocQuadDetector(runner)
         : new DocQuadDetector(runner);
@@ -59,11 +59,11 @@ public final class CornerDetectorFactory {
    * covered lens still got an outline, from the contours of the sensor noise.
    *
    * @param ctx the application context used for initializing the detector.
-   * @param runner the pre-loaded {@link DocQuadOrtRunner} instance for DocQuad-based detection.
+   * @param runner the pre-loaded {@link DocQuadRunner} instance for DocQuad-based detection.
    * @return a {@link CornerDetector} instance suitable for live processing.
    */
   @NonNull
-  public static CornerDetector forLive(@NonNull Context ctx, @NonNull DocQuadOrtRunner runner) {
+  public static CornerDetector forLive(@NonNull Context ctx, @NonNull DocQuadRunner runner) {
     OneEuroCornerSmoother smoother = OneEuroCornerSmoother.withDefaults();
     return new ThrottledDocQuadLiveDetector(ctx.getApplicationContext(), runner, smoother);
   }

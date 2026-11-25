@@ -18,8 +18,8 @@ import android.os.SystemClock;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import de.schliweb.makeacopy.ml.docquad.DocQuadOrtRunner;
 import de.schliweb.makeacopy.ml.docquad.DocQuadPostprocessor;
+import de.schliweb.makeacopy.ml.docquad.DocQuadRunner;
 import java.util.Locale;
 
 /**
@@ -74,7 +74,7 @@ public final class RotatingDocQuadDetector implements CornerDetector {
 
   private final DocQuadDetector base;
 
-  public RotatingDocQuadDetector(@NonNull DocQuadOrtRunner runner) {
+  public RotatingDocQuadDetector(@NonNull DocQuadRunner runner) {
     this.base = new DocQuadDetector(runner);
   }
 

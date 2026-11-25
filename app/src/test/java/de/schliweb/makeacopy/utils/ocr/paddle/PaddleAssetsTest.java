@@ -77,12 +77,12 @@ public class PaddleAssetsTest {
     }
 
     /**
-     * Asset-Konstanten der Multi-Model-API: DET_NAME zeigt auf {@code det.ort},
+     * Asset-Konstanten der Multi-Model-API: DET_BASE zeigt auf {@code det} (det.ncnn.param / det.ncnn.bin),
      * SHA256SUMS-Asset hat den richtigen Namen.
      */
     @Test
     public void assetConstants_areMultiModel() {
-        assertEquals("det.ort", PaddleAssets.DET_NAME);
+        assertEquals("det", PaddleAssets.DET_BASE);
         assertEquals("SHA256SUMS", PaddleAssets.SHA256SUMS_NAME);
         assertEquals("paddleocr/v5", PaddleAssets.ASSET_DIR);
     }

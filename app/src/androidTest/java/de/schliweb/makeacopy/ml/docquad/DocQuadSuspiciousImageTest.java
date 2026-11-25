@@ -66,15 +66,15 @@ public class DocQuadSuspiciousImageTest {
 
     // 2) Create letterbox and render to 256x256
     DocQuadLetterbox lb =
-        DocQuadLetterbox.create(srcW, srcH, DocQuadOrtRunner.IN_W, DocQuadOrtRunner.IN_H);
+        DocQuadLetterbox.create(srcW, srcH, DocQuadRunner.IN_W, DocQuadRunner.IN_H);
     Bitmap in256 = renderLetterbox256(srcBitmap, lb);
 
     // 3) Convert to NCHW float array
     float[] input = bitmapToNchwFloat01(in256);
 
     // 4) Run ONNX inference
-    DocQuadOrtRunner.Outputs outputs;
-    try (DocQuadOrtRunner runner = new DocQuadOrtRunner(ctx, modelAsset)) {
+    DocQuadRunner.Outputs outputs;
+    try (DocQuadRunner runner = new DocQuadRunner(ctx, modelAsset)) {
       outputs = runner.run(input);
     }
     assertNotNull("ONNX outputs must not be null", outputs);
@@ -179,8 +179,8 @@ public class DocQuadSuspiciousImageTest {
         Bitmap.createScaledBitmap(
             srcBitmap, Math.round(srcW * scale), Math.round(srcH * scale), true);
 
-    DocQuadOrtRunner runner =
-        DocQuadOrtRunner.getInstance(ctx, DocQuadDetector.DEFAULT_MODEL_ASSET_PATH);
+    DocQuadRunner runner =
+        DocQuadRunner.getInstance(ctx, DocQuadDetector.DEFAULT_MODEL_ASSET_PATH);
     DetectionResult single = new DocQuadDetector(runner).detect(work, ctx);
     DetectionResult crop = CornerDetectorFactory.docQuadForCrop(runner).detect(work, ctx);
 
@@ -243,7 +243,7 @@ public class DocQuadSuspiciousImageTest {
   private static float[] bitmapToNchwFloat01(Bitmap bmp) {
     int w = bmp.getWidth();
     int h = bmp.getHeight();
-    if (w != DocQuadOrtRunner.IN_W || h != DocQuadOrtRunner.IN_H) {
+    if (w != DocQuadRunner.IN_W || h != DocQuadRunner.IN_H) {
       throw new IllegalArgumentException("bitmap must be 256x256");
     }
     int hw = h * w;
@@ -267,7 +267,7 @@ public class DocQuadSuspiciousImageTest {
 
   private static Bitmap renderLetterbox256(Bitmap src, DocQuadLetterbox lb) {
     Bitmap out =
-        Bitmap.createBitmap(DocQuadOrtRunner.IN_W, DocQuadOrtRunner.IN_H, Bitmap.Config.ARGB_8888);
+        Bitmap.createBitmap(DocQuadRunner.IN_W, DocQuadRunner.IN_H, Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(out);
     canvas.drawColor(android.graphics.Color.BLACK);
 
