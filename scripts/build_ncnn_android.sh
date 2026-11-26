@@ -86,7 +86,8 @@ if [ -z "$CMAKE_BIN" ]; then
 fi
 [ -n "$CMAKE_BIN" ] && [ -x "$CMAKE_BIN" ] || { echo "ERROR: cmake not found (set NCNN_CMAKE)" >&2; exit 1; }
 FOUND_CMAKE_VERSION="$("$CMAKE_BIN" --version | sed -n '1s/^cmake version //p')"
-if [ "$FOUND_CMAKE_VERSION" != "$RELEASE_CMAKE_VERSION" ]; then
+# The Android SDK's cmake reports its version with a build suffix ("3.31.6-g38307f9").
+if [ "${FOUND_CMAKE_VERSION%%-*}" != "$RELEASE_CMAKE_VERSION" ]; then
   info "WARN: cmake is $FOUND_CMAKE_VERSION, releases are built with $RELEASE_CMAKE_VERSION - the libraries will differ from a release build."
 fi
 

@@ -5187,7 +5187,7 @@ Builds:
     submodules: true
     sudo:
       - apt-get update
-      - apt-get install -y make cmake
+      - apt-get install -y make
     gradle:
       - yes
     output: build/outputs/apk/release/app-armeabi-v7a-release-unsigned.apk
@@ -5197,6 +5197,8 @@ Builds:
       - cd ../scripts
       - chmod +x *.sh
       - export ABIS="armeabi-v7a"
+      - sdkmanager 'cmake;3.31.6'
+      - export NCNN_CMAKE=$$SDK$$/cmake/3.31.6/bin/cmake
       - ./build_ncnn_android.sh
     ndk: 28.0.13004108
     gradleprops:
@@ -5211,7 +5213,7 @@ Builds:
     submodules: true
     sudo:
       - apt-get update
-      - apt-get install -y make cmake
+      - apt-get install -y make
     gradle:
       - yes
     output: build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk
@@ -5221,6 +5223,8 @@ Builds:
       - cd ../scripts
       - chmod +x *.sh
       - export ABIS="arm64-v8a"
+      - sdkmanager 'cmake;3.31.6'
+      - export NCNN_CMAKE=$$SDK$$/cmake/3.31.6/bin/cmake
       - ./build_ncnn_android.sh
     ndk: 28.0.13004108
     gradleprops:
@@ -5235,7 +5239,7 @@ Builds:
     submodules: true
     sudo:
       - apt-get update
-      - apt-get install -y make cmake
+      - apt-get install -y make
     gradle:
       - yes
     output: build/outputs/apk/release/app-x86-release-unsigned.apk
@@ -5245,6 +5249,8 @@ Builds:
       - cd ../scripts
       - chmod +x *.sh
       - export ABIS="x86"
+      - sdkmanager 'cmake;3.31.6'
+      - export NCNN_CMAKE=$$SDK$$/cmake/3.31.6/bin/cmake
       - ./build_ncnn_android.sh
     ndk: 28.0.13004108
     gradleprops:
@@ -5259,7 +5265,7 @@ Builds:
     submodules: true
     sudo:
       - apt-get update
-      - apt-get install -y make cmake
+      - apt-get install -y make
     gradle:
       - yes
     output: build/outputs/apk/release/app-x86_64-release-unsigned.apk
@@ -5269,6 +5275,8 @@ Builds:
       - cd ../scripts
       - chmod +x *.sh
       - export ABIS="x86_64"
+      - sdkmanager 'cmake;3.31.6'
+      - export NCNN_CMAKE=$$SDK$$/cmake/3.31.6/bin/cmake
       - ./build_ncnn_android.sh
     ndk: 28.0.13004108
     gradleprops:
