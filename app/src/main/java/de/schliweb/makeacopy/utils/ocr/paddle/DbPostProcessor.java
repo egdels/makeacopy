@@ -197,7 +197,7 @@ final class DbPostProcessor {
       if (py > maxY) maxY = py;
     }
 
-    private static void extend(java.util.HashMap<Integer, int[]> spans, int key, int v) {
+    private static void extend(java.util.Map<Integer, int[]> spans, int key, int v) {
       int[] span = spans.get(key);
       if (span == null) {
         spans.put(key, new int[] {v, v});

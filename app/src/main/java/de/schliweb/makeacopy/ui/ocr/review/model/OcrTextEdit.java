@@ -39,6 +39,8 @@ public final class OcrTextEdit {
     final List<Boolean> startsLine = new ArrayList<>();
 
     /**
+     * Cuts the edited text into pieces.
+     *
      * @param text the edited text
      * @param lines {@code true}: every non-blank line is one piece (vertical page); {@code false}:
      *     every run of non-whitespace is one piece
@@ -46,7 +48,7 @@ public final class OcrTextEdit {
     public static Tokens of(String text, boolean lines) {
       Tokens tokens = new Tokens();
       if (text == null) return tokens;
-      for (String line : text.split("\\R")) {
+      for (String line : text.split("\\R", -1)) {
         String trimmed = line.trim();
         if (trimmed.isEmpty()) continue;
         if (lines) {
@@ -55,7 +57,7 @@ public final class OcrTextEdit {
           continue;
         }
         boolean first = true;
-        for (String token : trimmed.split("\\s+")) {
+        for (String token : trimmed.split("\\s+", -1)) {
           tokens.texts.add(token);
           tokens.startsLine.add(first);
           first = false;
@@ -66,6 +68,8 @@ public final class OcrTextEdit {
   }
 
   /**
+   * Carries the edited text over to the words of the document.
+   *
    * @param doc the document to change in place
    * @param pieces the words of each piece of the text, in text order (see the class comment); words
    *     that are in no piece stay as they are

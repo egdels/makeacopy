@@ -862,6 +862,12 @@ final class PaddleResultBuilder {
     return best;
   }
 
+  /** Vertical anchor of a quad for line grouping: centre, or top + half a line for tall quads. */
+  private static double anchorY(Quad q, double medianHeight, double tallLimit) {
+    double h = q.maxY() - q.minY();
+    return h > tallLimit ? q.minY() + 0.5 * medianHeight : centerY(q);
+  }
+
   /**
    * Gruppiert Quads in vertikale Spalten (analog zu {@link #groupQuadsIntoLines(List)}, mit
    * vertauschten Achsen): Cluster über Center-X-Overlap mit Toleranz = {@link
@@ -869,12 +875,6 @@ final class PaddleResultBuilder {
    * geliefert, innerhalb einer Spalte top-to-bottom.
    */
   @VisibleForTesting
-  /** Vertical anchor of a quad for line grouping: centre, or top + half a line for tall quads. */
-  private static double anchorY(Quad q, double medianHeight, double tallLimit) {
-    double h = q.maxY() - q.minY();
-    return h > tallLimit ? q.minY() + 0.5 * medianHeight : centerY(q);
-  }
-
   static List<List<Quad>> groupQuadsIntoColumns(List<Quad> quads) {
     List<Quad> sortedByX = new ArrayList<>(quads);
     // Primärsortierung nach Center-X absteigend (rechts→links), Tie-Break Center-Y.

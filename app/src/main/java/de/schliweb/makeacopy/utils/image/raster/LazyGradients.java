@@ -56,7 +56,7 @@ public final class LazyGradients {
   private float blur(int x, int y) {
     int i = y * width + x;
     float v = blur[i];
-    if (v == v) return v;
+    if (!Float.isNaN(v)) return v;
     int l = Gray.reflect(x - 1, width);
     int r = Gray.reflect(x + 1, width);
     int u = Gray.reflect(y - 1, height);
@@ -73,7 +73,7 @@ public final class LazyGradients {
   private float luma(int x, int y) {
     int i = y * width + x;
     float v = luma[i];
-    if (v == v) return v;
+    if (!Float.isNaN(v)) return v;
     v = Gray.luma(argb[i]);
     luma[i] = v;
     return v;

@@ -164,18 +164,6 @@ final class PaddleLanguageRouter {
     // no instances
   }
 
-  /**
-   * Resolves the recognition model key corresponding to the provided language specification. The
-   * method processes the language specification string, splits it into tokens using delimiters, and
-   * maps the tokens to model keys, if applicable. The resolved model key is determined based on a
-   * predefined priority order.
-   *
-   * @param langSpec the language specification string, or {@code null}. The string may include
-   *     multiple languages separated by ',', '+' or ';'.
-   * @return the resolved model key as a {@code String}, or {@code null} if no matching model key is
-   *     found.
-   */
-  @Nullable
   /** Model key of PP-OCRv5's base recogniser (Chinese, English, Japanese and Latin script). */
   static final String BASE_MODEL_KEY = "zh";
 
@@ -200,6 +188,18 @@ final class PaddleLanguageRouter {
     return null;
   }
 
+  /**
+   * Resolves the recognition model key corresponding to the provided language specification. The
+   * method processes the language specification string, splits it into tokens using delimiters, and
+   * maps the tokens to model keys, if applicable. The resolved model key is determined based on a
+   * predefined priority order.
+   *
+   * @param langSpec the language specification string, or {@code null}. The string may include
+   *     multiple languages separated by ',', '+' or ';'.
+   * @return the resolved model key as a {@code String}, or {@code null} if no matching model key is
+   *     found.
+   */
+  @Nullable
   static String resolveRecModel(@Nullable String langSpec) {
     if (langSpec == null) return null;
     String s = langSpec.trim();

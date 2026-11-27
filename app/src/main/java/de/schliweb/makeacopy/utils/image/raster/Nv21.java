@@ -36,7 +36,6 @@ public final class Nv21 {
     int th = Math.max(1, (int) Math.round(height * scale));
     int rot = ((rotationDegrees % 360) + 360) % 360;
     int outW = quarterTurn(rot) ? th : tw;
-    int outH = quarterTurn(rot) ? tw : th;
     int[] out = new int[tw * th];
     int chroma = width * height;
     int[] xs = bounds(width, tw);

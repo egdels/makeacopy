@@ -24,6 +24,8 @@ final class CropGestureExclusion {
   private CropGestureExclusion() {}
 
   /**
+   * Picks the vertical spans to exclude from the back gesture on one side.
+   *
    * @param centers vertical handle centres in view pixels, most important first
    * @param radii touch radius of each handle in view pixels
    * @param count number of valid entries in {@code centers} / {@code radii}

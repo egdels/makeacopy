@@ -844,7 +844,9 @@ public class TrapezoidSelectionView extends View {
     if (insets == null || root == null || root.getWidth() <= 0) {
       return new int[] {fallback, fallback};
     }
-    android.graphics.Insets gesture = insets.getSystemGestureInsets();
+    androidx.core.graphics.Insets gesture =
+        androidx.core.view.WindowInsetsCompat.toWindowInsetsCompat(insets)
+            .getInsets(androidx.core.view.WindowInsetsCompat.Type.systemGestures());
     int[] loc = new int[2];
     getLocationInWindow(loc);
     int left = gesture.left - loc[0];

@@ -143,7 +143,7 @@ public final class Enhance {
           float[] rowB = new float[bw];
           for (int y = from; y < until; y++) {
             float fy = clamp((y + 0.5f) / size - 0.5f, 0f, bh - 1);
-            int top = (int) fy * bw;
+            int top = ((int) fy) * bw;
             int bottom = Math.min(bh - 1, (int) fy + 1) * bw;
             float ty = fy - (int) fy;
             gainRow(gains[0], top, bottom, ty, rowR);

@@ -886,6 +886,8 @@ public class PdfCreator {
    *
    * @return the number of pages embedded as their stored JPEG, or -1 on failure
    */
+  // Page preparation should yield to the UI; nothing depends on the priority for correctness.
+  @SuppressWarnings("ThreadPriorityCheck")
   private static int renderPages(
       PdfWriter writer,
       PageSource source,
@@ -986,8 +988,8 @@ public class PdfCreator {
   }
 
   /**
-   * Worker side of {@link #renderPagesParallel}: loads, processes and encodes one page without
-   * touching the document. The page is released on this thread before it returns.
+   * Worker side of {@link #renderPages}: loads, processes and encodes one page without touching the
+   * document. The page is released on this thread before it returns.
    */
   private static PreparedPage preparePage(
       PageSource source,
@@ -1243,7 +1245,7 @@ public class PdfCreator {
             && marker != 0xCC) {
           return null; // lossless, hierarchical or arithmetic coding
         }
-        long skip = len - 2;
+        long skip = len - 2L;
         while (skip > 0) {
           long s = in.skip(skip);
           if (s <= 0) return null;

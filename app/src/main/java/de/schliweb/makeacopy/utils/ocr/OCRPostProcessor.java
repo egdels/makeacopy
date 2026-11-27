@@ -330,6 +330,8 @@ public class OCRPostProcessor {
   }
 
   /**
+   * Cuts the recognized words into the pieces their text is made of.
+   *
    * @param words the recognized words
    * @param multiColumn whether multi-column layout reconstruction is enabled (user option)
    * @return the pieces of the text of {@link #wordsToText(List, boolean)} for the same arguments

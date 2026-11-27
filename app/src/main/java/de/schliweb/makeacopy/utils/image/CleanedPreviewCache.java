@@ -56,6 +56,8 @@ public final class CleanedPreviewCache {
 
   private static final int JPEG_QUALITY = 90;
 
+  // Previews are built behind everything else; nothing depends on the priority for correctness.
+  @SuppressWarnings("ThreadPriorityCheck")
   private static final ExecutorService EXEC =
       Executors.newSingleThreadExecutor(
           r -> {

@@ -119,7 +119,7 @@ public final class BlackWhite {
     int row = y * width;
     for (int x = 0; x < width; x++) {
       int v = lum[row + x] & 0xFF;
-      colSum[x] += sign * v;
+      colSum[x] += sign * (long) v;
       colSq[x] += sign * (long) v * v;
     }
   }
