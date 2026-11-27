@@ -5193,6 +5193,13 @@ Builds:
     output: build/outputs/apk/release/app-armeabi-v7a-release-unsigned.apk
     binary:
       https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-armeabi-v7a-release.apk
+    rm:
+      - app/src/androidTest/assets/docquad_m4/docquadnet256_zero_opset17.ncnn.bin
+      - external/ncnn/examples/squeezenet_v1.1.bin
+      - external/ncnn/examples/squeezenet_v1.1.param.bin
+    scanignore:
+      - app/src/main/assets/docquad
+      - app/src/main/assets/paddleocr/v5
     build:
       - cd ../scripts
       - chmod +x *.sh
@@ -5219,6 +5226,13 @@ Builds:
     output: build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk
     binary:
       https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-arm64-v8a-release.apk
+    rm:
+      - app/src/androidTest/assets/docquad_m4/docquadnet256_zero_opset17.ncnn.bin
+      - external/ncnn/examples/squeezenet_v1.1.bin
+      - external/ncnn/examples/squeezenet_v1.1.param.bin
+    scanignore:
+      - app/src/main/assets/docquad
+      - app/src/main/assets/paddleocr/v5
     build:
       - cd ../scripts
       - chmod +x *.sh
@@ -5245,6 +5259,13 @@ Builds:
     output: build/outputs/apk/release/app-x86-release-unsigned.apk
     binary:
       https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-x86-release.apk
+    rm:
+      - app/src/androidTest/assets/docquad_m4/docquadnet256_zero_opset17.ncnn.bin
+      - external/ncnn/examples/squeezenet_v1.1.bin
+      - external/ncnn/examples/squeezenet_v1.1.param.bin
+    scanignore:
+      - app/src/main/assets/docquad
+      - app/src/main/assets/paddleocr/v5
     build:
       - cd ../scripts
       - chmod +x *.sh
@@ -5271,6 +5292,13 @@ Builds:
     output: build/outputs/apk/release/app-x86_64-release-unsigned.apk
     binary:
       https://github.com/egdels/makeacopy/releases/download/v%v/MakeACopy-v%v-x86_64-release.apk
+    rm:
+      - app/src/androidTest/assets/docquad_m4/docquadnet256_zero_opset17.ncnn.bin
+      - external/ncnn/examples/squeezenet_v1.1.bin
+      - external/ncnn/examples/squeezenet_v1.1.param.bin
+    scanignore:
+      - app/src/main/assets/docquad
+      - app/src/main/assets/paddleocr/v5
     build:
       - cd ../scripts
       - chmod +x *.sh
