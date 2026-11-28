@@ -14,9 +14,10 @@ is. The full license texts and notices follow at the end.
 - **NCNN**, which runs the corner detection and the text recognition models.
   Copyright (C) 2017 Tencent. BSD 3-Clause License. MakeACopy builds a
   reduced version from source. https://github.com/Tencent/ncnn
-- **PaddleOCR PP-OCRv5 mobile**, the text detection model and the nine text
-  recognition models with their character lists, converted to the NCNN
-  format for MakeACopy. Copyright (c) PaddlePaddle Authors. Apache
+- **PaddleOCR PP-OCRv5 mobile and PP-OCRv6 small**, the text detection
+  model and the nine text recognition models (eight of PP-OCRv5, one of
+  PP-OCRv6) with their character lists, converted to the NCNN format for
+  MakeACopy. Copyright (c) PaddlePaddle Authors. Apache
   License 2.0. https://github.com/PaddlePaddle/PaddleOCR
 - **DocQuadNet-256**, the corner detection model, trained for MakeACopy.
   Copyright 2026 Christian Kierdorf. Apache License 2.0, like the app.

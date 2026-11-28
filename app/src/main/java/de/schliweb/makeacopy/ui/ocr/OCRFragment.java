@@ -353,7 +353,8 @@ public class OCRFragment extends Fragment {
         requireContext().getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
     String savedLangSpec = null;
     try {
-      savedLangSpec = sp.getString(PREF_KEY_OCR_LANG, null);
+      // "en" was a group of its own up to 4.10.0; English reads with the Latin model now.
+      savedLangSpec = OCRUtils.withoutRetiredGroups(sp.getString(PREF_KEY_OCR_LANG, null));
     } catch (Throwable ignore) {
       // Best-effort; failure is non-critical
     }

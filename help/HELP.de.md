@@ -31,9 +31,9 @@ der Schieberegler-Taste auf dem Kamerabildschirm.
 
 - Der OCR-Bildschirm erkennt den Text sofort. Wähle vorher die
   **Sprache** des Dokuments, wenn eine andere angezeigt wird. Die
-  Sprachen sind nach Schrift gruppiert: Deutsch, Französisch, Spanisch
-  und die meisten anderen europäischen Sprachen stehen unter *Latin
-  script*.
+  Sprachen sind nach Schrift gruppiert: Deutsch, Englisch, Französisch,
+  Spanisch und die meisten anderen europäischen Sprachen stehen unter
+  *Latin script*.
 - **Überprüfen** zeigt die erkannten Wörter auf der Seite: Tippe auf ein
   Wort, um es zu korrigieren. **Text teilen** gibt den Text an eine
   andere App weiter.

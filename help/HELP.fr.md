@@ -31,9 +31,9 @@ Recadrer, OCR et Exporter. Tout ce qui se règle se trouve sous
 
 - L'écran OCR reconnaît le texte tout de suite. Choisissez d'abord la
   **Langue** du document si une autre est affichée. Les langues sont
-  regroupées par écriture : le français, l'allemand, l'espagnol et la
-  plupart des autres langues européennes se trouvent sous *Latin
-  script*.
+  regroupées par écriture : le français, l'anglais, l'allemand,
+  l'espagnol et la plupart des autres langues européennes se trouvent
+  sous *Latin script*.
 - **Vérifier** affiche les mots reconnus sur la page : touchez un mot
   pour le corriger. **Partager le texte** transmet le texte à une autre
   application.

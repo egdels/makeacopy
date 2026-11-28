@@ -30,8 +30,8 @@ can set is under **Options**, the slider button on the camera screen.
 
 - The OCR screen recognises the text right away. Pick the **Language** of
   the document first if it is not the one shown. Languages are grouped
-  by script: German, French, Spanish and most other European languages
-  are under *Latin script*.
+  by script: English, German, French, Spanish and most other European
+  languages are under *Latin script*.
 - **Review** shows the recognised words on the page: tap a word to
   correct it. **Share text** hands the text to another app.
 - Tap **Next** to go to the export. Changing the language later shows
