@@ -45,17 +45,19 @@ final class PaddleLanguageRouter {
    * Immutable list of keys representing supported language model identifiers. Each key in this list
    * corresponds to a specific language or script supported by the Paddle OCR framework.
    *
-   * <p>The keys include: - "en": English - "latin": General Latin-based scripts - "eslav": East
-   * Slavic languages - "cyrillic": General Cyrillic-based scripts - "arabic": Arabic script -
+   * <p>The keys include: - "latin": Latin-based scripts, English among them - "eslav": East Slavic
+   * languages - "cyrillic": General Cyrillic-based scripts - "arabic": Arabic script -
    * "devanagari": Devanagari script - "th": Thai language - "el": Greek language - "zh": Chinese
    * language
+   *
+   * <p>There is no English model: PaddleOCR's {@code en} recogniser reads English no better than
+   * the Latin one and loses the accents of the other Latin-script languages.
    *
    * <p>This list is unmodifiable to ensure thread-safety and to prevent accidental modifications.
    */
   static final List<String> MODEL_KEYS =
       Collections.unmodifiableList(
-          Arrays.asList(
-              "en", "latin", "eslav", "cyrillic", "arabic", "devanagari", "th", "el", "zh"));
+          Arrays.asList("latin", "eslav", "cyrillic", "arabic", "devanagari", "th", "el", "zh"));
 
   /**
    * A mapping between language specification codes (e.g., "eng", "deu+eng") and associated model
@@ -69,7 +71,6 @@ final class PaddleLanguageRouter {
 
   static {
     Map<String, String> base = new HashMap<>();
-    base.put("en", "en_PP-OCRv5_mobile_rec");
     base.put("latin", "latin_PP-OCRv5_mobile_rec");
     base.put("eslav", "eslav_PP-OCRv5_mobile_rec");
     base.put("cyrillic", "cyrillic_PP-OCRv5_mobile_rec");
@@ -78,6 +79,7 @@ final class PaddleLanguageRouter {
     base.put("th", "th_PP-OCRv5_mobile_rec");
     base.put("el", "el_PP-OCRv5_mobile_rec");
     base.put("zh", "PP-OCRv5_mobile_rec");
+    base.put(PaddleLanguageRouter.V6_MODEL_KEY, "PP-OCRv6_small_rec");
     ASSET_BASENAME = Collections.unmodifiableMap(base);
 
     Map<String, String> m = new HashMap<>();
@@ -86,9 +88,10 @@ final class PaddleLanguageRouter {
       m.put(modelKey, modelKey);
     }
 
-    // en
-    m.put("eng", "en");
-    m.put("en", "en");
+    // English reads with the Latin model; "en" was a model key of its own up to 4.10.0 and may
+    // still be a saved selection.
+    m.put("eng", "latin");
+    m.put("en", "latin");
 
     // latin
     for (String c :
@@ -164,28 +167,42 @@ final class PaddleLanguageRouter {
     // no instances
   }
 
+  /**
+   * Model key of PP-OCRv6 small's recogniser (Latin script, Chinese and Japanese in one model). It
+   * is no language group: nothing routes to it and the language selection does not offer it. It
+   * checks unsure lines on the pages of the groups {@link #readsWithV6} names, see {@link
+   * PaddleOcrEngine}.
+   */
+  static final String V6_MODEL_KEY = "v6";
+
+  /**
+   * Whether PP-OCRv6 checks the unsure lines of pages of the group {@code modelKey}: the
+   * Latin-script and the Chinese/Japanese group, the scripts v6 knows.
+   */
+  static boolean readsWithV6(@Nullable String modelKey) {
+    return "latin".equals(modelKey) || BASE_MODEL_KEY.equals(modelKey);
+  }
+
   /** Model key of PP-OCRv5's base recogniser (Chinese, English, Japanese and Latin script). */
   static final String BASE_MODEL_KEY = "zh";
 
   /**
    * Whether lines recognised with {@code modelKey} may be re-read with the base model when the
-   * confidence is low. Only the Latin-script models qualify: the base model does not cover
+   * confidence is low. Only the Latin-script model qualifies: the base model does not cover
    * Cyrillic, Greek, Arabic, Devanagari or Thai, and for CJK it is the routed model already.
    */
   static boolean hasBaseModelFallback(@Nullable String modelKey) {
-    return "latin".equals(modelKey) || "en".equals(modelKey);
+    return "latin".equals(modelKey);
   }
 
   /**
    * The model that reads the languages of {@code modelKey} among the bundled ones: the key itself,
-   * or for English the Latin model, which the Light edition ships alone; {@code null} if none.
+   * or {@code null} if the edition does not ship it (the Light edition ships Latin alone).
    */
   @Nullable
   static String bundledModel(@Nullable String modelKey, Predicate<String> bundled) {
     if (modelKey == null) return null;
-    if (bundled.test(modelKey)) return modelKey;
-    if ("en".equals(modelKey) && bundled.test("latin")) return "latin";
-    return null;
+    return bundled.test(modelKey) ? modelKey : null;
   }
 
   /**

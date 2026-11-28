@@ -4,12 +4,15 @@ set -euo pipefail
 # Converts the ONNX exports of the models into the NCNN files the app ships and refreshes the
 # SHA256SUMS files next to them.
 #
-#   scripts/convert_models_to_ncnn.sh [PADDLE_ONNX_DIR] [DOCQUAD_ONNX]
+#   scripts/convert_models_to_ncnn.sh [PADDLE_ONNX_DIR] [DOCQUAD_ONNX] [V6_DIR]
 #
 #   PADDLE_ONNX_DIR  directory with det.onnx and <key>_PP-OCRv5_mobile_rec.onnx
 #                    (output of scripts/convert_paddleocr_v5_all.sh; default paddle-spike/onnx)
 #   DOCQUAD_ONNX     ONNX export of the corner model (training/docquad_m3/export_onnx.py);
-#                    left out, the corner model in the assets is not touched
+#                    left out (or ""), the corner model in the assets is not touched
+#   V6_DIR           download of the Hugging Face release PaddlePaddle/PP-OCRv6_small_rec_onnx
+#                    (revision 2f0724790c8b57946c89cc45d2fa79e405781f51) with inference.onnx and
+#                    inference.yml; left out, PP-OCRv6 small in the assets is not touched
 #
 # Weights stay in single precision (fp16=0): half precision changes recognised text. The
 # converter version is pinned because another version may write the same network differently.
@@ -20,10 +23,13 @@ PNNX_VERSION="20261020"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PADDLE_ONNX_DIR="${1:-$REPO_DIR/paddle-spike/onnx}"
 DOCQUAD_ONNX="${2:-}"
+V6_DIR="${3:-}"
+V6_NAME="PP-OCRv6_small_rec"
+V6_ONNX_SHA256="5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634"
 PADDLE_ASSETS="$REPO_DIR/app/src/main/assets/paddleocr/v5"
 DOCQUAD_ASSETS="$REPO_DIR/app/src/main/assets/docquad"
 DOCQUAD_NAME="docquadnet256_trained_opset17"
-REC_MODELS="PP-OCRv5_mobile_rec en_PP-OCRv5_mobile_rec latin_PP-OCRv5_mobile_rec eslav_PP-OCRv5_mobile_rec cyrillic_PP-OCRv5_mobile_rec th_PP-OCRv5_mobile_rec arabic_PP-OCRv5_mobile_rec devanagari_PP-OCRv5_mobile_rec el_PP-OCRv5_mobile_rec"
+REC_MODELS="PP-OCRv5_mobile_rec latin_PP-OCRv5_mobile_rec eslav_PP-OCRv5_mobile_rec cyrillic_PP-OCRv5_mobile_rec th_PP-OCRv5_mobile_rec arabic_PP-OCRv5_mobile_rec devanagari_PP-OCRv5_mobile_rec el_PP-OCRv5_mobile_rec"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -58,6 +64,18 @@ for name in $REC_MODELS; do
   convert "$name" "$PADDLE_ONNX_DIR/$name.onnx" "$PADDLE_ASSETS" "[1,3,48,320]" "[1,3,48,960]"
   cp "$PADDLE_ONNX_DIR/${name}_dict.txt" "$PADDLE_ASSETS/${name}_dict.txt"
 done
+if [ -n "$V6_DIR" ]; then
+  v6_sum="$( { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$V6_DIR/inference.onnx"; else shasum -a 256 "$V6_DIR/inference.onnx"; fi; } | cut -d' ' -f1)"
+  [ "$v6_sum" = "$V6_ONNX_SHA256" ] || { echo "ERROR: $V6_DIR/inference.onnx has sha256 $v6_sum, expected $V6_ONNX_SHA256" >&2; exit 1; }
+  convert "$V6_NAME" "$V6_DIR/inference.onnx" "$PADDLE_ASSETS" "[1,3,48,320]" "[1,3,48,960]"
+  # The dictionary is inference.yml's character list with the space PaddleOCR appends.
+  "$WORK/venv/bin/pip" install --quiet pyyaml
+  "$WORK/venv/bin/python" - "$V6_DIR/inference.yml" "$PADDLE_ASSETS/${V6_NAME}_dict.txt" <<'PY'
+import sys, yaml
+chars = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))["PostProcess"]["character_dict"]
+open(sys.argv[2], "w", encoding="utf-8").write("\n".join(chars) + "\n \n")
+PY
+fi
 sums "$PADDLE_ASSETS" *_dict.txt *.ncnn.param *.ncnn.bin
 
 if [ -n "$DOCQUAD_ONNX" ]; then

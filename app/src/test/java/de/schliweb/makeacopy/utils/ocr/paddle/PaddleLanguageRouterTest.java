@@ -20,9 +20,9 @@ import org.junit.Test;
 public class PaddleLanguageRouterTest {
 
     @Test
-    public void resolve_english() {
-        assertEquals("en", PaddleLanguageRouter.resolveRecModel("eng"));
-        assertEquals("en", PaddleLanguageRouter.resolveRecModel("EN"));
+    public void resolve_english_readsWithLatin() {
+        assertEquals("latin", PaddleLanguageRouter.resolveRecModel("eng"));
+        assertEquals("latin", PaddleLanguageRouter.resolveRecModel("EN"));
     }
 
     @Test
@@ -85,10 +85,9 @@ public class PaddleLanguageRouterTest {
     }
 
     @Test
-    public void resolve_combined_priority_en_over_latin() {
-        // en hat Vorrang vor latin
-        assertEquals("en", PaddleLanguageRouter.resolveRecModel("eng+deu"));
-        assertEquals("en", PaddleLanguageRouter.resolveRecModel("deu+eng"));
+    public void resolve_combined_english_and_latin_isLatin() {
+        assertEquals("latin", PaddleLanguageRouter.resolveRecModel("eng+deu"));
+        assertEquals("latin", PaddleLanguageRouter.resolveRecModel("deu+eng"));
     }
 
     @Test
@@ -99,9 +98,9 @@ public class PaddleLanguageRouterTest {
 
     @Test
     public void resolve_combined_priority_full_chain() {
-        // alle gemischt: en gewinnt
-        assertEquals("en", PaddleLanguageRouter.resolveRecModel("tha+ara+rus+deu+eng"));
-        // ohne en: latin
+        // alle gemischt: latin gewinnt, ob über eng oder deu
+        assertEquals("latin", PaddleLanguageRouter.resolveRecModel("tha+ara+rus+eng"));
+        // ohne eng: latin
         assertEquals("latin", PaddleLanguageRouter.resolveRecModel("tha+ara+rus+deu"));
         // ohne latin: eslav
         assertEquals("eslav", PaddleLanguageRouter.resolveRecModel("tha+ara+rus"));
@@ -133,7 +132,7 @@ public class PaddleLanguageRouterTest {
 
     @Test
     public void assetBaseName_known_keys() {
-        assertEquals("en_PP-OCRv5_mobile_rec", PaddleLanguageRouter.assetBaseName("en"));
+        assertNull(PaddleLanguageRouter.assetBaseName("en"));
         assertEquals("latin_PP-OCRv5_mobile_rec", PaddleLanguageRouter.assetBaseName("latin"));
         assertEquals("eslav_PP-OCRv5_mobile_rec", PaddleLanguageRouter.assetBaseName("eslav"));
         assertEquals("cyrillic_PP-OCRv5_mobile_rec", PaddleLanguageRouter.assetBaseName("cyrillic"));
@@ -162,10 +161,13 @@ public class PaddleLanguageRouterTest {
     }
 
     @Test
-    public void bundledModel_light_readsEnglishWithLatin() {
+    public void bundledModel_light_shipsLatinOnly() {
         java.util.function.Predicate<String> lightOnly = "latin"::equals;
         assertEquals("latin", PaddleLanguageRouter.bundledModel("latin", lightOnly));
-        assertEquals("latin", PaddleLanguageRouter.bundledModel("en", lightOnly));
+        assertEquals(
+                "latin",
+                PaddleLanguageRouter.bundledModel(
+                        PaddleLanguageRouter.resolveRecModel("eng"), lightOnly));
         assertNull(PaddleLanguageRouter.bundledModel("eslav", lightOnly));
         assertNull(PaddleLanguageRouter.bundledModel(null, lightOnly));
     }
@@ -173,7 +175,7 @@ public class PaddleLanguageRouterTest {
     @Test
     public void bundledModel_full_keepsRoutedModel() {
         java.util.function.Predicate<String> all = k -> true;
-        assertEquals("en", PaddleLanguageRouter.bundledModel("en", all));
+        assertEquals("latin", PaddleLanguageRouter.bundledModel("latin", all));
         assertEquals("eslav", PaddleLanguageRouter.bundledModel("eslav", all));
     }
 }

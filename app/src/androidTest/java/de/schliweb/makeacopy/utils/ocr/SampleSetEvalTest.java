@@ -50,7 +50,8 @@ import org.junit.runner.RunWith;
  * {@code latin}, {@code deu}); without it each sample is read with its own language, as a user who
  * chose correctly. {@code -e samplesAsset <dir>} reads another asset directory ({@code eval}:
  * MakeACopy's photos and scans, {@code eval/jpn}, {@code synth}). {@code -e paddleBest false}
- * turns "Best quality" (detection at 1920 px, the app's default) off.
+ * turns "Best quality" (detection at 1920 px, the app's default) off, {@code -e paddleV6 false}
+ * reads with the PP-OCRv5 models alone.
  *
  * <p>The time of the first sample includes loading the models; compare times only from a phone
  * and a release build.
@@ -121,9 +122,10 @@ public class SampleSetEvalTest {
         TAG,
         String.format(
             Locale.ROOT,
-            "MEAN set=%s best=%s language=%s n=%d cer=%.3f wer=%.3f words=%d/%d ms=%d",
+            "MEAN set=%s best=%s v6=%s language=%s n=%d cer=%.3f wer=%.3f words=%d/%d ms=%d",
             arg("samplesDir").isEmpty() ? assetDir() : arg("samplesDir"),
             !"false".equals(arg("paddleBest")),
+            !"false".equals(arg("paddleV6")),
             arg("paddleLanguage").isEmpty() ? "own" : arg("paddleLanguage"),
             samples.size(),
             cerSum / samples.size(),
@@ -136,6 +138,7 @@ public class SampleSetEvalTest {
   private static void configure(OcrEngine engine) {
     if (engine instanceof PaddleOcrEngine paddle) {
       paddle.setHighQualityDetectionEnabled(!"false".equals(arg("paddleBest")));
+      paddle.setV6Enabled(!"false".equals(arg("paddleV6")));
     }
   }
 

@@ -1,7 +1,8 @@
-# PaddleOCR PP-OCRv5 mobile (Multi-Model) — Third-Party Notices
+# PaddleOCR PP-OCRv5 mobile and PP-OCRv6 small (Multi-Model) — Third-Party Notices
 
 This directory documents the upstream source, license, and provenance of the
-PaddleOCR **PP-OCRv5 mobile** detection and recognition models that are
+PaddleOCR **PP-OCRv5 mobile** detection and recognition models and the
+**PP-OCRv6 small** recognition model that are
 shipped in every build of the app as **NCNN** assets under
 `app/src/main/assets/paddleocr/v5/`.
 
@@ -20,10 +21,9 @@ Detection (1 model):
 
 - `PP-OCRv5_mobile_det`
 
-Recognition (9 language-group models, lazily loaded per OCR run):
+Recognition (8 language-group models, lazily loaded per OCR run):
 
-- `en_PP-OCRv5_mobile_rec`        — English
-- `latin_PP-OCRv5_mobile_rec`     — Latin-script languages (deu, fra, spa, ita, por, nld, …)
+- `latin_PP-OCRv5_mobile_rec`     — Latin-script languages (eng, deu, fra, spa, ita, por, nld, …)
 - `eslav_PP-OCRv5_mobile_rec`     — East-Slavic (rus, ukr, bel)
 - `cyrillic_PP-OCRv5_mobile_rec`  — broader Cyrillic
 - `arabic_PP-OCRv5_mobile_rec`    — Arabic / Persian
@@ -31,6 +31,13 @@ Recognition (9 language-group models, lazily loaded per OCR run):
 - `th_PP-OCRv5_mobile_rec`        — Thai
 - `el_PP-OCRv5_mobile_rec`        — Greek
 - `PP-OCRv5_mobile_rec`           — generic multilingual / Chinese fallback
+
+Recognition, second opinion (1 model, loaded when a line needs it):
+
+- `PP-OCRv6_small_rec`            — Latin script, Chinese and Japanese in one
+  model. It is no language group of its own: on pages of the Latin and the
+  Chinese/Japanese group it reads again the lines the PP-OCRv5 model is
+  unsure of, and the surer reading is kept. See "PP-OCRv6 small" below.
 
 Each recognition model is paired with its own dictionary file
 `<modelKey>_dict.txt`, extracted from the corresponding upstream
@@ -63,12 +70,14 @@ What is actually packaged into the APK under
 `assets/paddleocr/v5/`:
 
 - `det.ncnn.param` + `det.ncnn.bin` (≈ 4.7 MB) — detection
-- `<lang>_PP-OCRv5_mobile_rec.ncnn.param` + `.ncnn.bin` × 8 and
+- `<lang>_PP-OCRv5_mobile_rec.ncnn.param` + `.ncnn.bin` × 7 and
   `PP-OCRv5_mobile_rec.ncnn.param` + `.ncnn.bin`
   (≈ 7.7–8.0 MB each, generic multilingual ≈ 16 MB) — recognition; per model
   the `.param` file is the layer list, the `.bin` file holds the weights
-- `<lang>_PP-OCRv5_mobile_rec_dict.txt` × 8 + `PP-OCRv5_mobile_rec_dict.txt`
-  — per-model character dictionaries
+- `PP-OCRv6_small_rec.ncnn.param` + `.ncnn.bin` (≈ 20 MB) — recognition,
+  second opinion
+- `<lang>_PP-OCRv5_mobile_rec_dict.txt` × 7, `PP-OCRv5_mobile_rec_dict.txt`
+  and `PP-OCRv6_small_rec_dict.txt` — per-model character dictionaries
 - `SHA256SUMS` — asset-internal pin file (consumed by `verifyModelAssetSha256`
   at build time, pinning every model and dictionary file, and by `PaddleAssets`
   at runtime for the dictionaries it copies to the cache)
@@ -76,6 +85,21 @@ What is actually packaged into the APK under
 
 There are no build flavors any more: every APK (Google Play and F-Droid, all
 ABIs) contains these files, and OCR runs on PaddleOCR only.
+
+## PP-OCRv6 small
+
+`PP-OCRv6_small_rec.ncnn.*` comes from the Hugging Face release
+[PaddlePaddle/PP-OCRv6_small_rec_onnx](https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx)
+(Apache-2.0), revision `2f0724790c8b57946c89cc45d2fa79e405781f51`,
+`inference.onnx` SHA-256
+`5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634`.
+[`scripts/convert_models_to_ncnn.sh`](../../scripts/convert_models_to_ncnn.sh)
+checks that hash and converts the file as in step 3 above (its third
+argument is the download directory); the dictionary is the character list of
+the release's `inference.yml` with the space PaddleOCR appends. The shipped
+`.ncnn.param` and `.ncnn.bin` are byte-identical to that conversion; the
+asset-internal `SHA256SUMS` pins them. The reduced NCNN build carries the two
+layers only this model needs (GELU, Reduction).
 
 ## Upstream projects and licenses
 

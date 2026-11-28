@@ -32,11 +32,23 @@ public class OCRUtils {
     return mapSystemLanguageToPaddleModel(Locale.getDefault());
   }
 
+  /**
+   * {@code languageSpec} with the retired group "en" replaced by "latin", which reads English since
+   * the English model left the app; for selections saved by 4.10.0 and older.
+   */
+  public static String withoutRetiredGroups(String languageSpec) {
+    if (languageSpec == null) return null;
+    java.util.Set<String> codes = new java.util.LinkedHashSet<>();
+    for (String token : languageSpec.split("\\+", -1)) {
+      codes.add("en".equals(token.trim()) ? "latin" : token);
+    }
+    return String.join("+", codes);
+  }
+
   /** The PaddleOCR language group for a system locale; Latin for anything not listed. */
   public static String mapSystemLanguageToPaddleModel(Locale locale) {
     String language = locale != null ? locale.getLanguage() : "";
     return switch (language) {
-      case "en" -> "en";
       case "ru", "be", "uk" -> "eslav";
       case "bg", "mk", "mn", "sr" -> "cyrillic";
       case "ar", "fa", "ur", "ps" -> "arabic";
@@ -56,7 +68,6 @@ public class OCRUtils {
   /** Display name of a PaddleOCR language group, e.g. "Latin script (Paddle)". */
   public static String codeToBaseDisplayName(String code) {
     return switch (code) {
-      case "en" -> "English (Paddle)";
       case "latin" -> "Latin script (Paddle)";
       case "eslav" -> "East Slavic (Paddle)";
       case "cyrillic" -> "Cyrillic script (Paddle)";

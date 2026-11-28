@@ -54,7 +54,7 @@ public final class BackgroundOcr {
       }
     }
     return pickLanguage(
-        persisted,
+        OCRUtils.withoutRetiredGroups(persisted),
         OCRUtils.mapSystemLanguageToPaddleModel(Locale.getDefault()),
         lang -> ctx == null || PaddleEngineFactory.isLanguageBundled(ctx, lang));
   }

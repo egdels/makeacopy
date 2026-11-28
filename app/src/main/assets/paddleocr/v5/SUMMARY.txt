@@ -1,4 +1,4 @@
-PaddleOCR PP-OCRv5 mobile models for MakeACopy (NCNN format)
+PaddleOCR PP-OCRv5 mobile models and PP-OCRv6 small for MakeACopy (NCNN format)
 
 Each model is two files: <name>.ncnn.param (layers) and <name>.ncnn.bin (weights, single precision).
 Converted from the ONNX exports with scripts/convert_models_to_ncnn.sh.
@@ -7,6 +7,9 @@ File                                               Bytes
 PP-OCRv5_mobile_rec.ncnn.bin                        16442228
 PP-OCRv5_mobile_rec.ncnn.param                         19336
 PP-OCRv5_mobile_rec_dict.txt                           74014
+PP-OCRv6_small_rec.ncnn.bin                         21066500
+PP-OCRv6_small_rec.ncnn.param                          13845
+PP-OCRv6_small_rec_dict.txt                            74949
 arabic_PP-OCRv5_mobile_rec.ncnn.bin                  7906404
 arabic_PP-OCRv5_mobile_rec.ncnn.param                  19343
 arabic_PP-OCRv5_mobile_rec_dict.txt                     2371
@@ -21,9 +24,6 @@ devanagari_PP-OCRv5_mobile_rec_dict.txt                 1945
 el_PP-OCRv5_mobile_rec.ncnn.bin                      7716192
 el_PP-OCRv5_mobile_rec.ncnn.param                      19367
 el_PP-OCRv5_mobile_rec_dict.txt                         1105
-en_PP-OCRv5_mobile_rec.ncnn.bin                      7755880
-en_PP-OCRv5_mobile_rec.ncnn.param                      19341
-en_PP-OCRv5_mobile_rec_dict.txt                         1418
 eslav_PP-OCRv5_mobile_rec.ncnn.bin                   7795084
 eslav_PP-OCRv5_mobile_rec.ncnn.param                   19359
 eslav_PP-OCRv5_mobile_rec_dict.txt                      1665

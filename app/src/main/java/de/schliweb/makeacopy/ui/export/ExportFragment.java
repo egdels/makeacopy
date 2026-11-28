@@ -2797,7 +2797,7 @@ public class ExportFragment extends Fragment {
     if (lang == null || lang.trim().isEmpty()) {
       lang = OCRUtils.resolveEffectiveLanguage(lang);
     }
-    return lang;
+    return OCRUtils.withoutRetiredGroups(lang);
   }
 
   /**

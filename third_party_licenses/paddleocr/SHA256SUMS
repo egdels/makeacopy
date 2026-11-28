@@ -1,4 +1,4 @@
-# PaddleOCR PP-OCRv5 mobile — third-party redistribution pins (Multi-Model)
+# PaddleOCR PP-OCRv5 mobile and PP-OCRv6 small — third-party redistribution pins (Multi-Model)
 #
 # These SHA-256 hashes pin the byte-for-byte content of the *dictionary* files
 # that are redistributed in this repository under the `paddle` build flavor at
@@ -13,8 +13,8 @@
 # `de.schliweb.makeacopy.utils.ocr.paddle.PaddleAssets`.
 #
 # Notes
-# - Recognition models are now multi-model (8 language-group recognizers +
-#   1 detection model). The previous single-rec layout (one recognition model /
+# - Recognition models are now multi-model (8 PP-OCRv5 language-group
+#   recognizers, PP-OCRv6 small as second opinion, 1 detection model). The previous single-rec layout (one recognition model /
 #   `rec_dict.txt` / fixed V=438) has been removed and is intentionally NOT
 #   pinned here anymore.
 # - The model files (`*.ncnn.param` / `*.ncnn.bin`, converted with NCNN's pnnx
@@ -29,8 +29,8 @@
 2a215ea5877f01b1f8c8803783cda73707222c39a84d4a6cfee9ef502c48248e  arabic_PP-OCRv5_mobile_rec_dict.txt
 5fc393a91808ca21ba2e34596b40cbf51563fc2d76195d2d70c7053af496843f  cyrillic_PP-OCRv5_mobile_rec_dict.txt
 0971b9ee81af10e7e1c61a95c3ee3e6a3d467615c73a22a372a4abdf90ffae4d  devanagari_PP-OCRv5_mobile_rec_dict.txt
-7edf5b42aa0e974c8cb8dd31799230932303479e6914b641d3e21f6225d40506  en_PP-OCRv5_mobile_rec_dict.txt
 f4a227901daa0e4557aaf0a8f2747cff5a2072e38c783ebe57d473a8ad7820de  eslav_PP-OCRv5_mobile_rec_dict.txt
 b95923300a0656f8169feee90143cbfcdb62d82a37b54e6b12c224c3e584916f  latin_PP-OCRv5_mobile_rec_dict.txt
 e5f8ca61ba03d3a247d06b013119982fa6de2bd48a846018b67bca57ffc56de1  PP-OCRv5_mobile_rec_dict.txt
+d051391881962ec266c4b4ee7b6a493fa2aeabaa2cd9ee369148cf3f6980af99  PP-OCRv6_small_rec_dict.txt
 ff39ea2785d67dcf5f821e7696ce528f3788fb80615a7bfff11415090b85172c  th_PP-OCRv5_mobile_rec_dict.txt

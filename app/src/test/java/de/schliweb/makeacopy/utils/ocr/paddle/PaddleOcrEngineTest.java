@@ -125,7 +125,9 @@ public class PaddleOcrEngineTest {
 
         // null als Context: Engine speichert nur appContext, das hier nicht genutzt wird.
         PaddleOcrEngine engine = new PaddleOcrEngine(null, supplier);
-        // Sprachrouting: "eng" → modelKey "en"; ohne setLanguage liefert runInternal sofort
+        // Hier geht es um Reihenfolge und Konfidenz des Gruppenmodells, nicht um die v6-Gegenprobe.
+        engine.setV6Enabled(false);
+        // Sprachrouting: "eng" → modelKey "latin"; ohne setLanguage liefert runInternal sofort
         // ein leeres Result (Tesseract-Fallback-Pfad).
         engine.setLanguage("eng");
 
@@ -176,6 +178,52 @@ public class PaddleOcrEngineTest {
             assertTrue("bbox right <= bmpW", eb[2] <= bmpW);
             assertTrue("bbox bottom <= bmpH", eb[3] <= bmpH);
         }
+    }
+
+    @Test
+    public void unsureLines_areReadAgainByV6_andTheSurerReadingIsKept() throws Exception {
+        // Drei Zeilen untereinander. Das Gruppenmodell ist sich bei der ersten sicher (kein
+        // zweites Lesen), bei der zweiten und dritten nicht: v6 liest beide noch einmal, ist
+        // bei der zweiten sicherer (gewinnt) und bei der dritten unsicherer (verliert).
+        List<Quad> quads =
+                Arrays.asList(quadAt(10, 10, 80, 14), quadAt(10, 60, 80, 14), quadAt(10, 110, 80, 14));
+        StubRec latin =
+                new StubRec(
+                        Arrays.asList(
+                                new PaddleRecRunner.RecOutput("sure", 0.97f),
+                                new PaddleRecRunner.RecOutput("unsvre", 0.80f),
+                                new PaddleRecRunner.RecOutput("right", 0.90f)));
+        StubRec v6 =
+                new StubRec(
+                        Arrays.asList(
+                                new PaddleRecRunner.RecOutput("unsure", 0.99f),
+                                new PaddleRecRunner.RecOutput("wrong", 0.85f)));
+        StubDet det = new StubDet(quads);
+        PaddleOcrEngine.RunnerSupplier supplier =
+                new PaddleOcrEngine.RunnerSupplier() {
+                    @Override
+                    public PaddleDetRunner det() {
+                        return det;
+                    }
+
+                    @Override
+                    public PaddleRecRunner rec(String modelKey) {
+                        return PaddleLanguageRouter.V6_MODEL_KEY.equals(modelKey) ? v6 : latin;
+                    }
+
+                    @Override
+                    public PaddleResultBuilder.Cropper cropper() {
+                        return (full, quad) -> null;
+                    }
+                };
+        PaddleOcrEngine engine = new PaddleOcrEngine(null, supplier);
+        engine.setLanguage("deu");
+
+        OCRHelper.OcrResultWords result = engine.runInternal(null);
+
+        assertEquals(3, latin.callCount);
+        assertEquals(2, v6.callCount);
+        assertEquals("sure\nunsure\nright", result.text.trim());
     }
 
     @Test

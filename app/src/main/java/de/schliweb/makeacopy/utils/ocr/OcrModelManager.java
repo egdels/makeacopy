@@ -17,7 +17,7 @@ import java.util.List;
 /** The PaddleOCR language groups the app offers. */
 public final class OcrModelManager {
   private static final String[] AVAILABLE_LANGUAGE_CODES =
-      new String[] {"en", "latin", "eslav", "cyrillic", "arabic", "devanagari", "th", "el", "zh"};
+      new String[] {"latin", "eslav", "cyrillic", "arabic", "devanagari", "th", "el", "zh"};
 
   private OcrModelManager() {
     // no instances

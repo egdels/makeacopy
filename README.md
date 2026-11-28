@@ -65,7 +65,7 @@ MakeACopy is available in two editions (controlled via the Gradle property `edit
 
 | Edition | OCR Languages | Fonts | APK Size (arm64-v8a) |
 |---------|--------------|-------|---------------------|
-| **Full** | all PaddleOCR language groups (Latin, English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~108 MB |
+| **Full** | all PaddleOCR language groups (Latin incl. English, Chinese/Japanese, East Slavic, Cyrillic, Arabic, Devanagari, Thai, Greek) | none (glyphless text layer) | ~110 MB |
 | **Light** | Latin script only (English, German, French, Spanish, Polish, Turkish, …) | none (glyphless text layer) | ~42 MB |
 
 Both editions include the same ML-based document detection (NCNN model, converted from the ONNX export), image processing, and full offline functionality. Both editions use a reduced NCNN build that includes only the layers required for document detection and PaddleOCR. Inference runs on the CPU with NCNN in both editions (see "How the app uses the model"). The Light edition ships only the PaddleOCR Latin recognition model.
@@ -263,7 +263,7 @@ MakeACopy follows the Single-Activity + Multi-Fragment pattern with MVVM archite
 |---------|-----------------|--------|
 | ML Inference | [NCNN](https://github.com/Tencent/ncnn) | BSD 3-Clause |
 | Document Corner Detection | Custom-trained model (NCNN, converted from the ONNX export) | Apache 2.0 |
-| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 9× rec, converted to NCNN) | Apache 2.0 |
+| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (det + 8× rec) and PP-OCRv6 small (1× rec), converted to NCNN | Apache 2.0 |
 | PDF | own PDF writer (export), Android PdfRenderer (import) | – |
 | UI | Material Components | Apache 2.0 |
 

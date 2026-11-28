@@ -60,9 +60,9 @@ makeacopy_ncnn_set(NCNN_FMA4 OFF)
 
 # Layers of the shipped models (see app/src/main/assets/**/*.ncnn.param) ...
 set(MAKEACOPY_NCNN_MODEL_LAYERS
-    Input Convolution ConvolutionDepthWise Deconvolution BinaryOp Concat Gemm HardSigmoid HardSwish
-    InnerProduct Interp LayerNorm MultiHeadAttention Permute Pooling Reshape Sigmoid Softmax Split
-    Squeeze Swish)
+    Input Convolution ConvolutionDepthWise Deconvolution BinaryOp Concat GELU Gemm HardSigmoid
+    HardSwish InnerProduct Interp LayerNorm MultiHeadAttention Permute Pooling Reduction Reshape
+    Sigmoid Softmax Split Squeeze Swish)
 # ... and the layers NCNN creates on its own behalf for them: borders, layout changes, fused
 # activations.
 set(MAKEACOPY_NCNN_HELPER_LAYERS Padding Crop Packing Cast Flatten ReLU Clip)

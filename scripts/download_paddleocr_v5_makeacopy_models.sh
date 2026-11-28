@@ -23,8 +23,7 @@ MODELS=(
   "PP-DocLayout-L"
 
   # Recognition
-  "en_PP-OCRv5_mobile_rec"           # eng
-  "latin_PP-OCRv5_mobile_rec"        # deu/fra/spa/ita/por/nld/pol/ces/slk/hun/ron/dan/nor/swe/tur
+  "latin_PP-OCRv5_mobile_rec"        # eng/deu/fra/spa/ita/por/nld/pol/ces/slk/hun/ron/dan/nor/swe/tur
   "eslav_PP-OCRv5_mobile_rec"        # rus candidate 1
   "cyrillic_PP-OCRv5_mobile_rec"     # rus candidate 2 / broader Cyrillic
   "th_PP-OCRv5_mobile_rec"           # tha
@@ -73,7 +72,6 @@ models = [
     "PP-DocLayout-S",
     "PP-DocLayout-M",
     "PP-DocLayout-L",
-    "en_PP-OCRv5_mobile_rec",
     "latin_PP-OCRv5_mobile_rec",
     "eslav_PP-OCRv5_mobile_rec",
     "cyrillic_PP-OCRv5_mobile_rec",

@@ -105,9 +105,19 @@ public class OCRUtilsTest {
   }
 
   @Test
+  public void withoutRetiredGroups_readsEnglishWithLatin() {
+    assertEquals("latin", OCRUtils.withoutRetiredGroups("en"));
+    assertEquals("latin", OCRUtils.withoutRetiredGroups("en+latin"));
+    assertEquals("eslav+latin", OCRUtils.withoutRetiredGroups("eslav+en"));
+    assertEquals("eslav", OCRUtils.withoutRetiredGroups("eslav"));
+    assertEquals("deu+eng", OCRUtils.withoutRetiredGroups("deu+eng"));
+    assertEquals(null, OCRUtils.withoutRetiredGroups(null));
+  }
+
+  @Test
   public void mapSystemLanguageToPaddleModel_mapsScripts() {
     assertEquals("latin", OCRUtils.mapSystemLanguageToPaddleModel(java.util.Locale.GERMAN));
-    assertEquals("en", OCRUtils.mapSystemLanguageToPaddleModel(java.util.Locale.ENGLISH));
+    assertEquals("latin", OCRUtils.mapSystemLanguageToPaddleModel(java.util.Locale.ENGLISH));
     assertEquals("eslav", OCRUtils.mapSystemLanguageToPaddleModel(new java.util.Locale("ru")));
     assertEquals("zh", OCRUtils.mapSystemLanguageToPaddleModel(java.util.Locale.JAPANESE));
     assertEquals("latin", OCRUtils.mapSystemLanguageToPaddleModel(null));

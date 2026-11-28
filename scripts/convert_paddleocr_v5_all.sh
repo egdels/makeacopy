@@ -25,7 +25,6 @@ DET_NAME="PP-OCRv5_mobile_det"
 LAYOUT_NAME="PP-DocLayout-S"
 
 REC_MODELS=(
-  "en_PP-OCRv5_mobile_rec"
   "latin_PP-OCRv5_mobile_rec"
   "eslav_PP-OCRv5_mobile_rec"
   "cyrillic_PP-OCRv5_mobile_rec"

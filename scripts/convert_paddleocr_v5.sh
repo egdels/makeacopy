@@ -38,7 +38,7 @@ OUT_DIR="${OUT_DIR:-$REPO_DIR/paddle-spike/onnx}"
 PADDLEX_CACHE="${PADDLEX_CACHE:-$HOME/.paddlex/official_models}"
 
 DET_NAME="PP-OCRv5_mobile_det"
-REC_NAME="en_PP-OCRv5_mobile_rec"
+REC_NAME="latin_PP-OCRv5_mobile_rec"
 
 OPSET="${OPSET:-11}"
 

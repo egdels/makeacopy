@@ -101,7 +101,7 @@ The following datasets were used:
        CC BY 4.0 license. No CORD images, annotations, or derivatives are
        redistributed with this project.
 
-11) PaddleOCR PP-OCRv5 mobile (models, required for OCR)
+11) PaddleOCR PP-OCRv5 mobile and PP-OCRv6 small (models, required for OCR)
     - Projects:
         * PaddleOCR: https://github.com/PaddlePaddle/PaddleOCR
         * PaddleX:   https://github.com/PaddlePaddle/PaddleX
@@ -111,14 +111,20 @@ The following datasets were used:
       shipped artifacts under app/src/main/assets/paddleocr/v5/ are:
         * 1× detection model: det.ncnn.param / det.ncnn.bin
           (PP-OCRv5_mobile_det)
-        * 9× recognition models: en_, latin_, eslav_, cyrillic_, arabic_,
-          devanagari_, th_, el_, and the generic PP-OCRv5_mobile_rec
-          (each as .ncnn.param / .ncnn.bin)
+        * 8× PP-OCRv5 recognition models: latin_, eslav_, cyrillic_,
+          arabic_, devanagari_, th_, el_, and the generic
+          PP-OCRv5_mobile_rec (each as .ncnn.param / .ncnn.bin)
+        * 1× PP-OCRv6 recognition model: PP-OCRv6_small_rec
+          (.ncnn.param / .ncnn.bin), which reads again the lines the
+          PP-OCRv5 models are unsure of
         * Per-model character dictionaries (*_dict.txt)
         * SHA256SUMS, SUMMARY.txt
       The original PaddleOCR PP-OCRv5 mobile checkpoints were obtained via
       PaddleX, converted to ONNX with paddle2onnx, and finally to the NCNN
       format with NCNN's converter pnnx, weights in single precision.
+      PP-OCRv6_small_rec comes as ONNX from the Hugging Face release
+      PaddlePaddle/PP-OCRv6_small_rec_onnx (Apache License 2.0) and is
+      converted with pnnx in the same way.
       Conversion scripts live under scripts/ (download_paddleocr_v5_*,
       convert_paddleocr_v5_*, convert_models_to_ncnn.sh). Intermediate
       *.onnx artifacts are not shipped. The Apache 2.0 license text

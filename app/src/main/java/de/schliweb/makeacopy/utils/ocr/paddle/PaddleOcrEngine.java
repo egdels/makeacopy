@@ -78,6 +78,7 @@ public final class PaddleOcrEngine implements OcrEngine {
   private final RunnerSupplier supplier;
   private volatile String language;
   private volatile boolean highQualityDetectionEnabled;
+  private volatile boolean v6Enabled = true;
 
   PaddleOcrEngine(Context context) {
     this(context, defaultSupplier(context));
@@ -149,6 +150,12 @@ public final class PaddleOcrEngine implements OcrEngine {
     highQualityDetectionEnabled = enabled;
   }
 
+  /** Off: PP-OCRv6 checks no lines, every page is read by PP-OCRv5 alone; for comparisons. */
+  @VisibleForTesting
+  public void setV6Enabled(boolean enabled) {
+    v6Enabled = enabled;
+  }
+
   @Override
   public OCRHelper.OcrResultWords run(Bitmap bitmap) throws Exception {
     if (bitmap == null || bitmap.isRecycled()) {
@@ -190,19 +197,31 @@ public final class PaddleOcrEngine implements OcrEngine {
     // Second pass for low-confidence lines with the base model, whose Latin recognition is
     // stronger than the script-specific mobile models' on digits, capitals and wide gaps.
     // Loaded lazily, only when a line actually falls below the threshold.
+    // On Latin-script and Chinese/Japanese pages PP-OCRv6 reads the lines again that the group's
+    // model is unsure of (see PaddleResultBuilder.V6_CHECK_BELOW). The base-model second pass is
+    // then not needed.
+    java.util.concurrent.Callable<PaddleRecRunner> v6Rec =
+        v6Enabled
+                && PaddleLanguageRouter.readsWithV6(modelKey)
+                && supplier.hasRec(PaddleLanguageRouter.V6_MODEL_KEY)
+            ? () -> supplier.rec(PaddleLanguageRouter.V6_MODEL_KEY)
+            : null;
     java.util.concurrent.Callable<PaddleRecRunner> fallbackRec =
-        PaddleLanguageRouter.hasBaseModelFallback(modelKey)
+        v6Rec == null
+                && PaddleLanguageRouter.hasBaseModelFallback(modelKey)
                 && supplier.hasRec(PaddleLanguageRouter.BASE_MODEL_KEY)
             ? () -> supplier.rec(PaddleLanguageRouter.BASE_MODEL_KEY)
             : null;
     OCRHelper.OcrResultWords result =
-        PaddleResultBuilder.build(bitmap, quads, rec, supplier.cropper(), fallbackRec);
+        PaddleResultBuilder.build(bitmap, quads, rec, supplier.cropper(), fallbackRec, v6Rec);
     long tEnd = System.nanoTime();
 
     Log.i(
         TAG,
         "recognize modelKey="
             + modelKey
+            + " v6="
+            + (v6Rec != null)
             + " live="
             + PaddleRecRunner.liveSessionCount()
             + " initMs="

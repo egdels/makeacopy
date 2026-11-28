@@ -58,7 +58,7 @@ public final class PaddleEngineFactory {
 
   /**
    * Whether the APK carries the detection model and the recognition model {@code modelKey}
-   * ("latin", "en", …). The Light edition ships only the Latin one.
+   * ("latin", "eslav", …). The Light edition ships only the Latin one.
    */
   public static boolean isModelBundled(Context context, String modelKey) {
     return PaddleAssets.areModelsPresent(context, modelKey);

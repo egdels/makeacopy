@@ -151,6 +151,18 @@ final class PaddleResultBuilder {
   @VisibleForTesting static final float LOW_CONFIDENCE_RETRY_THRESHOLD = 0.6f;
 
   /**
+   * A horizontal line the language group's model reads with less than this confidence is read again
+   * by PP-OCRv6, and the surer of the two readings is kept. v6 is the better reader on photos and
+   * small print, where the v5 models are unsure, but slower (a line takes it about 1.5 times as
+   * long, and its 18,710 classes are costly to decode) and sure of its own mistakes in some accents
+   * (Slovak, Polish, Turkish). Reading every Latin line with v6 found the same words on the eval
+   * set (2023 of 2072; main 2004) for 29 % more time on a Pixel 7a, 77 % on dense pages. At 0.95 v6
+   * reads about one line in 25 there: 2021 words, 7 % more time, 3 % on dense pages, and the
+   * language samples do not lose words. 0.90: 2020, 0.98: 2023 with 12 % more time.
+   */
+  @VisibleForTesting static final float V6_CHECK_BELOW = 0.95f;
+
+  /**
    * The second reading replaces the first only when the base model is at least this confident.
    * Confidences are not calibrated across models: re-reading every line showed the base model
    * reporting 0.99 for readings that had lost all spaces ("Section2-MoreBodyText"), so "more
@@ -257,6 +269,25 @@ final class PaddleResultBuilder {
       Cropper cropper,
       Callable<PaddleRecRunner> fallbackRec)
       throws Exception {
+    return build(full, quads, rec, cropper, fallbackRec, null);
+  }
+
+  /**
+   * @param rec the recogniser of the page's language group
+   * @param fallbackRec lazily created base-model recogniser for the low-confidence second pass, or
+   *     null
+   * @param v6Rec lazily created PP-OCRv6 recogniser, or null. With it, the horizontal lines {@code
+   *     rec} is not sure of are read again by v6 and the surer reading is kept (see {@link
+   *     #V6_CHECK_BELOW}); pages and lines set vertically stay with {@code rec}.
+   */
+  static OCRHelper.OcrResultWords build(
+      Bitmap full,
+      List<Quad> quads,
+      PaddleRecRunner rec,
+      Cropper cropper,
+      Callable<PaddleRecRunner> fallbackRec,
+      Callable<PaddleRecRunner> v6Rec)
+      throws Exception {
     if (quads == null || quads.isEmpty()) {
       return new OCRHelper.OcrResultWords("", null, new ArrayList<>());
     }
@@ -305,6 +336,9 @@ final class PaddleResultBuilder {
     double confSum = 0.0;
     int confCount = 0;
 
+    // PP-OCRv6 checks the lines the group's model is unsure of; not on a vertical page.
+    Callable<PaddleRecRunner> checker = verticalLayout ? null : v6Rec;
+
     AtomicInteger globalCropIndex = new AtomicInteger();
     List<Quad> allQuads = new ArrayList<>();
     for (List<Quad> line : lines) {
@@ -322,6 +356,7 @@ final class PaddleResultBuilder {
               full,
               lines,
               rec,
+              checker,
               fallbackRec,
               cropper,
               globalCropIndex,
@@ -405,6 +440,7 @@ final class PaddleResultBuilder {
       Bitmap full,
       List<List<Quad>> lines,
       PaddleRecRunner rec,
+      Callable<PaddleRecRunner> checker,
       Callable<PaddleRecRunner> fallbackRec,
       Cropper cropper,
       AtomicInteger globalCropIndex,
@@ -421,7 +457,14 @@ final class PaddleResultBuilder {
         for (int qi = 0; qi < line.size(); qi++) {
           recognized[li][qi] =
               recognizeQuad(
-                  full, line.get(qi), rec, fallbackRec, cropper, globalCropIndex, allQuads);
+                  full,
+                  line.get(qi),
+                  rec,
+                  checker,
+                  fallbackRec,
+                  cropper,
+                  globalCropIndex,
+                  allQuads);
         }
       }
       return recognized;
@@ -442,7 +485,7 @@ final class PaddleResultBuilder {
               (Callable<QuadRecognition>)
                   () ->
                       recognizeQuad(
-                          full, q, rec, fallbackRec, cropper, globalCropIndex, allQuads)));
+                          full, q, rec, checker, fallbackRec, cropper, globalCropIndex, allQuads)));
     }
     for (int i = 0; i < slots.size(); i++) {
       int[] slot = slots.get(i);
@@ -512,10 +555,16 @@ final class PaddleResultBuilder {
     }
   }
 
+  /**
+   * @param rec the recogniser of the page's language group; it reads the line
+   * @param checker lazily created PP-OCRv6 recogniser that reads a horizontal line again when
+   *     {@code rec} stays below {@link #V6_CHECK_BELOW}, or null
+   */
   private static QuadRecognition recognizeQuad(
       Bitmap full,
       Quad q,
       PaddleRecRunner rec,
+      Callable<PaddleRecRunner> checker,
       Callable<PaddleRecRunner> fallbackRec,
       Cropper cropper,
       AtomicInteger globalCropIndex,
@@ -623,6 +672,15 @@ final class PaddleResultBuilder {
         }
       } else {
         out = rec.recognize(crop);
+        if (checker != null && out.confidence() < V6_CHECK_BELOW) {
+          PaddleRecRunner.RecOutput outB = checker.call().recognize(crop);
+          if (outB != null
+              && outB.text() != null
+              && !outB.text().isEmpty()
+              && outB.confidence() > out.confidence()) {
+            out = outB;
+          }
+        }
         if (fallbackRec != null && out.confidence() < LOW_CONFIDENCE_RETRY_THRESHOLD) {
           PaddleRecRunner.RecOutput outB = fallbackRec.call().recognize(crop);
           if (outB != null
