@@ -1,0 +1,3 @@
+MakeACopy 4.11.0
+* Better OCR on phone photos and small print: lines the text recognition is unsure of are read a second time by a newer model (PP-OCRv6), and the surer reading is kept. OCR takes slightly longer; the app is about 11 MB larger.
+* Changed: "English (Paddle)" is no longer an OCR language of its own. English is read under "Latin script"; a saved choice moves there.
