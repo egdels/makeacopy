@@ -51,6 +51,47 @@ Quellen:
 Siehe auch `docs/eval/README.md` für die End-to-End-Pipeline und das
 JSON-Schema.
 
+## Sprachproben (`samples/`) und `SampleSetEvalTest`
+
+`samples/` enthält 23 Sprachen, jede als sauberen Scan (`language_<code>_scan.png`)
+und als Handyfoto (`language_<code>_photo.jpg`) mit Ground Truth. Die Seiten sind
+synthetisch (eigener Text, Noto-Schriften unter der SIL Open Font License) und
+stammen aus dem Schwesterprojekt Sheet; `scripts/synth_samples.py` erzeugt sie
+deterministisch neu.
+
+`SampleSetEvalTest` liest einen Satz und schreibt je Probe und im Mittel CER, WER
+und die gefundenen Wörter ins Log (Tag `SampleSetEval`). Der Test prüft nichts, er
+misst nur:
+
+```bash
+A=-Pandroid.testInstrumentationRunnerArguments
+./gradlew :app:connectedDebugAndroidTest \
+  $A.class=de.schliweb.makeacopy.utils.ocr.SampleSetEvalTest   # samples/, jede Probe in ihrer Sprache
+#   $A.samplesAsset=eval | synth | eval/jpn    anderer Satz aus den Assets
+#   $A.paddleLanguage=latin                    diese Sprache für jede Seite gewählt
+#   $A.paddleBest=false                        ohne "Best quality" (Detektor bei 1536 px)
+#   $A.samplesDir=<Verzeichnis auf dem Gerät>   z. B. CORD-Belege aus scripts/cord_samples.py
+adb logcat -d -s SampleSetEval:I
+```
+
+Ausgangswerte von `main` (2026-11-28, `25f2d772`, Emulator Pixel_9a, Debug-Build,
+NCNN, "Best quality" an). Zeiten nur zur Orientierung, verglichen wird auf einem
+Handy im Release-Build:
+
+| Satz | Wörter gefunden | CER | Zeit |
+|---|---|---|---|
+| `samples` (46), eigene Sprache | 1652/1894 | 0,061 | 17,0 s |
+| `samples` (46), Auswahl `latin` | 1142/1894 | 0,342 | 15,3 s |
+| `eval` (36) | 2004/2072 | 0,036 | 11,2 s |
+| `eval` (36), ohne "Best quality" | 1987/2072 | 0,039 | 10,1 s |
+| `synth` (9) | 2366/2391 | 0,455 | 8,0 s |
+| `eval/jpn` (2) | 2/6 | 0,042 | 0,8 s |
+
+In `samples` fehlen die Wörter vor allem bei Koreanisch (0/68, kein Modell),
+Vietnamesisch (60/140), Persisch (50/88) und Arabisch (57/80). Die hohe CER von
+`synth` kommt von der Lesereihenfolge mehrspaltiger Seiten, nicht von der
+Erkennung.
+
 ## Hinweise zum Packaging
 
 Die Bilder liegen unter `app/src/androidTest/assets/eval/`
